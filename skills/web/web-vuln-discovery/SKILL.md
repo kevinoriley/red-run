@@ -221,6 +221,24 @@ echo -n 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9' | base64 -d
 # {"alg":"HS256","typ":"JWT"}
 ```
 
+**File Upload** (test upload endpoints for bypass opportunities):
+```
+# Find upload endpoints (forms, API, drag-and-drop handlers)
+# Upload a benign file, note:
+# - Allowed extensions
+# - Where the file is stored (URL in response? predictable path?)
+# - Whether the file is served back with original Content-Type
+
+# Test extension bypass — try alternative extensions for the target language:
+# PHP: .phtml, .pht, .php5, .php7, .phar, .phps, .php.jpg
+# ASP: .aspx, .ashx, .asmx, .asp, .config, .shtml
+# JSP: .jspx, .jsw, .jsv, .jspf, .war
+# Test double extension: shell.php.jpg, shell.jpg.php
+
+# Test config file upload:
+# .htaccess (Apache), web.config (IIS), .user.ini (PHP-FPM)
+```
+
 **NoSQL Injection** (test JSON APIs and Node.js backends):
 ```
 # URL-encoded operator injection
@@ -345,6 +363,8 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 | Different content for `1=1` vs `1=2` | Boolean-based blind | **sql-injection-blind** |
 | Delay with `SLEEP(5)` / `WAITFOR DELAY` | Time-based blind | **sql-injection-blind** |
 | `ORDER BY N` works, `UNION SELECT` returns data | Union-based | **sql-injection-union** |
+| `;` followed by second statement executes (e.g., `; WAITFOR DELAY`) | Stacked queries | **sql-injection-stacked** |
+| Input stored, later causes SQL error in different context | Second-order | **sql-injection-stacked** |
 
 **DBMS fingerprinting** (inject as tautology):
 
@@ -558,6 +578,8 @@ Read ~/docs/public-security-references/Account Takeover/mfa-bypass.md
 Read ~/docs/public-security-references/src/pentesting-web/2fa-bypass.md
 Read ~/docs/public-security-references/Race Condition/README.md
 Read ~/docs/public-security-references/src/pentesting-web/race-condition.md
+Read ~/docs/public-security-references/Upload Insecure Files/README.md
+Read ~/docs/public-security-references/src/pentesting-web/file-upload/README.md
 ```
 
 ## Troubleshooting
