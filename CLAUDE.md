@@ -52,3 +52,23 @@ Every skill lives at `skills/<category>/<skill-name>/skill.md` and follows the t
 | public-security-references | `~/docs/public-security-references` | Broadest scope, binary exploitation, macOS, mobile, network protocols |
 
 When authoring skills, synthesize from all three repos — don't just copy from one.
+
+## Workflow
+
+**Source of truth:** `task_plan.md` and `progress.md` are the persistent memory across sessions. Always read both at the start of a new session to pick up where we left off.
+
+- `task_plan.md` — what to build, current phase, per-skill status
+- `progress.md` — what was done, decisions made, observations, next steps
+- `findings.md` — source material research notes
+
+**Branching:** Never push directly to main. Create a feature branch per skill batch and PR it for review.
+
+| Branch pattern | Scope |
+|----------------|-------|
+| `skills/web-sqli` | All SQL injection skills |
+| `skills/web-xss` | All XSS skills |
+| `skills/ad-core` | AD discovery + technique skills |
+
+**Before starting work:** Read `task_plan.md` and `progress.md`, check git branch and status.
+
+**Before ending a session:** Update `task_plan.md` (skill statuses) and `progress.md` (what was done, next steps), commit, push.
