@@ -70,6 +70,7 @@ Skills support optional engagement logging for structured pentests. When an enga
 ```
 engagement/
 ├── scope.md          # Target scope, credentials, rules of engagement
+├── state.md          # Compact machine-readable engagement state (snapshot)
 ├── activity.md       # Chronological action log (append-only)
 ├── findings.md       # Confirmed vulnerabilities (working tracker)
 └── evidence/         # Saved output, responses, dumps
@@ -80,6 +81,28 @@ engagement/
 - Activity logged at milestones (test confirmed, data extracted, finding discovered)
 - Findings numbered with severity, target, technique, impact, and reproduction steps
 - No engagement directory = no logging (skills work fine without it)
+
+### State management
+
+Large engagements generate more state than fits in a single conversation context. `state.md` solves this — it's a compact, machine-readable snapshot of the current engagement that persists across sessions and context compactions.
+
+**Sections:**
+
+| Section | Contents |
+|---------|----------|
+| Targets | Hosts, IPs, URLs, ports, tech stack |
+| Credentials | Username/password/hash/token pairs, where they work |
+| Access | Current footholds — shells, sessions, tokens, DB access |
+| Vulns | One-liner per confirmed vuln: `[found]`, `[active]`, `[done]` |
+| Pivot Map | What leads where — vuln X gives access Y, creds Z work on host W |
+| Blocked | What was tried and why it failed |
+
+**How it works:**
+- Every skill reads `state.md` on activation — skips retesting, leverages existing access
+- Every skill writes back on completion — adds new credentials, vulns, pivot paths
+- The orchestrator reads `state.md` to chain vulnerabilities toward maximum impact
+- Kept under ~200 lines — one-liner per item, current state not history
+- New session? Read `state.md` + `scope.md` and you're caught up
 
 ## Installation
 

@@ -51,6 +51,24 @@ When an engagement directory exists, log as you work:
 
 If no engagement directory exists and the user declines to create one, proceed normally.
 
+## State Management
+
+If `engagement/state.md` exists, read it before starting. Use it to:
+- Skip re-testing targets, parameters, or vulns already confirmed
+- Leverage existing credentials or access for this technique
+- Understand what's been tried and failed (check Blocked section)
+
+After completing this technique or at significant milestones, update
+`engagement/state.md`:
+- **Targets**: Add any new hosts, URLs, or services discovered
+- **Credentials**: Add any credentials, tokens, or keys recovered
+- **Access**: Add or update footholds (shells, sessions, DB access)
+- **Vulns**: Add confirmed vulns as one-liners; mark exploited ones `[done]`
+- **Pivot Map**: Add new attack paths discovered (X leads to Y)
+- **Blocked**: Record what was tried and why it failed
+
+Keep entries compact — one line per item. State.md is a snapshot, not a log.
+
 ## Prerequisites
 
 - A PHP deserialization endpoint (`unserialize()` on user input, or filesystem
@@ -304,6 +322,8 @@ FileCookieJar for file write).
   function that accepts `phar://`
 - **Found file upload + deserialization**: Combine phar polyglot upload
   with **file-upload-bypass** techniques
+
+Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
 
 When routing, pass along: confirmed technique, framework/version, current
 mode, and any payloads that already succeeded.

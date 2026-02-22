@@ -29,6 +29,7 @@ Skills support optional engagement logging for structured pentests.
 ```
 engagement/
 ├── scope.md          # Target scope, credentials, rules of engagement
+├── state.md          # Compact machine-readable engagement state (snapshot)
 ├── activity.md       # Chronological action log (append-only)
 ├── findings.md       # Confirmed vulnerabilities (working tracker)
 └── evidence/         # Saved output, responses, dumps
@@ -42,9 +43,33 @@ engagement/
 - No engagement directory = no logging. Skills degrade gracefully.
 
 **Orchestrator responsibility:**
-- Creates engagement directory and initializes `scope.md` from user input
+- Creates engagement directory and initializes `scope.md` and `state.md` from user input
 - Maintains `activity.md` across skill transitions
+- Reads `state.md` to decide next actions and which skill to invoke
+- Analyzes `state.md` to chain vulnerabilities toward maximum impact
 - Produces engagement summary when complete
+
+### State Management
+
+`engagement/state.md` is a compact, machine-readable snapshot of current engagement state. It is **not** a log — it's the current truth.
+
+**Sections:**
+
+| Section | Contents | Updated By |
+|---------|----------|------------|
+| **Targets** | Hosts, IPs, URLs, ports, tech stack (one-liner each) | Discovery skills |
+| **Credentials** | Username/password/hash/token pairs, where they work | Any skill that finds creds |
+| **Access** | Current footholds: shells, sessions, tokens, DB access | Exploitation skills |
+| **Vulns** | One-liner per confirmed vuln with status: `[found]`, `[active]`, `[done]` | Technique skills |
+| **Pivot Map** | What leads where — vuln X gives access Y, creds Z work on host W | Any skill |
+| **Blocked** | What was tried and why it failed — prevents re-testing | Any skill |
+
+**Rules:**
+- Keep state.md under ~200 lines so skills can read it without burning context
+- One line per item — compact over complete
+- Current state, not history — remove revoked creds, mark exploited vulns `[done]`
+- Every skill reads state.md on activation, writes back on completion
+- Orchestrator uses state.md + Pivot Map to chain vulns toward impact
 
 ## Directory Layout
 
@@ -89,10 +114,11 @@ description: >
 1. **Preamble**: "You are helping a penetration tester with..."
 2. **Mode**: Check for guided vs autonomous
 3. **Engagement Logging**: Check for engagement dir, log activity/findings/evidence
-4. **Prerequisites**: Access, tools, conditions
-5. **Steps**: Assess → Confirm → Exploit → Escalate/Pivot
-6. **Deep Reference**: `~/docs/` paths for WAF bypass, edge cases
-7. **Troubleshooting**: Common failures and fixes
+4. **State Management**: Read state.md on activation, write back on completion
+5. **Prerequisites**: Access, tools, conditions
+6. **Steps**: Assess → Confirm → Exploit → Escalate/Pivot
+7. **Deep Reference**: `~/docs/` paths for WAF bypass, edge cases
+8. **Troubleshooting**: Common failures and fixes
 
 ### Conventions
 - Skill names use kebab-case: `sql-injection-union`, `kerberoasting`, `docker-socket-escape`
