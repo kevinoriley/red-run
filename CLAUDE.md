@@ -178,3 +178,9 @@ Skills install to `~/.claude/skills/red-run-<skill-name>/SKILL.md`.
 **Before starting work:** Read `task_plan.md` and `progress.md`, check git branch and status.
 
 **Before ending a session:** Update `task_plan.md` (skill statuses) and `progress.md` (what was done, next steps), commit, push.
+
+### Extended / Backlog Phases
+
+Each core phase (web, AD, privesc, etc.) may produce an "extended" sub-phase (e.g., Phase 3b) during its coverage audit. Extended phases contain important but lower-priority techniques identified from ~/docs/ that didn't make the core cut. They live in `task_plan.md` alongside the core phase and can be built as capacity allows or interleaved with later phases.
+
+The Backlog section in `task_plan.md` holds niche or reference-only topics that are too specialized for a dedicated skill but worth tracking. Build these on-demand if they come up during an engagement.

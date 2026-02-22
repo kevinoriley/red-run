@@ -221,6 +221,31 @@ echo -n 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9' | base64 -d
 # {"alg":"HS256","typ":"JWT"}
 ```
 
+**NoSQL Injection** (test JSON APIs and Node.js backends):
+```
+# URL-encoded operator injection
+param[$ne]=test
+param[$gt]=
+param[$exists]=true
+
+# JSON body operator injection
+{"param": {"$ne": ""}}
+{"param": {"$gt": ""}}
+{"param": {"$regex": ".*"}}
+```
+
+**Request Smuggling** (test for CL/TE desync on multi-tier architectures):
+```
+# Check for mixed HTTP version (H2 front-end, H1 back-end)
+curl -sI --http2 https://TARGET/ -o /dev/null -w '%{http_version}\n'
+
+# Check headers for reverse proxy / CDN indicators
+curl -sI https://TARGET/ | grep -iE 'server|via|x-cache|x-forwarded'
+
+# Automated detection with smuggler.py
+python3 -m smuggler -u https://TARGET/
+```
+
 ## Step 4: Response Analysis & Routing
 
 Analyze responses from Step 3 to identify vulnerability type, then route to the correct exploitation skill.
@@ -317,6 +342,15 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 | RSA-signed JWT with public key available (JWKS endpoint) | **jwt-attacks** (key confusion) |
 | `kid`, `jku`, or `x5u` present in JWT header | **jwt-attacks** (header injection) |
 
+### NoSQL Injection
+
+| Response Pattern | Route To |
+|---|---|
+| Auth bypass with `$ne`/`$gt`/`$regex` operators | **nosql-injection** |
+| MongoDB error (`MongoError`, `$operator` in stack trace) | **nosql-injection** |
+| Different response for `$exists`/`$ne` vs normal input | **nosql-injection** (blind section) |
+| Node.js/Express backend with JSON API | **nosql-injection** (test operators) |
+
 ### File Upload
 
 | Response Pattern | Route To |
@@ -324,6 +358,15 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 | Uploaded file executed server-side | **file-upload-bypass** |
 | Extension blocked but alternative accepted | **file-upload-bypass** |
 | Config file upload accepted (.htaccess, web.config) | **file-upload-bypass** (config exploitation) |
+
+### Request Smuggling
+
+| Response Pattern | Route To |
+|---|---|
+| Timeout or 405 from CL.TE/TE.CL detection probes | **request-smuggling** |
+| Unexpected response on second pipelined request | **request-smuggling** |
+| HTTP/2 front-end with HTTP/1.1 back-end (mixed version) | **request-smuggling** (H2 downgrade) |
+| `Upgrade: h2c` forwarded by proxy | **request-smuggling** (h2c smuggling) |
 
 Update `engagement/state.md` with any new targets, confirmed vulns, or blocked techniques before routing.
 
@@ -346,6 +389,9 @@ Read ~/docs/public-security-references/Insecure Deserialization/Java.md
 Read ~/docs/public-security-references/Insecure Deserialization/PHP.md
 Read ~/docs/public-security-references/Insecure Deserialization/DotNET.md
 Read ~/docs/public-security-references/JSON Web Token/README.md
+Read ~/docs/public-security-references/NoSQL Injection/README.md
+Read ~/docs/public-security-references/Request Smuggling/README.md
+Read ~/docs/public-security-references/src/pentesting-web/http-request-smuggling/README.md
 ```
 
 ## Troubleshooting

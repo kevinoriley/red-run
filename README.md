@@ -52,8 +52,10 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 | `deserialization-php` | Magic methods, POP chains, PHPGGC, phar:// polyglots, Laravel APP_KEY, type juggling | 365 |
 | `deserialization-dotnet` | ysoserial.net, ViewState/machine keys, JSON.NET TypeNameHandling, .NET Remoting | 408 |
 | `jwt-attacks` | alg:none, key confusion, kid injection, jwk/jku spoofing, secret brute force, claim tampering | 533 |
+| `request-smuggling` | CL.TE, TE.CL, TE.TE obfuscation, H2 downgrade, h2c smuggling, response desync, cache poisoning | 570 |
+| `nosql-injection` | MongoDB operator injection, auth bypass, blind regex extraction, $where JS execution, Mongoose RCE | 519 |
 
-**Remaining:** Request smuggling
+**Remaining Phase 3:** IDOR, CSRF, CORS misconfiguration, OAuth attacks, account takeover, race conditions
 
 ### Planned categories
 
