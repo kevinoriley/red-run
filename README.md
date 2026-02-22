@@ -54,8 +54,10 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 | `jwt-attacks` | alg:none, key confusion, kid injection, jwk/jku spoofing, secret brute force, claim tampering | 533 |
 | `request-smuggling` | CL.TE, TE.CL, TE.TE obfuscation, H2 downgrade, h2c smuggling, response desync, cache poisoning | 570 |
 | `nosql-injection` | MongoDB operator injection, auth bypass, blind regex extraction, $where JS execution, Mongoose RCE | 519 |
+| `idor` | Horizontal/vertical access control bypass, UUID/ObjectId prediction, API IDOR, encoding bypass, automated enumeration | 569 |
+| `cors-misconfiguration` | Origin reflection, null origin, regex bypass, subdomain trust, wildcard abuse, CORS+IDOR chain | 565 |
 
-**Remaining Phase 3:** IDOR, CSRF, CORS misconfiguration, OAuth attacks, account takeover, race conditions
+**Remaining Phase 3:** CSRF, OAuth attacks, password reset poisoning, 2FA bypass, race conditions
 
 ### Planned categories
 

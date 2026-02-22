@@ -246,6 +246,36 @@ curl -sI https://TARGET/ | grep -iE 'server|via|x-cache|x-forwarded'
 python3 -m smuggler -u https://TARGET/
 ```
 
+**IDOR / Broken Access Control** (test endpoints that reference objects by ID):
+```
+# Identify object references in API responses
+# Look for: sequential integers, UUIDs, MongoDB ObjectIds, encoded IDs
+# Test: change the ID while keeping your auth session
+
+# Horizontal: access another user's resource
+GET /api/users/OTHER_ID/profile  (with your session cookie)
+
+# Vertical: access admin endpoints
+GET /api/admin/users  (with low-priv session)
+
+# Method tampering: try PUT/DELETE on read-only resources
+PUT /api/users/OTHER_ID/profile
+DELETE /api/users/OTHER_ID/documents/123
+```
+
+**CORS Misconfiguration** (check cross-origin headers on sensitive endpoints):
+```bash
+# Test origin reflection
+curl -sI -H "Origin: https://evil.com" https://TARGET/api/endpoint \
+  | grep -i "access-control"
+
+# Test null origin
+curl -sI -H "Origin: null" https://TARGET/api/endpoint \
+  | grep -i "access-control"
+
+# Look for: Access-Control-Allow-Origin reflecting input + Allow-Credentials: true
+```
+
 ## Step 4: Response Analysis & Routing
 
 Analyze responses from Step 3 to identify vulnerability type, then route to the correct exploitation skill.
@@ -368,6 +398,24 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 | HTTP/2 front-end with HTTP/1.1 back-end (mixed version) | **request-smuggling** (H2 downgrade) |
 | `Upgrade: h2c` forwarded by proxy | **request-smuggling** (h2c smuggling) |
 
+### IDOR / Broken Access Control
+
+| Response Pattern | Route To |
+|---|---|
+| Different user's data returned when ID is changed | **idor** (horizontal) |
+| Admin/privileged data accessible with low-priv session | **idor** (vertical) |
+| Write operation (PUT/DELETE) succeeds on another user's resource | **idor** (state-changing) |
+| Sequential/predictable IDs in API responses | **idor** (enumeration) |
+
+### CORS Misconfiguration
+
+| Response Pattern | Route To |
+|---|---|
+| `Access-Control-Allow-Origin` reflects arbitrary origin + `Allow-Credentials: true` | **cors-misconfiguration** (origin reflection) |
+| `Access-Control-Allow-Origin: null` + `Allow-Credentials: true` | **cors-misconfiguration** (null origin) |
+| `Access-Control-Allow-Origin: *` on sensitive unauthenticated endpoint | **cors-misconfiguration** (wildcard) |
+| Subdomain origin trusted + XSS on a subdomain | **cors-misconfiguration** (subdomain trust) |
+
 Update `engagement/state.md` with any new targets, confirmed vulns, or blocked techniques before routing.
 
 When routing, pass along: the confirmed injection point (URL, parameter, method), observed response behavior, suspected DBMS (if SQL), current mode, and any payloads that already succeeded.
@@ -392,6 +440,10 @@ Read ~/docs/public-security-references/JSON Web Token/README.md
 Read ~/docs/public-security-references/NoSQL Injection/README.md
 Read ~/docs/public-security-references/Request Smuggling/README.md
 Read ~/docs/public-security-references/src/pentesting-web/http-request-smuggling/README.md
+Read ~/docs/public-security-references/IDOR - Insecure Direct Object References/README.md
+Read ~/docs/public-security-references/src/pentesting-web/idor.md
+Read ~/docs/public-security-references/CORS Misconfiguration/README.md
+Read ~/docs/public-security-references/src/pentesting-web/cors-bypass.md
 ```
 
 ## Troubleshooting
