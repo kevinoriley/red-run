@@ -74,6 +74,7 @@ description: >
 - Reference `~/docs/` for the long tail (WAF bypass, alternative functions, edge cases)
 - OPSEC rating in description: `low` = passive/read-only, `medium` = creates artifacts, `high` = noisy/detected by EDR
 - Inter-skill routing: bold skill names in escalation sections
+- **Discovery skill maintenance**: When creating a new technique skill, update the corresponding discovery skill's routing table to include it. `web-vuln-discovery` must route to every web technique skill.
 
 ## Dependencies
 
