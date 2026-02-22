@@ -51,8 +51,9 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 | `deserialization-java` | ysoserial gadget chains, JNDI/Log4Shell, JSF ViewState, WebLogic/JBoss/Jenkins | 404 |
 | `deserialization-php` | Magic methods, POP chains, PHPGGC, phar:// polyglots, Laravel APP_KEY, type juggling | 365 |
 | `deserialization-dotnet` | ysoserial.net, ViewState/machine keys, JSON.NET TypeNameHandling, .NET Remoting | 408 |
+| `jwt-attacks` | alg:none, key confusion, kid injection, jwk/jku spoofing, secret brute force, claim tampering | 533 |
 
-**Remaining:** JWT attacks, request smuggling
+**Remaining:** Request smuggling
 
 ### Planned categories
 

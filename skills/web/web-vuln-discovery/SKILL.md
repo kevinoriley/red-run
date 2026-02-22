@@ -195,6 +195,17 @@ O:8:"stdClass":1:{s:1:"a";s:1:"b";}
 {"$type":"System.Object"}
 ```
 
+**JWT** (check Authorization headers, cookies, and parameters for `eyJ` prefix):
+```
+# Identify JWTs — three Base64URL segments separated by dots
+# Header always starts with eyJ (base64 of {"...)
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature
+
+# Decode header to check algorithm
+echo -n 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9' | base64 -d
+# {"alg":"HS256","typ":"JWT"}
+```
+
 ## Step 4: Response Analysis & Routing
 
 Analyze responses from Step 3 to identify vulnerability type, then route to the correct exploitation skill.
@@ -282,6 +293,15 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 | .NET serialized data (`AAEAAAD`, `$type` in JSON) or ViewState | **deserialization-dotnet** |
 | Error mentioning `ObjectInputStream`, `unserialize`, `BinaryFormatter` | Route by language (Java/PHP/.NET) |
 
+### JWT
+
+| Response Pattern | Route To |
+|---|---|
+| JWT found in auth header, cookie, or parameter (`eyJ...`) | **jwt-attacks** |
+| `alg` set to `none` or weak HMAC key suspected | **jwt-attacks** (alg:none / brute force) |
+| RSA-signed JWT with public key available (JWKS endpoint) | **jwt-attacks** (key confusion) |
+| `kid`, `jku`, or `x5u` present in JWT header | **jwt-attacks** (header injection) |
+
 ### File Upload
 
 | Response Pattern | Route To |
@@ -308,6 +328,7 @@ Read ~/docs/public-security-references/XXE Injection/README.md
 Read ~/docs/public-security-references/Insecure Deserialization/Java.md
 Read ~/docs/public-security-references/Insecure Deserialization/PHP.md
 Read ~/docs/public-security-references/Insecure Deserialization/DotNET.md
+Read ~/docs/public-security-references/JSON Web Token/README.md
 ```
 
 ## Troubleshooting
