@@ -276,6 +276,26 @@ curl -sI -H "Origin: null" https://TARGET/api/endpoint \
 # Look for: Access-Control-Allow-Origin reflecting input + Allow-Credentials: true
 ```
 
+**CSRF** (check state-changing endpoints for token protection):
+```
+# Capture a POST request to a state-changing endpoint (change email, password, etc.)
+# Remove or empty the CSRF token parameter — does the request still succeed?
+# Check SameSite cookie attribute:
+curl -sI https://TARGET/login | grep -i "set-cookie" | grep -i "samesite"
+# Check for custom header requirements (X-CSRF-Token, X-Requested-With)
+```
+
+**OAuth / OpenID Connect** (check for OAuth-based authentication):
+```bash
+# Detect OAuth endpoints
+curl -s "https://TARGET/.well-known/openid-configuration" | jq .
+
+# Look for OAuth parameters in login flow:
+# client_id, redirect_uri, response_type, state, scope
+# Check Authorization header for Bearer tokens
+# Check for social login buttons (Google, Facebook, GitHub, Apple)
+```
+
 ## Step 4: Response Analysis & Routing
 
 Analyze responses from Step 3 to identify vulnerability type, then route to the correct exploitation skill.
@@ -416,6 +436,25 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 | `Access-Control-Allow-Origin: *` on sensitive unauthenticated endpoint | **cors-misconfiguration** (wildcard) |
 | Subdomain origin trusted + XSS on a subdomain | **cors-misconfiguration** (subdomain trust) |
 
+### CSRF
+
+| Response Pattern | Route To |
+|---|---|
+| State-changing endpoint accepts request without CSRF token | **csrf** (missing token) |
+| CSRF token present but removing/emptying it still works | **csrf** (token bypass) |
+| SameSite=None or no SameSite attribute on session cookie | **csrf** (SameSite bypass) |
+| GET request performs state-changing action | **csrf** (GET-based) |
+
+### OAuth / OpenID Connect
+
+| Response Pattern | Route To |
+|---|---|
+| OAuth login flow detected (social login, SSO) | **oauth-attacks** |
+| redirect_uri accepts arbitrary or manipulated domains | **oauth-attacks** (redirect URI bypass) |
+| Missing or unvalidated state parameter in OAuth flow | **oauth-attacks** (state bypass) |
+| OpenID Connect discovery endpoint found | **oauth-attacks** (OIDC attacks) |
+| JWT tokens in Authorization headers or cookies | **jwt-attacks** (then **oauth-attacks** if OAuth context) |
+
 Update `engagement/state.md` with any new targets, confirmed vulns, or blocked techniques before routing.
 
 When routing, pass along: the confirmed injection point (URL, parameter, method), observed response behavior, suspected DBMS (if SQL), current mode, and any payloads that already succeeded.
@@ -444,6 +483,10 @@ Read ~/docs/public-security-references/IDOR - Insecure Direct Object References/
 Read ~/docs/public-security-references/src/pentesting-web/idor.md
 Read ~/docs/public-security-references/CORS Misconfiguration/README.md
 Read ~/docs/public-security-references/src/pentesting-web/cors-bypass.md
+Read ~/docs/public-security-references/Cross-Site Request Forgery/README.md
+Read ~/docs/public-security-references/src/pentesting-web/csrf-cross-site-request-forgery.md
+Read ~/docs/public-security-references/src/pentesting-web/oauth-to-account-takeover.md
+Read ~/docs/public-security-references/OAuth Misconfiguration/README.md
 ```
 
 ## Troubleshooting
