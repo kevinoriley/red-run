@@ -46,8 +46,9 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 | `ssrf` | Basic/blind SSRF, cloud metadata, filter bypass, gopher/dict protocol | 503 |
 | `lfi` | LFI, PHP wrappers, 8 LFI-to-RCE methods, filter bypass, RFI | 536 |
 | `command-injection` | OS command injection, filter bypass, blind techniques, argument injection | 486 |
+| `xxe` | Classic/blind/OOB XXE, error-based (remote + local DTD), XInclude, file format injection | 466 |
 
-**Remaining:** file-upload-bypass, deserialization (Java/PHP/.NET), XXE, JWT attacks, request smuggling
+**Remaining:** file-upload-bypass, deserialization (Java/PHP/.NET), JWT attacks, request smuggling
 
 ### Planned categories
 
