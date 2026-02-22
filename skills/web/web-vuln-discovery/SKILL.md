@@ -32,6 +32,24 @@ Check if the user or orchestrator has set a mode:
 
 If unclear, default to guided.
 
+## Engagement Logging
+
+Check for `./engagement/` directory. If absent:
+- **Guided**: Ask if the user wants to initialize an engagement directory.
+- **Autonomous**: Create it automatically with `activity.md`, `findings.md`, and
+  `evidence/`.
+
+When an engagement directory exists, log as you work:
+- **Activity** → append to `engagement/activity.md` at milestones (scan completed,
+  parameter discovered, vulnerability indicator found, routing to technique skill):
+  `### [HH:MM] web-vuln-discovery → <target>` with bullet points of actions/results.
+- **Findings** → append to `engagement/findings.md` when a vulnerability is confirmed:
+  `## N. Title [Severity]` with target, technique, impact, evidence path, repro command.
+- **Evidence** → save significant output to `engagement/evidence/` with descriptive
+  filenames (e.g., `discovery-ffuf-results.txt`, `discovery-param-fuzz.txt`).
+
+If no engagement directory exists and the user declines to create one, proceed normally.
+
 ## Prerequisites
 
 - Target URL or scope defined

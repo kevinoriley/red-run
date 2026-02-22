@@ -20,6 +20,32 @@ Mode is set by the user or the orchestrator and propagated via conversation cont
 ### Inter-Skill Routing
 Skills route to each other using bold skill names in their escalation sections (e.g., "Route to **sql-injection-blind**"). Claude's skill matching picks up the context. When routing, pass: injection point, target technology, current mode, and any payloads that already succeeded.
 
+### Engagement Logging
+
+Skills support optional engagement logging for structured pentests.
+
+**Directory structure** (created by orchestrator or first skill that needs it):
+
+```
+engagement/
+├── scope.md          # Target scope, credentials, rules of engagement
+├── activity.md       # Chronological action log (append-only)
+├── findings.md       # Confirmed vulnerabilities (working tracker)
+└── evidence/         # Saved output, responses, dumps
+```
+
+**Behavior:**
+- Skills check for `./engagement/` at start. Guided mode asks to create it if absent; autonomous mode creates it automatically.
+- Activity entries logged at milestones, not every command. Format: `### [HH:MM] skill-name → target` with bullet points.
+- Findings numbered sequentially. Light summaries — use `pentest-findings` skill for formal report-quality writeups.
+- Evidence saved with descriptive filenames to `engagement/evidence/`.
+- No engagement directory = no logging. Skills degrade gracefully.
+
+**Orchestrator responsibility:**
+- Creates engagement directory and initializes `scope.md` from user input
+- Maintains `activity.md` across skill transitions
+- Produces engagement summary when complete
+
 ## Directory Layout
 
 ```
@@ -62,10 +88,11 @@ description: >
 
 1. **Preamble**: "You are helping a penetration tester with..."
 2. **Mode**: Check for guided vs autonomous
-3. **Prerequisites**: Access, tools, conditions
-4. **Steps**: Assess → Confirm → Exploit → Escalate/Pivot
-5. **Deep Reference**: `~/docs/` paths for WAF bypass, edge cases
-6. **Troubleshooting**: Common failures and fixes
+3. **Engagement Logging**: Check for engagement dir, log activity/findings/evidence
+4. **Prerequisites**: Access, tools, conditions
+5. **Steps**: Assess → Confirm → Exploit → Escalate/Pivot
+6. **Deep Reference**: `~/docs/` paths for WAF bypass, edge cases
+7. **Troubleshooting**: Common failures and fixes
 
 ### Conventions
 - Skill names use kebab-case: `sql-injection-union`, `kerberoasting`, `docker-socket-escape`
