@@ -296,6 +296,27 @@ curl -s "https://TARGET/.well-known/openid-configuration" | jq .
 # Check for social login buttons (Google, Facebook, GitHub, Apple)
 ```
 
+**Password Reset** (check reset flow for token theft vectors):
+```
+# Request password reset, analyze the email link:
+# - Does the link domain come from the Host header?
+# - Is the token short/predictable?
+# - Does the reset page load external resources (Referer leakage)?
+# Test Host header override:
+curl -s -X POST -H "X-Forwarded-Host: attacker.com" \
+  -d "email=test@target.com" "https://TARGET/reset-password"
+```
+
+**2FA / MFA** (check for second-factor bypass):
+```
+# After login with valid credentials, test 2FA enforcement:
+# - Can you skip 2FA by navigating directly to /dashboard?
+# - Does submitting an empty/null code work?
+# - Is there rate limiting on OTP attempts?
+# - Check SameSite cookie attribute on session cookies
+# - Check for alternative login paths (OAuth, API, mobile)
+```
+
 ## Step 4: Response Analysis & Routing
 
 Analyze responses from Step 3 to identify vulnerability type, then route to the correct exploitation skill.
@@ -455,6 +476,25 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 | OpenID Connect discovery endpoint found | **oauth-attacks** (OIDC attacks) |
 | JWT tokens in Authorization headers or cookies | **jwt-attacks** (then **oauth-attacks** if OAuth context) |
 
+### Password Reset
+
+| Response Pattern | Route To |
+|---|---|
+| Reset link domain changes with Host/X-Forwarded-Host header | **password-reset-poisoning** (host header poisoning) |
+| Reset token is short, sequential, or predictable | **password-reset-poisoning** (token weakness) |
+| Email parameter accepts multiple addresses or CRLF | **password-reset-poisoning** (email injection) |
+| Reset page loads external resources (token in Referer) | **password-reset-poisoning** (Referer leakage) |
+
+### 2FA / MFA
+
+| Response Pattern | Route To |
+|---|---|
+| 2FA prompt found after password authentication | **2fa-bypass** |
+| Direct navigation to authenticated pages bypasses 2FA | **2fa-bypass** (force browse) |
+| Empty/null OTP submission accepted | **2fa-bypass** (null code bypass) |
+| No rate limiting on OTP verification endpoint | **2fa-bypass** (brute-force) |
+| OAuth/SSO login skips 2FA | **2fa-bypass** (alternative auth path) |
+
 Update `engagement/state.md` with any new targets, confirmed vulns, or blocked techniques before routing.
 
 When routing, pass along: the confirmed injection point (URL, parameter, method), observed response behavior, suspected DBMS (if SQL), current mode, and any payloads that already succeeded.
@@ -487,6 +527,10 @@ Read ~/docs/public-security-references/Cross-Site Request Forgery/README.md
 Read ~/docs/public-security-references/src/pentesting-web/csrf-cross-site-request-forgery.md
 Read ~/docs/public-security-references/src/pentesting-web/oauth-to-account-takeover.md
 Read ~/docs/public-security-references/OAuth Misconfiguration/README.md
+Read ~/docs/public-security-references/Account Takeover/README.md
+Read ~/docs/public-security-references/src/pentesting-web/reset-password.md
+Read ~/docs/public-security-references/Account Takeover/mfa-bypass.md
+Read ~/docs/public-security-references/src/pentesting-web/2fa-bypass.md
 ```
 
 ## Troubleshooting

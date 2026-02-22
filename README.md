@@ -58,8 +58,10 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 | `cors-misconfiguration` | Origin reflection, null origin, regex bypass, subdomain trust, wildcard abuse, CORS+IDOR chain | 565 |
 | `csrf` | Token bypass, SameSite bypass, JSON CSRF, file upload CSRF, WebSocket CSRF, clickjacking chain | 609 |
 | `oauth-attacks` | Redirect URI bypass, state bypass, code theft, token leakage, OIDC attacks, PKCE bypass, ATO chains | 610 |
+| `password-reset-poisoning` | Host header poisoning, Referer token leakage, email injection, token weakness, brute-force | 533 |
+| `2fa-bypass` | Response manipulation, direct navigation, OTP brute-force, backup codes, OAuth bypass, session attacks | 585 |
 
-**Remaining Phase 3:** Password reset poisoning, 2FA bypass, race conditions
+**Remaining Phase 3:** Race conditions
 
 ### Planned categories
 
