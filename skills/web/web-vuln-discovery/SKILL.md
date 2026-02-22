@@ -183,6 +183,18 @@ php://filter/convert.base64-encode/resource=index.php
 <root>&xxe;</root>
 ```
 
+**Deserialization** (check for serialized objects in parameters, cookies, headers):
+```
+# Java: look for AC ED 00 05 (hex) or rO0AB (base64)
+rO0ABXNyABFqYXZhLmxhbmcuQm9vbGVhbs...
+
+# PHP: look for O: or a: prefix
+O:8:"stdClass":1:{s:1:"a";s:1:"b";}
+
+# .NET: look for AAEAAAD (base64) or $type in JSON
+{"$type":"System.Object"}
+```
+
 ## Step 4: Response Analysis & Routing
 
 Analyze responses from Step 3 to identify vulnerability type, then route to the correct exploitation skill.
@@ -261,6 +273,15 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 | Callback from XML parsing | **xxe** (blind/OOB section) |
 | Error message with file contents | **xxe** (error section) |
 
+### Deserialization
+
+| Response Pattern | Route To |
+|---|---|
+| Java serialized object (`rO0AB`, `AC ED 00 05`) in parameter/cookie | **deserialization-java** |
+| PHP serialized object (`O:`, `a:`) in parameter/cookie | **deserialization-php** |
+| .NET serialized data (`AAEAAAD`, `$type` in JSON) or ViewState | **deserialization-dotnet** |
+| Error mentioning `ObjectInputStream`, `unserialize`, `BinaryFormatter` | Route by language (Java/PHP/.NET) |
+
 ### File Upload
 
 | Response Pattern | Route To |
@@ -284,6 +305,9 @@ Read ~/docs/public-security-references/Command Injection/README.md
 Read ~/docs/public-security-references/Server Side Request Forgery/README.md
 Read ~/docs/public-security-references/File Inclusion/README.md
 Read ~/docs/public-security-references/XXE Injection/README.md
+Read ~/docs/public-security-references/Insecure Deserialization/Java.md
+Read ~/docs/public-security-references/Insecure Deserialization/PHP.md
+Read ~/docs/public-security-references/Insecure Deserialization/DotNET.md
 ```
 
 ## Troubleshooting

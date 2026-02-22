@@ -48,8 +48,11 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 | `command-injection` | OS command injection, filter bypass, blind techniques, argument injection | 486 |
 | `xxe` | Classic/blind/OOB XXE, error-based (remote + local DTD), XInclude, file format injection | 466 |
 | `file-upload-bypass` | Extension/content-type/magic byte bypass, config exploitation, polyglots, archive traversal | 506 |
+| `deserialization-java` | ysoserial gadget chains, JNDI/Log4Shell, JSF ViewState, WebLogic/JBoss/Jenkins | 404 |
+| `deserialization-php` | Magic methods, POP chains, PHPGGC, phar:// polyglots, Laravel APP_KEY, type juggling | 365 |
+| `deserialization-dotnet` | ysoserial.net, ViewState/machine keys, JSON.NET TypeNameHandling, .NET Remoting | 408 |
 
-**Remaining:** deserialization (Java/PHP/.NET), JWT attacks, request smuggling
+**Remaining:** JWT attacks, request smuggling
 
 ### Planned categories
 
