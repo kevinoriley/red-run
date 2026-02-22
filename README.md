@@ -60,8 +60,9 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 | `oauth-attacks` | Redirect URI bypass, state bypass, code theft, token leakage, OIDC attacks, PKCE bypass, ATO chains | 610 |
 | `password-reset-poisoning` | Host header poisoning, Referer token leakage, email injection, token weakness, brute-force | 533 |
 | `2fa-bypass` | Response manipulation, direct navigation, OTP brute-force, backup codes, OAuth bypass, session attacks | 585 |
+| `race-condition` | Limit-overrun, HTTP/2 single-packet, last-byte sync, Turbo Intruder, TOCTOU, rate limit bypass | 719 |
 
-**Remaining Phase 3:** Race conditions
+**Phase 3 complete.** Final `web-vuln-discovery` review remaining.
 
 ### Planned categories
 

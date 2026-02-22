@@ -317,6 +317,22 @@ curl -s -X POST -H "X-Forwarded-Host: attacker.com" \
 # - Check for alternative login paths (OAuth, API, mobile)
 ```
 
+**Race Conditions** (check state-changing endpoints for concurrent request handling):
+```
+# Identify race-susceptible endpoints:
+# - Coupon/promo code redemption
+# - Balance transfers and payments
+# - Vote/like/rating endpoints
+# - Single-use token consumption (invite codes, reset tokens)
+
+# Check HTTP/2 support (enables single-packet attack)
+curl -sI --http2 https://TARGET/ -o /dev/null -w '%{http_version}\n'
+
+# Quick race test: send identical POST to state-changing endpoint
+# using Burp Repeater "Send group in parallel" (HTTP/2)
+# or duplicate tabs × 10-20 and fire simultaneously
+```
+
 ## Step 4: Response Analysis & Routing
 
 Analyze responses from Step 3 to identify vulnerability type, then route to the correct exploitation skill.
@@ -495,6 +511,15 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 | No rate limiting on OTP verification endpoint | **2fa-bypass** (brute-force) |
 | OAuth/SSO login skips 2FA | **2fa-bypass** (alternative auth path) |
 
+### Race Conditions
+
+| Response Pattern | Route To |
+|---|---|
+| State-changing endpoint (coupon, transfer, vote) without idempotency controls | **race-condition** (limit-overrun) |
+| Single-use token accepted multiple times under concurrent requests | **race-condition** (token reuse) |
+| Rate limit bypassed via HTTP/2 multiplexed parallel requests | **race-condition** (rate limit bypass) |
+| Multi-step operation with observable delay between check and action | **race-condition** (TOCTOU) |
+
 Update `engagement/state.md` with any new targets, confirmed vulns, or blocked techniques before routing.
 
 When routing, pass along: the confirmed injection point (URL, parameter, method), observed response behavior, suspected DBMS (if SQL), current mode, and any payloads that already succeeded.
@@ -531,6 +556,8 @@ Read ~/docs/public-security-references/Account Takeover/README.md
 Read ~/docs/public-security-references/src/pentesting-web/reset-password.md
 Read ~/docs/public-security-references/Account Takeover/mfa-bypass.md
 Read ~/docs/public-security-references/src/pentesting-web/2fa-bypass.md
+Read ~/docs/public-security-references/Race Condition/README.md
+Read ~/docs/public-security-references/src/pentesting-web/race-condition.md
 ```
 
 ## Troubleshooting
