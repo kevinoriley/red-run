@@ -267,6 +267,7 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 |---|---|
 | Uploaded file executed server-side | **file-upload-bypass** |
 | Extension blocked but alternative accepted | **file-upload-bypass** |
+| Config file upload accepted (.htaccess, web.config) | **file-upload-bypass** (config exploitation) |
 
 When routing, pass along: the confirmed injection point (URL, parameter, method), observed response behavior, suspected DBMS (if SQL), current mode, and any payloads that already succeeded.
 

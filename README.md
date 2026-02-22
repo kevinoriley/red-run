@@ -47,8 +47,9 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 | `lfi` | LFI, PHP wrappers, 8 LFI-to-RCE methods, filter bypass, RFI | 536 |
 | `command-injection` | OS command injection, filter bypass, blind techniques, argument injection | 486 |
 | `xxe` | Classic/blind/OOB XXE, error-based (remote + local DTD), XInclude, file format injection | 466 |
+| `file-upload-bypass` | Extension/content-type/magic byte bypass, config exploitation, polyglots, archive traversal | 506 |
 
-**Remaining:** file-upload-bypass, deserialization (Java/PHP/.NET), JWT attacks, request smuggling
+**Remaining:** deserialization (Java/PHP/.NET), JWT attacks, request smuggling
 
 ### Planned categories
 
