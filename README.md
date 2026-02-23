@@ -62,11 +62,22 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 | `2fa-bypass` | Response manipulation, direct navigation, OTP brute-force, backup codes, OAuth bypass, session attacks | 585 |
 | `race-condition` | Limit-overrun, HTTP/2 single-packet, last-byte sync, Turbo Intruder, TOCTOU, rate limit bypass | 719 |
 
-**Phase 3 complete.** Final `web-vuln-discovery` review remaining.
+**Phase 3 complete.** 29 web skills.
+
+### Active Directory
+
+| Skill | Technique | Lines |
+|-------|-----------|-------|
+| `ad-attack-discovery` | Domain enumeration (BloodHound, LDAP, NetExec), attack surface mapping, routing to technique skills | 511 |
+| `kerberos-roasting` | Kerberoasting + AS-REP Roasting + Timeroasting, targeted kerberoasting via ACL abuse | 436 |
+| `password-spraying` | Lockout-safe domain spray (Kerberos/NTLM/OWA), policy enumeration, smart password generation | 508 |
+| `pass-the-hash` | PTH, Over-Pass-the-Hash, Pass-the-Key (AES), Pass-the-Ticket, lateral movement | 473 |
+
+**Phase 4 Batch 1 complete.** 4 of 16 AD skills built.
 
 ### Planned categories
 
-- **Active Directory** — enumeration, Kerberoasting, delegation, ADCS, relay, ACL abuse, DCSync
+- **Active Directory** (remaining) — delegation, ticket forging, ACL abuse, ADCS (3 skills), relay/coercion, credential dumping, GPO abuse, trust attacks, SCCM, persistence
 - **Privilege Escalation** — Windows, Linux, macOS
 - **Infrastructure** — network recon, pivoting, cloud (AWS/Azure), containers, CI/CD
 - **Red Team** — C2, initial access, evasion, persistence, credential dumping
@@ -154,7 +165,7 @@ Each skill embeds the top 2-3 payloads per variant (80% coverage) and references
 
 ## Status
 
-Phase 3 (web application skills) in progress. See `task_plan.md` for the full build plan.
+Phase 4 (Active Directory skills) in progress. Batch 1 (foundation) complete. See `task_plan.md` for the full build plan.
 
 ## Disclaimer
 
