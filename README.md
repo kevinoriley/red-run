@@ -1,17 +1,35 @@
 # red-run
 
-Claude Code skill library for penetration testing and CTF work.
+An operator's companion for penetration testing and CTF work, built as a Claude Code skill library.
 
 ## What is this?
 
-A collection of technique-focused skills that Claude Code uses during authorized security assessments and CTF competitions. Skills auto-trigger based on conversation context — describe what you're attacking and Claude activates the relevant skill with real payloads, per-technology variants, and step-by-step exploitation guidance.
+red-run turns Claude Code into a pentest partner that knows the techniques, carries the payloads, and can execute when you tell it to. It's not a push-button autopwn tool and it's not a passive reference doc — it sits between the two.
 
-No slash commands needed. Say "I found a SQL injection with error messages" and the `sql-injection-error` skill activates. Say "test this web app for vulnerabilities" and `web-vuln-discovery` runs discovery and routes to technique skills based on findings.
+In **guided mode** (default), Claude walks you through each attack step, shows you the command it would run, explains what to look for in the output, and asks before executing. You stay in the driver's seat. In **autonomous mode**, Claude runs commands directly, makes triage decisions at forks, and only pauses for destructive or high-OPSEC actions. Autonomous is better suited for CTFs and lab environments where OPSEC doesn't matter.
+
+Skills auto-trigger based on conversation context. Say "I found a SQL injection with error messages" and the `sql-injection-error` skill activates with embedded payloads for 4 database engines. Say "enumerate this domain" and `ad-attack-discovery` runs BloodHound collection and routes findings to technique skills. No slash commands needed.
+
+### What it actually does for you
+
+- **Holds the decision trees** — which technique to try next based on what you're seeing
+- **Carries the payloads** — top 2-3 per variant embedded directly, with deep references for the long tail
+- **Builds correct commands** — right flags, right syntax, right tool for the job
+- **Tracks engagement state** — what's been tried, what worked, what credentials you have, what leads where
+- **Routes between attack paths** — SQL injection leads to credentials, routes to privilege escalation
+- **Handles OPSEC trade-offs** — ranks techniques by detection risk, defaults to Kerberos-first auth in AD
+
+### What it doesn't do
+
+- Make scope decisions for you
+- Replace your judgment on OPSEC/risk trade-offs in a real engagement
+- Run without your approval in guided mode (the default)
 
 ## How it works
 
 ### Skill types
 
+- **Orchestrator** — takes a target, runs recon, routes to discovery skills, chains vulnerabilities via state management
 - **Discovery skills** — identify vulnerabilities and route to the correct technique skill via decision tree
 - **Technique skills** — exploit a specific vulnerability class with embedded payloads and bypass techniques
 
@@ -20,15 +38,15 @@ No slash commands needed. Say "I found a SQL injection with error messages" and 
 - **Guided** (default) — explain each step, ask before executing, present options at decision forks
 - **Autonomous** — execute end-to-end, make triage decisions, report at milestones
 
-Say "switch to autonomous" or "guide me through this" at any point to change modes.
+Say "switch to autonomous" or "guide me through this" at any point.
 
 ### Inter-skill routing
 
-Skills route to each other at escalation points. When SQL injection leads to credentials, the skill suggests pivoting to privilege escalation. Context (injection point, working payloads, target platform, mode) is passed along.
+Skills route to each other at escalation points. When SQL injection leads to credentials, the skill suggests pivoting to privilege escalation. When BloodHound reveals an ACL path, the discovery skill routes to `acl-abuse`. Context (injection point, working payloads, target platform, mode) is passed along.
 
 ## Skills
 
-### Web Application
+### Web Application (29 skills)
 
 | Skill | Technique | Lines |
 |-------|-----------|-------|
@@ -54,7 +72,7 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 | `jwt-attacks` | alg:none, key confusion, kid injection, jwk/jku spoofing, secret brute force, claim tampering | 533 |
 | `request-smuggling` | CL.TE, TE.CL, TE.TE obfuscation, H2 downgrade, h2c smuggling, response desync, cache poisoning | 570 |
 | `nosql-injection` | MongoDB operator injection, auth bypass, blind regex extraction, $where JS execution, Mongoose RCE | 519 |
-| `idor` | Horizontal/vertical access control bypass, UUID/ObjectId prediction, API IDOR, encoding bypass, automated enumeration | 569 |
+| `idor` | Horizontal/vertical access control bypass, UUID/ObjectId prediction, API IDOR, encoding bypass | 569 |
 | `cors-misconfiguration` | Origin reflection, null origin, regex bypass, subdomain trust, wildcard abuse, CORS+IDOR chain | 565 |
 | `csrf` | Token bypass, SameSite bypass, JSON CSRF, file upload CSRF, WebSocket CSRF, clickjacking chain | 609 |
 | `oauth-attacks` | Redirect URI bypass, state bypass, code theft, token leakage, OIDC attacks, PKCE bypass, ATO chains | 610 |
@@ -62,22 +80,23 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 | `2fa-bypass` | Response manipulation, direct navigation, OTP brute-force, backup codes, OAuth bypass, session attacks | 585 |
 | `race-condition` | Limit-overrun, HTTP/2 single-packet, last-byte sync, Turbo Intruder, TOCTOU, rate limit bypass | 719 |
 
-**Phase 3 complete.** 29 web skills.
-
-### Active Directory
+### Active Directory (7 skills)
 
 | Skill | Technique | Lines |
 |-------|-----------|-------|
-| `ad-attack-discovery` | Domain enumeration (BloodHound, LDAP, NetExec), attack surface mapping, routing to technique skills | 511 |
+| `ad-attack-discovery` | Domain enumeration (BloodHound, LDAP, NetExec), attack surface mapping, routing to 15 technique skills | 511 |
 | `kerberos-roasting` | Kerberoasting + AS-REP Roasting + Timeroasting, targeted kerberoasting via ACL abuse | 436 |
 | `password-spraying` | Lockout-safe domain spray (Kerberos/NTLM/OWA), policy enumeration, smart password generation | 508 |
-| `pass-the-hash` | PTH, Over-Pass-the-Hash, Pass-the-Key (AES), Pass-the-Ticket, lateral movement | 473 |
+| `pass-the-hash` | PTH, Over-Pass-the-Hash, Pass-the-Key (AES), Pass-the-Ticket, lateral movement tools | 473 |
+| `kerberos-delegation` | Unconstrained (TGT harvesting + coercion), Constrained (S4U + SPN swapping), RBCD | 508 |
+| `kerberos-ticket-forging` | Golden, Silver, Diamond, Sapphire tickets + Pass-the-Ticket injection | 463 |
+| `acl-abuse` | GenericAll/Write, WriteDACL, WriteOwner, shadow credentials, AdminSDHolder persistence | 554 |
 
-**Phase 4 Batch 1 complete.** 4 of 16 AD skills built.
+All AD skills follow a **Kerberos-first authentication** convention — commands default to ccache-based Kerberos auth to avoid NTLM detection signatures (Event 4776, CrowdStrike Identity Module).
 
-### Planned categories
+### Planned
 
-- **Active Directory** (remaining) — delegation, ticket forging, ACL abuse, ADCS (3 skills), relay/coercion, credential dumping, GPO abuse, trust attacks, SCCM, persistence
+- **Active Directory** (9 remaining) — ADCS (3 skills), relay/coercion + credential dumping + GPO abuse, trust attacks + SCCM + persistence
 - **Privilege Escalation** — Windows, Linux, macOS
 - **Infrastructure** — network recon, pivoting, cloud (AWS/Azure), containers, CI/CD
 - **Red Team** — C2, initial access, evasion, persistence, credential dumping
@@ -104,9 +123,7 @@ engagement/
 
 ### State management
 
-Large engagements generate more state than fits in a single conversation context. `state.md` solves this — it's a compact, machine-readable snapshot of the current engagement that persists across sessions and context compactions.
-
-**Sections:**
+Large engagements generate more state than fits in a single conversation context. `state.md` solves this — a compact, machine-readable snapshot of the current engagement that persists across sessions and context compactions.
 
 | Section | Contents |
 |---------|----------|
@@ -117,12 +134,7 @@ Large engagements generate more state than fits in a single conversation context
 | Pivot Map | What leads where — vuln X gives access Y, creds Z work on host W |
 | Blocked | What was tried and why it failed |
 
-**How it works:**
-- Every skill reads `state.md` on activation — skips retesting, leverages existing access
-- Every skill writes back on completion — adds new credentials, vulns, pivot paths
-- The orchestrator reads `state.md` to chain vulnerabilities toward maximum impact
-- Kept under ~200 lines — one-liner per item, current state not history
-- New session? Read `state.md` + `scope.md` and you're caught up
+Every skill reads `state.md` on activation and writes back on completion. The orchestrator uses `state.md` + Pivot Map to chain vulnerabilities toward maximum impact. Kept under ~200 lines — one-liner per item, current state not history.
 
 ## Installation
 
@@ -165,7 +177,7 @@ Each skill embeds the top 2-3 payloads per variant (80% coverage) and references
 
 ## Status
 
-Phase 4 (Active Directory skills) in progress. Batch 1 (foundation) complete. See `task_plan.md` for the full build plan.
+Phase 4 (Active Directory) in progress. Batch 2 (Kerberos & ACL) complete. 37 skills built, ~17,500 lines. See `task_plan.md` for the full build plan.
 
 ## Disclaimer
 
