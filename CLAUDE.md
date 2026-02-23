@@ -20,6 +20,8 @@ Mode is set by the user or the orchestrator and propagated via conversation cont
 ### Inter-Skill Routing
 Skills route to each other using bold skill names in their escalation sections (e.g., "Route to **sql-injection-blind**"). Claude's skill matching picks up the context. When routing, pass: injection point, target technology, current mode, and any payloads that already succeeded.
 
+**Mandatory skill invocation**: When a skill says "Route to **skill-name**", you MUST invoke that skill using the Skill tool. Never execute a technique inline when a matching skill exists — even if you already know the technique. Skills contain methodology, edge cases, payloads, and troubleshooting that general knowledge does not. This applies in both guided and autonomous modes.
+
 ### Engagement Logging
 
 Skills support optional engagement logging for structured pentests.

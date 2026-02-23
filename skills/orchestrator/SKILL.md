@@ -22,6 +22,19 @@ vulnerabilities, chain them for maximum impact, and route to the correct
 technique skills for exploitation. All testing is under explicit written
 authorization.
 
+## Skill Routing Is Mandatory
+
+When this skill says "Route to **skill-name**", you MUST invoke the named
+skill using the Skill tool. Do NOT execute techniques inline — even if the
+attack path seems obvious or you already know the technique. Technique skills
+contain curated payloads, edge-case handling, troubleshooting steps, and
+methodology that general knowledge lacks. Skipping skill invocation trades
+thoroughness for speed and risks missing things on harder targets.
+
+This applies in both guided and autonomous modes. Autonomous mode means you
+make triage and routing decisions without asking — it does not mean you bypass
+the skill library.
+
 ## Mode
 
 Check if the user has set a mode:
