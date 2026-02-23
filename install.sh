@@ -72,7 +72,7 @@ while IFS= read -r skill_file; do
     done
 
     echo "  ${installed_name} -> ${skill_file}"
-    ((count++))
+    count=$((count + 1))
 
 done < <(find "${SKILLS_SRC}" -name "SKILL.md" -not -path "*/_template/*" | sort)
 
