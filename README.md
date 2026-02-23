@@ -103,18 +103,21 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 
 All AD skills follow a **Kerberos-first authentication** convention — commands default to ccache-based Kerberos auth to avoid NTLM detection signatures (Event 4776, CrowdStrike Identity Module). Exception: relay/coercion attacks are inherently NTLM/network-level.
 
-### Privilege Escalation (3 skills, building)
+### Privilege Escalation (6 skills, building)
 
 | Skill | Technique | Lines |
 |-------|-----------|-------|
-| `windows-discovery` | WinPEAS/PowerUp/Seatbelt/Watson enumeration, privilege routing to 5 technique skills | 489 |
+| `windows-discovery` | WinPEAS/PowerUp/Seatbelt/Watson enumeration, OPSEC-safe privilege checks, routing to 5 technique skills | 521 |
 | `windows-token-impersonation` | Potato family (7+ variants by OS version), SeDebug/SeBackup/SeRestore/SeLoadDriver/SeManageVolume exploitation, FullPowers | 440 |
 | `windows-service-dll-abuse` | Unquoted paths, weak service perms, DLL search order hijacking, DLL proxying, COM hijacking, service triggers, auto-updater abuse | 532 |
+| `windows-uac-bypass` | Fodhelper/eventvwr/sdclt/SilentCleanup/CMSTP/WSReset, COM hijacking, AlwaysInstallElevated MSI, autorun exploitation | 561 |
+| `windows-credential-harvesting` | HiveNightmare, DPAPI (SharpDPAPI/mimikatz/dpapi.py), browser creds, PS history, unattend files, vaults, cloud creds | 540 |
+| `windows-kernel-exploits` | PrintNightmare/EternalBlue/MS16-032/MS15-051, BYOVD/loldrivers.io, privileged file write/delete, named pipes, leaked handles | 615 |
 
 ### Planned
 
 - **Active Directory** (6 extended) — ADIDNS poisoning, DCOM lateral movement, RODC exploitation, named CVEs (NoPAC/PrintNightmare/ZeroLogon), MSSQL AD abuse, deployment targets (MDT/WSUS/SCOM)
-- **Privilege Escalation** (8 remaining) — Windows UAC bypass, credential harvesting, kernel exploits; Linux discovery, sudo/SUID/capabilities, cron/service/D-Bus, file/path abuse, kernel exploits
+- **Privilege Escalation** (5 remaining) — Linux discovery, sudo/SUID/capabilities, cron/service/D-Bus, file/path abuse, kernel exploits
 - **Infrastructure** — network recon, pivoting, cloud (AWS/Azure), containers, CI/CD
 - **Red Team** — C2, initial access, evasion, persistence, credential dumping
 - **Supplemental** — hash cracking, shell cheatsheet, database attacks, binary exploitation
@@ -215,7 +218,7 @@ You should **modify skills to match your own processes and tools**. Every pentes
 
 ## Status
 
-Phase 5 (Privilege Escalation) Batch 1 in progress. 49 skills built, ~24,000 lines. See `task_plan.md` for the full build plan.
+Phase 5 (Privilege Escalation) Batch 2 complete. 52 skills built, ~25,700 lines. See `task_plan.md` for the full build plan.
 
 ## Disclaimer
 

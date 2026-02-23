@@ -99,11 +99,43 @@ Watson.exe
 
 This is the highest-priority check — token privileges determine immediate escalation paths.
 
+**OPSEC WARNING:** `whoami` and `whoami /priv` are heavily monitored by EDR (CrowdStrike
+triggers on these). In OPSEC-sensitive engagements, prefer inferring privileges from
+context or using alternative methods:
+
+```powershell
+# OPSEC-safe alternatives (less signatured than whoami)
+[System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+[System.Security.Principal.WindowsIdentity]::GetCurrent().Groups | ForEach-Object { $_.Translate([System.Security.Principal.NTAccount]) }
+
+# Check specific privilege without whoami
+[bool](([System.Security.Principal.WindowsIdentity]::GetCurrent()).groups -match "S-1-5-32-544")  # Is admin?
+
+# Token privileges via .NET (no whoami.exe process creation)
+Add-Type -TypeDefinition @"
+using System;using System.Runtime.InteropServices;
+public class Priv{
+    [DllImport("advapi32.dll",SetLastError=true)]
+    public static extern bool OpenProcessToken(IntPtr h,uint a,out IntPtr t);
+    [DllImport("advapi32.dll",SetLastError=true)]
+    public static extern bool GetTokenInformation(IntPtr t,int c,IntPtr i,int l,out int rl);
+}
+"@
+```
+
+**If OPSEC is not a concern** (CTF, lab, or already detected):
+
 ```cmd
 whoami /all
 whoami /priv
 whoami /groups
 ```
+
+**Infer privileges from context** when possible:
+- Running as a Windows service → likely has SeImpersonatePrivilege
+- IIS AppPool / MSSQL service → SeImpersonatePrivilege + SeAssignPrimaryTokenPrivilege
+- Scheduled task as SYSTEM → full privileges
+- Local admin in medium integrity → all privileges present but most disabled (UAC)
 
 **Critical privileges to check:**
 
