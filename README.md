@@ -16,7 +16,7 @@ Skills auto-trigger based on conversation context. Say "I found a SQL injection 
 - **Carries the payloads** — top 2-3 per variant embedded directly, with deep references for the long tail
 - **Builds correct commands** — right flags, right syntax, right tool for the job
 - **Tracks engagement state** — what's been tried, what worked, what credentials you have, what leads where
-- **Routes between attack paths** — SQL injection leads to credentials, routes to privilege escalation
+- **Routes between attack paths** — chains findings across skills as the engagement evolves
 - **Handles OPSEC trade-offs** — ranks techniques by detection risk, defaults to Kerberos-first auth in AD
 
 ### What it doesn't do
