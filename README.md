@@ -4,7 +4,7 @@ A redteam runbook that turns Claude Code into a pentest and CTF partner.
 
 ## What is this?
 
-red-run is a redteam runbook — built as a Claude Code skill library — that knows the techniques, carries the payloads, and can execute when you tell it to. It's not a push-button autopwn tool and it's not a passive reference doc — it sits between the two.
+red-run is a redteam partner that knows the techniques, carries the payloads, and can execute when you tell it to. It's not a push-button autopwn tool and it's not a passive reference doc — it sits between the two.
 
 In **guided mode** (default), Claude walks you through each attack step, shows you the command it would run, explains what to look for in the output, and asks before executing. You stay in the driver's seat. In **autonomous mode**, Claude runs commands directly, makes triage decisions at forks, and only pauses for destructive or high-OPSEC actions. Autonomous is better suited for CTFs and lab environments where OPSEC doesn't matter.
 
