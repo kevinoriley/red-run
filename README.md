@@ -103,7 +103,7 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 
 All AD skills follow a **Kerberos-first authentication** convention — commands default to ccache-based Kerberos auth to avoid NTLM detection signatures (Event 4776, CrowdStrike Identity Module). Exception: relay/coercion attacks are inherently NTLM/network-level.
 
-### Privilege Escalation (9 skills, building)
+### Privilege Escalation (11 skills)
 
 | Skill | Technique | Lines |
 |-------|-----------|-------|
@@ -116,11 +116,12 @@ All AD skills follow a **Kerberos-first authentication** convention — commands
 | `linux-discovery` | LinPEAS/LinEnum/pspy/lse enumeration, system info, sudo/SUID/capabilities/cron assessment, routing to 4 technique skills | 599 |
 | `linux-sudo-suid-capabilities` | Sudo NOPASSWD/LD_PRELOAD/CVE-2021-3156/CVE-2019-14287, SUID GTFOBins, shared object injection, 20+ Linux capabilities | 610 |
 | `linux-cron-service-abuse` | Cron script hijack, tar/chown/rsync wildcard injection, systemd timer/service abuse, D-Bus command injection, PwnKit/CVE-2021-3560, Unix sockets | 662 |
+| `linux-file-path-abuse` | Writable /etc/passwd+shadow+sudoers, NFS no_root_squash, Docker/LXD/disk group escape, library hijacking, PATH hijack, profile injection | 838 |
+| `linux-kernel-exploits` | DirtyPipe/DirtyCow/GameOver(lay)/10+ CVEs, exploit suggesters, restricted shell escape, chroot escape, container kernel escape | 947 |
 
 ### Planned
 
 - **Active Directory** (6 extended) — ADIDNS poisoning, DCOM lateral movement, RODC exploitation, named CVEs (NoPAC/PrintNightmare/ZeroLogon), MSSQL AD abuse, deployment targets (MDT/WSUS/SCOM)
-- **Privilege Escalation** (2 remaining) — Linux file/path abuse, kernel exploits
 - **Infrastructure** — network recon, pivoting, cloud (AWS/Azure), containers, CI/CD
 - **Red Team** — C2, initial access, evasion, persistence, credential dumping
 - **Supplemental** — hash cracking, shell cheatsheet, database attacks, binary exploitation
@@ -231,7 +232,7 @@ You should **modify skills to match your own processes and tools**. Every pentes
 
 ## Status
 
-Phase 5 (Privilege Escalation) Batch 3 complete. 55 skills built, ~27,600 lines. See `task_plan.md` for the full build plan.
+Phase 5 (Privilege Escalation) complete. 57 skills built, ~29,400 lines. See `task_plan.md` for the full build plan.
 
 ## Disclaimer
 
