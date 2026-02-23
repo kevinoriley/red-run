@@ -108,22 +108,31 @@ mkdir -p engagement/evidence
 
 ## Step 2: Reconnaissance
 
-Map the attack surface. Adjust techniques based on what's in scope.
+Map the attack surface. Route to **network-recon** for comprehensive scanning.
 
 ### Network Recon (if IP/subnet in scope)
 
+Route to **network-recon** with the target IP, hostname, or CIDR range. It will:
+1. Run host discovery (for subnets) and full port scanning
+2. Enumerate services on each open port with quick-win checks (anonymous access,
+   default creds, known CVEs)
+3. Perform OS fingerprinting
+4. Run vulnerability scanning (NSE scripts, nuclei)
+5. Update state.md with all discovered hosts, ports, and services
+6. Return routing recommendations for next steps
+
+The default scan for single targets:
 ```bash
-# Fast port scan
-nmap -sS -T4 --top-ports 1000 -oA engagement/evidence/nmap-top1000 TARGET
-
-# Service/version detection on open ports
-nmap -sV -sC -p OPEN_PORTS -oA engagement/evidence/nmap-svc TARGET
-
-# UDP quick scan (top 50)
-nmap -sU --top-ports 50 -oA engagement/evidence/nmap-udp TARGET
+sudo nmap -A -p- -T4 -oA engagement/evidence/nmap-TARGET -vvv TARGET_IP
 ```
 
+For networks/subnets, network-recon handles the full discovery → scan → enumerate
+pipeline with OPSEC-appropriate timing.
+
 ### Web Discovery (if HTTP/HTTPS found)
+
+Route to **web-discovery** after network-recon identifies HTTP services. Or
+for quick initial triage:
 
 ```bash
 # Identify web technologies
@@ -166,7 +175,8 @@ Based on recon results, categorize the attack surface:
 | Surface | Indicators | Route To |
 |---------|-----------|----------|
 | Web application | HTTP/HTTPS, login forms, APIs | **web-discovery** |
-| Active Directory | LDAP (389/636), Kerberos (88), SMB domain | **ad-discovery** (when available) |
+| Active Directory | LDAP (389/636), Kerberos (88), SMB domain | **ad-discovery** |
+| Containers / K8s | Docker API (2375), K8s API (6443/8443), kubelet (10250), etcd (2379), or inside a container | **container-escapes** |
 | Database | MySQL (3306), MSSQL (1433), PostgreSQL (5432) | Direct DB testing |
 | Mail | SMTP (25/587), IMAP (143/993) | Credential attacks, phishing |
 | File shares | SMB (445), NFS (2049) | Enumeration, sensitive files |
@@ -240,12 +250,14 @@ Think through these chains systematically:
 - Service account → Kerberoasting → more credentials
 - Machine keys from IIS → ViewState RCE on other IIS sites
 - Database link → linked server → second database
+- Host access on new subnet → **pivoting-tunneling** → **network-recon** on internal network
 
 **Privilege Escalation:**
 - Local admin → dump credentials → domain user
 - Domain user → Kerberoasting/ASREProasting → service accounts
 - Service account → delegation abuse → domain admin
 - ADCS misconfiguration → certificate forgery → domain admin
+- Containerized shell → **container-escapes** → host access → **linux-discovery** / **windows-discovery**
 
 ### Decision Logic
 
