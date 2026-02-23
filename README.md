@@ -119,10 +119,17 @@ All AD skills follow a **Kerberos-first authentication** convention — commands
 | `linux-file-path-abuse` | Writable /etc/passwd+shadow+sudoers, NFS no_root_squash, Docker/LXD/disk group escape, library hijacking, PATH hijack, profile injection | 838 |
 | `linux-kernel-exploits` | DirtyPipe/DirtyCow/GameOver(lay)/10+ CVEs, exploit suggesters, restricted shell escape, chroot escape, container kernel escape | 947 |
 
+### Infrastructure (2 skills)
+
+| Skill | Technique | Lines |
+|-------|-----------|-------|
+| `network-recon` | Passive recon, host discovery, nmap full scan, 20+ protocol service enumeration with quick wins, OS fingerprinting, vuln scanning, routing | 880 |
+| `pivoting-tunneling` | SSH tunneling (L/R/D/J/sshuttle/VPN), Ligolo-ng, Chisel, socat, Windows pivoting, DNS/ICMP/HTTP tunneling, multi-hop, tool compatibility | 1108 |
+
 ### Planned
 
 - **Active Directory** (6 extended) — ADIDNS poisoning, DCOM lateral movement, RODC exploitation, named CVEs (NoPAC/PrintNightmare/ZeroLogon), MSSQL AD abuse, deployment targets (MDT/WSUS/SCOM)
-- **Infrastructure** — network recon, pivoting, cloud (AWS/Azure), containers, CI/CD
+- **Infrastructure** (extended) — cloud (AWS/Azure), containers, CI/CD
 - **Red Team** — C2, initial access, evasion, persistence, credential dumping
 - **Supplemental** — hash cracking, shell cheatsheet, database attacks, binary exploitation
 
@@ -232,7 +239,7 @@ You should **modify skills to match your own processes and tools**. Every pentes
 
 ## Status
 
-Phase 5 (Privilege Escalation) complete. 57 skills built, ~29,400 lines. See `task_plan.md` for the full build plan.
+Phase 6 Batch 1 (Infrastructure — Network Foundation) complete. 59 skills built, ~31,400 lines. See `task_plan.md` for the full build plan.
 
 ## Disclaimer
 
