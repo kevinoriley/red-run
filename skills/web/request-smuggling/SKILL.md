@@ -518,15 +518,15 @@ payload, front-end/back-end stack identified, current mode.
 For expanded payloads, edge cases, and proxy-specific techniques:
 
 ```
-Read ~/docs/public-security-references/Request Smuggling/README.md
-Read ~/docs/public-security-references/src/pentesting-web/http-request-smuggling/README.md
-Read ~/docs/public-security-references/src/pentesting-web/http-request-smuggling/request-smuggling-in-http-2-downgrades.md
-Read ~/docs/public-security-references/src/pentesting-web/http-request-smuggling/browser-http-request-smuggling.md
-Read ~/docs/public-security-references/src/pentesting-web/h2c-smuggling.md
-Read ~/docs/public-security-references/src/pentesting-web/http-response-smuggling-desync.md
-Read ~/docs/public-security-references/src/pentesting-web/http-connection-request-smuggling.md
-Read ~/docs/public-security-references/src/pentesting-web/http-connection-contamination.md
-Read ~/docs/public-security-references/CRLF Injection/README.md
+Read $RED_RUN_DOCS/public-security-references/Request Smuggling/README.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/http-request-smuggling/README.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/http-request-smuggling/request-smuggling-in-http-2-downgrades.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/http-request-smuggling/browser-http-request-smuggling.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/h2c-smuggling.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/http-response-smuggling-desync.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/http-connection-request-smuggling.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/http-connection-contamination.md
+Read $RED_RUN_DOCS/public-security-references/CRLF Injection/README.md
 ```
 
 ## Troubleshooting

@@ -280,7 +280,7 @@ Response.Write(c.StdOut.ReadAll):Response.write("<!-"&"-") %> -->
 ```
 
 Add `<security><requestFiltering>` to remove `.config` from hidden segments
-if direct access is blocked. See `~/docs/` for full template.
+if direct access is blocked. See `$RED_RUN_DOCS/` for full template.
 
 ### uWSGI .ini
 
@@ -337,7 +337,7 @@ the payload into pixel data so it survives image reprocessing:
   must be divisible by 3.
 - **GIF via global color table**: Same approach with `imagegif()`.
 
-See `~/docs/public-security-references/Upload Insecure Files/` for generator scripts
+See `$RED_RUN_DOCS/public-security-references/Upload Insecure Files/` for generator scripts
 (`createPNGwithPLTE.php`, `createGIFwithGlobalColorTable.php`).
 
 These produce valid images with PHP in pixel data — require LFI or a
@@ -478,10 +478,10 @@ upload location, current mode.
 For comprehensive extension lists, polyglot generators, and CVE-specific tools:
 
 ```
-Read ~/docs/public-security-references/Upload Insecure Files/README.md
-Read ~/docs/public-security-references/Upload Insecure Files/Configuration Apache .htaccess/
-Read ~/docs/public-security-references/Upload Insecure Files/Configuration IIS web.config/
-Read ~/docs/public-security-references/src/pentesting-web/file-upload/README.md
+Read $RED_RUN_DOCS/public-security-references/Upload Insecure Files/README.md
+Read $RED_RUN_DOCS/public-security-references/Upload Insecure Files/Configuration Apache .htaccess/
+Read $RED_RUN_DOCS/public-security-references/Upload Insecure Files/Configuration IIS web.config/
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/file-upload/README.md
 ```
 
 ## Troubleshooting

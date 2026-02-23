@@ -374,7 +374,7 @@ cat payload.xml | iconv -f UTF-8 -t UTF-16BE > payload_utf16.xml
 ```
 
 **UTF-7** — set `encoding="UTF-7"` in XML declaration, encode payload in UTF-7
-(`+ADw-` = `<`, `+AD4-` = `>`). See `~/docs/` for full encoded payloads.
+(`+ADw-` = `<`, `+AD4-` = `>`). See `$RED_RUN_DOCS/` for full encoded payloads.
 
 **HTML numeric entities** — bypass `%` restrictions inside DTD entity values by
 encoding as `&#x25;`, `&#x3C;` for `<`, `&#x22;` for `"`, etc.
@@ -425,9 +425,9 @@ reflected, OOB channel availability, current mode.
 ## Deep Reference
 
 ```
-Read ~/docs/public-security-references/XXE Injection/README.md
-Read ~/docs/public-security-references/XXE Injection/Intruders/XXE_Fuzzing.txt
-Read ~/docs/public-security-references/src/pentesting-web/xxe-xee-xml-external-entity.md
+Read $RED_RUN_DOCS/public-security-references/XXE Injection/README.md
+Read $RED_RUN_DOCS/public-security-references/XXE Injection/Intruders/XXE_Fuzzing.txt
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/xxe-xee-xml-external-entity.md
 ```
 
 ## Troubleshooting

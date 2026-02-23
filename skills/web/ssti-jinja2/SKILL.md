@@ -345,9 +345,9 @@ filter restrictions, current mode.
 For comprehensive filter bypass, sandbox escape chains, and edge cases:
 
 ```
-Read ~/docs/public-security-references/Server Side Template Injection/Python.md
-Read ~/docs/public-security-references/src/pentesting-web/ssti-server-side-template-injection/jinja2-ssti.md
-Read ~/docs/public-security-references/src/pentesting-web/ssti-server-side-template-injection/README.md
+Read $RED_RUN_DOCS/public-security-references/Server Side Template Injection/Python.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/ssti-server-side-template-injection/jinja2-ssti.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/ssti-server-side-template-injection/README.md
 ```
 
 ## Troubleshooting

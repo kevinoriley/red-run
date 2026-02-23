@@ -1,5 +1,5 @@
 ---
-name: ad-attack-discovery
+name: ad-discovery
 description: >
   Enumerates Active Directory domains and maps attack surface for penetration
   testing. Use when targeting an AD environment, starting a domain assessment,
@@ -9,7 +9,7 @@ description: >
   OPSEC: medium (LDAP queries, SMB connections, BloodHound collection generate
   logs). Tools: bloodhound-python, rusthound-ce, netexec, certipy, bloodyAD,
   kerbrute, Impacket, PowerView.
-  Do NOT use for web application testing — use **web-vuln-discovery** instead.
+  Do NOT use for web application testing — use **web-discovery** instead.
   Do NOT use for cloud-only Azure AD/Entra ID — use cloud-specific skills.
 ---
 
@@ -42,7 +42,7 @@ Check for `./engagement/` directory. If absent:
 
 When an engagement directory exists, log as you work:
 - **Activity** -> append to `engagement/activity.md` at milestones:
-  `### [HH:MM] ad-attack-discovery -> <domain>` with enumeration results.
+  `### [HH:MM] ad-discovery -> <domain>` with enumeration results.
 - **Evidence** -> save BloodHound JSON, enumeration output, and scan results
   to `engagement/evidence/` (e.g., `ad-enum-bloodhound.zip`, `ad-enum-spns.txt`,
   `ad-enum-shares.txt`).
@@ -472,10 +472,10 @@ When routing to a technique skill, pass along:
 For extended enumeration techniques, tool options, and edge cases:
 
 ```
-Read ~/docs/public-security-references/docs/active-directory/ad-adds-enumerate.md
-Read ~/docs/public-security-references/docs/active-directory/ad-adds-groups.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/README.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/bloodhound.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adds-enumerate.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adds-groups.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/README.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/bloodhound.md
 ```
 
 ## Troubleshooting

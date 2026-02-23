@@ -532,14 +532,14 @@ Update `engagement/state.md` with all extracted credentials and access.
 For additional extraction techniques, tool options, and edge cases:
 
 ```
-Read ~/docs/public-security-references/docs/active-directory/credentials-dcsync.md
-Read ~/docs/public-security-references/docs/active-directory/credentials-ntds.md
-Read ~/docs/public-security-references/docs/active-directory/credentials-sam.md
-Read ~/docs/public-security-references/docs/active-directory/credentials-laps.md
-Read ~/docs/public-security-references/docs/active-directory/credentials-gmsa.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/dcsync.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/laps.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/golden-dmsa-gmsa.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/credentials-dcsync.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/credentials-ntds.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/credentials-sam.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/credentials-laps.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/credentials-gmsa.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/dcsync.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/laps.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/golden-dmsa-gmsa.md
 ```
 
 ## Troubleshooting

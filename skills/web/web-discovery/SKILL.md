@@ -1,5 +1,5 @@
 ---
-name: web-vuln-discovery
+name: web-discovery
 description: >
   Discover web application injection points and route to the correct exploitation
   skill during authorized penetration testing. Use when the user has a web target
@@ -42,7 +42,7 @@ Check for `./engagement/` directory. If absent:
 When an engagement directory exists, log as you work:
 - **Activity** → append to `engagement/activity.md` at milestones (scan completed,
   parameter discovered, vulnerability indicator found, routing to technique skill):
-  `### [HH:MM] web-vuln-discovery → <target>` with bullet points of actions/results.
+  `### [HH:MM] web-discovery → <target>` with bullet points of actions/results.
 - **Findings** → append to `engagement/findings.md` when a vulnerability is confirmed:
   `## N. Title [Severity]` with target, technique, impact, evidence path, repro command.
 - **Evidence** → save significant output to `engagement/evidence/` with descriptive
@@ -549,37 +549,37 @@ When routing, pass along: the confirmed injection point (URL, parameter, method)
 For expanded methodology, additional probes, and edge cases:
 
 ```
-Read ~/docs/public-security-references/src/pentesting-web/web-vulnerabilities-methodology.md
-Read ~/docs/public-security-references/SQL Injection/README.md
-Read ~/docs/public-security-references/Server Side Template Injection/README.md
-Read ~/docs/public-security-references/XSS Injection/README.md
-Read ~/docs/public-security-references/Command Injection/README.md
-Read ~/docs/public-security-references/Server Side Request Forgery/README.md
-Read ~/docs/public-security-references/File Inclusion/README.md
-Read ~/docs/public-security-references/XXE Injection/README.md
-Read ~/docs/public-security-references/Insecure Deserialization/Java.md
-Read ~/docs/public-security-references/Insecure Deserialization/PHP.md
-Read ~/docs/public-security-references/Insecure Deserialization/DotNET.md
-Read ~/docs/public-security-references/JSON Web Token/README.md
-Read ~/docs/public-security-references/NoSQL Injection/README.md
-Read ~/docs/public-security-references/Request Smuggling/README.md
-Read ~/docs/public-security-references/src/pentesting-web/http-request-smuggling/README.md
-Read ~/docs/public-security-references/IDOR - Insecure Direct Object References/README.md
-Read ~/docs/public-security-references/src/pentesting-web/idor.md
-Read ~/docs/public-security-references/CORS Misconfiguration/README.md
-Read ~/docs/public-security-references/src/pentesting-web/cors-bypass.md
-Read ~/docs/public-security-references/Cross-Site Request Forgery/README.md
-Read ~/docs/public-security-references/src/pentesting-web/csrf-cross-site-request-forgery.md
-Read ~/docs/public-security-references/src/pentesting-web/oauth-to-account-takeover.md
-Read ~/docs/public-security-references/OAuth Misconfiguration/README.md
-Read ~/docs/public-security-references/Account Takeover/README.md
-Read ~/docs/public-security-references/src/pentesting-web/reset-password.md
-Read ~/docs/public-security-references/Account Takeover/mfa-bypass.md
-Read ~/docs/public-security-references/src/pentesting-web/2fa-bypass.md
-Read ~/docs/public-security-references/Race Condition/README.md
-Read ~/docs/public-security-references/src/pentesting-web/race-condition.md
-Read ~/docs/public-security-references/Upload Insecure Files/README.md
-Read ~/docs/public-security-references/src/pentesting-web/file-upload/README.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/web-vulnerabilities-methodology.md
+Read $RED_RUN_DOCS/public-security-references/SQL Injection/README.md
+Read $RED_RUN_DOCS/public-security-references/Server Side Template Injection/README.md
+Read $RED_RUN_DOCS/public-security-references/XSS Injection/README.md
+Read $RED_RUN_DOCS/public-security-references/Command Injection/README.md
+Read $RED_RUN_DOCS/public-security-references/Server Side Request Forgery/README.md
+Read $RED_RUN_DOCS/public-security-references/File Inclusion/README.md
+Read $RED_RUN_DOCS/public-security-references/XXE Injection/README.md
+Read $RED_RUN_DOCS/public-security-references/Insecure Deserialization/Java.md
+Read $RED_RUN_DOCS/public-security-references/Insecure Deserialization/PHP.md
+Read $RED_RUN_DOCS/public-security-references/Insecure Deserialization/DotNET.md
+Read $RED_RUN_DOCS/public-security-references/JSON Web Token/README.md
+Read $RED_RUN_DOCS/public-security-references/NoSQL Injection/README.md
+Read $RED_RUN_DOCS/public-security-references/Request Smuggling/README.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/http-request-smuggling/README.md
+Read $RED_RUN_DOCS/public-security-references/IDOR - Insecure Direct Object References/README.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/idor.md
+Read $RED_RUN_DOCS/public-security-references/CORS Misconfiguration/README.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/cors-bypass.md
+Read $RED_RUN_DOCS/public-security-references/Cross-Site Request Forgery/README.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/csrf-cross-site-request-forgery.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/oauth-to-account-takeover.md
+Read $RED_RUN_DOCS/public-security-references/OAuth Misconfiguration/README.md
+Read $RED_RUN_DOCS/public-security-references/Account Takeover/README.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/reset-password.md
+Read $RED_RUN_DOCS/public-security-references/Account Takeover/mfa-bypass.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/2fa-bypass.md
+Read $RED_RUN_DOCS/public-security-references/Race Condition/README.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/race-condition.md
+Read $RED_RUN_DOCS/public-security-references/Upload Insecure Files/README.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/file-upload/README.md
 ```
 
 ## Troubleshooting

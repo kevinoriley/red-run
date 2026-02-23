@@ -386,11 +386,11 @@ current mode, and any payloads that already succeeded.
 For additional gadget chains, WAF bypass, and framework-specific exploits:
 
 ```
-Read ~/docs/public-security-references/Insecure Deserialization/Java.md
-Read ~/docs/public-security-references/src/pentesting-web/deserialization/basic-java-deserialization-objectinputstream-readobject.md
-Read ~/docs/public-security-references/src/pentesting-web/deserialization/jndi-java-naming-and-directory-interface-and-log4shell.md
-Read ~/docs/public-security-references/src/pentesting-web/deserialization/java-transformers-to-rutime-exec-payload.md
-Read ~/docs/public-security-references/src/pentesting-web/deserialization/java-dns-deserialization-and-gadgetprobe.md
+Read $RED_RUN_DOCS/public-security-references/Insecure Deserialization/Java.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/deserialization/basic-java-deserialization-objectinputstream-readobject.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/deserialization/jndi-java-naming-and-directory-interface-and-log4shell.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/deserialization/java-transformers-to-rutime-exec-payload.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/deserialization/java-dns-deserialization-and-gadgetprobe.md
 ```
 
 ## Troubleshooting

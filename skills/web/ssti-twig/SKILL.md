@@ -313,9 +313,9 @@ payload, filter restrictions, current mode.
 For comprehensive payloads, obfuscation techniques, and version-specific exploits:
 
 ```
-Read ~/docs/public-security-references/Server Side Template Injection/PHP.md
-Read ~/docs/public-security-references/src/pentesting-web/ssti-server-side-template-injection/README.md
-Read ~/docs/public-security-references/Server Side Template Injection/README.md
+Read $RED_RUN_DOCS/public-security-references/Server Side Template Injection/PHP.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/ssti-server-side-template-injection/README.md
+Read $RED_RUN_DOCS/public-security-references/Server Side Template Injection/README.md
 ```
 
 ## Troubleshooting

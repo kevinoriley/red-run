@@ -83,7 +83,7 @@ export KRB5CCNAME=user.ccache
 
 ## Step 1: Enumerate Exploitable ACLs
 
-Skip if BloodHound or **ad-attack-discovery** already identified the path.
+Skip if BloodHound or **ad-discovery** already identified the path.
 
 ### bloodyAD (Linux — Preferred)
 
@@ -501,9 +501,9 @@ Update `engagement/state.md` with ACL findings, obtained access, and cleanup not
 For additional ACL exploitation techniques and edge cases:
 
 ```
-Read ~/docs/public-security-references/docs/active-directory/ad-adds-acl-ace.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/acl-persistence-abuse/README.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/acl-persistence-abuse/shadow-credentials.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adds-acl-ace.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/acl-persistence-abuse/README.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/acl-persistence-abuse/shadow-credentials.md
 ```
 
 ## Troubleshooting

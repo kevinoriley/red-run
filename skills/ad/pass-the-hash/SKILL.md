@@ -405,7 +405,7 @@ After successful lateral movement:
 - **Need domain persistence**: Route to **ad-persistence** or
   **kerberos-ticket-forging** (Golden Ticket).
 - **Access to additional subnets**: Update state.md and route to
-  **ad-attack-discovery** for new scope.
+  **ad-discovery** for new scope.
 
 When routing, pass: current credentials/tickets, target host, access level,
 domain info, and mode.
@@ -415,11 +415,11 @@ domain info, and mode.
 For additional lateral movement techniques, tools, and edge cases:
 
 ```
-Read ~/docs/public-security-references/docs/active-directory/hash-pass-the-hash.md
-Read ~/docs/public-security-references/docs/active-directory/hash-over-pass-the-hash.md
-Read ~/docs/public-security-references/docs/active-directory/hash-pass-the-key.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/over-pass-the-hash-pass-the-key.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/pass-the-ticket.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/hash-pass-the-hash.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/hash-over-pass-the-hash.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/hash-pass-the-key.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/over-pass-the-hash-pass-the-key.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/pass-the-ticket.md
 ```
 
 ## Troubleshooting

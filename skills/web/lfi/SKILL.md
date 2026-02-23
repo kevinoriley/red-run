@@ -479,20 +479,20 @@ bypass technique, current mode.
 For comprehensive payloads, wordlists, and advanced techniques:
 
 ```
-Read ~/docs/public-security-references/File Inclusion/README.md
-Read ~/docs/public-security-references/File Inclusion/Wrappers.md
-Read ~/docs/public-security-references/File Inclusion/LFI-to-RCE.md
-Read ~/docs/public-security-references/src/pentesting-web/file-inclusion/README.md
-Read ~/docs/public-security-references/src/pentesting-web/file-inclusion/lfi2rce-via-php-filters.md
+Read $RED_RUN_DOCS/public-security-references/File Inclusion/README.md
+Read $RED_RUN_DOCS/public-security-references/File Inclusion/Wrappers.md
+Read $RED_RUN_DOCS/public-security-references/File Inclusion/LFI-to-RCE.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/file-inclusion/README.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/file-inclusion/lfi2rce-via-php-filters.md
 ```
 
 For path wordlists:
 
 ```
-Read ~/docs/public-security-references/File Inclusion/Intruders/Traversal.txt
-Read ~/docs/public-security-references/File Inclusion/Intruders/JHADDIX_LFI.txt
-Read ~/docs/public-security-references/File Inclusion/Intruders/Linux-files.txt
-Read ~/docs/public-security-references/File Inclusion/Intruders/Windows-files.txt
+Read $RED_RUN_DOCS/public-security-references/File Inclusion/Intruders/Traversal.txt
+Read $RED_RUN_DOCS/public-security-references/File Inclusion/Intruders/JHADDIX_LFI.txt
+Read $RED_RUN_DOCS/public-security-references/File Inclusion/Intruders/Linux-files.txt
+Read $RED_RUN_DOCS/public-security-references/File Inclusion/Intruders/Windows-files.txt
 ```
 
 ## Troubleshooting

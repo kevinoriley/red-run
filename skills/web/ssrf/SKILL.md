@@ -455,7 +455,7 @@ Where `xss.svg` contains:
 - **Kubernetes ETCD accessible**: Extract secrets, service account tokens
 - **Docker API accessible**: Container escape, host filesystem access
 - **Internal web app found**: Test for additional vulns — route to
-  **web-vuln-discovery**
+  **web-discovery**
 - **File read only (file://)**: Extract credentials from config files, SSH keys
   from `/home/*/.ssh/`, cloud credentials from `~/.aws/credentials`
 - **Found SQLi on internal service**: Route to **sql-injection-error** or
@@ -480,12 +480,12 @@ used, what's accessible internally, current mode.
 For comprehensive bypass techniques, cloud-specific payloads, and protocol details:
 
 ```
-Read ~/docs/public-security-references/Server Side Request Forgery/README.md
-Read ~/docs/public-security-references/Server Side Request Forgery/SSRF-Cloud-Instances.md
-Read ~/docs/public-security-references/Server Side Request Forgery/SSRF-Advanced-Exploitation.md
-Read ~/docs/public-security-references/src/pentesting-web/ssrf-server-side-request-forgery/README.md
-Read ~/docs/public-security-references/src/pentesting-web/ssrf-server-side-request-forgery/cloud-ssrf.md
-Read ~/docs/public-security-references/src/pentesting-web/ssrf-server-side-request-forgery/url-format-bypass.md
+Read $RED_RUN_DOCS/public-security-references/Server Side Request Forgery/README.md
+Read $RED_RUN_DOCS/public-security-references/Server Side Request Forgery/SSRF-Cloud-Instances.md
+Read $RED_RUN_DOCS/public-security-references/Server Side Request Forgery/SSRF-Advanced-Exploitation.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/ssrf-server-side-request-forgery/README.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/ssrf-server-side-request-forgery/cloud-ssrf.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/ssrf-server-side-request-forgery/url-format-bypass.md
 ```
 
 ## Troubleshooting

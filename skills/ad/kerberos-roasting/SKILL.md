@@ -49,7 +49,7 @@ When an engagement directory exists:
 If `engagement/state.md` exists, read it before starting. Use it to:
 - Skip accounts already roasted (check Vulns/Blocked sections)
 - Use existing credentials for authenticated enumeration
-- Check if SPNs or AS-REP targets were already identified by **ad-attack-discovery**
+- Check if SPNs or AS-REP targets were already identified by **ad-discovery**
 
 After completing, update `engagement/state.md`:
 - **Credentials**: Add cracked username:password pairs
@@ -386,11 +386,11 @@ When routing, pass: cracked username/password, domain, DC hostname, and mode.
 For extended wordlists, rules, tool options, and edge cases:
 
 ```
-Read ~/docs/public-security-references/docs/active-directory/ad-roasting-kerberoasting.md
-Read ~/docs/public-security-references/docs/active-directory/ad-roasting-asrep.md
-Read ~/docs/public-security-references/docs/active-directory/ad-roasting-timeroasting.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/kerberoast.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/asreproast.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-roasting-kerberoasting.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-roasting-asrep.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-roasting-timeroasting.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/kerberoast.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/asreproast.md
 ```
 
 ## Troubleshooting

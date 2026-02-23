@@ -68,7 +68,7 @@ Keep entries compact — one line per item. State.md is a snapshot, not a log.
 
 ## Prerequisites
 
-- Confirmed SQL injection point (see **web-vuln-discovery**)
+- Confirmed SQL injection point (see **web-discovery**)
 - Application displays verbose database error messages in the response
 - If errors are generic or hidden, use **sql-injection-blind** instead
 
@@ -227,11 +227,11 @@ When routing, pass along: injection point, DBMS, current mode, and payloads that
 For WAF bypass, alternative functions, and edge cases:
 
 ```
-Read ~/docs/public-security-references/SQL Injection/MySQL Injection.md
-Read ~/docs/public-security-references/SQL Injection/MSSQL Injection.md
-Read ~/docs/public-security-references/SQL Injection/PostgreSQL Injection.md
-Read ~/docs/public-security-references/SQL Injection/OracleSQL Injection.md
-Read ~/docs/public-security-references/src/pentesting-web/sql-injection/README.md
+Read $RED_RUN_DOCS/public-security-references/SQL Injection/MySQL Injection.md
+Read $RED_RUN_DOCS/public-security-references/SQL Injection/MSSQL Injection.md
+Read $RED_RUN_DOCS/public-security-references/SQL Injection/PostgreSQL Injection.md
+Read $RED_RUN_DOCS/public-security-references/SQL Injection/OracleSQL Injection.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/sql-injection/README.md
 ```
 
 ## Troubleshooting

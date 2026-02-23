@@ -379,7 +379,7 @@ nxc ldap TARGET_DC -u 'user' -p 'pass' -d target.local --groups
 After successful trust exploitation:
 - **Enterprise Admin in parent domain**: Route to **credential-dumping**
   (DCSync the parent domain) for complete forest compromise
-- **Access to new forest**: Route to **ad-attack-discovery** to enumerate
+- **Access to new forest**: Route to **ad-discovery** to enumerate
   the new forest from the inside
 - **Service account hashes from Kerberoasting**: Route to cracking
   (hashcat 13100/18200) then **pass-the-hash**
@@ -400,13 +400,13 @@ Update `engagement/state.md` with:
 For edge cases, advanced trust configurations, and additional techniques:
 
 ```
-Read ~/docs/public-security-references/docs/active-directory/trust-relationship.md
-Read ~/docs/public-security-references/docs/active-directory/trust-sid-hijacking.md
-Read ~/docs/public-security-references/docs/active-directory/trust-ticket.md
-Read ~/docs/public-security-references/docs/active-directory/trust-pam.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/sid-history-injection.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/external-forest-domain-oneway-inbound.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/external-forest-domain-one-way-outbound.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/trust-relationship.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/trust-sid-hijacking.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/trust-ticket.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/trust-pam.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/sid-history-injection.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/external-forest-domain-oneway-inbound.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/external-forest-domain-one-way-outbound.md
 ```
 
 ## Troubleshooting

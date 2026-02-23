@@ -18,7 +18,7 @@ description: >
   in SYSVOL, generate scheduled task events). Tools: SharpGPOAbuse,
   PowerGPOAbuse, pyGPOAbuse, GPOHound, GroupPolicyBackdoor, netexec.
   Do NOT use for ACL-based attacks on non-GPO objects — use **acl-abuse**
-  instead. Do NOT use for general AD enumeration — use **ad-attack-discovery**.
+  instead. Do NOT use for general AD enumeration — use **ad-discovery**.
 ---
 
 # GPO Abuse
@@ -476,9 +476,9 @@ Update `engagement/state.md` with GPO-based access and credentials.
 For additional GPO techniques, tool options, and edge cases:
 
 ```
-Read ~/docs/public-security-references/docs/active-directory/ad-adds-group-policy-objects.md
-Read ~/docs/public-security-references/docs/active-directory/pwd-group-policy-preferences.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/acl-persistence-abuse/README.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adds-group-policy-objects.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/pwd-group-policy-preferences.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/acl-persistence-abuse/README.md
 ```
 
 ## Troubleshooting

@@ -536,10 +536,10 @@ endpoint, current mode, and impact assessment.
 For expanded payloads, edge cases, and rate limit bypass techniques:
 
 ```
-Read ~/docs/public-security-references/Account Takeover/mfa-bypass.md
-Read ~/docs/public-security-references/src/pentesting-web/2fa-bypass.md
-Read ~/docs/public-security-references/src/pentesting-web/rate-limit-bypass.md
-Read ~/docs/public-security-references/src/pentesting-web/race-condition.md
+Read $RED_RUN_DOCS/public-security-references/Account Takeover/mfa-bypass.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/2fa-bypass.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/rate-limit-bypass.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/race-condition.md
 ```
 
 ## Troubleshooting

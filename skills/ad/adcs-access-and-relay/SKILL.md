@@ -438,11 +438,11 @@ After obtaining a certificate:
 For edge cases, relay configurations, and alternative coercion methods:
 
 ```
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/ad-certificates/domain-escalation.md
-Read ~/docs/public-security-references/docs/active-directory/ad-adcs-esc04.md
-Read ~/docs/public-security-references/docs/active-directory/ad-adcs-esc07.md
-Read ~/docs/public-security-references/docs/active-directory/ad-adcs-esc08.md
-Read ~/docs/public-security-references/docs/active-directory/ad-adcs-esc11.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/ad-certificates/domain-escalation.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adcs-esc04.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adcs-esc07.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adcs-esc08.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adcs-esc11.md
 ```
 
 ## Troubleshooting

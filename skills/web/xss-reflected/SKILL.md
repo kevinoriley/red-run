@@ -70,7 +70,7 @@ Keep entries compact — one line per item. State.md is a snapshot, not a log.
 
 ## Prerequisites
 
-- Confirmed reflection point (see **web-vuln-discovery**)
+- Confirmed reflection point (see **web-discovery**)
 - Input appears in the HTTP response body or headers
 - If input is stored and rendered later, use **xss-stored** instead
 - If input only affects the DOM via JavaScript (not in HTTP response), use **xss-dom**
@@ -330,12 +330,12 @@ When routing, pass along: reflection point, context, working payload, CSP policy
 For advanced filter bypass, CSP bypass, and edge cases:
 
 ```
-Read ~/docs/public-security-references/XSS Injection/README.md
-Read ~/docs/public-security-references/XSS Injection/1 - XSS Filter Bypass.md
-Read ~/docs/public-security-references/XSS Injection/3 - XSS Common WAF Bypass.md
-Read ~/docs/public-security-references/XSS Injection/4 - CSP Bypass.md
-Read ~/docs/public-security-references/XSS Injection/5 - XSS in Angular.md
-Read ~/docs/public-security-references/src/pentesting-web/xss-cross-site-scripting/README.md
+Read $RED_RUN_DOCS/public-security-references/XSS Injection/README.md
+Read $RED_RUN_DOCS/public-security-references/XSS Injection/1 - XSS Filter Bypass.md
+Read $RED_RUN_DOCS/public-security-references/XSS Injection/3 - XSS Common WAF Bypass.md
+Read $RED_RUN_DOCS/public-security-references/XSS Injection/4 - CSP Bypass.md
+Read $RED_RUN_DOCS/public-security-references/XSS Injection/5 - XSS in Angular.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/xss-cross-site-scripting/README.md
 ```
 
 ## Troubleshooting

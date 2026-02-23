@@ -73,7 +73,7 @@ Keep entries compact — one line per item. State.md is a snapshot, not a log.
 
 ## Prerequisites
 
-- Confirmed SQL injection point (see **web-vuln-discovery**)
+- Confirmed SQL injection point (see **web-discovery**)
 - For stacked queries: DB and driver that supports multi-statement execution
 - For second-order: ability to store input that is later used unsafely
 
@@ -281,12 +281,12 @@ When routing, pass along: injection point, DBMS, stacking confirmation, current 
 For advanced techniques, WAF bypass, and edge cases:
 
 ```
-Read ~/docs/public-security-references/SQL Injection/MSSQL Injection.md
-Read ~/docs/public-security-references/SQL Injection/PostgreSQL Injection.md
-Read ~/docs/public-security-references/SQL Injection/MySQL Injection.md
-Read ~/docs/public-security-references/src/pentesting-web/sql-injection/mssql-injection.md
-Read ~/docs/public-security-references/src/pentesting-web/sql-injection/postgresql-injection/README.md
-Read ~/docs/public-security-references/src/pentesting-web/sql-injection/mysql-injection/README.md
+Read $RED_RUN_DOCS/public-security-references/SQL Injection/MSSQL Injection.md
+Read $RED_RUN_DOCS/public-security-references/SQL Injection/PostgreSQL Injection.md
+Read $RED_RUN_DOCS/public-security-references/SQL Injection/MySQL Injection.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/sql-injection/mssql-injection.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/sql-injection/postgresql-injection/README.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/sql-injection/mysql-injection/README.md
 ```
 
 ## Troubleshooting

@@ -437,16 +437,16 @@ technique used, blind vs visible output, current mode.
 For comprehensive payloads, wordlists, and advanced techniques:
 
 ```
-Read ~/docs/public-security-references/Command Injection/README.md
-Read ~/docs/public-security-references/src/pentesting-web/command-injection.md
-Read ~/docs/public-security-references/src/linux-hardening/bypass-bash-restrictions/README.md
+Read $RED_RUN_DOCS/public-security-references/Command Injection/README.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/command-injection.md
+Read $RED_RUN_DOCS/public-security-references/src/linux-hardening/bypass-bash-restrictions/README.md
 ```
 
 For Burp Intruder wordlists:
 
 ```
-Read ~/docs/public-security-references/Command Injection/Intruder/command_exec.txt
-Read ~/docs/public-security-references/Command Injection/Intruder/command-execution-unix.txt
+Read $RED_RUN_DOCS/public-security-references/Command Injection/Intruder/command_exec.txt
+Read $RED_RUN_DOCS/public-security-references/Command Injection/Intruder/command-execution-unix.txt
 ```
 
 ## Troubleshooting
