@@ -381,18 +381,6 @@ After cracking credentials:
 
 When routing, pass: cracked username/password, domain, DC hostname, and mode.
 
-## Deep Reference
-
-For extended wordlists, rules, tool options, and edge cases:
-
-```
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-roasting-kerberoasting.md
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-roasting-asrep.md
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-roasting-timeroasting.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/kerberoast.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/asreproast.md
-```
-
 ## Troubleshooting
 
 ### KRB_AP_ERR_SKEW (Clock Skew)

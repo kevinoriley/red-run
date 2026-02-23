@@ -467,17 +467,6 @@ When routing to a technique skill, pass along:
 - Current mode (guided/autonomous)
 - Relevant enumeration output
 
-## Deep Reference
-
-For extended enumeration techniques, tool options, and edge cases:
-
-```
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adds-enumerate.md
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adds-groups.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/README.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/bloodhound.md
-```
-
 ## Troubleshooting
 
 ### BloodHound Collection Fails

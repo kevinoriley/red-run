@@ -471,16 +471,6 @@ When routing, pass: GPO name, affected scope, execution context
 
 Update `engagement/state.md` with GPO-based access and credentials.
 
-## Deep Reference
-
-For additional GPO techniques, tool options, and edge cases:
-
-```
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adds-group-policy-objects.md
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/pwd-group-policy-preferences.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/acl-persistence-abuse/README.md
-```
-
 ## Troubleshooting
 
 ### GPO Modification Not Taking Effect

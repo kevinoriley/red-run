@@ -222,18 +222,6 @@ When routing, pass along: injection point, DBMS, current mode, and payloads that
 - Payloads appear in application logs, DB slow query logs, and WAF logs
 - Defenders look for: `EXTRACTVALUE`, `UPDATEXML`, `GTID_SUBSET`, `CONVERT(INT,`, `CAST(... AS INT)` patterns
 
-## Deep Reference
-
-For WAF bypass, alternative functions, and edge cases:
-
-```
-Read $RED_RUN_DOCS/public-security-references/SQL Injection/MySQL Injection.md
-Read $RED_RUN_DOCS/public-security-references/SQL Injection/MSSQL Injection.md
-Read $RED_RUN_DOCS/public-security-references/SQL Injection/PostgreSQL Injection.md
-Read $RED_RUN_DOCS/public-security-references/SQL Injection/OracleSQL Injection.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/sql-injection/README.md
-```
-
 ## Troubleshooting
 
 ### Error Messages Not Displayed

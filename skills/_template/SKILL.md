@@ -103,16 +103,6 @@ After completing this technique:
 When routing, pass along: injection point, target technology, current mode,
 and any payloads that already succeeded.
 
-## Deep Reference
-
-For edge cases, WAF bypass, or alternative payloads beyond what's embedded above:
-
-```
-Read $RED_RUN_DOCS/public-security-references/<relevant-path>
-Read $RED_RUN_DOCS/public-security-references/src/<relevant-path>
-Read $RED_RUN_DOCS/public-security-references/<relevant-path>
-```
-
 ## Troubleshooting
 
 ### <Common Problem>

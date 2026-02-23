@@ -523,19 +523,6 @@ target host, access level, and mode.
 Update `engagement/state.md` with all captured credentials, new access,
 and relay paths tested.
 
-## Deep Reference
-
-For additional relay techniques, coercion methods, and edge cases:
-
-```
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/internal-relay-ntlm.md
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/internal-relay-kerberos.md
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/internal-relay-coerce.md
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/hash-capture.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/printers-spooler-service-abuse.md
-Read $RED_RUN_DOCS/public-security-references/src/generic-methodologies-and-resources/pentesting-network/spoofing-llmnr-nbt-ns-mdns-dns-and-wpad-and-relay-attacks.md
-```
-
 ## Troubleshooting
 
 ### Relay Fails with "LDAP Signing Required"

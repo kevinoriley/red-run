@@ -412,15 +412,6 @@ After obtaining a certificate and authenticating:
 - **Found template ACL issues**: Route to **adcs-access-and-relay** (ESC4)
 - **Found weak certificate mapping**: Route to **adcs-persistence** (ESC9/10)
 
-## Deep Reference
-
-For additional payloads, edge cases, and LDAP filter queries:
-
-```
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/ad-certificates/domain-escalation.md
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adcs-certificate-services.md
-```
-
 ## Troubleshooting
 
 ### CERTSRV_E_TEMPLATE_DENIED

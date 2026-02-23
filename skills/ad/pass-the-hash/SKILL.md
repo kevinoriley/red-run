@@ -410,18 +410,6 @@ After successful lateral movement:
 When routing, pass: current credentials/tickets, target host, access level,
 domain info, and mode.
 
-## Deep Reference
-
-For additional lateral movement techniques, tools, and edge cases:
-
-```
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/hash-pass-the-hash.md
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/hash-over-pass-the-hash.md
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/hash-pass-the-key.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/over-pass-the-hash-pass-the-key.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/pass-the-ticket.md
-```
-
 ## Troubleshooting
 
 ### KRB_AP_ERR_SKEW (Clock Skew)

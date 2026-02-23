@@ -796,16 +796,6 @@ After successful privilege escalation:
 | Profile injection not firing | Target uses non-interactive shell | Only works on login shells; try cron/service approach instead |
 | `Operation not permitted` on chmod 4755 | Filesystem mounted nosuid | Check `mount | grep nosuid`; use different filesystem |
 
-## Deep Reference
-
-For edge cases, WAF bypass, and extended payloads:
-- NFS exploitation: `$RED_RUN_DOCS/public-security-references/linux-hardening/privilege-escalation/nfs-no_root_squash-misconfiguration-pe.md`
-- Library hijacking: `$RED_RUN_DOCS/public-security-references/linux-hardening/privilege-escalation/ld.so.conf-example.md`
-- Docker/LXD groups: `$RED_RUN_DOCS/public-security-references/linux-hardening/privilege-escalation/interesting-groups-linux-pe/`
-- Writable file exploitation: `$RED_RUN_DOCS/public-security-references/linux-hardening/privilege-escalation/write-to-root.md`
-- public-security-references NFS: `$RED_RUN_DOCS/public-security-references/docs/redteam/escalation/linux/`
-- GTFOBins (all escapes): https://gtfobins.github.io/
-
 ## Cleanup Reminders
 
 In guided mode, remind the user to clean up after testing:

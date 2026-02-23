@@ -795,24 +795,6 @@ web app with known vuln > database with creds > default service access).
 When routing, pass along: target IP, open ports, identified services and versions,
 OS, any credentials or access found, current mode.
 
-## Deep Reference
-
-For protocol-specific enumeration beyond what's covered here:
-
-```
-Read $RED_RUN_DOCS/public-security-references/src/network-services-pentesting/
-Read $RED_RUN_DOCS/public-security-references/docs/redteam/recon/
-Read $RED_RUN_DOCS/public-security-references/src/network-services-pentesting/pentesting-smb/
-Read $RED_RUN_DOCS/public-security-references/src/network-services-pentesting/pentesting-ldap.md
-```
-
-**Nmap NSE script reference:**
-
-```
-ls /usr/share/nmap/scripts/ | grep SERVICE_NAME
-nmap --script-help "smb-*"
-```
-
 ## Troubleshooting
 
 ### Scans returning no results / all ports filtered

@@ -484,16 +484,6 @@ current mode, and impact assessment.
 - Successful password reset changes the victim's password — they will know
   (use this as a last step or coordinate with client)
 
-## Deep Reference
-
-For expanded payloads, edge cases, and framework-specific techniques:
-
-```
-Read $RED_RUN_DOCS/public-security-references/Account Takeover/README.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/reset-password.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/account-takeover.md
-```
-
 ## Troubleshooting
 
 ### Host Header Ignored

@@ -432,23 +432,6 @@ technique used, blind vs visible output, current mode.
   background with `&`
 - Cleanup: remove any files written to disk (webshells, output files)
 
-## Deep Reference
-
-For comprehensive payloads, wordlists, and advanced techniques:
-
-```
-Read $RED_RUN_DOCS/public-security-references/Command Injection/README.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/command-injection.md
-Read $RED_RUN_DOCS/public-security-references/src/linux-hardening/bypass-bash-restrictions/README.md
-```
-
-For Burp Intruder wordlists:
-
-```
-Read $RED_RUN_DOCS/public-security-references/Command Injection/Intruder/command_exec.txt
-Read $RED_RUN_DOCS/public-security-references/Command Injection/Intruder/command-execution-unix.txt
-```
-
 ## Troubleshooting
 
 ### No Operator Works

@@ -675,19 +675,6 @@ After confirming a race condition:
 
 When routing, pass along: the confirmed race endpoint, synchronization technique that worked, number of concurrent requests needed, current mode, and any session/token context.
 
-## Deep Reference
-
-For expanded techniques, additional Turbo Intruder templates, and edge cases:
-
-```
-Read $RED_RUN_DOCS/public-security-references/Race Condition/README.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/race-condition.md
-Read $RED_RUN_DOCS/public-security-references/Business Logic Errors/README.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/rate-limit-bypass.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/2fa-bypass.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/reset-password.md
-```
-
 ## Troubleshooting
 
 ### Race Never Succeeds (All But One Request Rejected)

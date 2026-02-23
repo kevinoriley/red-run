@@ -272,18 +272,6 @@ When routing, pass along: storage point, render context, working payload, CSP (i
 - Blind XSS callbacks reveal your attacker IP — use a proxy or VPS
 - Remove injected payloads after testing (edit/delete the comment, profile field, etc.)
 
-## Deep Reference
-
-For advanced payloads, filter bypass, SVG/XML XSS, and edge cases:
-
-```
-Read $RED_RUN_DOCS/public-security-references/XSS Injection/README.md
-Read $RED_RUN_DOCS/public-security-references/XSS Injection/1 - XSS Filter Bypass.md
-Read $RED_RUN_DOCS/public-security-references/XSS Injection/4 - CSP Bypass.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/xss-cross-site-scripting/README.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/xss-cross-site-scripting/server-side-xss-dynamic-pdf.md
-```
-
 ## Troubleshooting
 
 ### Payload Stored but Doesn't Execute

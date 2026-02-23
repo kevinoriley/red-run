@@ -620,17 +620,6 @@ After obtaining root:
 When routing, pass along: hostname, escalation method used, current access level,
 credentials obtained, current mode.
 
-## Deep Reference
-
-For additional exploitation techniques, edge cases, and CVE details:
-
-```
-Read $RED_RUN_DOCS/public-security-references/src/linux-hardening/privilege-escalation/d-bus-enumeration-and-command-injection-privilege-escalation.md
-Read $RED_RUN_DOCS/public-security-references/src/linux-hardening/privilege-escalation/socket-command-injection.md
-Read $RED_RUN_DOCS/public-security-references/src/linux-hardening/privilege-escalation/wildcards-spare-tricks.md
-Read $RED_RUN_DOCS/public-security-references/docs/redteam/escalation/linux-privilege-escalation.md
-```
-
 ## Troubleshooting
 
 ### Cron job doesn't fire

@@ -522,22 +522,6 @@ Update `engagement/state.md` with:
 - Persistence credentials (cert PFX, SAML key, skeleton password)
 - Cleanup requirements for report
 
-## Deep Reference
-
-For additional persistence techniques, detection signatures, and
-cleanup procedures:
-
-```
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/dcshadow.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/skeleton-key.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/custom-ssp.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/security-descriptors.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/dsrm-credentials.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/ad-certificates/domain-persistence.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/ad-certificates/account-persistence.md
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adfs-federation-services.md
-```
-
 ## Troubleshooting
 
 ### DCShadow Push Fails

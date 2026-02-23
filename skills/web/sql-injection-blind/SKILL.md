@@ -271,19 +271,6 @@ When routing, pass along: injection point, DBMS, confirmed blind technique, curr
 - OOB creates DNS queries to unusual subdomains (detectable by DNS monitoring)
 - Defenders look for: `SLEEP`, `WAITFOR`, `pg_sleep`, `BENCHMARK`, `ASCII`, `SUBSTRING` patterns
 
-## Deep Reference
-
-For WAF bypass, conditional techniques, and edge cases:
-
-```
-Read $RED_RUN_DOCS/public-security-references/SQL Injection/MySQL Injection.md
-Read $RED_RUN_DOCS/public-security-references/SQL Injection/MSSQL Injection.md
-Read $RED_RUN_DOCS/public-security-references/SQL Injection/PostgreSQL Injection.md
-Read $RED_RUN_DOCS/public-security-references/SQL Injection/OracleSQL Injection.md
-Read $RED_RUN_DOCS/public-security-references/SQL Injection/SQLite Injection.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/sql-injection/README.md
-```
-
 ## Troubleshooting
 
 ### Boolean Responses Are Inconsistent

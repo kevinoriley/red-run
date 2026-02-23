@@ -328,19 +328,6 @@ When routing, pass along: source, sink, data flow path, working payload, current
 - postMessage exploits require the victim to visit an attacker-controlled page
 - DevTools analysis leaves no artifacts on the target
 
-## Deep Reference
-
-For comprehensive source/sink lists, DOM clobbering, and advanced techniques:
-
-```
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/xss-cross-site-scripting/dom-xss.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/xss-cross-site-scripting/dom-clobbering.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/xss-cross-site-scripting/iframes-in-xss-and-csp.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/xss-cross-site-scripting/shadow-dom.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/xss-cross-site-scripting/steal-info-js.md
-Read $RED_RUN_DOCS/public-security-references/XSS Injection/README.md
-```
-
 ## Troubleshooting
 
 ### Can't Find the Sink

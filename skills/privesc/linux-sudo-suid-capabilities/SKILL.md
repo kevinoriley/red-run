@@ -572,17 +572,6 @@ After obtaining root:
 When routing, pass along: hostname, escalation method used, current access level,
 credentials obtained, current mode.
 
-## Deep Reference
-
-For additional GTFOBins entries, edge cases, or exploit variants:
-
-```
-Read $RED_RUN_DOCS/public-security-references/src/linux-hardening/privilege-escalation/README.md
-Read $RED_RUN_DOCS/public-security-references/src/linux-hardening/privilege-escalation/linux-capabilities.md
-Read $RED_RUN_DOCS/public-security-references/src/linux-hardening/privilege-escalation/euid-ruid-suid.md
-Read $RED_RUN_DOCS/public-security-references/docs/redteam/escalation/linux-privilege-escalation.md
-```
-
 ## Troubleshooting
 
 ### SUID binary drops privileges (bash without -p)

@@ -266,19 +266,6 @@ When routing, pass along: injection point, DBMS, column count, current mode, and
 - Anomalous response sizes from large data dumps may trigger alerts
 - If you wrote files (webshells via INTO OUTFILE), remove them after use
 
-## Deep Reference
-
-For WAF bypass, alternative aggregation functions, and edge cases:
-
-```
-Read $RED_RUN_DOCS/public-security-references/SQL Injection/MySQL Injection.md
-Read $RED_RUN_DOCS/public-security-references/SQL Injection/MSSQL Injection.md
-Read $RED_RUN_DOCS/public-security-references/SQL Injection/PostgreSQL Injection.md
-Read $RED_RUN_DOCS/public-security-references/SQL Injection/OracleSQL Injection.md
-Read $RED_RUN_DOCS/public-security-references/SQL Injection/SQLite Injection.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/sql-injection/README.md
-```
-
 ## Troubleshooting
 
 ### UNION Blocked by WAF

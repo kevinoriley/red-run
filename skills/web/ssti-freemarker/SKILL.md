@@ -357,16 +357,6 @@ syntax variant used, current mode.
 - Velocity `#set` directives with reflection are distinctive in logs
 - Cleanup: no persistent artifacts unless you wrote files
 
-## Deep Reference
-
-For comprehensive payloads, sandbox bypass, and engine-specific techniques:
-
-```
-Read $RED_RUN_DOCS/public-security-references/Server Side Template Injection/Java.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/ssti-server-side-template-injection/README.md
-Read $RED_RUN_DOCS/public-security-references/Server Side Template Injection/README.md
-```
-
 ## Troubleshooting
 
 ### `Execute` Class Not Found (Freemarker)

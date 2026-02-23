@@ -384,16 +384,6 @@ machine keys if obtained, current mode, and any payloads that succeeded.
 - Machine key extraction from compromised servers should be done carefully —
   keys enable persistent access across all IIS applications
 
-## Deep Reference
-
-For additional gadget chains, formatter details, and framework-specific exploits:
-
-```
-Read $RED_RUN_DOCS/public-security-references/Insecure Deserialization/DotNET.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/deserialization/README.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/deserialization/basic-.net-deserialization-objectdataprovider-gadgets-expandedwrapper-and-json.net.md
-```
-
 ## Troubleshooting
 
 ### ysoserial.net Requires Windows
