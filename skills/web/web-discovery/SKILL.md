@@ -544,44 +544,6 @@ Update `engagement/state.md` with any new targets, confirmed vulns, or blocked t
 
 When routing, pass along: the confirmed injection point (URL, parameter, method), observed response behavior, suspected DBMS (if SQL), current mode, and any payloads that already succeeded.
 
-## Deep Reference
-
-For expanded methodology, additional probes, and edge cases:
-
-```
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/web-vulnerabilities-methodology.md
-Read $RED_RUN_DOCS/public-security-references/SQL Injection/README.md
-Read $RED_RUN_DOCS/public-security-references/Server Side Template Injection/README.md
-Read $RED_RUN_DOCS/public-security-references/XSS Injection/README.md
-Read $RED_RUN_DOCS/public-security-references/Command Injection/README.md
-Read $RED_RUN_DOCS/public-security-references/Server Side Request Forgery/README.md
-Read $RED_RUN_DOCS/public-security-references/File Inclusion/README.md
-Read $RED_RUN_DOCS/public-security-references/XXE Injection/README.md
-Read $RED_RUN_DOCS/public-security-references/Insecure Deserialization/Java.md
-Read $RED_RUN_DOCS/public-security-references/Insecure Deserialization/PHP.md
-Read $RED_RUN_DOCS/public-security-references/Insecure Deserialization/DotNET.md
-Read $RED_RUN_DOCS/public-security-references/JSON Web Token/README.md
-Read $RED_RUN_DOCS/public-security-references/NoSQL Injection/README.md
-Read $RED_RUN_DOCS/public-security-references/Request Smuggling/README.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/http-request-smuggling/README.md
-Read $RED_RUN_DOCS/public-security-references/IDOR - Insecure Direct Object References/README.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/idor.md
-Read $RED_RUN_DOCS/public-security-references/CORS Misconfiguration/README.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/cors-bypass.md
-Read $RED_RUN_DOCS/public-security-references/Cross-Site Request Forgery/README.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/csrf-cross-site-request-forgery.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/oauth-to-account-takeover.md
-Read $RED_RUN_DOCS/public-security-references/OAuth Misconfiguration/README.md
-Read $RED_RUN_DOCS/public-security-references/Account Takeover/README.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/reset-password.md
-Read $RED_RUN_DOCS/public-security-references/Account Takeover/mfa-bypass.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/2fa-bypass.md
-Read $RED_RUN_DOCS/public-security-references/Race Condition/README.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/race-condition.md
-Read $RED_RUN_DOCS/public-security-references/Upload Insecure Files/README.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/file-upload/README.md
-```
-
 ## Troubleshooting
 
 ### WAF Blocking Requests

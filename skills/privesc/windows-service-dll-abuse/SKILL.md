@@ -488,18 +488,6 @@ OS version, current mode.
 
 Update `engagement/state.md` with escalation results.
 
-## Deep Reference
-
-For additional service vectors, DLL targets, and auto-updater exploits:
-
-```
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/windows-local-privilege-escalation/dll-hijacking/README.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/windows-local-privilege-escalation/dll-hijacking/writable-sys-path-dll-hijacking-privesc.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/windows-local-privilege-escalation/service-triggers.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/windows-local-privilege-escalation/abusing-auto-updaters-and-ipc.md
-Read $RED_RUN_DOCS/public-security-references/docs/redteam/escalation/windows-privilege-escalation.md
-```
-
 ## Troubleshooting
 
 ### "Access denied" when modifying service

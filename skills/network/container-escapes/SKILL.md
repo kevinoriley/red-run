@@ -938,20 +938,6 @@ Container is properly hardened (no caps, no mounts, read-only rootfs).
 → Check cloud metadata access (Step 12)
 → Report the container as hardened in state.md Blocked section
 
-## Deep Reference
-
-For additional container escape techniques and edge cases:
-
-```
-Read $RED_RUN_DOCS/public-security-references/src/linux-hardening/privilege-escalation/docker-security/docker-breakout-privilege-escalation/README.md
-Read $RED_RUN_DOCS/public-security-references/src/linux-hardening/privilege-escalation/docker-security/docker-breakout-privilege-escalation/sensitive-mounts.md
-Read $RED_RUN_DOCS/public-security-references/src/linux-hardening/privilege-escalation/docker-security/docker-breakout-privilege-escalation/docker-release_agent-cgroups-escape.md
-Read $RED_RUN_DOCS/public-security-references/docs/containers/docker.md
-Read $RED_RUN_DOCS/public-security-references/docs/containers/kubernetes.md
-Read $RED_RUN_DOCS/public-security-references/src/network-services-pentesting/2375-pentesting-docker.md
-Read $RED_RUN_DOCS/public-security-references/src/linux-hardening/privilege-escalation/docker-security/namespaces/
-```
-
 ## Troubleshooting
 
 ### Can't determine container type

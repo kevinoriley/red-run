@@ -560,16 +560,6 @@ technique, tokens obtained, current mode.
 - Account linking operations are visible in application audit logs
 - ROPC grant attempts may trigger brute-force detection
 
-## Deep Reference
-
-For expanded payloads, edge cases, and provider-specific techniques:
-
-```
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/oauth-to-account-takeover.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/oauth-to-account-takeover/oauth-happy-paths-xss-iframes-post-messages-and-open-redirects.md
-Read $RED_RUN_DOCS/public-security-references/OAuth Misconfiguration/README.md
-```
-
 ## Troubleshooting
 
 ### Redirect URI Strictly Validated

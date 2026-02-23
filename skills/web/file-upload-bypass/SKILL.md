@@ -280,7 +280,7 @@ Response.Write(c.StdOut.ReadAll):Response.write("<!-"&"-") %> -->
 ```
 
 Add `<security><requestFiltering>` to remove `.config` from hidden segments
-if direct access is blocked. See `$RED_RUN_DOCS/` for full template.
+if direct access is blocked.
 
 ### uWSGI .ini
 
@@ -336,9 +336,6 @@ the payload into pixel data so it survives image reprocessing:
   Use `imagecreate()` + `imagecolorallocate()` + `imagepng()`. Payload length
   must be divisible by 3.
 - **GIF via global color table**: Same approach with `imagegif()`.
-
-See `$RED_RUN_DOCS/public-security-references/Upload Insecure Files/` for generator scripts
-(`createPNGwithPLTE.php`, `createGIFwithGlobalColorTable.php`).
 
 These produce valid images with PHP in pixel data — require LFI or a
 misconfiguration to trigger execution.
@@ -472,17 +469,6 @@ upload location, current mode.
 - Polyglot images are stealthier than raw PHP files
 - Use innocuous filenames for initial testing (`test.jpg`, not `shell.php`)
 - Race condition exploits generate high request volume — may trigger rate limiting
-
-## Deep Reference
-
-For comprehensive extension lists, polyglot generators, and CVE-specific tools:
-
-```
-Read $RED_RUN_DOCS/public-security-references/Upload Insecure Files/README.md
-Read $RED_RUN_DOCS/public-security-references/Upload Insecure Files/Configuration Apache .htaccess/
-Read $RED_RUN_DOCS/public-security-references/Upload Insecure Files/Configuration IIS web.config/
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/file-upload/README.md
-```
 
 ## Troubleshooting
 

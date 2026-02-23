@@ -276,19 +276,6 @@ When routing, pass along: injection point, DBMS, stacking confirmation, current 
 - xp_cmdshell, sp_configure, COPY TO PROGRAM all appear in audit logs
 - New database objects created by the web app user are anomalous
 
-## Deep Reference
-
-For advanced techniques, WAF bypass, and edge cases:
-
-```
-Read $RED_RUN_DOCS/public-security-references/SQL Injection/MSSQL Injection.md
-Read $RED_RUN_DOCS/public-security-references/SQL Injection/PostgreSQL Injection.md
-Read $RED_RUN_DOCS/public-security-references/SQL Injection/MySQL Injection.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/sql-injection/mssql-injection.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/sql-injection/postgresql-injection/README.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/sql-injection/mysql-injection/README.md
-```
-
 ## Troubleshooting
 
 ### Stacked Queries Fail on MySQL

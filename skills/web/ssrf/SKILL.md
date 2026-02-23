@@ -475,19 +475,6 @@ used, what's accessible internally, current mode.
 - DNS rebinding generates unusual DNS patterns
 - Blind SSRF with OOB callbacks reveal your attacker IP
 
-## Deep Reference
-
-For comprehensive bypass techniques, cloud-specific payloads, and protocol details:
-
-```
-Read $RED_RUN_DOCS/public-security-references/Server Side Request Forgery/README.md
-Read $RED_RUN_DOCS/public-security-references/Server Side Request Forgery/SSRF-Cloud-Instances.md
-Read $RED_RUN_DOCS/public-security-references/Server Side Request Forgery/SSRF-Advanced-Exploitation.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/ssrf-server-side-request-forgery/README.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/ssrf-server-side-request-forgery/cloud-ssrf.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/ssrf-server-side-request-forgery/url-format-bypass.md
-```
-
 ## Troubleshooting
 
 ### No Response from Internal Services

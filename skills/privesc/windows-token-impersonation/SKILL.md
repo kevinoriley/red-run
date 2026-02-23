@@ -392,19 +392,6 @@ membership, current mode.
 
 Update `engagement/state.md` with SYSTEM access achieved.
 
-## Deep Reference
-
-For edge cases, additional Potato variants, or privilege-specific techniques:
-
-```
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/windows-local-privilege-escalation/juicypotato.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/windows-local-privilege-escalation/roguepotato-and-printspoofer.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/windows-local-privilege-escalation/privilege-escalation-abusing-tokens.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/windows-local-privilege-escalation/seimpersonate-from-high-to-system.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/windows-local-privilege-escalation/sedebug-+-seimpersonate-copy-token.md
-Read $RED_RUN_DOCS/public-security-references/docs/redteam/escalation/windows-privilege-escalation.md
-```
-
 ## Troubleshooting
 
 ### Potato says "authresult 0" but no shell spawns

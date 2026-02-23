@@ -531,17 +531,6 @@ endpoint, current mode, and impact assessment.
 - CSRF on 2FA disable requires victim interaction
 - OAuth ROPC attempts are logged at the token endpoint
 
-## Deep Reference
-
-For expanded payloads, edge cases, and rate limit bypass techniques:
-
-```
-Read $RED_RUN_DOCS/public-security-references/Account Takeover/mfa-bypass.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/2fa-bypass.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/rate-limit-bypass.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/race-condition.md
-```
-
 ## Troubleshooting
 
 ### Rate Limiting Blocks Brute-Force Immediately

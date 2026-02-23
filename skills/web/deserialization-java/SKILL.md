@@ -381,18 +381,6 @@ current mode, and any payloads that already succeeded.
   connection from target is visible
 - JBoss/WebLogic invoker servlets are commonly monitored endpoints
 
-## Deep Reference
-
-For additional gadget chains, WAF bypass, and framework-specific exploits:
-
-```
-Read $RED_RUN_DOCS/public-security-references/Insecure Deserialization/Java.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/deserialization/basic-java-deserialization-objectinputstream-readobject.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/deserialization/jndi-java-naming-and-directory-interface-and-log4shell.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/deserialization/java-transformers-to-rutime-exec-payload.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/deserialization/java-dns-deserialization-and-gadgetprobe.md
-```
-
 ## Troubleshooting
 
 ### Gadget Chain Throws Exception

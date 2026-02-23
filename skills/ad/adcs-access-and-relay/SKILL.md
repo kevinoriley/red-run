@@ -433,18 +433,6 @@ After obtaining a certificate:
 - **Found ACL on user/group objects**: Route to **acl-abuse**
 - **Need coercion vectors**: Route to **auth-coercion-relay**
 
-## Deep Reference
-
-For edge cases, relay configurations, and alternative coercion methods:
-
-```
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/ad-certificates/domain-escalation.md
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adcs-esc04.md
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adcs-esc07.md
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adcs-esc08.md
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adcs-esc11.md
-```
-
 ## Troubleshooting
 
 ### Template modification not taking effect (ESC4)

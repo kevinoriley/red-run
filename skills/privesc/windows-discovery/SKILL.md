@@ -491,16 +491,6 @@ In **autonomous** mode, pursue the most reliable vector first, fall back on fail
 When routing, pass along: hostname, OS version, current user, integrity level,
 specific findings, current mode.
 
-## Deep Reference
-
-For additional enumeration techniques, edge cases, or tool-specific options:
-
-```
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/windows-local-privilege-escalation/README.md
-Read $RED_RUN_DOCS/public-security-references/docs/redteam/escalation/windows-privilege-escalation.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/checklist-windows-privilege-escalation.md
-```
-
 ## Troubleshooting
 
 ### WinPEAS blocked by AV

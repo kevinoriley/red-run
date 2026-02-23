@@ -308,16 +308,6 @@ payload, filter restrictions, current mode.
 - Smarty `{system()}` is very obvious — prefer Twig-style if both are available
 - Cleanup: no persistent artifacts unless you wrote files (webshell, config)
 
-## Deep Reference
-
-For comprehensive payloads, obfuscation techniques, and version-specific exploits:
-
-```
-Read $RED_RUN_DOCS/public-security-references/Server Side Template Injection/PHP.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/ssti-server-side-template-injection/README.md
-Read $RED_RUN_DOCS/public-security-references/Server Side Template Injection/README.md
-```
-
 ## Troubleshooting
 
 ### `filter('system')` Returns Empty

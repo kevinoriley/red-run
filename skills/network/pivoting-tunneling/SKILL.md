@@ -1002,16 +1002,6 @@ ssh -D 1080 user@PIVOT_IP -N
 proxychains bash
 ```
 
-## Deep Reference
-
-For additional tunneling techniques and edge cases:
-
-```
-Read $RED_RUN_DOCS/public-security-references/src/generic-methodologies-and-resources/tunneling-and-port-forwarding.md
-Read $RED_RUN_DOCS/public-security-references/docs/redteam/pivoting/
-Read $RED_RUN_DOCS/public-security-references/src/network-services-pentesting/pentesting-ssh.md
-```
-
 ## Troubleshooting
 
 ### SSH tunnel dies after inactivity

@@ -527,21 +527,6 @@ method, target hosts, access level, and mode.
 
 Update `engagement/state.md` with all extracted credentials and access.
 
-## Deep Reference
-
-For additional extraction techniques, tool options, and edge cases:
-
-```
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/credentials-dcsync.md
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/credentials-ntds.md
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/credentials-sam.md
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/credentials-laps.md
-Read $RED_RUN_DOCS/public-security-references/docs/active-directory/credentials-gmsa.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/dcsync.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/laps.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/golden-dmsa-gmsa.md
-```
-
 ## Troubleshooting
 
 ### DCSync Fails with "Access Denied"

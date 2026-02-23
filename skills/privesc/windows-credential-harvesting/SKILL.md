@@ -496,21 +496,6 @@ After harvesting credentials:
 When routing, pass along: hostname, recovered credentials, current access level,
 current mode.
 
-## Deep Reference
-
-For advanced DPAPI attacks, HEKATOMB/DonPAPI automation, or edge cases:
-
-```
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/windows-local-privilege-escalation/dpapi-extracting-passwords.md
-Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/stealing-credentials/credentials-mimikatz.md
-Read $RED_RUN_DOCS/public-security-references/docs/redteam/escalation/windows-privilege-escalation.md
-```
-
-**Advanced tools:**
-- **HEKATOMB**: Automates domain-wide DPAPI extraction (LDAP users → backup key → SMB → decrypt all)
-- **DonPAPI**: Parallel DPAPI blob collection with Hashcat integration
-- **DPAPISnoop**: Master key/credential/vault parser, outputs Hashcat/JtR formats
-
 ## Troubleshooting
 
 ### SharpDPAPI "Cannot decrypt master key"

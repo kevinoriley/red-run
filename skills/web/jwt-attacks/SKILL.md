@@ -512,15 +512,6 @@ algorithm, current mode, and any secrets recovered.
 - jwt_tool's `-M at` mode sends many requests — rate limit or use targeted
   attacks
 
-## Deep Reference
-
-For edge cases, additional techniques, and tool-specific options:
-
-```
-Read $RED_RUN_DOCS/public-security-references/JSON Web Token/README.md
-Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/hacking-jwt-json-web-tokens.md
-```
-
 ## Troubleshooting
 
 ### alg:none Rejected
