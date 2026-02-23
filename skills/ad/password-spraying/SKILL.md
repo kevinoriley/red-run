@@ -145,7 +145,7 @@ Get-DomainFineGrainedPasswordPolicy
 
 ### From Prior Enumeration
 
-If **ad-attack-discovery** already ran, use its username list. Otherwise:
+If **ad-discovery** already ran, use its username list. Otherwise:
 
 ```bash
 # RID cycling (unauthenticated)
@@ -450,7 +450,7 @@ After finding valid credentials:
   ```
 - **Local admin on targets**: Route to **credential-dumping** (SAM/LSASS dump),
   then **pass-the-hash** for lateral movement
-- **Standard domain user**: Route to **ad-attack-discovery** for full
+- **Standard domain user**: Route to **ad-discovery** for full
   authenticated enumeration (BloodHound, ADCS, ACLs)
 - **Service account with SPN**: Route to **kerberos-roasting** for related
   accounts

@@ -455,7 +455,7 @@ Where `xss.svg` contains:
 - **Kubernetes ETCD accessible**: Extract secrets, service account tokens
 - **Docker API accessible**: Container escape, host filesystem access
 - **Internal web app found**: Test for additional vulns — route to
-  **web-vuln-discovery**
+  **web-discovery**
 - **File read only (file://)**: Extract credentials from config files, SSH keys
   from `/home/*/.ssh/`, cloud credentials from `~/.aws/credentials`
 - **Found SQLi on internal service**: Route to **sql-injection-error** or

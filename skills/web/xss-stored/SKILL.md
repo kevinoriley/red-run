@@ -72,7 +72,7 @@ Keep entries compact — one line per item. State.md is a snapshot, not a log.
 
 ## Prerequisites
 
-- Identified input that is stored and rendered later (see **web-vuln-discovery**)
+- Identified input that is stored and rendered later (see **web-discovery**)
 - For blind XSS: external callback infrastructure (XSS Hunter, interactsh, or custom server)
 - If the payload appears in the immediate response only (not stored), use **xss-reflected**
 

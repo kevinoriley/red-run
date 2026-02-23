@@ -1,5 +1,5 @@
 ---
-name: web-vuln-discovery
+name: web-discovery
 description: >
   Discover web application injection points and route to the correct exploitation
   skill during authorized penetration testing. Use when the user has a web target
@@ -42,7 +42,7 @@ Check for `./engagement/` directory. If absent:
 When an engagement directory exists, log as you work:
 - **Activity** → append to `engagement/activity.md` at milestones (scan completed,
   parameter discovered, vulnerability indicator found, routing to technique skill):
-  `### [HH:MM] web-vuln-discovery → <target>` with bullet points of actions/results.
+  `### [HH:MM] web-discovery → <target>` with bullet points of actions/results.
 - **Findings** → append to `engagement/findings.md` when a vulnerability is confirmed:
   `## N. Title [Severity]` with target, technique, impact, evidence path, repro command.
 - **Evidence** → save significant output to `engagement/evidence/` with descriptive

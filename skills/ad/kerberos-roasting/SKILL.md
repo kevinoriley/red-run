@@ -49,7 +49,7 @@ When an engagement directory exists:
 If `engagement/state.md` exists, read it before starting. Use it to:
 - Skip accounts already roasted (check Vulns/Blocked sections)
 - Use existing credentials for authenticated enumeration
-- Check if SPNs or AS-REP targets were already identified by **ad-attack-discovery**
+- Check if SPNs or AS-REP targets were already identified by **ad-discovery**
 
 After completing, update `engagement/state.md`:
 - **Credentials**: Add cracked username:password pairs

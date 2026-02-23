@@ -68,7 +68,7 @@ Keep entries compact — one line per item. State.md is a snapshot, not a log.
 
 ## Prerequisites
 
-- Confirmed SQL injection point (see **web-vuln-discovery**)
+- Confirmed SQL injection point (see **web-discovery**)
 - Query output rendered somewhere in the HTTP response
 - UNION keyword not blocked by WAF (if blocked, try **sql-injection-error** or **sql-injection-blind**)
 

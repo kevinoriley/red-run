@@ -379,7 +379,7 @@ nxc ldap TARGET_DC -u 'user' -p 'pass' -d target.local --groups
 After successful trust exploitation:
 - **Enterprise Admin in parent domain**: Route to **credential-dumping**
   (DCSync the parent domain) for complete forest compromise
-- **Access to new forest**: Route to **ad-attack-discovery** to enumerate
+- **Access to new forest**: Route to **ad-discovery** to enumerate
   the new forest from the inside
 - **Service account hashes from Kerberoasting**: Route to cracking
   (hashcat 13100/18200) then **pass-the-hash**

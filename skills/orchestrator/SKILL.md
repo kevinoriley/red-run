@@ -165,8 +165,8 @@ Based on recon results, categorize the attack surface:
 
 | Surface | Indicators | Route To |
 |---------|-----------|----------|
-| Web application | HTTP/HTTPS, login forms, APIs | **web-vuln-discovery** |
-| Active Directory | LDAP (389/636), Kerberos (88), SMB domain | **ad-attack-discovery** (when available) |
+| Web application | HTTP/HTTPS, login forms, APIs | **web-discovery** |
+| Active Directory | LDAP (389/636), Kerberos (88), SMB domain | **ad-discovery** (when available) |
 | Database | MySQL (3306), MSSQL (1433), PostgreSQL (5432) | Direct DB testing |
 | Mail | SMTP (25/587), IMAP (143/993) | Credential attacks, phishing |
 | File shares | SMB (445), NFS (2049) | Enumeration, sensitive files |
@@ -188,14 +188,14 @@ Route to discovery skills based on attack surface. Pass along:
 
 ### Web Applications
 
-Route to **web-vuln-discovery** with the target URL. It will:
+Route to **web-discovery** with the target URL. It will:
 1. Run content and parameter discovery
 2. Test for injection points
 3. Route to technique skills (SQLi, XSS, SSTI, SSRF, etc.)
 
 ### Active Directory
 
-Route to **ad-attack-discovery** (when available) with domain info. It will:
+Route to **ad-discovery** (when available) with domain info. It will:
 1. Enumerate users, groups, trusts
 2. Identify attack paths (Kerberoastable, delegation, ADCS)
 3. Route to technique skills

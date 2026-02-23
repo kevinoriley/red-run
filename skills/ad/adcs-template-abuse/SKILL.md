@@ -89,7 +89,7 @@ certipy find -k -no-pass -dc-ip DC_IP -vulnerable
 ## Step 1: Enumerate Vulnerable Templates
 
 Run ADCS enumeration to identify vulnerable templates. If the orchestrator or
-`ad-attack-discovery` already provided results, skip to the relevant ESC.
+`ad-discovery` already provided results, skip to the relevant ESC.
 
 ### Certipy (Linux — preferred)
 

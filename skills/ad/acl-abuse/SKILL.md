@@ -83,7 +83,7 @@ export KRB5CCNAME=user.ccache
 
 ## Step 1: Enumerate Exploitable ACLs
 
-Skip if BloodHound or **ad-attack-discovery** already identified the path.
+Skip if BloodHound or **ad-discovery** already identified the path.
 
 ### bloodyAD (Linux — Preferred)
 

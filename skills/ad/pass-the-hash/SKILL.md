@@ -405,7 +405,7 @@ After successful lateral movement:
 - **Need domain persistence**: Route to **ad-persistence** or
   **kerberos-ticket-forging** (Golden Ticket).
 - **Access to additional subnets**: Update state.md and route to
-  **ad-attack-discovery** for new scope.
+  **ad-discovery** for new scope.
 
 When routing, pass: current credentials/tickets, target host, access level,
 domain info, and mode.

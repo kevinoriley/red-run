@@ -18,7 +18,7 @@ description: >
   in SYSVOL, generate scheduled task events). Tools: SharpGPOAbuse,
   PowerGPOAbuse, pyGPOAbuse, GPOHound, GroupPolicyBackdoor, netexec.
   Do NOT use for ACL-based attacks on non-GPO objects — use **acl-abuse**
-  instead. Do NOT use for general AD enumeration — use **ad-attack-discovery**.
+  instead. Do NOT use for general AD enumeration — use **ad-discovery**.
 ---
 
 # GPO Abuse

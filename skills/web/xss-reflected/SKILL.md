@@ -70,7 +70,7 @@ Keep entries compact — one line per item. State.md is a snapshot, not a log.
 
 ## Prerequisites
 
-- Confirmed reflection point (see **web-vuln-discovery**)
+- Confirmed reflection point (see **web-discovery**)
 - Input appears in the HTTP response body or headers
 - If input is stored and rendered later, use **xss-stored** instead
 - If input only affects the DOM via JavaScript (not in HTTP response), use **xss-dom**

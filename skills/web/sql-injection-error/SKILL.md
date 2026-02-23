@@ -68,7 +68,7 @@ Keep entries compact — one line per item. State.md is a snapshot, not a log.
 
 ## Prerequisites
 
-- Confirmed SQL injection point (see **web-vuln-discovery**)
+- Confirmed SQL injection point (see **web-discovery**)
 - Application displays verbose database error messages in the response
 - If errors are generic or hidden, use **sql-injection-blind** instead
 

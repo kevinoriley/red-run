@@ -87,7 +87,7 @@ export KRB5CCNAME=user.ccache
 ## Step 1: Enumerate Delegation
 
 Identify delegation-configured accounts. Skip if already provided by
-**ad-attack-discovery** or conversation context.
+**ad-discovery** or conversation context.
 
 ### Unconstrained Delegation
 

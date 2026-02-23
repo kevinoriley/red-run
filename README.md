@@ -8,7 +8,7 @@ red-run is a redteam partner that knows the techniques, carries the payloads, an
 
 In **guided mode** (default), Claude walks you through each attack step, shows you the command it would run, explains what to look for in the output, and asks before executing. You stay in the driver's seat. In **autonomous mode**, Claude runs commands directly, makes triage decisions at forks, and only pauses for destructive or high-OPSEC actions. Autonomous is better suited for CTFs and lab environments where OPSEC doesn't matter.
 
-Skills auto-trigger based on conversation context. Say "I found a SQL injection with error messages" and the `sql-injection-error` skill activates with embedded payloads for 4 database engines. Say "enumerate this domain" and `ad-attack-discovery` runs BloodHound collection and routes findings to technique skills. No slash commands needed.
+Skills auto-trigger based on conversation context. Say "I found a SQL injection with error messages" and the `sql-injection-error` skill activates with embedded payloads for 4 database engines. Say "enumerate this domain" and `ad-discovery` runs BloodHound collection and routes findings to technique skills. No slash commands needed.
 
 ### What it actually does for you
 
@@ -50,7 +50,7 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 
 | Skill | Technique | Lines |
 |-------|-----------|-------|
-| `web-vuln-discovery` | Content discovery, parameter fuzzing, vulnerability routing | 299 |
+| `web-discovery` | Content discovery, parameter fuzzing, vulnerability routing | 299 |
 | `sql-injection-union` | UNION-based extraction (MySQL, MSSQL, Postgres, Oracle, SQLite) | 287 |
 | `sql-injection-error` | Error-based extraction (EXTRACTVALUE, CONVERT, CAST) | 240 |
 | `sql-injection-blind` | Boolean, time-based, OOB blind extraction | 302 |
@@ -84,7 +84,7 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 
 | Skill | Technique | Lines |
 |-------|-----------|-------|
-| `ad-attack-discovery` | Domain enumeration (BloodHound, LDAP, NetExec), attack surface mapping, routing to 15 technique skills | 511 |
+| `ad-discovery` | Domain enumeration (BloodHound, LDAP, NetExec), attack surface mapping, routing to 15 technique skills | 511 |
 | `kerberos-roasting` | Kerberoasting + AS-REP Roasting + Timeroasting, targeted kerberoasting via ACL abuse | 436 |
 | `password-spraying` | Lockout-safe domain spray (Kerberos/NTLM/OWA), policy enumeration, smart password generation | 508 |
 | `pass-the-hash` | PTH, Over-Pass-the-Hash, Pass-the-Key (AES), Pass-the-Ticket, lateral movement tools | 473 |
@@ -103,10 +103,18 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 
 All AD skills follow a **Kerberos-first authentication** convention — commands default to ccache-based Kerberos auth to avoid NTLM detection signatures (Event 4776, CrowdStrike Identity Module). Exception: relay/coercion attacks are inherently NTLM/network-level.
 
+### Privilege Escalation (3 skills, building)
+
+| Skill | Technique | Lines |
+|-------|-----------|-------|
+| `windows-discovery` | WinPEAS/PowerUp/Seatbelt/Watson enumeration, privilege routing to 5 technique skills | 489 |
+| `windows-token-impersonation` | Potato family (7+ variants by OS version), SeDebug/SeBackup/SeRestore/SeLoadDriver/SeManageVolume exploitation, FullPowers | 440 |
+| `windows-service-dll-abuse` | Unquoted paths, weak service perms, DLL search order hijacking, DLL proxying, COM hijacking, service triggers, auto-updater abuse | 532 |
+
 ### Planned
 
 - **Active Directory** (6 extended) — ADIDNS poisoning, DCOM lateral movement, RODC exploitation, named CVEs (NoPAC/PrintNightmare/ZeroLogon), MSSQL AD abuse, deployment targets (MDT/WSUS/SCOM)
-- **Privilege Escalation** — Windows, Linux, macOS
+- **Privilege Escalation** (8 remaining) — Windows UAC bypass, credential harvesting, kernel exploits; Linux discovery, sudo/SUID/capabilities, cron/service/D-Bus, file/path abuse, kernel exploits
 - **Infrastructure** — network recon, pivoting, cloud (AWS/Azure), containers, CI/CD
 - **Red Team** — C2, initial access, evasion, persistence, credential dumping
 - **Supplemental** — hash cracking, shell cheatsheet, database attacks, binary exploitation
@@ -184,9 +192,30 @@ Skills synthesize content from three reference repositories:
 
 Each skill embeds the top 2-3 payloads per variant (80% coverage) and references `~/docs/` for WAF bypass, edge cases, and the long tail.
 
+## Running Claude Code for pentesting
+
+### Recommended configuration
+
+This project was built with the [Trail of Bits Claude Code configuration](https://blog.trailofbits.com/2025/05/22/configuring-claude-code-for-security-work/) in mind:
+
+- **Sandbox enabled** — bwrap sandboxing with deny rules for sensitive paths
+- **Hooks** — Trail of Bits' two default hooks (pre-tool approval + post-tool logging)
+- **YOLO mode** — autonomous execution for CTFs and lab environments where OPSEC doesn't matter
+- **No MCP servers** — skills work with vanilla Claude Code (MCP integration may be added later)
+
+### Run inside a VM
+
+Always run red-run from a VM or dedicated pentesting machine. Skills execute commands, transfer tools, and interact with targets — you want network isolation and a disposable environment. A purpose-built Linux VM with your pentesting tools and Claude Code installed is the intended setup.
+
+### Baseline skills — customize for your workflow
+
+These skills are a **baseline** built from three public source repositories (public-security-references, public-security-references, public-security-references). They cover the most common techniques with the top 2-3 payloads per variant.
+
+You should **modify skills to match your own processes and tools**. Every pentester has preferred toolchains, custom scripts, internal playbooks, and engagement-specific workflows that generic skills can't capture. Fork this repo, edit the SKILL.md files directly, and make them yours. The skill format is plain Markdown — no build step, no compilation, changes take effect immediately.
+
 ## Status
 
-Phase 4 (Active Directory) core complete. 46 skills built, ~22,500 lines. Phase 4b (6 extended AD skills) and Phase 5 (Privilege Escalation) next. See `task_plan.md` for the full build plan.
+Phase 5 (Privilege Escalation) Batch 1 in progress. 49 skills built, ~24,000 lines. See `task_plan.md` for the full build plan.
 
 ## Disclaimer
 

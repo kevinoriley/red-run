@@ -73,7 +73,7 @@ Keep entries compact — one line per item. State.md is a snapshot, not a log.
 
 ## Prerequisites
 
-- Confirmed SQL injection point (see **web-vuln-discovery**)
+- Confirmed SQL injection point (see **web-discovery**)
 - For stacked queries: DB and driver that supports multi-statement execution
 - For second-order: ability to store input that is later used unsafely
 
