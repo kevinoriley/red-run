@@ -80,7 +80,7 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 | `2fa-bypass` | Response manipulation, direct navigation, OTP brute-force, backup codes, OAuth bypass, session attacks | 585 |
 | `race-condition` | Limit-overrun, HTTP/2 single-packet, last-byte sync, Turbo Intruder, TOCTOU, rate limit bypass | 719 |
 
-### Active Directory (7 skills)
+### Active Directory (10 skills)
 
 | Skill | Technique | Lines |
 |-------|-----------|-------|
@@ -91,12 +91,15 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 | `kerberos-delegation` | Unconstrained (TGT harvesting + coercion), Constrained (S4U + SPN swapping), RBCD | 508 |
 | `kerberos-ticket-forging` | Golden, Silver, Diamond, Sapphire tickets + Pass-the-Ticket injection | 463 |
 | `acl-abuse` | GenericAll/Write, WriteDACL, WriteOwner, shadow credentials, AdminSDHolder persistence | 554 |
+| `adcs-template-abuse` | ESC1/2/3/6 — SAN manipulation, any-purpose EKU, enrollment agent, EDITF flag abuse | 457 |
+| `adcs-access-and-relay` | ESC4/5/7/8/11 — template/CA ACL abuse, NTLM relay to HTTP/RPC enrollment | 475 |
+| `adcs-persistence` | ESC9-15, Golden Certificate, certificate theft (DPAPI/CAPI/CNG), cert mapping persistence | 611 |
 
-All AD skills follow a **Kerberos-first authentication** convention — commands default to ccache-based Kerberos auth to avoid NTLM detection signatures (Event 4776, CrowdStrike Identity Module).
+All AD skills follow a **Kerberos-first authentication** convention — commands default to ccache-based Kerberos auth to avoid NTLM detection signatures (Event 4776, CrowdStrike Identity Module). Exception: relay attacks (ESC8/11) are inherently NTLM-based.
 
 ### Planned
 
-- **Active Directory** (9 remaining) — ADCS (3 skills), relay/coercion + credential dumping + GPO abuse, trust attacks + SCCM + persistence
+- **Active Directory** (6 remaining) — relay/coercion + credential dumping + GPO abuse, trust attacks + SCCM
 - **Privilege Escalation** — Windows, Linux, macOS
 - **Infrastructure** — network recon, pivoting, cloud (AWS/Azure), containers, CI/CD
 - **Red Team** — C2, initial access, evasion, persistence, credential dumping
@@ -177,7 +180,7 @@ Each skill embeds the top 2-3 payloads per variant (80% coverage) and references
 
 ## Status
 
-Phase 4 (Active Directory) in progress. Batch 2 (Kerberos & ACL) complete. 37 skills built, ~17,500 lines. See `task_plan.md` for the full build plan.
+Phase 4 (Active Directory) in progress. Batch 3 (ADCS) complete. 40 skills built, ~19,000 lines. See `task_plan.md` for the full build plan.
 
 ## Disclaimer
 
