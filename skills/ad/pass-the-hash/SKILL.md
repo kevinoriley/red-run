@@ -415,11 +415,11 @@ domain info, and mode.
 For additional lateral movement techniques, tools, and edge cases:
 
 ```
-Read ~/docs/public-security-references/docs/active-directory/hash-pass-the-hash.md
-Read ~/docs/public-security-references/docs/active-directory/hash-over-pass-the-hash.md
-Read ~/docs/public-security-references/docs/active-directory/hash-pass-the-key.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/over-pass-the-hash-pass-the-key.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/pass-the-ticket.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/hash-pass-the-hash.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/hash-over-pass-the-hash.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/hash-pass-the-key.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/over-pass-the-hash-pass-the-key.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/pass-the-ticket.md
 ```
 
 ## Troubleshooting

@@ -493,11 +493,11 @@ Update `engagement/state.md` with escalation results.
 For additional service vectors, DLL targets, and auto-updater exploits:
 
 ```
-Read ~/docs/public-security-references/src/windows-hardening/windows-local-privilege-escalation/dll-hijacking/README.md
-Read ~/docs/public-security-references/src/windows-hardening/windows-local-privilege-escalation/dll-hijacking/writable-sys-path-dll-hijacking-privesc.md
-Read ~/docs/public-security-references/src/windows-hardening/windows-local-privilege-escalation/service-triggers.md
-Read ~/docs/public-security-references/src/windows-hardening/windows-local-privilege-escalation/abusing-auto-updaters-and-ipc.md
-Read ~/docs/public-security-references/docs/redteam/escalation/windows-privilege-escalation.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/windows-local-privilege-escalation/dll-hijacking/README.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/windows-local-privilege-escalation/dll-hijacking/writable-sys-path-dll-hijacking-privesc.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/windows-local-privilege-escalation/service-triggers.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/windows-local-privilege-escalation/abusing-auto-updaters-and-ipc.md
+Read $RED_RUN_DOCS/public-security-references/docs/redteam/escalation/windows-privilege-escalation.md
 ```
 
 ## Troubleshooting

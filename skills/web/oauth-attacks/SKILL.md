@@ -565,9 +565,9 @@ technique, tokens obtained, current mode.
 For expanded payloads, edge cases, and provider-specific techniques:
 
 ```
-Read ~/docs/public-security-references/src/pentesting-web/oauth-to-account-takeover.md
-Read ~/docs/public-security-references/src/pentesting-web/oauth-to-account-takeover/oauth-happy-paths-xss-iframes-post-messages-and-open-redirects.md
-Read ~/docs/public-security-references/OAuth Misconfiguration/README.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/oauth-to-account-takeover.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/oauth-to-account-takeover/oauth-happy-paths-xss-iframes-post-messages-and-open-redirects.md
+Read $RED_RUN_DOCS/public-security-references/OAuth Misconfiguration/README.md
 ```
 
 ## Troubleshooting

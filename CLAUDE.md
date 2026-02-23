@@ -117,14 +117,14 @@ description: >
 4. **State Management**: Read state.md on activation, write back on completion
 5. **Prerequisites**: Access, tools, conditions
 6. **Steps**: Assess → Confirm → Exploit → Escalate/Pivot
-7. **Deep Reference**: `~/docs/` paths for WAF bypass, edge cases
+7. **Deep Reference**: `$RED_RUN_DOCS/` paths for WAF bypass, edge cases
 8. **Troubleshooting**: Common failures and fixes
 
 ### Conventions
 - Skill names use kebab-case: `sql-injection-union`, `kerberoasting`, `docker-socket-escape`
 - One technique per skill — split broad topics into focused skills
 - Embed critical payloads directly (top 2-3 per DB/variant for 80% coverage)
-- Reference `~/docs/` for the long tail (WAF bypass, alternative functions, edge cases)
+- Reference `$RED_RUN_DOCS/` for the long tail (WAF bypass, alternative functions, edge cases)
 - OPSEC rating in description: `low` = passive/read-only, `medium` = creates artifacts, `high` = noisy/detected by EDR
 - Inter-skill routing: bold skill names in escalation sections
 - **Discovery skill maintenance**: When creating a new technique skill, update the corresponding discovery skill's routing table to include it. `web-discovery` must route to every web technique skill.
@@ -134,12 +134,16 @@ description: >
 
 ### Reference Repositories
 
-Skills reference `~/docs/` for deep payload content. Clone these:
+Skills reference `$RED_RUN_DOCS` for deep payload content. Set the environment variable
+to wherever you cloned the repos:
 
 ```bash
-git clone <removed> ~/docs/public-security-references
-git clone <removed> ~/docs/public-security-references
-git clone <removed> ~/docs/public-security-references
+export RED_RUN_DOCS="/path/to/docs"  # Add to shell profile
+# Falls back to ~/docs/ if unset
+
+git clone <removed> "$RED_RUN_DOCS/public-security-references"
+git clone <removed> "$RED_RUN_DOCS/public-security-references"
+git clone <removed> "$RED_RUN_DOCS/public-security-references"
 ```
 
 Skills degrade gracefully if these aren't available — embedded payloads still work.
@@ -182,6 +186,6 @@ Skills install to `~/.claude/skills/red-run-<skill-name>/SKILL.md`.
 
 ### Extended / Backlog Phases
 
-Each core phase (web, AD, privesc, etc.) may produce an "extended" sub-phase (e.g., Phase 3b) during its coverage audit. Extended phases contain important but lower-priority techniques identified from ~/docs/ that didn't make the core cut. They live in `task_plan.md` alongside the core phase and can be built as capacity allows or interleaved with later phases.
+Each core phase (web, AD, privesc, etc.) may produce an "extended" sub-phase (e.g., Phase 3b) during its coverage audit. Extended phases contain important but lower-priority techniques identified from `$RED_RUN_DOCS` that didn't make the core cut. They live in `task_plan.md` alongside the core phase and can be built as capacity allows or interleaved with later phases.
 
 The Backlog section in `task_plan.md` holds niche or reference-only topics that are too specialized for a dedicated skill but worth tracking. Build these on-demand if they come up during an engagement.

@@ -401,11 +401,11 @@ Update `engagement/state.md` with forged ticket details and access obtained.
 For additional ticket forging techniques, edge cases, and tool options:
 
 ```
-Read ~/docs/public-security-references/docs/active-directory/ad-adds-kerberos-tickets.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/golden-ticket.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/silver-ticket.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/diamond-ticket.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/pass-the-ticket.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adds-kerberos-tickets.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/golden-ticket.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/silver-ticket.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/diamond-ticket.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/pass-the-ticket.md
 ```
 
 ## Troubleshooting

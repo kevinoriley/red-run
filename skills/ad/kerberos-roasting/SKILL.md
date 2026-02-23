@@ -386,11 +386,11 @@ When routing, pass: cracked username/password, domain, DC hostname, and mode.
 For extended wordlists, rules, tool options, and edge cases:
 
 ```
-Read ~/docs/public-security-references/docs/active-directory/ad-roasting-kerberoasting.md
-Read ~/docs/public-security-references/docs/active-directory/ad-roasting-asrep.md
-Read ~/docs/public-security-references/docs/active-directory/ad-roasting-timeroasting.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/kerberoast.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/asreproast.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-roasting-kerberoasting.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-roasting-asrep.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-roasting-timeroasting.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/kerberoast.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/asreproast.md
 ```
 
 ## Troubleshooting

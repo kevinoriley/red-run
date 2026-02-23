@@ -519,9 +519,9 @@ technique, current mode, and scope of exposed data.
 For expanded methodology, edge cases, and additional patterns:
 
 ```
-Read ~/docs/public-security-references/IDOR - Insecure Direct Object References/README.md
-Read ~/docs/public-security-references/src/pentesting-web/idor.md
-Read ~/docs/public-security-references/src/network-services-pentesting/pentesting-web/web-api-pentesting.md
+Read $RED_RUN_DOCS/public-security-references/IDOR - Insecure Direct Object References/README.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/idor.md
+Read $RED_RUN_DOCS/public-security-references/src/network-services-pentesting/pentesting-web/web-api-pentesting.md
 ```
 
 ## Troubleshooting

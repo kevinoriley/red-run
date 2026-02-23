@@ -400,13 +400,13 @@ Update `engagement/state.md` with:
 For edge cases, advanced trust configurations, and additional techniques:
 
 ```
-Read ~/docs/public-security-references/docs/active-directory/trust-relationship.md
-Read ~/docs/public-security-references/docs/active-directory/trust-sid-hijacking.md
-Read ~/docs/public-security-references/docs/active-directory/trust-ticket.md
-Read ~/docs/public-security-references/docs/active-directory/trust-pam.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/sid-history-injection.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/external-forest-domain-oneway-inbound.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/external-forest-domain-one-way-outbound.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/trust-relationship.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/trust-sid-hijacking.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/trust-ticket.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/trust-pam.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/sid-history-injection.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/external-forest-domain-oneway-inbound.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/external-forest-domain-one-way-outbound.md
 ```
 
 ## Troubleshooting

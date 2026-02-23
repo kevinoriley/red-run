@@ -559,15 +559,15 @@ After establishing persistence:
 For additional techniques, edge cases, and detection bypass:
 
 ```
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/ad-certificates/certificate-theft.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/ad-certificates/domain-persistence.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/ad-certificates/account-persistence.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/ad-certificates/domain-escalation.md
-Read ~/docs/public-security-references/docs/active-directory/ad-adcs-esc09.md
-Read ~/docs/public-security-references/docs/active-directory/ad-adcs-esc10.md
-Read ~/docs/public-security-references/docs/active-directory/ad-adcs-esc13.md
-Read ~/docs/public-security-references/docs/active-directory/ad-adcs-esc14.md
-Read ~/docs/public-security-references/docs/active-directory/ad-adcs-esc15.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/ad-certificates/certificate-theft.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/ad-certificates/domain-persistence.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/ad-certificates/account-persistence.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/ad-certificates/domain-escalation.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adcs-esc09.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adcs-esc10.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adcs-esc13.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adcs-esc14.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adcs-esc15.md
 ```
 
 ## Troubleshooting

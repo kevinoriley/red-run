@@ -158,15 +158,25 @@ Every skill reads `state.md` on activation and writes back on completion. The or
 
 ## Installation
 
-### Prerequisites
+### Reference repositories
 
-Skills reference `~/docs/` for deep payload content beyond what's embedded. Clone these (optional — skills degrade gracefully without them):
+Skills reference `$RED_RUN_DOCS` for deep payload content beyond what's embedded. Clone these anywhere (optional — skills degrade gracefully without them):
 
 ```bash
-git clone <removed> ~/docs/public-security-references
-git clone <removed> ~/docs/public-security-references
-git clone <removed> ~/docs/public-security-references
+# Clone to any directory you like
+git clone <removed> /path/to/docs/public-security-references
+git clone <removed> /path/to/docs/public-security-references
+git clone <removed> /path/to/docs/public-security-references
 ```
+
+Then set the `RED_RUN_DOCS` environment variable to point to your docs directory:
+
+```bash
+# Add to your shell profile (~/.bashrc, ~/.zshrc, etc.)
+export RED_RUN_DOCS="/path/to/docs"
+```
+
+If `RED_RUN_DOCS` is not set, skills fall back to `~/docs/`.
 
 ### Install
 
@@ -193,7 +203,7 @@ Skills synthesize content from three reference repositories:
 | [public-security-references](<removed>) | AD, red team ops, cloud, evasion — 15 ADCS ESC files, full delegation chain |
 | [public-security-references](<removed>) | Broadest scope — binary exploitation, macOS, mobile, network protocols |
 
-Each skill embeds the top 2-3 payloads per variant (80% coverage) and references `~/docs/` for WAF bypass, edge cases, and the long tail.
+Each skill embeds the top 2-3 payloads per variant (80% coverage) and references `$RED_RUN_DOCS` for WAF bypass, edge cases, and the long tail.
 
 ## Running Claude Code for pentesting
 

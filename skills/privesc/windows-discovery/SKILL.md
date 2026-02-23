@@ -496,9 +496,9 @@ specific findings, current mode.
 For additional enumeration techniques, edge cases, or tool-specific options:
 
 ```
-Read ~/docs/public-security-references/src/windows-hardening/windows-local-privilege-escalation/README.md
-Read ~/docs/public-security-references/docs/redteam/escalation/windows-privilege-escalation.md
-Read ~/docs/public-security-references/src/windows-hardening/checklist-windows-privilege-escalation.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/windows-local-privilege-escalation/README.md
+Read $RED_RUN_DOCS/public-security-references/docs/redteam/escalation/windows-privilege-escalation.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/checklist-windows-privilege-escalation.md
 ```
 
 ## Troubleshooting

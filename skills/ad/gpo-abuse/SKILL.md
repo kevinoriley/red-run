@@ -476,9 +476,9 @@ Update `engagement/state.md` with GPO-based access and credentials.
 For additional GPO techniques, tool options, and edge cases:
 
 ```
-Read ~/docs/public-security-references/docs/active-directory/ad-adds-group-policy-objects.md
-Read ~/docs/public-security-references/docs/active-directory/pwd-group-policy-preferences.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/acl-persistence-abuse/README.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adds-group-policy-objects.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/pwd-group-policy-preferences.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/acl-persistence-abuse/README.md
 ```
 
 ## Troubleshooting

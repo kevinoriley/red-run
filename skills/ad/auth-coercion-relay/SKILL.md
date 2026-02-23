@@ -528,12 +528,12 @@ and relay paths tested.
 For additional relay techniques, coercion methods, and edge cases:
 
 ```
-Read ~/docs/public-security-references/docs/active-directory/internal-relay-ntlm.md
-Read ~/docs/public-security-references/docs/active-directory/internal-relay-kerberos.md
-Read ~/docs/public-security-references/docs/active-directory/internal-relay-coerce.md
-Read ~/docs/public-security-references/docs/active-directory/hash-capture.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/printers-spooler-service-abuse.md
-Read ~/docs/public-security-references/src/generic-methodologies-and-resources/pentesting-network/spoofing-llmnr-nbt-ns-mdns-dns-and-wpad-and-relay-attacks.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/internal-relay-ntlm.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/internal-relay-kerberos.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/internal-relay-coerce.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/hash-capture.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/printers-spooler-service-abuse.md
+Read $RED_RUN_DOCS/public-security-references/src/generic-methodologies-and-resources/pentesting-network/spoofing-llmnr-nbt-ns-mdns-dns-and-wpad-and-relay-attacks.md
 ```
 
 ## Troubleshooting

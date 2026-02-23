@@ -16,15 +16,22 @@ if [[ "${1:-}" == "--copy" ]]; then
     MODE="copy"
 fi
 
-# Check ~/docs dependencies
+# Check reference docs dependencies
+DOCS_DIR="${RED_RUN_DOCS:-${HOME}/docs}"
 for dep in public-security-references public-security-references public-security-references; do
-    if [[ ! -d "${HOME}/docs/${dep}" ]]; then
-        echo "WARNING: ~/docs/${dep} not found."
+    if [[ ! -d "${DOCS_DIR}/${dep}" ]]; then
+        echo "WARNING: ${dep} not found in ${DOCS_DIR}/"
         echo "  Skills referencing this repo will have degraded functionality."
-        echo "  Clone it: git clone <url> ~/docs/${dep}"
+        echo "  Clone it: git clone <url> ${DOCS_DIR}/${dep}"
         echo ""
     fi
 done
+
+if [[ -z "${RED_RUN_DOCS:-}" ]]; then
+    echo "TIP: Set RED_RUN_DOCS to customize the docs location (default: ~/docs/)"
+    echo "  export RED_RUN_DOCS=\"/path/to/docs\"  # add to your shell profile"
+    echo ""
+fi
 
 mkdir -p "${SKILLS_DST}"
 

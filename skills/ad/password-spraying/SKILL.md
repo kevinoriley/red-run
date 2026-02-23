@@ -463,8 +463,8 @@ When routing, pass: valid username/password, domain, DC hostname, current mode.
 For extended tool options, cloud-specific spray techniques, and edge cases:
 
 ```
-Read ~/docs/public-security-references/docs/active-directory/pwd-spraying.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/password-spraying.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/pwd-spraying.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/password-spraying.md
 ```
 
 ## Troubleshooting

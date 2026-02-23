@@ -489,9 +489,9 @@ current mode, and impact assessment.
 For expanded payloads, edge cases, and framework-specific techniques:
 
 ```
-Read ~/docs/public-security-references/Account Takeover/README.md
-Read ~/docs/public-security-references/src/pentesting-web/reset-password.md
-Read ~/docs/public-security-references/src/pentesting-web/account-takeover.md
+Read $RED_RUN_DOCS/public-security-references/Account Takeover/README.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/reset-password.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/account-takeover.md
 ```
 
 ## Troubleshooting

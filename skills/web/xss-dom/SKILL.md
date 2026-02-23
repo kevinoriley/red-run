@@ -333,12 +333,12 @@ When routing, pass along: source, sink, data flow path, working payload, current
 For comprehensive source/sink lists, DOM clobbering, and advanced techniques:
 
 ```
-Read ~/docs/public-security-references/src/pentesting-web/xss-cross-site-scripting/dom-xss.md
-Read ~/docs/public-security-references/src/pentesting-web/xss-cross-site-scripting/dom-clobbering.md
-Read ~/docs/public-security-references/src/pentesting-web/xss-cross-site-scripting/iframes-in-xss-and-csp.md
-Read ~/docs/public-security-references/src/pentesting-web/xss-cross-site-scripting/shadow-dom.md
-Read ~/docs/public-security-references/src/pentesting-web/xss-cross-site-scripting/steal-info-js.md
-Read ~/docs/public-security-references/XSS Injection/README.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/xss-cross-site-scripting/dom-xss.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/xss-cross-site-scripting/dom-clobbering.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/xss-cross-site-scripting/iframes-in-xss-and-csp.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/xss-cross-site-scripting/shadow-dom.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/xss-cross-site-scripting/steal-info-js.md
+Read $RED_RUN_DOCS/public-security-references/XSS Injection/README.md
 ```
 
 ## Troubleshooting

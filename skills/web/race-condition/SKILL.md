@@ -680,12 +680,12 @@ When routing, pass along: the confirmed race endpoint, synchronization technique
 For expanded techniques, additional Turbo Intruder templates, and edge cases:
 
 ```
-Read ~/docs/public-security-references/Race Condition/README.md
-Read ~/docs/public-security-references/src/pentesting-web/race-condition.md
-Read ~/docs/public-security-references/Business Logic Errors/README.md
-Read ~/docs/public-security-references/src/pentesting-web/rate-limit-bypass.md
-Read ~/docs/public-security-references/src/pentesting-web/2fa-bypass.md
-Read ~/docs/public-security-references/src/pentesting-web/reset-password.md
+Read $RED_RUN_DOCS/public-security-references/Race Condition/README.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/race-condition.md
+Read $RED_RUN_DOCS/public-security-references/Business Logic Errors/README.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/rate-limit-bypass.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/2fa-bypass.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/reset-password.md
 ```
 
 ## Troubleshooting

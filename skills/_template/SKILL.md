@@ -108,9 +108,9 @@ and any payloads that already succeeded.
 For edge cases, WAF bypass, or alternative payloads beyond what's embedded above:
 
 ```
-Read ~/docs/public-security-references/<relevant-path>
-Read ~/docs/public-security-references/src/<relevant-path>
-Read ~/docs/public-security-references/<relevant-path>
+Read $RED_RUN_DOCS/public-security-references/<relevant-path>
+Read $RED_RUN_DOCS/public-security-references/src/<relevant-path>
+Read $RED_RUN_DOCS/public-security-references/<relevant-path>
 ```
 
 ## Troubleshooting

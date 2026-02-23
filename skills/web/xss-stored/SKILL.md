@@ -277,11 +277,11 @@ When routing, pass along: storage point, render context, working payload, CSP (i
 For advanced payloads, filter bypass, SVG/XML XSS, and edge cases:
 
 ```
-Read ~/docs/public-security-references/XSS Injection/README.md
-Read ~/docs/public-security-references/XSS Injection/1 - XSS Filter Bypass.md
-Read ~/docs/public-security-references/XSS Injection/4 - CSP Bypass.md
-Read ~/docs/public-security-references/src/pentesting-web/xss-cross-site-scripting/README.md
-Read ~/docs/public-security-references/src/pentesting-web/xss-cross-site-scripting/server-side-xss-dynamic-pdf.md
+Read $RED_RUN_DOCS/public-security-references/XSS Injection/README.md
+Read $RED_RUN_DOCS/public-security-references/XSS Injection/1 - XSS Filter Bypass.md
+Read $RED_RUN_DOCS/public-security-references/XSS Injection/4 - CSP Bypass.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/xss-cross-site-scripting/README.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/xss-cross-site-scripting/server-side-xss-dynamic-pdf.md
 ```
 
 ## Troubleshooting

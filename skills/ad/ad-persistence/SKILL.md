@@ -528,14 +528,14 @@ For additional persistence techniques, detection signatures, and
 cleanup procedures:
 
 ```
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/dcshadow.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/skeleton-key.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/custom-ssp.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/security-descriptors.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/dsrm-credentials.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/ad-certificates/domain-persistence.md
-Read ~/docs/public-security-references/src/windows-hardening/active-directory-methodology/ad-certificates/account-persistence.md
-Read ~/docs/public-security-references/docs/active-directory/ad-adfs-federation-services.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/dcshadow.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/skeleton-key.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/custom-ssp.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/security-descriptors.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/dsrm-credentials.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/ad-certificates/domain-persistence.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/active-directory-methodology/ad-certificates/account-persistence.md
+Read $RED_RUN_DOCS/public-security-references/docs/active-directory/ad-adfs-federation-services.md
 ```
 
 ## Troubleshooting

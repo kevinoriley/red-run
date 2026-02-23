@@ -480,12 +480,12 @@ used, what's accessible internally, current mode.
 For comprehensive bypass techniques, cloud-specific payloads, and protocol details:
 
 ```
-Read ~/docs/public-security-references/Server Side Request Forgery/README.md
-Read ~/docs/public-security-references/Server Side Request Forgery/SSRF-Cloud-Instances.md
-Read ~/docs/public-security-references/Server Side Request Forgery/SSRF-Advanced-Exploitation.md
-Read ~/docs/public-security-references/src/pentesting-web/ssrf-server-side-request-forgery/README.md
-Read ~/docs/public-security-references/src/pentesting-web/ssrf-server-side-request-forgery/cloud-ssrf.md
-Read ~/docs/public-security-references/src/pentesting-web/ssrf-server-side-request-forgery/url-format-bypass.md
+Read $RED_RUN_DOCS/public-security-references/Server Side Request Forgery/README.md
+Read $RED_RUN_DOCS/public-security-references/Server Side Request Forgery/SSRF-Cloud-Instances.md
+Read $RED_RUN_DOCS/public-security-references/Server Side Request Forgery/SSRF-Advanced-Exploitation.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/ssrf-server-side-request-forgery/README.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/ssrf-server-side-request-forgery/cloud-ssrf.md
+Read $RED_RUN_DOCS/public-security-references/src/pentesting-web/ssrf-server-side-request-forgery/url-format-bypass.md
 ```
 
 ## Troubleshooting

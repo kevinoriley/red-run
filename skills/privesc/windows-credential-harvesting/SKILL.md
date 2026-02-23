@@ -501,9 +501,9 @@ current mode.
 For advanced DPAPI attacks, HEKATOMB/DonPAPI automation, or edge cases:
 
 ```
-Read ~/docs/public-security-references/src/windows-hardening/windows-local-privilege-escalation/dpapi-extracting-passwords.md
-Read ~/docs/public-security-references/src/windows-hardening/stealing-credentials/credentials-mimikatz.md
-Read ~/docs/public-security-references/docs/redteam/escalation/windows-privilege-escalation.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/windows-local-privilege-escalation/dpapi-extracting-passwords.md
+Read $RED_RUN_DOCS/public-security-references/src/windows-hardening/stealing-credentials/credentials-mimikatz.md
+Read $RED_RUN_DOCS/public-security-references/docs/redteam/escalation/windows-privilege-escalation.md
 ```
 
 **Advanced tools:**
