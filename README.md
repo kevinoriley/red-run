@@ -1,10 +1,10 @@
 # red-run
 
-An operator's companion for penetration testing and CTF work, built as a Claude Code skill library.
+A redteam runbook that turns Claude Code into a pentest and CTF partner.
 
 ## What is this?
 
-red-run turns Claude Code into a pentest partner that knows the techniques, carries the payloads, and can execute when you tell it to. It's not a push-button autopwn tool and it's not a passive reference doc — it sits between the two.
+red-run is a redteam runbook — built as a Claude Code skill library — that knows the techniques, carries the payloads, and can execute when you tell it to. It's not a push-button autopwn tool and it's not a passive reference doc — it sits between the two.
 
 In **guided mode** (default), Claude walks you through each attack step, shows you the command it would run, explains what to look for in the output, and asks before executing. You stay in the driver's seat. In **autonomous mode**, Claude runs commands directly, makes triage decisions at forks, and only pauses for destructive or high-OPSEC actions. Autonomous is better suited for CTFs and lab environments where OPSEC doesn't matter.
 
@@ -80,7 +80,7 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 | `2fa-bypass` | Response manipulation, direct navigation, OTP brute-force, backup codes, OAuth bypass, session attacks | 585 |
 | `race-condition` | Limit-overrun, HTTP/2 single-packet, last-byte sync, Turbo Intruder, TOCTOU, rate limit bypass | 719 |
 
-### Active Directory (13 skills)
+### Active Directory (16 skills)
 
 | Skill | Technique | Lines |
 |-------|-----------|-------|
@@ -97,12 +97,15 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 | `auth-coercion-relay` | PetitPotam/PrinterBug/DFSCoerce coercion, NTLM relay (LDAP/SMB/ADCS/MSSQL), Kerberos relay, LLMNR/NBNS poisoning | 581 |
 | `credential-dumping` | DCSync, NTDS extraction, SAM dump, LAPS (legacy + Windows), gMSA/GoldenGMSA, dMSA BadSuccessor, DSRM | 603 |
 | `gpo-abuse` | GPO exploitation (SharpGPOAbuse/pyGPOAbuse/GroupPolicyBackdoor), SYSVOL script poisoning, GPP passwords | 532 |
+| `trust-attacks` | Trust enumeration, SID history injection (child to forest root), inter-realm TGT forging, PAM trust/shadow principals, cross-forest abuse | 464 |
+| `sccm-exploitation` | SCCM enumeration (sccmhunter/SharpSCCM), NAA credential extraction, MP relay to MSSQL, client push relay, PXE boot harvesting, app deployment | 510 |
+| `ad-persistence` | DCShadow, Skeleton Key, custom SSP (mimilib/memssp), security descriptor backdoors, ADFS Golden SAML, SID history persistence, golden certificate | 600 |
 
 All AD skills follow a **Kerberos-first authentication** convention — commands default to ccache-based Kerberos auth to avoid NTLM detection signatures (Event 4776, CrowdStrike Identity Module). Exception: relay/coercion attacks are inherently NTLM/network-level.
 
 ### Planned
 
-- **Active Directory** (3 remaining) — trust attacks, SCCM exploitation, AD persistence
+- **Active Directory** (6 extended) — ADIDNS poisoning, DCOM lateral movement, RODC exploitation, named CVEs (NoPAC/PrintNightmare/ZeroLogon), MSSQL AD abuse, deployment targets (MDT/WSUS/SCOM)
 - **Privilege Escalation** — Windows, Linux, macOS
 - **Infrastructure** — network recon, pivoting, cloud (AWS/Azure), containers, CI/CD
 - **Red Team** — C2, initial access, evasion, persistence, credential dumping
@@ -183,7 +186,7 @@ Each skill embeds the top 2-3 payloads per variant (80% coverage) and references
 
 ## Status
 
-Phase 4 (Active Directory) in progress. Batch 4 (Relay & Credentials) complete. 43 skills built, ~20,700 lines. See `task_plan.md` for the full build plan.
+Phase 4 (Active Directory) core complete. 46 skills built, ~22,500 lines. Phase 4b (6 extended AD skills) and Phase 5 (Privilege Escalation) next. See `task_plan.md` for the full build plan.
 
 ## Disclaimer
 
