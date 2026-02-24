@@ -127,12 +127,12 @@ command arg1 arg2
 on activation — stale state means duplicate work or missed context.
 
 After completing this technique:
-- <Outcome 1>: Route to **<other-skill-name>**
-- <Outcome 2>: Route to **<other-skill-name>**
+- <Outcome 1>: STOP. Invoke **<other-skill-name>** via the Skill tool. Pass: <context>. Do not execute <category> commands inline.
+- <Outcome 2>: STOP. Invoke **<other-skill-name>** via the Skill tool. Pass: <context>. Do not execute <category> commands inline.
 - <Outcome 3>: Summarize findings, suggest next steps
 
-When routing, pass along: injection point, target technology, current mode,
-and any payloads that already succeeded.
+When routing, always pass along: injection point, target technology, current
+mode, and any payloads that already succeeded.
 
 ## Troubleshooting
 

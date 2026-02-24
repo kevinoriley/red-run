@@ -35,6 +35,32 @@ This applies in both guided and autonomous modes. Autonomous mode means you
 make triage and routing decisions without asking — it does not mean you bypass
 the skill library.
 
+### If the Skill Tool Fails
+
+If invoking a skill via the Skill tool returns an error (file not found, skill
+not loaded, empty content), **STOP**. Do not fall back to executing the
+technique inline. Do not read the skill file with the Read tool and execute its
+contents. Tell the user:
+
+> Skill invocation failed. Run `./install.sh` from the red-run repo directory
+> to reinstall skills, then restart this session.
+
+Skills fail when symlinks are broken (repo moved, install pointed at wrong
+path). Inline execution is never an acceptable fallback — it skips payloads,
+edge-case handling, and methodology that the skill contains.
+
+### Commands the Orchestrator May Execute Directly
+
+The orchestrator routes to skills — it does not run attack tools itself.
+The only commands the orchestrator may execute directly are:
+
+- `mkdir -p engagement/evidence` — engagement directory creation
+- File writes to `engagement/` — scope.md, state.md, activity.md, findings.md
+- `httpx -u <target> -title -tech-detect -status-code -follow-redirects` — initial web triage only
+
+Everything else — nmap, netexec, ffuf, nuclei, sqlmap, any exploitation tool —
+MUST go through the appropriate skill via the Skill tool.
+
 ### Pre-Routing Checkpoint
 
 Before every skill invocation, write `engagement/state.md` and append to
@@ -151,11 +177,16 @@ mkdir -p engagement/evidence
 
 ## Step 2: Reconnaissance
 
-Map the attack surface. Route to **network-recon** for comprehensive scanning.
+Map the attack surface by routing to discovery skills. Do not run scanning or
+enumeration tools directly from the orchestrator.
 
 ### Network Recon (if IP/subnet in scope)
 
-Route to **network-recon** with the target IP, hostname, or CIDR range. It will:
+STOP. Invoke **network-recon** via the Skill tool. Pass: target IP, hostname,
+or CIDR range, current mode, and any credentials from scope.
+Do not execute nmap, masscan, or netexec commands inline.
+
+Network-recon will:
 1. Run host discovery (for subnets) and full port scanning
 2. Enumerate services on each open port with quick-win checks (anonymous access,
    default creds, known CVEs)
@@ -164,44 +195,29 @@ Route to **network-recon** with the target IP, hostname, or CIDR range. It will:
 5. Update state.md with all discovered hosts, ports, and services
 6. Return routing recommendations for next steps
 
-**Always route to network-recon for scanning — do not run nmap directly.**
-Network-recon handles the sudo handoff protocol and scan configuration.
-Wait for scan results before proceeding to attack surface mapping.
+Wait for network-recon to complete before proceeding to attack surface mapping.
 
 ### Web Discovery (if HTTP/HTTPS found)
 
-Route to **web-discovery** after network-recon identifies HTTP services. Or
-for quick initial triage:
-
-```bash
-# Identify web technologies
-httpx -u https://TARGET -title -tech-detect -status-code -follow-redirects
-
-# Screenshot web services
-httpx -u https://TARGET -screenshot -srd engagement/evidence/screenshots
-```
+STOP. Invoke **web-discovery** via the Skill tool. Pass: target URL,
+technology stack (from network-recon results), current mode.
+Do not execute ffuf, httpx, or nuclei commands inline.
 
 ### Host Enumeration (if domain environment suspected)
 
-```bash
-# SMB enumeration
-netexec smb TARGET
-netexec smb TARGET --shares
-netexec smb TARGET --users
-
-# LDAP check
-netexec ldap TARGET
-```
+STOP. Invoke **ad-discovery** via the Skill tool. Pass: target IP, domain name
+(from LDAP rootDSE or SMB discovery), any credentials.
+Do not execute netexec or ldapsearch commands inline.
 
 ### Update State
 
-After recon, update `engagement/state.md` Targets section with discovered
-hosts, ports, services, and technologies.
+After discovery skills return, update `engagement/state.md` Targets section
+with discovered hosts, ports, services, and technologies.
 
 Log to `engagement/activity.md`:
 ```markdown
 ### [HH:MM] orchestrator → recon
-- Scanned TARGET with nmap — N open ports
+- Routed to network-recon → N open ports found
 - Web services found: <list>
 - Technologies: <list>
 - Domain environment: yes/no
@@ -211,15 +227,15 @@ Log to `engagement/activity.md`:
 
 Based on recon results, categorize the attack surface:
 
-| Surface | Indicators | Route To |
-|---------|-----------|----------|
-| Web application | HTTP/HTTPS, login forms, APIs | **web-discovery** |
-| Active Directory | LDAP (389/636), Kerberos (88), SMB domain | **ad-discovery** |
-| Containers / K8s | Docker API (2375), K8s API (6443/8443), kubelet (10250), etcd (2379), or inside a container | **container-escapes** |
+| Surface | Indicators | Action |
+|---------|-----------|--------|
+| Web application | HTTP/HTTPS, login forms, APIs | STOP. Invoke **web-discovery** via the Skill tool. |
+| Active Directory | LDAP (389/636), Kerberos (88), SMB domain | STOP. Invoke **ad-discovery** via the Skill tool. |
+| Containers / K8s | Docker API (2375), K8s API (6443/8443), kubelet (10250), etcd (2379), or inside a container | STOP. Invoke **container-escapes** via the Skill tool. |
 | Database | MySQL (3306), MSSQL (1433), PostgreSQL (5432) | Direct DB testing |
 | Mail | SMTP (25/587), IMAP (143/993) | Credential attacks, phishing |
 | File shares | SMB (445), NFS (2049) | Enumeration, sensitive files |
-| Remote access | SSH (22), RDP (3389), WinRM (5985) | Credential spraying |
+| Remote access | SSH (22), RDP (3389), WinRM (5985) | STOP. Invoke **password-spraying** via the Skill tool. |
 | Custom services | Non-standard ports | Manual investigation |
 
 **In guided mode**: Present the attack surface map and ask which paths to
@@ -237,31 +253,23 @@ Route to discovery skills based on attack surface. Pass along:
 
 ### Web Applications
 
-Route to **web-discovery** with the target URL. It will:
-1. Run content and parameter discovery
-2. Test for injection points
-3. Route to technique skills (SQLi, XSS, SSTI, SSRF, etc.)
+STOP. Invoke **web-discovery** via the Skill tool. Pass: target URL,
+technology stack, current mode, any credentials.
+Do not execute ffuf, httpx, or nuclei commands inline.
 
 ### Active Directory
 
-Route to **ad-discovery** (when available) with domain info. It will:
-1. Enumerate users, groups, trusts
-2. Identify attack paths (Kerberoastable, delegation, ADCS)
-3. Route to technique skills
+STOP. Invoke **ad-discovery** via the Skill tool. Pass: DC IP, domain name,
+any credentials, current mode.
+Do not execute netexec, ldapsearch, or bloodhound commands inline.
 
 ### Credential Attacks
 
 For services with authentication (SSH, RDP, SMB, web login):
 
-```bash
-# Password spraying (careful — lockout policies)
-netexec smb TARGET -u users.txt -p 'SeasonYear!' --no-bruteforce
-
-# Check known credentials against other services
-netexec smb TARGET -u 'found_user' -p 'found_pass'
-netexec winrm TARGET -u 'found_user' -p 'found_pass'
-netexec rdp TARGET -u 'found_user' -p 'found_pass'
-```
+STOP. Invoke **password-spraying** via the Skill tool. Pass: target IP,
+service type(s), any known usernames and passwords, current mode.
+Do not execute netexec or hydra commands inline.
 
 ## Step 5: Vulnerability Chaining
 
@@ -289,14 +297,14 @@ Think through these chains systematically:
 - Service account → Kerberoasting → more credentials
 - Machine keys from IIS → ViewState RCE on other IIS sites
 - Database link → linked server → second database
-- Host access on new subnet → **pivoting-tunneling** → **network-recon** on internal network
+- Host access on new subnet → invoke **pivoting-tunneling** via Skill tool → then invoke **network-recon** via Skill tool on internal network
 
 **Privilege Escalation:**
 - Local admin → dump credentials → domain user
 - Domain user → Kerberoasting/ASREProasting → service accounts
 - Service account → delegation abuse → domain admin
 - ADCS misconfiguration → certificate forgery → domain admin
-- Containerized shell → **container-escapes** → host access → **linux-discovery** / **windows-discovery**
+- Containerized shell → invoke **container-escapes** via Skill tool → host access → invoke **linux-discovery** or **windows-discovery** via Skill tool
 
 ### Decision Logic
 
@@ -350,7 +358,7 @@ When the engagement is complete (objectives met or testing window closed):
 1. Read `engagement/state.md` for the full picture
 2. Read `engagement/findings.md` for confirmed vulnerabilities
 3. Summarize the attack narrative — how each chain progressed
-4. Route to **pentest-findings** for formal writeups of each finding
+4. STOP. Invoke **pentest-findings** via the Skill tool for formal writeups of each finding. Do not write finding reports inline.
 
 ### Engagement Summary Template
 
