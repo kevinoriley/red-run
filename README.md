@@ -23,7 +23,6 @@ Skills auto-trigger based on conversation context. Say "I found a SQL injection 
 
 - Make scope decisions for you
 - Replace your judgment on OPSEC/risk trade-offs in a real engagement
-- Run without your approval in guided mode (the default)
 
 ## How it works
 
