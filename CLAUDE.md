@@ -119,8 +119,8 @@ description: >
 
 1. **Preamble**: "You are helping a penetration tester with..."
 2. **Mode**: Check for guided vs autonomous
-3. **Engagement Logging**: Check for engagement dir, log activity/findings/evidence
-4. **State Management**: Read state.md on activation, write back on completion
+3. **Engagement Logging**: Check for engagement dir, log invocation immediately, log activity/findings/evidence at milestones
+4. **State Management**: Read state.md on activation, write at checkpoints (vuln confirmed, exploitation, pre-routing)
 5. **Prerequisites**: Access, tools, conditions
 6. **Steps**: Assess → Confirm → Exploit → Escalate/Pivot
 7. **Troubleshooting**: Common failures and fixes

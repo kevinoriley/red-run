@@ -50,6 +50,23 @@ When an engagement directory exists:
 - **Evidence** -> Save hash files to `engagement/evidence/kerberoast-hashes.txt`,
   cracked results to `engagement/evidence/kerberoast-cracked.txt`.
 
+### Invocation Log
+
+Immediately on activation — before reading state.md or doing any assessment —
+log invocation to both the screen and activity.md:
+
+1. **On-screen**: Print `[kerberos-roasting] Activated → <target>` so the operator
+   sees which skill is running.
+2. **activity.md**: Append:
+   ```
+   ### [HH:MM] kerberos-roasting → <target>
+   - Invoked (assessment starting)
+   ```
+
+This entry must be written NOW, not deferred. Subsequent milestone entries
+append bullet points under this same header.
+
+
 ## State Management
 
 If `engagement/state.md` exists, read it before starting. Use it to:
@@ -57,7 +74,13 @@ If `engagement/state.md` exists, read it before starting. Use it to:
 - Use existing credentials for authenticated enumeration
 - Check if SPNs or AS-REP targets were already identified by **ad-discovery**
 
-After completing, update `engagement/state.md`:
+Write `engagement/state.md` at these checkpoints (not just at completion):
+1. **After confirming a vulnerability** — add to Vulns with `[found]`
+2. **After successful exploitation** — add credentials, access, pivot paths
+3. **Before routing to another skill** — the next skill reads state.md on activation
+
+At each checkpoint and on completion, update the relevant sections of
+`engagement/state.md`:
 - **Credentials**: Add cracked username:password pairs
 - **Vulns**: `[found] Kerberoastable: svc_sql (SPN: MSSQLSvc/db01)` or `[done]` if cracked
 - **Pivot Map**: Cracked creds -> what access they grant (local admin, DA, etc.)
@@ -387,6 +410,10 @@ random characters. Most useful against **trust accounts** between domains,
 which may have weaker passwords.
 
 ## Step 9: Escalate or Pivot
+
+**Before routing**: Write `engagement/state.md` and append to
+`engagement/activity.md` with results so far. The next skill reads state.md
+on activation — stale state means duplicate work or missed context.
 
 After cracking credentials:
 - **Service account is DA or has DCSync rights**: Route to **credential-dumping**

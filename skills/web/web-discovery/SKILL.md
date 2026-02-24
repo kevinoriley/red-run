@@ -50,6 +50,23 @@ When an engagement directory exists, log as you work:
 
 If no engagement directory exists and the user declines to create one, proceed normally.
 
+### Invocation Log
+
+Immediately on activation — before reading state.md or doing any assessment —
+log invocation to both the screen and activity.md:
+
+1. **On-screen**: Print `[web-discovery] Activated → <target>` so the operator
+   sees which skill is running.
+2. **activity.md**: Append:
+   ```
+   ### [HH:MM] web-discovery → <target>
+   - Invoked (assessment starting)
+   ```
+
+This entry must be written NOW, not deferred. Subsequent milestone entries
+append bullet points under this same header.
+
+
 ## State Management
 
 If `engagement/state.md` exists, read it before starting. Use it to:
@@ -58,7 +75,13 @@ If `engagement/state.md` exists, read it before starting. Use it to:
 - Check which vulns are already confirmed (avoid duplicate testing)
 - Review Blocked section for techniques that failed (try alternatives)
 
-After discovery and routing, update `engagement/state.md`:
+Write `engagement/state.md` at these checkpoints (not just at completion):
+1. **After confirming a vulnerability** — add to Vulns with `[found]`
+2. **After successful exploitation** — add credentials, access, pivot paths
+3. **Before routing to another skill** — the next skill reads state.md on activation
+
+At each checkpoint and on completion, update the relevant sections of
+`engagement/state.md`:
 - **Targets**: Add any new endpoints, parameters, or services discovered
 - **Vulns**: Add confirmed injection points as one-liners with status `[found]`
 - **Blocked**: Record discovery techniques that returned no results
@@ -367,6 +390,10 @@ curl -sI --http2 https://TARGET/ -o /dev/null -w '%{http_version}\n'
 ```
 
 ## Step 4: Response Analysis & Routing
+
+**Before routing**: Write `engagement/state.md` and append to
+`engagement/activity.md` with results so far. The next skill reads state.md
+on activation — stale state means duplicate work or missed context.
 
 Analyze responses from Step 3 to identify vulnerability type, then route to the correct exploitation skill.
 

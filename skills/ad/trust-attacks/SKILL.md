@@ -60,6 +60,23 @@ When an engagement directory exists:
   `trust-enum-output.txt`, `trust-golden-ticket.kirbi`,
   `trust-forest-secretsdump.txt`).
 
+### Invocation Log
+
+Immediately on activation — before reading state.md or doing any assessment —
+log invocation to both the screen and activity.md:
+
+1. **On-screen**: Print `[trust-attacks] Activated → <target>` so the operator
+   sees which skill is running.
+2. **activity.md**: Append:
+   ```
+   ### [HH:MM] trust-attacks → <target>
+   - Invoked (assessment starting)
+   ```
+
+This entry must be written NOW, not deferred. Subsequent milestone entries
+append bullet points under this same header.
+
+
 ## State Management
 
 If `engagement/state.md` exists, read it before starting. Use it to:
@@ -67,7 +84,13 @@ If `engagement/state.md` exists, read it before starting. Use it to:
 - Leverage existing credentials (krbtgt hashes, trust keys, DA access)
 - Skip re-testing trusts already enumerated
 
-After completing trust exploitation, update `engagement/state.md`:
+Write `engagement/state.md` at these checkpoints (not just at completion):
+1. **After confirming a vulnerability** — add to Vulns with `[found]`
+2. **After successful exploitation** — add credentials, access, pivot paths
+3. **Before routing to another skill** — the next skill reads state.md on activation
+
+At each checkpoint and on completion, update the relevant sections of
+`engagement/state.md`:
 - **Targets**: Add newly accessible domains/forests
 - **Credentials**: Add trust keys, krbtgt hashes, enterprise admin tickets
 - **Access**: Add cross-domain/forest footholds
@@ -380,6 +403,10 @@ nxc ldap TARGET_DC -u 'user' -p 'pass' -d target.local --groups
 ```
 
 ## Step 6: Escalate or Pivot
+
+**Before routing**: Write `engagement/state.md` and append to
+`engagement/activity.md` with results so far. The next skill reads state.md
+on activation — stale state means duplicate work or missed context.
 
 After successful trust exploitation:
 - **Enterprise Admin in parent domain**: Route to **credential-dumping**

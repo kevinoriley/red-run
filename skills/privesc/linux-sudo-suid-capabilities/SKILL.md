@@ -42,6 +42,23 @@ When an engagement directory exists, log as you work:
 - **Findings** → append to `engagement/findings.md` when escalation succeeds.
 - **Evidence** → save proof to `engagement/evidence/` (e.g., `sudo-root-shell.txt`).
 
+### Invocation Log
+
+Immediately on activation — before reading state.md or doing any assessment —
+log invocation to both the screen and activity.md:
+
+1. **On-screen**: Print `[linux-sudo-suid-capabilities] Activated → <target>` so the operator
+   sees which skill is running.
+2. **activity.md**: Append:
+   ```
+   ### [HH:MM] linux-sudo-suid-capabilities → <target>
+   - Invoked (assessment starting)
+   ```
+
+This entry must be written NOW, not deferred. Subsequent milestone entries
+append bullet points under this same header.
+
+
 ## State Management
 
 If `engagement/state.md` exists, read it before starting. Use it to:
@@ -49,7 +66,13 @@ If `engagement/state.md` exists, read it before starting. Use it to:
 - Leverage existing credentials for sudo password
 - Skip techniques already tried (Blocked section)
 
-After escalation or at significant milestones, update `engagement/state.md`:
+Write `engagement/state.md` at these checkpoints (not just at completion):
+1. **After confirming a vulnerability** — add to Vulns with `[found]`
+2. **After successful exploitation** — add credentials, access, pivot paths
+3. **Before routing to another skill** — the next skill reads state.md on activation
+
+At each checkpoint and on completion, update the relevant sections of
+`engagement/state.md`:
 - **Credentials**: Add any new credentials discovered
 - **Access**: Update access level (e.g., root shell obtained)
 - **Vulns**: Mark exploited vectors `[done]`
@@ -556,6 +579,10 @@ tcpdump -i any -A -s0 'port 80 or port 21 or port 25' 2>/dev/null | grep -iE "us
 ```
 
 ## Step 7: Escalate or Pivot
+
+**Before routing**: Write `engagement/state.md` and append to
+`engagement/activity.md` with results so far. The next skill reads state.md
+on activation — stale state means duplicate work or missed context.
 
 After obtaining root:
 

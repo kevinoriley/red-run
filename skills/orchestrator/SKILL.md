@@ -35,6 +35,16 @@ This applies in both guided and autonomous modes. Autonomous mode means you
 make triage and routing decisions without asking — it does not mean you bypass
 the skill library.
 
+### Pre-Routing Checkpoint
+
+Before every skill invocation, write `engagement/state.md` and append to
+`engagement/activity.md` with current findings. Format:
+```
+### [HH:MM] orchestrator → routing to <skill-name>
+- State: <brief summary of what's known>
+- Reason: <why this skill was chosen>
+```
+
 ## Mode
 
 Check if the user has set a mode:
@@ -49,6 +59,23 @@ Check if the user has set a mode:
   when significant access is gained.
 
 If unclear, default to guided.
+
+## Invocation Log
+
+Immediately on activation — before scoping or doing any work — log invocation
+to the screen:
+
+1. **On-screen**: Print `[orchestrator] Activated → <target>` so the operator
+   sees the engagement is starting.
+2. **activity.md**: After creating the engagement directory in Step 1, append:
+   ```
+   ### [HH:MM] orchestrator → <target>
+   - Invoked (engagement starting)
+   ```
+
+This entry must be written as soon as the engagement directory exists.
+Subsequent milestone entries append bullet points under this same header or
+create new headers as phases progress.
 
 ## Step 1: Scope & Engagement Setup
 

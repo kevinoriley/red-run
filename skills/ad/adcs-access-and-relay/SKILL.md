@@ -58,6 +58,23 @@ When an engagement directory exists:
 - **Evidence** → Save certificates to `engagement/evidence/adcs-<user>.pfx`,
   relay output to `engagement/evidence/adcs-relay.txt`.
 
+### Invocation Log
+
+Immediately on activation — before reading state.md or doing any assessment —
+log invocation to both the screen and activity.md:
+
+1. **On-screen**: Print `[adcs-access-and-relay] Activated → <target>` so the operator
+   sees which skill is running.
+2. **activity.md**: Append:
+   ```
+   ### [HH:MM] adcs-access-and-relay → <target>
+   - Invoked (assessment starting)
+   ```
+
+This entry must be written NOW, not deferred. Subsequent milestone entries
+append bullet points under this same header.
+
+
 ## State Management
 
 If `engagement/state.md` exists, read it before starting. Use it to:
@@ -66,7 +83,13 @@ If `engagement/state.md` exists, read it before starting. Use it to:
 - Check if relay infrastructure is already running
 - Leverage existing credentials or access
 
-After completing, update `engagement/state.md`:
+Write `engagement/state.md` at these checkpoints (not just at completion):
+1. **After confirming a vulnerability** — add to Vulns with `[found]`
+2. **After successful exploitation** — add credentials, access, pivot paths
+3. **Before routing to another skill** — the next skill reads state.md on activation
+
+At each checkpoint and on completion, update the relevant sections of
+`engagement/state.md`:
 - **Credentials**: Add certificates and NT hashes obtained
 - **Access**: Add impersonated identities
 - **Vulns**: `[found] ESC<N> on <template/CA>` → `[done]` when exploited
@@ -445,6 +468,10 @@ certipy auth -pfx dc.pfx -dc-ip DC_IP
 | Certipy flag | `-ca CA_IP` | `-target rpc://CA_IP` |
 
 ## Step 7: Escalate or Pivot
+
+**Before routing**: Write `engagement/state.md` and append to
+`engagement/activity.md` with results so far. The next skill reads state.md
+on activation — stale state means duplicate work or missed context.
 
 After obtaining a certificate:
 

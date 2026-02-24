@@ -57,6 +57,23 @@ When an engagement directory exists:
 - **Evidence** → Save certificates to `engagement/evidence/adcs-*.pfx`,
   CA backup to `engagement/evidence/adcs-ca-backup.pfx`.
 
+### Invocation Log
+
+Immediately on activation — before reading state.md or doing any assessment —
+log invocation to both the screen and activity.md:
+
+1. **On-screen**: Print `[adcs-persistence] Activated → <target>` so the operator
+   sees which skill is running.
+2. **activity.md**: Append:
+   ```
+   ### [HH:MM] adcs-persistence → <target>
+   - Invoked (assessment starting)
+   ```
+
+This entry must be written NOW, not deferred. Subsequent milestone entries
+append bullet points under this same header.
+
+
 ## State Management
 
 If `engagement/state.md` exists, read it before starting. Use it to:
@@ -65,7 +82,13 @@ If `engagement/state.md` exists, read it before starting. Use it to:
 - Check if GenericWrite on accounts is available (ESC9/10)
 - Review existing footholds and credential material
 
-After completing, update `engagement/state.md`:
+Write `engagement/state.md` at these checkpoints (not just at completion):
+1. **After confirming a vulnerability** — add to Vulns with `[found]`
+2. **After successful exploitation** — add credentials, access, pivot paths
+3. **Before routing to another skill** — the next skill reads state.md on activation
+
+At each checkpoint and on completion, update the relevant sections of
+`engagement/state.md`:
 - **Credentials**: Add forged/stolen certificates, NT hashes from UnPAC
 - **Access**: Add persistent access mechanisms established
 - **Vulns**: `[found] ESC<N>` or `Golden Certificate` → `[done]`
@@ -542,6 +565,10 @@ reg query "HKLM\SYSTEM\CurrentControlSet\Services\Kdc" \
 ```
 
 ## Step 10: Escalate or Pivot
+
+**Before routing**: Write `engagement/state.md` and append to
+`engagement/activity.md` with results so far. The next skill reads state.md
+on activation — stale state means duplicate work or missed context.
 
 After establishing persistence:
 

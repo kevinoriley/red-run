@@ -48,6 +48,23 @@ When an engagement directory exists, log as you work:
 - **Evidence** → save enumeration output, host files retrieved, and screenshots
   to `engagement/evidence/`.
 
+### Invocation Log
+
+Immediately on activation — before reading state.md or doing any assessment —
+log invocation to both the screen and activity.md:
+
+1. **On-screen**: Print `[container-escapes] Activated → <target>` so the operator
+   sees which skill is running.
+2. **activity.md**: Append:
+   ```
+   ### [HH:MM] container-escapes → <target>
+   - Invoked (assessment starting)
+   ```
+
+This entry must be written NOW, not deferred. Subsequent milestone entries
+append bullet points under this same header.
+
+
 ## State Management
 
 If `engagement/state.md` exists, read it before starting. Use it to:
@@ -55,7 +72,13 @@ If `engagement/state.md` exists, read it before starting. Use it to:
 - Leverage known credentials for K8s API access
 - Review Pivot Map for network position (can you reach K8s API? etcd?)
 
-After escaping or completing enumeration, update `engagement/state.md`:
+Write `engagement/state.md` at these checkpoints (not just at completion):
+1. **After confirming a vulnerability** — add to Vulns with `[found]`
+2. **After successful exploitation** — add credentials, access, pivot paths
+3. **Before routing to another skill** — the next skill reads state.md on activation
+
+At each checkpoint and on completion, update the relevant sections of
+`engagement/state.md`:
 - **Targets**: Add host system info if escape succeeded
 - **Access**: Update with host-level access method (nsenter, chroot, socket)
 - **Vulns**: Add confirmed escape vectors with `[found]` / `[active]` status
@@ -903,6 +926,10 @@ cat /var/run/secrets/eks.amazonaws.com/serviceaccount/token 2>/dev/null
 ```
 
 ## Step 13: Routing Decision Tree
+
+**Before routing**: Write `engagement/state.md` and append to
+`engagement/activity.md` with results so far. The next skill reads state.md
+on activation — stale state means duplicate work or missed context.
 
 ### Escaped to Host
 

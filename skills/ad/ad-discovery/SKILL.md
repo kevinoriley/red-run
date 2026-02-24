@@ -53,6 +53,23 @@ When an engagement directory exists, log as you work:
   to `engagement/evidence/` (e.g., `ad-enum-bloodhound.zip`, `ad-enum-spns.txt`,
   `ad-enum-shares.txt`).
 
+### Invocation Log
+
+Immediately on activation — before reading state.md or doing any assessment —
+log invocation to both the screen and activity.md:
+
+1. **On-screen**: Print `[ad-discovery] Activated → <target>` so the operator
+   sees which skill is running.
+2. **activity.md**: Append:
+   ```
+   ### [HH:MM] ad-discovery → <target>
+   - Invoked (assessment starting)
+   ```
+
+This entry must be written NOW, not deferred. Subsequent milestone entries
+append bullet points under this same header.
+
+
 ## State Management
 
 If `engagement/state.md` exists, read it before starting. Use it to:
@@ -60,7 +77,13 @@ If `engagement/state.md` exists, read it before starting. Use it to:
 - Leverage existing credentials for authenticated enumeration
 - Check what techniques have already been tried (Blocked section)
 
-After completing enumeration, update `engagement/state.md`:
+Write `engagement/state.md` at these checkpoints (not just at completion):
+1. **After confirming a vulnerability** — add to Vulns with `[found]`
+2. **After successful exploitation** — add credentials, access, pivot paths
+3. **Before routing to another skill** — the next skill reads state.md on activation
+
+At each checkpoint and on completion, update the relevant sections of
+`engagement/state.md`:
 - **Targets**: DCs, member servers, workstations, services discovered
 - **Credentials**: Any creds found in descriptions, shares, or SYSVOL
 - **Vulns**: Attack surface findings (SPNs, delegation, weak ACLs, ADCS)
@@ -457,6 +480,10 @@ When multiple attack paths exist, prioritize by OPSEC and reliability:
 7. **Credential dumping** — requires existing admin access
 
 ## Step 6: Escalate or Pivot
+
+**Before routing**: Write `engagement/state.md` and append to
+`engagement/activity.md` with results so far. The next skill reads state.md
+on activation — stale state means duplicate work or missed context.
 
 After mapping the attack surface:
 - **Multiple paths identified**: In guided mode, present the top 3 paths ranked

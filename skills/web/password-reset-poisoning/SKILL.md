@@ -58,6 +58,23 @@ When an engagement directory exists, log as you work:
 
 If no engagement directory exists and the user declines to create one, proceed normally.
 
+### Invocation Log
+
+Immediately on activation — before reading state.md or doing any assessment —
+log invocation to both the screen and activity.md:
+
+1. **On-screen**: Print `[password-reset-poisoning] Activated → <target>` so the operator
+   sees which skill is running.
+2. **activity.md**: Append:
+   ```
+   ### [HH:MM] password-reset-poisoning → <target>
+   - Invoked (assessment starting)
+   ```
+
+This entry must be written NOW, not deferred. Subsequent milestone entries
+append bullet points under this same header.
+
+
 ## State Management
 
 If `engagement/state.md` exists, read it before starting. Use it to:
@@ -65,7 +82,12 @@ If `engagement/state.md` exists, read it before starting. Use it to:
 - Leverage existing credentials or access for this technique
 - Understand what's been tried and failed (check Blocked section)
 
-After completing this technique or at significant milestones, update
+Write `engagement/state.md` at these checkpoints (not just at completion):
+1. **After confirming a vulnerability** — add to Vulns with `[found]`
+2. **After successful exploitation** — add credentials, access, pivot paths
+3. **Before routing to another skill** — the next skill reads state.md on activation
+
+At each checkpoint and on completion, update the relevant sections of
 `engagement/state.md`:
 - **Targets**: Add any new endpoints, parameters, or services discovered
 - **Credentials**: Add any credentials, tokens, or keys recovered
@@ -456,6 +478,10 @@ curl -s -H "Cookie: session=OLD_SESSION_COOKIE" \
 ```
 
 ## Step 10: Escalate or Pivot
+
+**Before routing**: Write `engagement/state.md` and append to
+`engagement/activity.md` with results so far. The next skill reads state.md
+on activation — stale state means duplicate work or missed context.
 
 After confirming password reset vulnerabilities:
 

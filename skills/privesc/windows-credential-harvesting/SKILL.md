@@ -51,6 +51,23 @@ When an engagement directory exists, log as you work:
 - **Evidence** → save credential dumps to `engagement/evidence/` (e.g.,
   `dpapi-creds.txt`, `sam-hashes.txt`, `browser-passwords.txt`).
 
+### Invocation Log
+
+Immediately on activation — before reading state.md or doing any assessment —
+log invocation to both the screen and activity.md:
+
+1. **On-screen**: Print `[windows-credential-harvesting] Activated → <target>` so the operator
+   sees which skill is running.
+2. **activity.md**: Append:
+   ```
+   ### [HH:MM] windows-credential-harvesting → <target>
+   - Invoked (assessment starting)
+   ```
+
+This entry must be written NOW, not deferred. Subsequent milestone entries
+append bullet points under this same header.
+
+
 ## State Management
 
 If `engagement/state.md` exists, read it before starting. Use it to:
@@ -58,7 +75,13 @@ If `engagement/state.md` exists, read it before starting. Use it to:
 - Skip credential sources already harvested
 - Use existing credentials for DPAPI decryption
 
-After completing harvesting, update `engagement/state.md`:
+Write `engagement/state.md` at these checkpoints (not just at completion):
+1. **After confirming a vulnerability** — add to Vulns with `[found]`
+2. **After successful exploitation** — add credentials, access, pivot paths
+3. **Before routing to another skill** — the next skill reads state.md on activation
+
+At each checkpoint and on completion, update the relevant sections of
+`engagement/state.md`:
 - **Credentials**: Add all recovered username/password/hash pairs and where they work
 - **Vulns**: Add credential findings as one-liners
 - **Pivot Map**: Map which credentials give access to which systems
@@ -485,6 +508,10 @@ Get-Content -Path file.txt -Stream HiddenStream
 ```
 
 ## Step 6: Escalate or Pivot
+
+**Before routing**: Write `engagement/state.md` and append to
+`engagement/activity.md` with results so far. The next skill reads state.md
+on activation — stale state means duplicate work or missed context.
 
 After harvesting credentials:
 

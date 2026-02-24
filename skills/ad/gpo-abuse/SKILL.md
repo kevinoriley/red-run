@@ -57,6 +57,23 @@ When an engagement directory exists:
   `engagement/evidence/gpo-abuse-output.txt`, GPP passwords to
   `engagement/evidence/gpo-gpp-passwords.txt`.
 
+### Invocation Log
+
+Immediately on activation — before reading state.md or doing any assessment —
+log invocation to both the screen and activity.md:
+
+1. **On-screen**: Print `[gpo-abuse] Activated → <target>` so the operator
+   sees which skill is running.
+2. **activity.md**: Append:
+   ```
+   ### [HH:MM] gpo-abuse → <target>
+   - Invoked (assessment starting)
+   ```
+
+This entry must be written NOW, not deferred. Subsequent milestone entries
+append bullet points under this same header.
+
+
 ## State Management
 
 If `engagement/state.md` exists, read it before starting. Use it to:
@@ -65,7 +82,13 @@ If `engagement/state.md` exists, read it before starting. Use it to:
 - Find logon scripts already discovered in SYSVOL
 - Skip targets already in the Blocked section
 
-After completing, update `engagement/state.md`:
+Write `engagement/state.md` at these checkpoints (not just at completion):
+1. **After confirming a vulnerability** — add to Vulns with `[found]`
+2. **After successful exploitation** — add credentials, access, pivot paths
+3. **Before routing to another skill** — the next skill reads state.md on activation
+
+At each checkpoint and on completion, update the relevant sections of
+`engagement/state.md`:
 - **Vulns**: Add writable GPOs with scope (which computers/users affected)
 - **Access**: Add new footholds from GPO exploitation
 - **Credentials**: Add GPP passwords found
@@ -452,6 +475,10 @@ Get-GPOReport -Name "Vulnerable GPO" -ReportType Xml -Path gpo-report.xml
 ```
 
 ## Step 7: Escalate or Pivot
+
+**Before routing**: Write `engagement/state.md` and append to
+`engagement/activity.md` with results so far. The next skill reads state.md
+on activation — stale state means duplicate work or missed context.
 
 After GPO-based code execution:
 - **SYSTEM shell on target**: Route to **credential-dumping** for
