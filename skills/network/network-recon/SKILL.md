@@ -64,6 +64,36 @@ log invocation to both the screen and activity.md:
 This entry must be written NOW, not deferred. Subsequent milestone entries
 append bullet points under this same header.
 
+## Skill Routing Is Mandatory
+
+When this skill says "→ STOP. Invoke **skill-name**", you MUST invoke that
+skill using the Skill tool. Do NOT execute the technique inline — even if the
+attack path seems obvious or you already know the technique.
+
+This applies in both guided and autonomous modes. Autonomous mode means you
+make routing decisions without asking — it does not mean you skip skills.
+
+### Scope Boundary
+
+This skill's scope is **port scanning, service identification, and service-level
+quick-win checks** (anonymous access, default creds, banner grabs, known CVE
+identification). The moment you identify something actionable, route — do not
+exploit it.
+
+You MUST NOT:
+- Perform web application testing (directory fuzzing, parameter testing, IDOR,
+  injection) — route to **web-discovery**
+- Perform AD enumeration beyond initial domain identification — route to
+  **ad-discovery**
+- Perform privilege escalation enumeration or exploitation — route to
+  **linux-discovery** or **windows-discovery**
+- Extract or use credentials from captured traffic or files — update state.md
+  and return to the orchestrator or route to the appropriate skill
+- Establish SSH/WinRM/shell sessions for post-exploitation — update state.md
+  with credentials and return to the orchestrator
+
+When you find credentials, access, or confirmed vulns: update state.md, log to
+activity.md, and present routing recommendations. Do not continue past recon.
 
 ## State Management
 

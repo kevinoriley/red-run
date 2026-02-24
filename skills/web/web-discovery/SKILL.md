@@ -66,6 +66,36 @@ log invocation to both the screen and activity.md:
 This entry must be written NOW, not deferred. Subsequent milestone entries
 append bullet points under this same header.
 
+## Skill Routing Is Mandatory
+
+When this skill's routing tables say to invoke a skill, you MUST invoke that
+skill using the Skill tool. Do NOT execute the technique inline — even if the
+attack is trivial or you already know the answer. Skills contain operator-specific
+methodology, client-scoped payloads, and edge-case handling that general
+knowledge does not.
+
+This applies in both guided and autonomous modes. Autonomous mode means you
+make routing decisions without asking — it does not mean you skip skills.
+
+### Scope Boundary
+
+This skill's scope is **web application content discovery, parameter discovery,
+and injection point identification**. You identify injection points — you do
+not exploit them. The moment you confirm a vulnerability type, STOP — update
+state.md and route to the appropriate technique skill. Do not execute
+exploitation commands inline.
+
+You MUST NOT:
+- Perform SQL injection exploitation (UNION queries, data extraction, OS command
+  execution) — route to the appropriate **sql-injection-*** skill
+- Perform XSS exploitation (cookie theft, DOM manipulation) — route to the
+  appropriate **xss-*** skill
+- Perform SSTI exploitation (RCE payloads) — route to the appropriate
+  **ssti-*** skill
+- Perform any other technique-specific exploitation — route to the named skill
+
+When you identify an injection point: update state.md, log to activity.md,
+and invoke the technique skill. Do not continue past discovery.
 
 ## State Management
 

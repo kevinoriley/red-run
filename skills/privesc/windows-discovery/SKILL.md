@@ -62,6 +62,23 @@ log invocation to both the screen and activity.md:
 This entry must be written NOW, not deferred. Subsequent milestone entries
 append bullet points under this same header.
 
+## Skill Routing Is Mandatory
+
+When this skill says "→ STOP. Invoke **skill-name**" or "route to
+**skill-name**", you MUST invoke that skill using the Skill tool. Do NOT
+execute the technique inline — even if the attack is trivial or you already
+know the answer. Skills contain operator-specific methodology, client-scoped
+payloads, and edge-case handling that general knowledge does not.
+
+This applies in both guided and autonomous modes. Autonomous mode means you
+make routing decisions without asking — it does not mean you skip skills.
+
+### Scope Boundary
+
+This skill's scope is **privilege escalation enumeration and attack surface
+mapping**. You identify vectors — you do not exploit them. The moment you
+confirm a vector exists, STOP — update state.md and route to the appropriate
+technique skill. Do not execute privilege escalation commands inline.
 
 ## State Management
 
@@ -261,7 +278,10 @@ wmic process list full
 Get-Process | Select-Object Name, Id, Path | Where-Object {$_.Path -notlike "C:\Windows\System32\*"} | Sort-Object Path
 ```
 
-Any finding here → route to **windows-service-dll-abuse**.
+Any finding here → STOP. Invoke **windows-service-dll-abuse** via the Skill
+tool. Pass: hostname, current user, specific findings (unquoted paths, writable
+binaries, modifiable services, DLL hijack targets), OS version, current mode.
+Do not execute exploitation commands inline.
 
 ## Step 4: Scheduled Tasks and Autorun
 
@@ -294,7 +314,9 @@ reg query HKCU\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallEle
 reg query HKLM\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated
 ```
 
-Both must return `0x1` — if so, route to **windows-uac-bypass** (MSI payload).
+Both must return `0x1` — if so, STOP. Invoke **windows-uac-bypass** via the
+Skill tool. Pass: hostname, current user, AlwaysInstallElevated confirmation,
+OS version, current mode. Do not execute MSI payload commands inline.
 
 ## Step 5: Network and Shares
 
@@ -393,7 +415,9 @@ icacls C:\Windows\System32\config\SAM
 
 If `BUILTIN\Users:(I)(RX)` appears → SAM readable by non-admin users.
 
-Any credentials found → route to **windows-credential-harvesting** for deeper extraction.
+Any credentials found → STOP. Invoke **windows-credential-harvesting** via the
+Skill tool. Pass: hostname, current user, credential locations found, OS
+version, current mode. Do not execute credential extraction commands inline.
 
 ## Step 7: Security Controls Detection
 
@@ -487,28 +511,45 @@ Based on enumeration findings, route to the appropriate technique skill:
 ### Token Privileges Found
 
 SeImpersonate, SeAssignPrimaryToken, SeDebug, SeBackup, SeTakeOwnership,
-SeRestore, SeLoadDriver, SeManageVolume → **windows-token-impersonation**
+SeRestore, SeLoadDriver, SeManageVolume
+→ STOP. Invoke **windows-token-impersonation** via the Skill tool. Pass:
+  hostname, current user, specific privileges found, OS version and build,
+  current mode. Do not execute token impersonation commands inline.
 
 ### Service Misconfigurations Found
 
 Unquoted service paths, writable service binaries, modifiable service config,
 weak service registry ACLs, DLL search order hijacking, writable PATH directories,
-auto-updater abuse → **windows-service-dll-abuse**
+auto-updater abuse
+→ STOP. Invoke **windows-service-dll-abuse** via the Skill tool. Pass:
+  hostname, current user, specific findings (unquoted paths / writable binaries /
+  modifiable services / DLL hijack targets), OS version, current mode. Do not
+  execute exploitation commands inline.
 
 ### UAC Bypass Needed
 
 High-integrity needed but running medium-integrity, UAC enabled,
-AlwaysInstallElevated → **windows-uac-bypass**
+AlwaysInstallElevated
+→ STOP. Invoke **windows-uac-bypass** via the Skill tool. Pass: hostname,
+  current user, integrity level, UAC settings, AlwaysInstallElevated status,
+  OS version, current mode. Do not execute UAC bypass commands inline.
 
 ### Stored Credentials Found
 
 Registry passwords, unattend files, PowerShell history, DPAPI blobs,
-HiveNightmare, credential vault entries → **windows-credential-harvesting**
+HiveNightmare, credential vault entries
+→ STOP. Invoke **windows-credential-harvesting** via the Skill tool. Pass:
+  hostname, current user, credential locations found (registry / unattend /
+  history / vault), OS version, current mode. Do not execute credential
+  extraction commands inline.
 
 ### Missing Patches / Kernel Vectors
 
 Watson/WES-NG hits, old OS without patches, vulnerable drivers loaded,
-BYOVD candidates → **windows-kernel-exploits**
+BYOVD candidates
+→ STOP. Invoke **windows-kernel-exploits** via the Skill tool. Pass: hostname,
+  OS version and build, installed hotfixes, Watson/WES-NG output, vulnerable
+  drivers identified, current mode. Do not execute kernel exploits inline.
 
 ### Multiple Vectors Found
 

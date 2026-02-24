@@ -62,6 +62,21 @@ log invocation to both the screen and activity.md:
 This entry must be written NOW, not deferred. Subsequent milestone entries
 append bullet points under this same header.
 
+## Skill Routing Is Mandatory
+
+When this skill says "Route to **skill-name**" or "→ **skill-name**", you MUST
+invoke that skill using the Skill tool. Do NOT execute the technique inline —
+even if the attack is trivial or you already know the answer. Skills contain
+operator-specific methodology, client-scoped payloads, and edge-case handling
+that general knowledge does not.
+
+This applies in both guided and autonomous modes. Autonomous mode means you
+make routing decisions without asking — it does not mean you skip skills.
+
+**Scope boundary:** This skill covers <scope>. If your findings lead outside
+this scope, STOP — update state.md and route to the appropriate skill. Do not
+continue past your scope boundary.
+
 ## State Management
 
 If `engagement/state.md` exists, read it before starting. Use it to:

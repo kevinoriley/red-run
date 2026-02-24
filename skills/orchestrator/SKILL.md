@@ -71,6 +71,20 @@ Before every skill invocation, write `engagement/state.md` and append to
 - Reason: <why this skill was chosen>
 ```
 
+### Post-Skill Checkpoint
+
+When a skill completes and returns control to the orchestrator:
+
+1. Re-read `engagement/state.md` — the skill should have updated it
+2. Check for new credentials, access, or vulns added by the skill
+3. Run the Step 5 decision logic (check unexploited vulns, unchained access,
+   untested creds, pivot map, blocked items, progress toward objectives)
+4. Route to the next skill based on updated state
+
+Skills should NOT chain directly into other skills' scope areas. If a discovery
+skill finds something outside its scope, it updates state.md and returns — the
+orchestrator decides what to invoke next.
+
 ## Mode
 
 Check if the user has set a mode:
