@@ -372,7 +372,7 @@ When the engagement is complete (objectives met or testing window closed):
 1. Read `engagement/state.md` for the full picture
 2. Read `engagement/findings.md` for confirmed vulnerabilities
 3. Summarize the attack narrative — how each chain progressed
-4. STOP. Invoke **pentest-findings** via the Skill tool for formal writeups of each finding. Do not write finding reports inline.
+4. Write up each finding in `engagement/findings.md` with severity, impact, evidence path, and reproduction steps.
 
 ### Engagement Summary Template
 
