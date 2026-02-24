@@ -39,7 +39,18 @@ Skills auto-trigger based on conversation context. Say "I found a SQL injection 
 
 Say "switch to autonomous" or "guide me through this" at any point.
 
+&nbsp;
+<div align="center"<br><b>⚠️⚠️⚠️⚠️⚠️⚠️ WARNING ⚠️⚠️⚠️⚠️⚠️⚠️</b></div>
+
+&nbsp;
+
 Autonomous mode pairs with `claude --dangerously-skip-permissions` (a.k.a. yolo mode). **We do not recommend this.** We do not endorse this. We are not responsible for what happens. You will watch Claude chain four skills, pop a shell, and pivot to a subnet you forgot was in scope. It is exhilarating and horrifying in equal measure. Use guided mode or avoid `--dangerously-skip-permissions` entirely. Remember that skills are really just suggestions. YOU are responsible for containing Claude responsibly on your systems.
+
+&nbsp;
+
+<div align="center"><b>⚠️⚠️⚠️⚠️⚠️⚠️ WARNING ⚠️⚠️⚠️⚠️⚠️⚠️</b></div>
+
+&nbsp;
 
 ### Inter-skill routing
 
