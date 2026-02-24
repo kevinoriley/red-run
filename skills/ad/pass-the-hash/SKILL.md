@@ -54,6 +54,23 @@ When an engagement directory exists:
 - **Evidence** -> Save session output to `engagement/evidence/pth-session.txt`,
   tickets to `engagement/evidence/pth-ticket.ccache`.
 
+### Invocation Log
+
+Immediately on activation — before reading state.md or doing any assessment —
+log invocation to both the screen and activity.md:
+
+1. **On-screen**: Print `[pass-the-hash] Activated → <target>` so the operator
+   sees which skill is running.
+2. **activity.md**: Append:
+   ```
+   ### [HH:MM] pass-the-hash → <target>
+   - Invoked (assessment starting)
+   ```
+
+This entry must be written NOW, not deferred. Subsequent milestone entries
+append bullet points under this same header.
+
+
 ## State Management
 
 If `engagement/state.md` exists, read it before starting. Use it to:
@@ -61,7 +78,13 @@ If `engagement/state.md` exists, read it before starting. Use it to:
 - Identify targets where credential material may grant access
 - Avoid re-testing hosts already in the Access or Blocked sections
 
-After completing, update `engagement/state.md`:
+Write `engagement/state.md` at these checkpoints (not just at completion):
+1. **After confirming a vulnerability** — add to Vulns with `[found]`
+2. **After successful exploitation** — add credentials, access, pivot paths
+3. **Before routing to another skill** — the next skill reads state.md on activation
+
+At each checkpoint and on completion, update the relevant sections of
+`engagement/state.md`:
 - **Access**: Add new footholds obtained (host, access level, method)
 - **Credentials**: Add any new creds found during lateral movement
 - **Pivot Map**: Hash/key/ticket -> what hosts it grants access to
@@ -398,6 +421,10 @@ wmiexec.py DOMAIN/user@TARGET.DOMAIN.LOCAL -k -no-pass 'whoami /all'
 ```
 
 ## Step 7: Escalate or Pivot
+
+**Before routing**: Write `engagement/state.md` and append to
+`engagement/activity.md` with results so far. The next skill reads state.md
+on activation — stale state means duplicate work or missed context.
 
 After successful lateral movement:
 - **Local admin on target**: Route to **credential-dumping** for SAM, LSASS,

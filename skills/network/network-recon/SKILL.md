@@ -48,6 +48,53 @@ When an engagement directory exists, log as you work:
 - **Evidence** → save scan output to `engagement/evidence/` (e.g.,
   `nmap-10.10.10.1.xml`, `smb-enum.txt`).
 
+### Invocation Log
+
+Immediately on activation — before reading state.md or doing any assessment —
+log invocation to both the screen and activity.md:
+
+1. **On-screen**: Print `[network-recon] Activated → <target>` so the operator
+   sees which skill is running.
+2. **activity.md**: Append:
+   ```
+   ### [HH:MM] network-recon → <target>
+   - Invoked (assessment starting)
+   ```
+
+This entry must be written NOW, not deferred. Subsequent milestone entries
+append bullet points under this same header.
+
+## Skill Routing Is Mandatory
+
+When this skill says "→ STOP. Invoke **skill-name**", you MUST invoke that
+skill using the Skill tool. Do NOT execute the technique inline — even if the
+attack path seems obvious or you already know the technique.
+
+This applies in both guided and autonomous modes. Autonomous mode means you
+make routing decisions without asking — it does not mean you skip skills.
+
+### Scope Boundary
+
+This skill's scope is **port scanning, service identification, and service-level
+quick-win checks** (anonymous access, default creds, banner grabs, known CVE
+identification). The moment you identify something actionable, route — do not
+exploit it.
+
+You MUST NOT:
+- Perform web application testing (directory fuzzing, parameter testing, IDOR,
+  injection) — route to **web-discovery**
+- Perform AD enumeration beyond initial domain identification — route to
+  **ad-discovery**
+- Perform privilege escalation enumeration or exploitation — route to
+  **linux-discovery** or **windows-discovery**
+- Extract or use credentials from captured traffic or files — update state.md
+  and return to the orchestrator or route to the appropriate skill
+- Establish SSH/WinRM/shell sessions for post-exploitation — update state.md
+  with credentials and return to the orchestrator
+
+When you find credentials, access, or confirmed vulns: update state.md, log to
+activity.md, and present routing recommendations. Do not continue past recon.
+
 ## State Management
 
 If `engagement/state.md` exists, read it before starting. Use it to:
@@ -55,7 +102,13 @@ If `engagement/state.md` exists, read it before starting. Use it to:
 - Check known credentials for authenticated enumeration
 - Review Blocked section for scan failures
 
-After completing recon, update `engagement/state.md`:
+Write `engagement/state.md` at these checkpoints (not just at completion):
+1. **After confirming a vulnerability** — add to Vulns with `[found]`
+2. **After successful exploitation** — add credentials, access, pivot paths
+3. **Before routing to another skill** — the next skill reads state.md on activation
+
+At each checkpoint and on completion, update the relevant sections of
+`engagement/state.md`:
 - **Targets**: Add each host with open ports, OS, identified services (one-liner each)
 - **Access**: Note any anonymous access, default creds, or quick wins found
 - **Vulns**: Add confirmed vulnerabilities as one-liners with `[found]` status
@@ -339,7 +392,8 @@ gowitness single TARGET_URL
 directory listing enabled, `.git` or `.svn` directory exposed, phpinfo(),
 server-status/server-info.
 
-→ **Route to web-discovery** for deep web application testing.
+→ STOP. Invoke **web-discovery** via the Skill tool. Pass: target URL, tech stack,
+any interesting headers. Do not execute ffuf or web fuzzing commands inline.
 
 ### Kerberos — Port 88
 
@@ -354,7 +408,8 @@ impacket-GetNPUsers DOMAIN/ -usersfile users.txt -dc-ip TARGET_IP -no-pass -outp
 ```
 
 **Quick wins:** AS-REP roastable accounts, valid username enumeration.
-→ **Route to ad-discovery** when Kerberos is found.
+→ STOP. Invoke **ad-discovery** via the Skill tool. Pass: DC IP, domain name, any creds.
+Do not execute AD enumeration commands inline.
 
 ### RPC/MSRPC — Ports 111, 135
 
@@ -394,7 +449,8 @@ smbclient -N -L //TARGET_IP/
 writable shares (web root, SYSVOL), EternalBlue (MS17-010), SMBGhost
 (CVE-2020-0796), PrintNightmare.
 
-→ **Route to ad-discovery** when domain membership is confirmed.
+→ STOP. Invoke **ad-discovery** via the Skill tool. Pass: DC IP, domain name,
+any credentials or null session access. Do not execute AD commands inline.
 
 ### LDAP — Ports 389, 636, 3268
 
@@ -410,7 +466,8 @@ nmap -sV -p389,636,3268 --script ldap-rootdse,ldap-search TARGET_IP
 **Quick wins:** Anonymous bind with full directory read, password in description
 field, domain info disclosure via rootDSE.
 
-→ **Route to ad-discovery** for full domain enumeration.
+→ STOP. Invoke **ad-discovery** via the Skill tool. Pass: DC IP, domain name from
+rootDSE, any anonymous bind results. Do not execute LDAP enumeration inline.
 
 ### MSSQL — Port 1433
 
@@ -764,19 +821,25 @@ grep "Ports:" scan_HOSTNAME.gnmap | sed 's/Ports: //' | tr ',' '\n'
 
 ## Step 9: Routing Decision Tree
 
+**Before routing**: Write `engagement/state.md` and append to
+`engagement/activity.md` with results so far. The next skill reads state.md
+on activation — stale state means duplicate work or missed context.
+
 Based on recon findings, route to the appropriate technique or discovery skill.
 
 ### Web Services Found (HTTP/HTTPS)
 
 Ports 80, 443, 8080, 8443, 8000, 3000, 5000, or any HTTP service identified.
-→ **Route to web-discovery** with target URL, technology stack, and any
-interesting headers or responses noted during enumeration.
+→ STOP. Invoke **web-discovery** via the Skill tool. Pass: target URL,
+technology stack, any interesting headers or responses noted during enumeration.
+Do not execute web discovery commands inline.
 
 ### Domain Controller Identified
 
 Ports 88 (Kerberos) + 389 (LDAP) + 445 (SMB) indicate an AD domain controller.
-→ **Route to ad-discovery** with DC IP, domain name (from LDAP rootDSE or
-SMB OS discovery), and any credentials found.
+→ STOP. Invoke **ad-discovery** via the Skill tool. Pass: DC IP, domain name
+(from LDAP rootDSE or SMB OS discovery), any credentials found.
+Do not execute AD enumeration commands inline.
 
 ### Database Services Exposed
 
@@ -792,7 +855,7 @@ execution or sensitive data.
 ### SMB Shares Accessible
 
 Writable shares, SYSVOL access, or null session enumeration successful.
-→ **Route to ad-discovery** if domain-joined
+→ If domain-joined: STOP. Invoke **ad-discovery** via the Skill tool. Pass: DC IP, domain, share access details.
 → Check for sensitive files (config files, credentials, scripts)
 
 ### Quick Wins Found
@@ -801,26 +864,26 @@ Writable shares, SYSVOL access, or null session enumeration successful.
 |---------|--------|
 | Anonymous FTP with write | Upload webshell if web root, or plant SUID binary |
 | Redis unauthenticated | Webshell write or SSH key injection |
-| NFS with no_root_squash | SUID binary plant → **linux-file-path-abuse** |
+| NFS with no_root_squash | SUID binary plant → invoke **linux-file-path-abuse** via Skill tool |
 | SNMP default community | Extract users, processes, installed software |
 | IPMI cipher 0 | Dump hashes → crack → access BMC |
 | Default creds on any service | Use them, escalate |
-| EternalBlue (MS17-010) | Direct SYSTEM shell → **credential-dumping** |
+| EternalBlue (MS17-010) | Direct SYSTEM shell → invoke **credential-dumping** via Skill tool |
 | BlueKeep (CVE-2019-0708) | Direct SYSTEM shell (unstable) |
 
 ### Internal Network from a Pivot
 
 If running from a compromised host with access to a new subnet:
-→ Re-run discovery (Steps 2-4) on the new range
-→ Use **pivoting-tunneling** to set up access from attack machine
+→ STOP. Invoke **pivoting-tunneling** via the Skill tool to set up access from attack machine.
+→ Then re-invoke **network-recon** via the Skill tool on the new range.
 
 ### Multiple Attack Surfaces
 
 In **guided** mode, present all findings ranked by exploitability:
 1. Known CVEs with public exploits (EternalBlue, BlueKeep, Log4Shell)
 2. Default/anonymous access (FTP, Redis, SNMP, NFS)
-3. Web applications (→ web-discovery)
-4. Domain services (→ ad-discovery)
+3. Web applications (→ invoke **web-discovery** via Skill tool)
+4. Domain services (→ invoke **ad-discovery** via Skill tool)
 5. Database services with access
 6. IPMI/BMC access
 
@@ -882,7 +945,8 @@ done; wait
 exec 3<>/dev/tcp/TARGET_IP/PORT; echo "" >&3; cat <&3; exec 3>&-
 ```
 
-→ **Route to pivoting-tunneling** to bring proper tools through to the pivot.
+→ STOP. Invoke **pivoting-tunneling** via the Skill tool to bring proper tools
+through to the pivot. Do not configure tunnels inline.
 
 ### Permission errors running nmap
 

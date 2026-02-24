@@ -54,6 +54,23 @@ When an engagement directory exists:
 - **Evidence** -> Save spray results to `engagement/evidence/spray-results.txt`,
   valid credentials to `engagement/evidence/spray-valid-creds.txt`.
 
+### Invocation Log
+
+Immediately on activation — before reading state.md or doing any assessment —
+log invocation to both the screen and activity.md:
+
+1. **On-screen**: Print `[password-spraying] Activated → <target>` so the operator
+   sees which skill is running.
+2. **activity.md**: Append:
+   ```
+   ### [HH:MM] password-spraying → <target>
+   - Invoked (assessment starting)
+   ```
+
+This entry must be written NOW, not deferred. Subsequent milestone entries
+append bullet points under this same header.
+
+
 ## State Management
 
 If `engagement/state.md` exists, read it before starting. Use it to:
@@ -62,7 +79,13 @@ If `engagement/state.md` exists, read it before starting. Use it to:
 - Use username lists from prior enumeration steps
 - Check lockout threshold from prior policy enumeration
 
-After completing, update `engagement/state.md`:
+Write `engagement/state.md` at these checkpoints (not just at completion):
+1. **After confirming a vulnerability** — add to Vulns with `[found]`
+2. **After successful exploitation** — add credentials, access, pivot paths
+3. **Before routing to another skill** — the next skill reads state.md on activation
+
+At each checkpoint and on completion, update the relevant sections of
+`engagement/state.md`:
 - **Credentials**: Add valid username:password pairs
 - **Vulns**: `[found] Valid creds: user1 (Password123)` -> `[done]` if exploited
 - **Pivot Map**: Valid creds -> what access they enable
@@ -447,6 +470,10 @@ nxc smb DC01.DOMAIN.LOCAL -u 'valid_user' -p 'CrackedPass' \
 ```
 
 ## Step 9: Escalate or Pivot
+
+**Before routing**: Write `engagement/state.md` and append to
+`engagement/activity.md` with results so far. The next skill reads state.md
+on activation — stale state means duplicate work or missed context.
 
 After finding valid credentials:
 - **Get a TGT immediately** and switch to Kerberos auth for all future actions:

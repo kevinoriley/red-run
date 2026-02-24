@@ -50,6 +50,53 @@ When an engagement directory exists, log as you work:
 
 If no engagement directory exists and the user declines to create one, proceed normally.
 
+### Invocation Log
+
+Immediately on activation — before reading state.md or doing any assessment —
+log invocation to both the screen and activity.md:
+
+1. **On-screen**: Print `[web-discovery] Activated → <target>` so the operator
+   sees which skill is running.
+2. **activity.md**: Append:
+   ```
+   ### [HH:MM] web-discovery → <target>
+   - Invoked (assessment starting)
+   ```
+
+This entry must be written NOW, not deferred. Subsequent milestone entries
+append bullet points under this same header.
+
+## Skill Routing Is Mandatory
+
+When this skill's routing tables say to invoke a skill, you MUST invoke that
+skill using the Skill tool. Do NOT execute the technique inline — even if the
+attack is trivial or you already know the answer. Skills contain operator-specific
+methodology, client-scoped payloads, and edge-case handling that general
+knowledge does not.
+
+This applies in both guided and autonomous modes. Autonomous mode means you
+make routing decisions without asking — it does not mean you skip skills.
+
+### Scope Boundary
+
+This skill's scope is **web application content discovery, parameter discovery,
+and injection point identification**. You identify injection points — you do
+not exploit them. The moment you confirm a vulnerability type, STOP — update
+state.md and route to the appropriate technique skill. Do not execute
+exploitation commands inline.
+
+You MUST NOT:
+- Perform SQL injection exploitation (UNION queries, data extraction, OS command
+  execution) — route to the appropriate **sql-injection-*** skill
+- Perform XSS exploitation (cookie theft, DOM manipulation) — route to the
+  appropriate **xss-*** skill
+- Perform SSTI exploitation (RCE payloads) — route to the appropriate
+  **ssti-*** skill
+- Perform any other technique-specific exploitation — route to the named skill
+
+When you identify an injection point: update state.md, log to activity.md,
+and invoke the technique skill. Do not continue past discovery.
+
 ## State Management
 
 If `engagement/state.md` exists, read it before starting. Use it to:
@@ -58,7 +105,13 @@ If `engagement/state.md` exists, read it before starting. Use it to:
 - Check which vulns are already confirmed (avoid duplicate testing)
 - Review Blocked section for techniques that failed (try alternatives)
 
-After discovery and routing, update `engagement/state.md`:
+Write `engagement/state.md` at these checkpoints (not just at completion):
+1. **After confirming a vulnerability** — add to Vulns with `[found]`
+2. **After successful exploitation** — add credentials, access, pivot paths
+3. **Before routing to another skill** — the next skill reads state.md on activation
+
+At each checkpoint and on completion, update the relevant sections of
+`engagement/state.md`:
 - **Targets**: Add any new endpoints, parameters, or services discovered
 - **Vulns**: Add confirmed injection points as one-liners with status `[found]`
 - **Blocked**: Record discovery techniques that returned no results
@@ -76,13 +129,22 @@ Keep entries compact — one line per item. State.md is a snapshot, not a log.
 
 Find hidden endpoints, directories, and files.
 
+**Wordlist priority:** Start with `quickhits.txt` for fast coverage of common
+high-value paths (admin panels, config files, backup files, known endpoints).
+Fall back to `raft-small-words.txt` only if quickhits returns nothing
+interesting. Use `raft-medium-*` for thorough sweeps when time allows.
+
 ```bash
-# Directory discovery
-ffuf -c -w /usr/share/seclists/Discovery/Web-Content/raft-medium-directories.txt \
+# Quick high-value path check (run first)
+ffuf -c -w /usr/share/seclists/Discovery/Web-Content/quickhits.txt \
+  -u https://TARGET/FUZZ -mc all -fc 404
+
+# Directory discovery (if quickhits insufficient)
+ffuf -c -w /usr/share/seclists/Discovery/Web-Content/raft-small-words.txt \
   -u https://TARGET/FUZZ -mc all -fc 404
 
 # File discovery
-ffuf -c -w /usr/share/seclists/Discovery/Web-Content/raft-medium-files.txt \
+ffuf -c -w /usr/share/seclists/Discovery/Web-Content/raft-small-words.txt \
   -u https://TARGET/FUZZ -mc all -fc 404
 
 # Technology-specific files
@@ -368,11 +430,22 @@ curl -sI --http2 https://TARGET/ -o /dev/null -w '%{http_version}\n'
 
 ## Step 4: Response Analysis & Routing
 
-Analyze responses from Step 3 to identify vulnerability type, then route to the correct exploitation skill.
+**Before routing**: Write `engagement/state.md` and append to
+`engagement/activity.md` with results so far. The next skill reads state.md
+on activation — stale state means duplicate work or missed context.
+
+Analyze responses from Step 3 to identify vulnerability type, then route to
+the correct exploitation skill.
+
+**Routing is mandatory.** When a match is found in the tables below, STOP.
+Invoke the named skill via the Skill tool. Pass: the confirmed injection point
+(URL, parameter, method), observed response behavior, suspected DBMS (if SQL),
+current mode, and any payloads that already succeeded. Do not execute
+exploitation commands inline — even if the technique seems simple.
 
 ### SQL Injection
 
-| Response Pattern | Indicates | Route To |
+| Response Pattern | Indicates | Invoke via Skill Tool |
 |---|---|---|
 | DB error message with syntax details | Error-based SQLi | **sql-injection-error** |
 | Different content for `1=1` vs `1=2` | Boolean-based blind | **sql-injection-blind** |
@@ -393,7 +466,7 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 
 ### Server-Side Template Injection
 
-| Response Pattern | Indicates | Route To |
+| Response Pattern | Indicates | Invoke via Skill Tool |
 |---|---|---|
 | `49` from `{{7*7}}` | Jinja2 or Twig | **ssti-jinja2** or **ssti-twig** |
 | `49` from `${7*7}` | Freemarker / Java EL | **ssti-freemarker** |
@@ -408,7 +481,7 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 
 ### XSS
 
-| Response Pattern | Route To |
+| Response Pattern | Invoke via Skill Tool |
 |---|---|
 | Payload reflected verbatim in HTML | **xss-reflected** |
 | Payload persists on subsequent loads | **xss-stored** |
@@ -416,7 +489,7 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 
 ### SSRF
 
-| Response Pattern | Route To |
+| Response Pattern | Invoke via Skill Tool |
 |---|---|
 | Localhost/internal content returned | **ssrf** |
 | Callback received but no response data | **ssrf** (blind section) |
@@ -424,7 +497,7 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 
 ### Command Injection
 
-| Response Pattern | Route To |
+| Response Pattern | Invoke via Skill Tool |
 |---|---|
 | Command output (`uid=`, hostname) in response | **command-injection** |
 | Delay with `sleep 5` but no output | **command-injection** (blind section) |
@@ -432,7 +505,7 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 
 ### LFI / File Inclusion
 
-| Response Pattern | Route To |
+| Response Pattern | Invoke via Skill Tool |
 |---|---|
 | File contents (`root:x:0:0:`) in response | **lfi** |
 | Base64 from `php://filter` | **lfi** (PHP wrappers) |
@@ -440,7 +513,7 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 
 ### XXE
 
-| Response Pattern | Route To |
+| Response Pattern | Invoke via Skill Tool |
 |---|---|
 | File contents in XML response | **xxe** |
 | Callback from XML parsing | **xxe** (blind/OOB section) |
@@ -448,7 +521,7 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 
 ### Deserialization
 
-| Response Pattern | Route To |
+| Response Pattern | Invoke via Skill Tool |
 |---|---|
 | Java serialized object (`rO0AB`, `AC ED 00 05`) in parameter/cookie | **deserialization-java** |
 | PHP serialized object (`O:`, `a:`) in parameter/cookie | **deserialization-php** |
@@ -457,7 +530,7 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 
 ### JWT
 
-| Response Pattern | Route To |
+| Response Pattern | Invoke via Skill Tool |
 |---|---|
 | JWT found in auth header, cookie, or parameter (`eyJ...`) | **jwt-attacks** |
 | `alg` set to `none` or weak HMAC key suspected | **jwt-attacks** (alg:none / brute force) |
@@ -466,7 +539,7 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 
 ### NoSQL Injection
 
-| Response Pattern | Route To |
+| Response Pattern | Invoke via Skill Tool |
 |---|---|
 | Auth bypass with `$ne`/`$gt`/`$regex` operators | **nosql-injection** |
 | MongoDB error (`MongoError`, `$operator` in stack trace) | **nosql-injection** |
@@ -475,7 +548,7 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 
 ### LDAP Injection
 
-| Response Pattern | Route To |
+| Response Pattern | Invoke via Skill Tool |
 |---|---|
 | `*` in password field bypasses auth or returns different user | **ldap-injection** (wildcard bypass) |
 | Error mentioning `ldap_search`, `Bad search filter`, `InvalidSearchFilterException` | **ldap-injection** |
@@ -484,7 +557,7 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 
 ### File Upload
 
-| Response Pattern | Route To |
+| Response Pattern | Invoke via Skill Tool |
 |---|---|
 | Uploaded file executed server-side | **file-upload-bypass** |
 | Extension blocked but alternative accepted | **file-upload-bypass** |
@@ -492,7 +565,7 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 
 ### Request Smuggling
 
-| Response Pattern | Route To |
+| Response Pattern | Invoke via Skill Tool |
 |---|---|
 | Timeout or 405 from CL.TE/TE.CL detection probes | **request-smuggling** |
 | Unexpected response on second pipelined request | **request-smuggling** |
@@ -501,7 +574,7 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 
 ### IDOR / Broken Access Control
 
-| Response Pattern | Route To |
+| Response Pattern | Invoke via Skill Tool |
 |---|---|
 | Different user's data returned when ID is changed | **idor** (horizontal) |
 | Admin/privileged data accessible with low-priv session | **idor** (vertical) |
@@ -510,7 +583,7 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 
 ### CORS Misconfiguration
 
-| Response Pattern | Route To |
+| Response Pattern | Invoke via Skill Tool |
 |---|---|
 | `Access-Control-Allow-Origin` reflects arbitrary origin + `Allow-Credentials: true` | **cors-misconfiguration** (origin reflection) |
 | `Access-Control-Allow-Origin: null` + `Allow-Credentials: true` | **cors-misconfiguration** (null origin) |
@@ -519,7 +592,7 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 
 ### CSRF
 
-| Response Pattern | Route To |
+| Response Pattern | Invoke via Skill Tool |
 |---|---|
 | State-changing endpoint accepts request without CSRF token | **csrf** (missing token) |
 | CSRF token present but removing/emptying it still works | **csrf** (token bypass) |
@@ -528,7 +601,7 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 
 ### OAuth / OpenID Connect
 
-| Response Pattern | Route To |
+| Response Pattern | Invoke via Skill Tool |
 |---|---|
 | OAuth login flow detected (social login, SSO) | **oauth-attacks** |
 | redirect_uri accepts arbitrary or manipulated domains | **oauth-attacks** (redirect URI bypass) |
@@ -538,7 +611,7 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 
 ### Password Reset
 
-| Response Pattern | Route To |
+| Response Pattern | Invoke via Skill Tool |
 |---|---|
 | Reset link domain changes with Host/X-Forwarded-Host header | **password-reset-poisoning** (host header poisoning) |
 | Reset token is short, sequential, or predictable | **password-reset-poisoning** (token weakness) |
@@ -547,7 +620,7 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 
 ### 2FA / MFA
 
-| Response Pattern | Route To |
+| Response Pattern | Invoke via Skill Tool |
 |---|---|
 | 2FA prompt found after password authentication | **2fa-bypass** |
 | Direct navigation to authenticated pages bypasses 2FA | **2fa-bypass** (force browse) |
@@ -557,16 +630,20 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 
 ### Race Conditions
 
-| Response Pattern | Route To |
+| Response Pattern | Invoke via Skill Tool |
 |---|---|
 | State-changing endpoint (coupon, transfer, vote) without idempotency controls | **race-condition** (limit-overrun) |
 | Single-use token accepted multiple times under concurrent requests | **race-condition** (token reuse) |
 | Rate limit bypassed via HTTP/2 multiplexed parallel requests | **race-condition** (rate limit bypass) |
 | Multi-step operation with observable delay between check and action | **race-condition** (TOCTOU) |
 
-Update `engagement/state.md` with any new targets, confirmed vulns, or blocked techniques before routing.
+Update `engagement/state.md` with any new targets, confirmed vulns, or blocked
+techniques before routing.
 
-When routing, pass along: the confirmed injection point (URL, parameter, method), observed response behavior, suspected DBMS (if SQL), current mode, and any payloads that already succeeded.
+When invoking a technique skill via the Skill tool, pass along: the confirmed
+injection point (URL, parameter, method), observed response behavior, suspected
+DBMS (if SQL), current mode, and any payloads that already succeeded.
+Do not execute exploitation commands inline.
 
 ## Troubleshooting
 

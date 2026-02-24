@@ -46,6 +46,40 @@ When an engagement directory exists, log as you work:
 - **Evidence** → save enumeration output to `engagement/evidence/` (e.g.,
   `winpeas-output.txt`, `whoami-priv.txt`).
 
+### Invocation Log
+
+Immediately on activation — before reading state.md or doing any assessment —
+log invocation to both the screen and activity.md:
+
+1. **On-screen**: Print `[windows-discovery] Activated → <target>` so the operator
+   sees which skill is running.
+2. **activity.md**: Append:
+   ```
+   ### [HH:MM] windows-discovery → <target>
+   - Invoked (assessment starting)
+   ```
+
+This entry must be written NOW, not deferred. Subsequent milestone entries
+append bullet points under this same header.
+
+## Skill Routing Is Mandatory
+
+When this skill says "→ STOP. Invoke **skill-name**" or "route to
+**skill-name**", you MUST invoke that skill using the Skill tool. Do NOT
+execute the technique inline — even if the attack is trivial or you already
+know the answer. Skills contain operator-specific methodology, client-scoped
+payloads, and edge-case handling that general knowledge does not.
+
+This applies in both guided and autonomous modes. Autonomous mode means you
+make routing decisions without asking — it does not mean you skip skills.
+
+### Scope Boundary
+
+This skill's scope is **privilege escalation enumeration and attack surface
+mapping**. You identify vectors — you do not exploit them. The moment you
+confirm a vector exists, STOP — update state.md and route to the appropriate
+technique skill. Do not execute privilege escalation commands inline.
+
 ## State Management
 
 If `engagement/state.md` exists, read it before starting. Use it to:
@@ -53,7 +87,13 @@ If `engagement/state.md` exists, read it before starting. Use it to:
 - Leverage existing credentials or access
 - Check what's been tried and failed (Blocked section)
 
-After completing enumeration, update `engagement/state.md`:
+Write `engagement/state.md` at these checkpoints (not just at completion):
+1. **After confirming a vulnerability** — add to Vulns with `[found]`
+2. **After successful exploitation** — add credentials, access, pivot paths
+3. **Before routing to another skill** — the next skill reads state.md on activation
+
+At each checkpoint and on completion, update the relevant sections of
+`engagement/state.md`:
 - **Targets**: Add system info (hostname, OS version, architecture, domain membership)
 - **Access**: Update current access level (user, service account, local admin)
 - **Vulns**: Add confirmed privesc vectors as one-liners with `[found]` status
@@ -238,7 +278,10 @@ wmic process list full
 Get-Process | Select-Object Name, Id, Path | Where-Object {$_.Path -notlike "C:\Windows\System32\*"} | Sort-Object Path
 ```
 
-Any finding here → route to **windows-service-dll-abuse**.
+Any finding here → STOP. Invoke **windows-service-dll-abuse** via the Skill
+tool. Pass: hostname, current user, specific findings (unquoted paths, writable
+binaries, modifiable services, DLL hijack targets), OS version, current mode.
+Do not execute exploitation commands inline.
 
 ## Step 4: Scheduled Tasks and Autorun
 
@@ -271,7 +314,9 @@ reg query HKCU\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallEle
 reg query HKLM\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated
 ```
 
-Both must return `0x1` — if so, route to **windows-uac-bypass** (MSI payload).
+Both must return `0x1` — if so, STOP. Invoke **windows-uac-bypass** via the
+Skill tool. Pass: hostname, current user, AlwaysInstallElevated confirmation,
+OS version, current mode. Do not execute MSI payload commands inline.
 
 ## Step 5: Network and Shares
 
@@ -370,7 +415,9 @@ icacls C:\Windows\System32\config\SAM
 
 If `BUILTIN\Users:(I)(RX)` appears → SAM readable by non-admin users.
 
-Any credentials found → route to **windows-credential-harvesting** for deeper extraction.
+Any credentials found → STOP. Invoke **windows-credential-harvesting** via the
+Skill tool. Pass: hostname, current user, credential locations found, OS
+version, current mode. Do not execute credential extraction commands inline.
 
 ## Step 7: Security Controls Detection
 
@@ -455,33 +502,54 @@ Invoke-PrivescCheck -Extended -Report PrivescCheck_Results -Format HTML
 
 ## Step 9: Routing Decision Tree
 
+**Before routing**: Write `engagement/state.md` and append to
+`engagement/activity.md` with results so far. The next skill reads state.md
+on activation — stale state means duplicate work or missed context.
+
 Based on enumeration findings, route to the appropriate technique skill:
 
 ### Token Privileges Found
 
 SeImpersonate, SeAssignPrimaryToken, SeDebug, SeBackup, SeTakeOwnership,
-SeRestore, SeLoadDriver, SeManageVolume → **windows-token-impersonation**
+SeRestore, SeLoadDriver, SeManageVolume
+→ STOP. Invoke **windows-token-impersonation** via the Skill tool. Pass:
+  hostname, current user, specific privileges found, OS version and build,
+  current mode. Do not execute token impersonation commands inline.
 
 ### Service Misconfigurations Found
 
 Unquoted service paths, writable service binaries, modifiable service config,
 weak service registry ACLs, DLL search order hijacking, writable PATH directories,
-auto-updater abuse → **windows-service-dll-abuse**
+auto-updater abuse
+→ STOP. Invoke **windows-service-dll-abuse** via the Skill tool. Pass:
+  hostname, current user, specific findings (unquoted paths / writable binaries /
+  modifiable services / DLL hijack targets), OS version, current mode. Do not
+  execute exploitation commands inline.
 
 ### UAC Bypass Needed
 
 High-integrity needed but running medium-integrity, UAC enabled,
-AlwaysInstallElevated → **windows-uac-bypass**
+AlwaysInstallElevated
+→ STOP. Invoke **windows-uac-bypass** via the Skill tool. Pass: hostname,
+  current user, integrity level, UAC settings, AlwaysInstallElevated status,
+  OS version, current mode. Do not execute UAC bypass commands inline.
 
 ### Stored Credentials Found
 
 Registry passwords, unattend files, PowerShell history, DPAPI blobs,
-HiveNightmare, credential vault entries → **windows-credential-harvesting**
+HiveNightmare, credential vault entries
+→ STOP. Invoke **windows-credential-harvesting** via the Skill tool. Pass:
+  hostname, current user, credential locations found (registry / unattend /
+  history / vault), OS version, current mode. Do not execute credential
+  extraction commands inline.
 
 ### Missing Patches / Kernel Vectors
 
 Watson/WES-NG hits, old OS without patches, vulnerable drivers loaded,
-BYOVD candidates → **windows-kernel-exploits**
+BYOVD candidates
+→ STOP. Invoke **windows-kernel-exploits** via the Skill tool. Pass: hostname,
+  OS version and build, installed hotfixes, Watson/WES-NG output, vulnerable
+  drivers identified, current mode. Do not execute kernel exploits inline.
 
 ### Multiple Vectors Found
 

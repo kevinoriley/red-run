@@ -46,6 +46,37 @@ When an engagement directory exists, log as you work:
 
 If no engagement directory exists and the user declines to create one, proceed normally.
 
+### Invocation Log
+
+Immediately on activation — before reading state.md or doing any assessment —
+log invocation to both the screen and activity.md:
+
+1. **On-screen**: Print `[<skill-name>] Activated → <target>` so the operator
+   sees which skill is running.
+2. **activity.md**: Append:
+   ```
+   ### [HH:MM] <skill-name> → <target>
+   - Invoked (assessment starting)
+   ```
+
+This entry must be written NOW, not deferred. Subsequent milestone entries
+append bullet points under this same header.
+
+## Skill Routing Is Mandatory
+
+When this skill says "Route to **skill-name**" or "→ **skill-name**", you MUST
+invoke that skill using the Skill tool. Do NOT execute the technique inline —
+even if the attack is trivial or you already know the answer. Skills contain
+operator-specific methodology, client-scoped payloads, and edge-case handling
+that general knowledge does not.
+
+This applies in both guided and autonomous modes. Autonomous mode means you
+make routing decisions without asking — it does not mean you skip skills.
+
+**Scope boundary:** This skill covers <scope>. If your findings lead outside
+this scope, STOP — update state.md and route to the appropriate skill. Do not
+continue past your scope boundary.
+
 ## State Management
 
 If `engagement/state.md` exists, read it before starting. Use it to:
@@ -53,7 +84,12 @@ If `engagement/state.md` exists, read it before starting. Use it to:
 - Leverage existing credentials or access for this technique
 - Understand what's been tried and failed (check Blocked section)
 
-After completing this technique or at significant milestones, update
+Write `engagement/state.md` at these checkpoints (not just at completion):
+1. **After confirming a vulnerability** — add to Vulns with `[found]`
+2. **After successful exploitation** — add credentials, access, pivot paths
+3. **Before routing to another skill** — the next skill reads state.md on activation
+
+At each checkpoint and on completion, update the relevant sections of
 `engagement/state.md`:
 - **Targets**: Add any new hosts, URLs, or services discovered
 - **Credentials**: Add any credentials, tokens, or keys recovered
@@ -101,13 +137,17 @@ command arg1 arg2
 
 ## Step N: Escalate or Pivot
 
+**Before routing**: Write `engagement/state.md` and append to
+`engagement/activity.md` with results so far. The next skill reads state.md
+on activation — stale state means duplicate work or missed context.
+
 After completing this technique:
-- <Outcome 1>: Route to **<other-skill-name>**
-- <Outcome 2>: Route to **<other-skill-name>**
+- <Outcome 1>: STOP. Invoke **<other-skill-name>** via the Skill tool. Pass: <context>. Do not execute <category> commands inline.
+- <Outcome 2>: STOP. Invoke **<other-skill-name>** via the Skill tool. Pass: <context>. Do not execute <category> commands inline.
 - <Outcome 3>: Summarize findings, suggest next steps
 
-When routing, pass along: injection point, target technology, current mode,
-and any payloads that already succeeded.
+When routing, always pass along: injection point, target technology, current
+mode, and any payloads that already succeeded.
 
 ## Troubleshooting
 

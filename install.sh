@@ -59,5 +59,22 @@ while IFS= read -r skill_file; do
 
 done < <(find "${SKILLS_SRC}" -name "SKILL.md" -not -path "*/_template/*" | sort)
 
+# Post-install validation: verify at least one installed skill is readable
+validation_failed=0
+for installed in "${SKILLS_DST}/${PREFIX}-"*/SKILL.md; do
+    if [[ ! -r "$installed" ]]; then
+        target="$(readlink -f "$installed" 2>/dev/null || readlink "$installed" 2>/dev/null || echo "unknown")"
+        echo "ERROR: Broken skill: ${installed} -> ${target}" >&2
+        validation_failed=1
+    fi
+done
+
+if [[ "$validation_failed" -eq 1 ]]; then
+    echo "" >&2
+    echo "ERROR: One or more installed skills are not readable." >&2
+    echo "Check that symlink targets exist and the repo path is correct." >&2
+    exit 1
+fi
+
 echo ""
 echo "Installed ${count} skills to ${SKILLS_DST}/ (${MODE} mode)"

@@ -53,6 +53,54 @@ When an engagement directory exists, log as you work:
   to `engagement/evidence/` (e.g., `ad-enum-bloodhound.zip`, `ad-enum-spns.txt`,
   `ad-enum-shares.txt`).
 
+### Invocation Log
+
+Immediately on activation — before reading state.md or doing any assessment —
+log invocation to both the screen and activity.md:
+
+1. **On-screen**: Print `[ad-discovery] Activated → <target>` so the operator
+   sees which skill is running.
+2. **activity.md**: Append:
+   ```
+   ### [HH:MM] ad-discovery → <target>
+   - Invoked (assessment starting)
+   ```
+
+This entry must be written NOW, not deferred. Subsequent milestone entries
+append bullet points under this same header.
+
+## Skill Routing Is Mandatory
+
+When this skill says "→ STOP. Invoke **skill-name**" or "route to
+**skill-name**", you MUST invoke that skill using the Skill tool. Do NOT
+execute the technique inline — even if the attack path seems obvious or you
+already know the technique. Skills contain operator-specific methodology,
+client-scoped payloads, and edge-case handling that general knowledge does not.
+
+This applies in both guided and autonomous modes. Autonomous mode means you
+make routing decisions without asking — it does not mean you skip skills.
+
+### Scope Boundary
+
+This skill's scope is **Active Directory enumeration and attack surface
+mapping**. You identify attack paths — you do not exploit them. The moment you
+confirm an exploitable finding, STOP — update state.md and route to the
+appropriate technique skill. Do not execute AD attack techniques inline.
+
+You MUST NOT:
+- Perform Kerberoasting or AS-REP roasting beyond identifying targets — route
+  to **kerberos-roasting**
+- Exploit delegation misconfigurations — route to **kerberos-delegation**
+- Exploit ACL misconfigurations — route to **acl-abuse**
+- Perform credential dumping — route to **credential-dumping**
+- Forge tickets — route to **kerberos-ticket-forging**
+- Perform coercion or relay attacks — route to **auth-coercion-relay**
+- Exploit ADCS beyond enumeration — route to **adcs-template-abuse** or
+  **adcs-access-and-relay**
+
+When you find exploitable attack paths: update state.md, log to activity.md,
+and present routing recommendations. Do not continue past enumeration.
+
 ## State Management
 
 If `engagement/state.md` exists, read it before starting. Use it to:
@@ -60,7 +108,13 @@ If `engagement/state.md` exists, read it before starting. Use it to:
 - Leverage existing credentials for authenticated enumeration
 - Check what techniques have already been tried (Blocked section)
 
-After completing enumeration, update `engagement/state.md`:
+Write `engagement/state.md` at these checkpoints (not just at completion):
+1. **After confirming a vulnerability** — add to Vulns with `[found]`
+2. **After successful exploitation** — add credentials, access, pivot paths
+3. **Before routing to another skill** — the next skill reads state.md on activation
+
+At each checkpoint and on completion, update the relevant sections of
+`engagement/state.md`:
 - **Targets**: DCs, member servers, workstations, services discovered
 - **Credentials**: Any creds found in descriptions, shares, or SYSVOL
 - **Vulns**: Attack surface findings (SPNs, delegation, weak ACLs, ADCS)
@@ -175,7 +229,9 @@ Use output as username list for **password-spraying** and AS-REP roasting checks
 ### LLMNR/NBT-NS/mDNS Poisoning Check
 
 If network position allows, note LLMNR/NBT-NS traffic for Responder-based
-hash capture. Route to **auth-coercion-relay** for exploitation.
+hash capture. → STOP. Invoke **auth-coercion-relay** via the Skill tool.
+Pass: DC IP, domain name, network position, LLMNR/NBT-NS traffic details,
+current mode. Do not execute poisoning or relay commands inline.
 
 ## Step 3: BloodHound Collection
 
@@ -273,7 +329,9 @@ nxc ldap DC01.DOMAIN.LOCAL -u 'user' -p 'Password123' --kerberoasting output.txt
 .\Rubeus.exe kerberoast /stats
 ```
 
-If SPNs found on user accounts -> route to **kerberos-roasting**.
+If SPNs found on user accounts → STOP. Invoke **kerberos-roasting** via the
+Skill tool. Pass: DC IP, domain name, SPN list, current credentials, current
+mode. Do not request or crack service tickets inline.
 
 ### AS-REP Roastable Accounts
 
@@ -287,7 +345,9 @@ bloodyAD -u user -p 'Password123' -d DOMAIN.LOCAL --host DC_IP \
   --attr sAMAccountName
 ```
 
-If found -> route to **kerberos-roasting** (AS-REP section).
+If found → STOP. Invoke **kerberos-roasting** via the Skill tool (AS-REP
+section). Pass: DC IP, domain name, AS-REP roastable user list, current mode.
+Do not request or crack AS-REP hashes inline.
 
 ### Delegation Enumeration
 
@@ -313,7 +373,9 @@ Get-DomainUser -TrustedToAuth
 Get-DomainComputer -TrustedToAuth
 ```
 
-If found -> route to **kerberos-delegation**.
+If found → STOP. Invoke **kerberos-delegation** via the Skill tool. Pass: DC
+IP, domain name, delegation type and targets, current credentials, current
+mode. Do not exploit delegation inline.
 
 ### Privileged Group Membership
 
@@ -338,7 +400,9 @@ nxc ldap DC01.DOMAIN.LOCAL -u 'user' -p 'Password123' -M laps
 nxc ldap DC01.DOMAIN.LOCAL -u 'user' -p 'Password123' --gmsa
 ```
 
-If readable -> route to **credential-dumping**.
+If readable → STOP. Invoke **credential-dumping** via the Skill tool. Pass:
+DC IP, domain name, LAPS/gMSA target details, current credentials, current
+mode. Do not extract managed passwords inline.
 
 ### Trust Enumeration
 
@@ -356,7 +420,9 @@ Get-DomainForeignUser
 Get-DomainForeignGroupMember
 ```
 
-If trusts found -> route to **trust-attacks**.
+If trusts found → STOP. Invoke **trust-attacks** via the Skill tool. Pass:
+DC IP, domain name, trust relationships enumerated, trust types and directions,
+current credentials, current mode. Do not exploit trust relationships inline.
 
 ### Share Enumeration
 
@@ -394,8 +460,10 @@ nxc smb 10.10.10.0/24 -u 'user' -p 'Password123'
 Find-LocalAdminAccess -Verbose
 ```
 
-If local admin found -> route to **credential-dumping** (SAM/LSASS), then
-**pass-the-hash** for lateral movement.
+If local admin found → STOP. Invoke **credential-dumping** via the Skill tool
+(SAM/LSASS). Pass: target hostname, local admin credentials, DC IP, domain
+name, current mode. Do not dump credentials inline. After credential-dumping
+returns, invoke **pass-the-hash** for lateral movement.
 
 ### SCCM / Deployment
 
@@ -404,11 +472,15 @@ If local admin found -> route to **credential-dumping** (SAM/LSASS), then
 python3 sccmhunter.py find -u 'user' -p 'Password123' -d DOMAIN.LOCAL -dc-ip DC_IP
 ```
 
-If SCCM found -> route to **sccm-exploitation**.
+If SCCM found → STOP. Invoke **sccm-exploitation** via the Skill tool. Pass:
+DC IP, domain name, SCCM server details, current credentials, current mode.
+Do not exploit SCCM inline.
 
 ## Step 5: Attack Surface Routing
 
 Map enumeration findings to technique skills. This is the core routing table.
+When a match below is found, STOP — invoke the named skill via the Skill tool.
+Do not execute attack techniques inline.
 
 | Finding | Indicator | Route To |
 |---------|-----------|----------|
@@ -457,6 +529,10 @@ When multiple attack paths exist, prioritize by OPSEC and reliability:
 7. **Credential dumping** — requires existing admin access
 
 ## Step 6: Escalate or Pivot
+
+**Before routing**: Write `engagement/state.md` and append to
+`engagement/activity.md` with results so far. The next skill reads state.md
+on activation — stale state means duplicate work or missed context.
 
 After mapping the attack surface:
 - **Multiple paths identified**: In guided mode, present the top 3 paths ranked

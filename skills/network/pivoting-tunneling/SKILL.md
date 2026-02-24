@@ -53,6 +53,23 @@ When an engagement directory exists, log as you work:
 - **Evidence** → save tunnel configuration, proxy setup, and connectivity test
   results to `engagement/evidence/`.
 
+### Invocation Log
+
+Immediately on activation — before reading state.md or doing any assessment —
+log invocation to both the screen and activity.md:
+
+1. **On-screen**: Print `[pivoting-tunneling] Activated → <target>` so the operator
+   sees which skill is running.
+2. **activity.md**: Append:
+   ```
+   ### [HH:MM] pivoting-tunneling → <target>
+   - Invoked (assessment starting)
+   ```
+
+This entry must be written NOW, not deferred. Subsequent milestone entries
+append bullet points under this same header.
+
+
 ## State Management
 
 If `engagement/state.md` exists, read it before starting. Use it to:
@@ -61,7 +78,13 @@ If `engagement/state.md` exists, read it before starting. Use it to:
 - Review existing tunnels and pivot chains
 - Read Pivot Map for network topology
 
-After establishing tunnels, update `engagement/state.md`:
+Write `engagement/state.md` at these checkpoints (not just at completion):
+1. **After confirming a vulnerability** — add to Vulns with `[found]`
+2. **After successful exploitation** — add credentials, access, pivot paths
+3. **Before routing to another skill** — the next skill reads state.md on activation
+
+At each checkpoint and on completion, update the relevant sections of
+`engagement/state.md`:
 - **Access**: Add tunnel endpoints and access method
 - **Pivot Map**: Document which host reaches which network, through what tunnel
 - **Blocked**: Record failed tunnel attempts and why
