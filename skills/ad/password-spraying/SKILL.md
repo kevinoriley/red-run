@@ -27,8 +27,14 @@ instead of 4625, which is less commonly monitored.
 ## Mode
 
 Check if the user or orchestrator has set a mode:
-- **Guided** (default): Confirm password policy before spraying. Ask before
-  each spray round. Present results and suggest next actions.
+- **Guided** (default): Before executing any command that sends traffic to a
+  target, present the command with a one-line explanation of what it does and
+  why. Wait for explicit user approval before executing. Never batch multiple
+  target-touching commands without approval — present them one at a time (or as
+  a small logical group if they achieve a single objective, e.g., "enumerate SMB
+  shares"). Local-only operations (file writes, output parsing, engagement
+  logging, hash cracking) do not require approval. At decision forks, present
+  options and let the user choose.
 - **Autonomous**: Enumerate policy, build smart password list, spray with
   appropriate delays, report valid credentials. Pause before spraying if
   lockout threshold is dangerously low (<=3).

@@ -32,8 +32,14 @@ NTLM detection artifacts (Event 4776, relay signatures) as a necessary cost.
 ## Mode
 
 Check if the user or orchestrator has set a mode:
-- **Guided** (default): Explain the ACL/relay distinction. Walk through each
-  step. Show what to verify in output. Warn about OPSEC for relay techniques.
+- **Guided** (default): Before executing any command that sends traffic to a
+  target, present the command with a one-line explanation of what it does and
+  why. Wait for explicit user approval before executing. Never batch multiple
+  target-touching commands without approval — present them one at a time (or as
+  a small logical group if they achieve a single objective, e.g., "enumerate SMB
+  shares"). Local-only operations (file writes, output parsing, engagement
+  logging, hash cracking) do not require approval. At decision forks, present
+  options and let the user choose.
 - **Autonomous**: Identify the attack path, execute, authenticate with obtained
   certificate, and report. Pause before relay attacks (high OPSEC).
 

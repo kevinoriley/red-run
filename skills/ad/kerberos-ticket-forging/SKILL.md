@@ -30,8 +30,9 @@ with forged tickets.
 ## Mode
 
 Check if the user or orchestrator has set a mode:
-- **Guided** (default): Explain each ticket type and OPSEC trade-offs. Help
-  choose the right ticket type. Ask before injecting.
+- **Guided** (default): Before executing any command that sends traffic to a
+  target, present it and wait for user approval. Explain each ticket type and
+  OPSEC trade-offs. Help choose the right ticket type. Ask before injecting.
 - **Autonomous**: Assess available key material, forge the most OPSEC-safe
   ticket type, inject, and verify access. Report at milestones.
 

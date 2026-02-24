@@ -23,9 +23,9 @@ responses. All testing is under explicit written authorization.
 ## Mode
 
 Check if the user or orchestrator has set a mode:
-- **Guided** (default): Explain each phase. Ask before running scans. Present
-  findings and let the tester choose which to pursue. Show the decision tree
-  logic when routing.
+- **Guided** (default): Before executing any command that sends traffic to a
+  target, present it and wait for user approval. Explain each phase. Ask before
+  running scans. Present findings. Show decision tree logic when routing.
 - **Autonomous**: Run all discovery phases sequentially. Auto-triage findings by
   severity. Route to exploitation skills for confirmed injection points. Report
   discovery summary at each phase boundary.

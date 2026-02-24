@@ -35,8 +35,9 @@ tools (SharpGPOAbuse, PowerGPOAbuse) use the current domain session.
 ## Mode
 
 Check if the user or orchestrator has set a mode:
-- **Guided** (default): Explain GPO scope (which OUs/computers are
-  affected), ask before modifying GPOs, confirm cleanup plan.
+- **Guided** (default): Before executing any command that sends traffic to a
+  target, present it and wait for user approval. Explain GPO scope (which
+  OUs/computers are affected), ask before modifying GPOs, confirm cleanup plan.
 - **Autonomous**: Enumerate GPO permissions, select best exploitation
   path, execute, clean up, and report.
 

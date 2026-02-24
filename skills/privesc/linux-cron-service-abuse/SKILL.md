@@ -22,9 +22,9 @@ authorization.
 ## Mode
 
 Check if the user or orchestrator has set a mode:
-- **Guided** (default): Explain each technique before executing. Show expected output.
-  Ask before modifying cron/service files or injecting commands. Present timing
-  considerations (when will the cron job fire?).
+- **Guided** (default): Before executing any command that sends traffic to a
+  target, present it and wait for user approval. Explain each technique before
+  executing. Show expected output. Ask before modifying cron/service files.
 - **Autonomous**: Execute the most reliable technique. Monitor for execution with pspy.
   Report results at each stage. Only pause before destructive modifications.
 

@@ -25,8 +25,10 @@ exploit a Kubernetes cluster. All testing is under explicit written authorizatio
 ## Mode
 
 Check if the user or orchestrator has set a mode:
-- **Guided** (default): Explain each escape technique, its prerequisites and
-  detection risk. Present findings after enumeration. Ask which vector to pursue.
+- **Guided** (default): Before executing any command that sends traffic to a
+  target, present it and wait for user approval. Explain each escape technique,
+  its prerequisites and detection risk. Present findings after enumeration. Ask
+  which vector to pursue.
 - **Autonomous**: Run full container enumeration, identify all escape vectors,
   exploit the most reliable one, report results. Only pause for destructive actions
   (kernel module loading, host filesystem modification).

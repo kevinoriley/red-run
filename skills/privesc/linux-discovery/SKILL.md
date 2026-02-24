@@ -21,8 +21,9 @@ escalation vectors. All testing is under explicit written authorization.
 ## Mode
 
 Check if the user or orchestrator has set a mode:
-- **Guided** (default): Explain each enumeration step before executing. Present
-  findings at each stage. Ask which vectors to pursue. Show what to look for in output.
+- **Guided** (default): Before executing any command that sends traffic to a
+  target, present it and wait for user approval. Explain each enumeration step
+  before executing. Present findings at each stage. Ask which vectors to pursue.
 - **Autonomous**: Run full enumeration, collect all findings, present prioritized
   attack surface with routing recommendations. Only pause for high-OPSEC actions.
 

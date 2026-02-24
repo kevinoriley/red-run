@@ -22,9 +22,9 @@ authorization.
 ## Mode
 
 Check if the user or orchestrator has set a mode:
-- **Guided** (default): Explain each technique before executing. Show GTFOBins reference
-  for the specific binary. Ask before compiling or running payloads. Present alternatives
-  when multiple approaches exist.
+- **Guided** (default): Before executing any command that sends traffic to a
+  target, present it and wait for user approval. Explain each technique before
+  executing. Show GTFOBins reference. Ask before compiling or running payloads.
 - **Autonomous**: Execute the most reliable technique. Try GTFOBins first, fall back to
   custom exploitation. Report results at each stage.
 

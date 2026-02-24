@@ -35,9 +35,10 @@ All testing is under explicit written authorization.
 ## Mode
 
 Check if the user or orchestrator has set a mode:
-- **Guided** (default): Explain each persistence mechanism, its detection
-  surface, and cleanup requirements. Ask before injecting into LSASS or
-  modifying AD objects. Present options ranked by OPSEC.
+- **Guided** (default): Before executing any command that sends traffic to a
+  target, present it and wait for user approval. Explain each persistence
+  mechanism, its detection surface, and cleanup requirements. Ask before
+  injecting into LSASS or modifying AD objects.
 - **Autonomous**: Assess current access level, deploy the most appropriate
   persistence mechanism, verify it works, and report. Only pause before
   modifying LSASS or deploying drivers.

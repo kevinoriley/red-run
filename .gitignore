@@ -21,3 +21,9 @@ __pycache__/
 # Engagement data — never commit
 loot/
 evidence/
+engagement/
+
+# Local planning files
+task_plan.md
+progress.md
+findings.md

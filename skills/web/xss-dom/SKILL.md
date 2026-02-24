@@ -26,9 +26,14 @@ explicit written authorization.
 ## Mode
 
 Check if the user or orchestrator has set a mode:
-- **Guided** (default): Explain sources and sinks. Help trace data flow through
-  JavaScript. Walk through payload construction for the specific sink. Explain
-  why DOM XSS is harder to detect than reflected/stored.
+- **Guided** (default): Before executing any command that sends traffic to a
+  target, present the command with a one-line explanation of what it does and
+  why. Wait for explicit user approval before executing. Never batch multiple
+  target-touching commands without approval — present them one at a time (or as
+  a small logical group if they achieve a single objective, e.g., "enumerate SMB
+  shares"). Local-only operations (file writes, output parsing, engagement
+  logging, hash cracking) do not require approval. At decision forks, present
+  options and let the user choose.
 - **Autonomous**: Execute end-to-end. Analyze page JavaScript for source-sink
   flows, test identified sinks with appropriate payloads, demonstrate impact.
   Report at milestones.
