@@ -72,6 +72,10 @@ log invocation to both the screen and activity.md:
    - Invoked (assessment starting)
    ```
 
+**Timestamps:** Replace `[HH:MM]` with the actual current time. Run
+`date +%H:%M` to get it. Never write the literal placeholder `[HH:MM]` —
+activity.md entries need real timestamps for timeline reconstruction.
+
 This entry must be written NOW, not deferred. Subsequent milestone entries
 append bullet points under this same header.
 

@@ -113,6 +113,10 @@ to the screen:
    - Invoked (engagement starting)
    ```
 
+**Timestamps:** Replace `[HH:MM]` with the actual current time. Run
+`date +%H:%M` to get it. Never write the literal placeholder `[HH:MM]` —
+activity.md entries need real timestamps for timeline reconstruction.
+
 This entry must be written as soon as the engagement directory exists.
 Subsequent milestone entries append bullet points under this same header or
 create new headers as phases progress.
@@ -248,6 +252,7 @@ Based on recon results, categorize the attack surface:
 | Containers / K8s | Docker API (2375), K8s API (6443/8443), kubelet (10250), etcd (2379), or inside a container | STOP. Invoke **container-escapes** via the Skill tool. |
 | Database | MySQL (3306), MSSQL (1433), PostgreSQL (5432) | Direct DB testing |
 | Mail | SMTP (25/587), IMAP (143/993) | Credential attacks, phishing |
+| SMB vulnerability | SMB (445) + confirmed CVE (MS08-067, MS17-010, SMBGhost, MS09-050) | STOP. Invoke **smb-exploitation** via the Skill tool. |
 | File shares | SMB (445), NFS (2049) | Enumeration, sensitive files |
 | Remote access | SSH (22), RDP (3389), WinRM (5985) | STOP. Invoke **password-spraying** via the Skill tool. |
 | Custom services | Non-standard ports | Manual investigation |
@@ -293,6 +298,10 @@ analyze the Pivot Map to chain vulnerabilities for maximum impact.
 ### Chaining Strategy
 
 Think through these chains systematically:
+
+**Direct Access (no credentials needed):**
+- SMB vulnerability confirmed → invoke **smb-exploitation** via Skill tool → SYSTEM shell
+- SMB exploitation → SYSTEM → invoke **credential-dumping** via Skill tool → lateral movement
 
 **Information → Access:**
 - LFI reads config → credentials → database/service access
@@ -354,16 +363,29 @@ When significant access is gained (shell, domain admin, database):
 
 ### Evidence Collection
 
+**Important — Windows path quoting:** Paths with spaces (e.g.,
+`C:\Documents and Settings\`) must use double quotes in cmd.exe. Without
+quotes, cmd.exe splits on spaces and the command fails.
+
 ```bash
 # On compromised host — collect proof
-whoami /all > engagement/evidence/host-whoami.txt
-ipconfig /all > engagement/evidence/host-network.txt
-systeminfo > engagement/evidence/host-sysinfo.txt
+whoami /all
+ipconfig /all
+systeminfo
 
 # Domain info if applicable
-net user /domain > engagement/evidence/domain-users.txt
-net group "Domain Admins" /domain > engagement/evidence/domain-admins.txt
+net user /domain
+net group "Domain Admins" /domain
+
+# Flags (quote paths with spaces — especially Windows XP)
+type "C:\Documents and Settings\<user>\Desktop\user.txt"
+type "C:\Documents and Settings\Administrator\Desktop\root.txt"
+# Or on Vista+:
+type C:\Users\<user>\Desktop\user.txt
+type C:\Users\Administrator\Desktop\root.txt
 ```
+
+Save output to `engagement/evidence/` with descriptive filenames.
 
 ## Step 7: Reporting
 
