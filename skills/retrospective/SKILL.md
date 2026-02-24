@@ -10,7 +10,8 @@ description: >
   OPSEC: low — reads local files only, no target interaction.
   Tools: none (file reads and analysis only).
   Do NOT use during an active engagement — this is a post-mortem skill.
-  Do NOT use for formal finding writeups — use pentest-findings instead.
+  Do NOT use for formal finding writeups — this skill analyzes skill library
+  performance, not individual vulnerabilities.
 ---
 
 # Engagement Retrospective
