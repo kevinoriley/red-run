@@ -252,6 +252,21 @@ param[$exists]=true
 {"param": {"$regex": ".*"}}
 ```
 
+**LDAP Injection** (test login forms and search fields backed by LDAP/AD):
+```
+# Wildcard — if login succeeds or search returns results, LDAP may be in play
+*
+
+# Filter breakout — triggers error if LDAP filter is parsed
+)(cn=*))(|(cn=*
+
+# Always-true injection in AND context
+admin)(&)
+
+# Error trigger
+\
+```
+
 **Request Smuggling** (test for CL/TE desync on multi-tier architectures):
 ```
 # Check for mixed HTTP version (H2 front-end, H1 back-end)
@@ -457,6 +472,15 @@ Analyze responses from Step 3 to identify vulnerability type, then route to the 
 | MongoDB error (`MongoError`, `$operator` in stack trace) | **nosql-injection** |
 | Different response for `$exists`/`$ne` vs normal input | **nosql-injection** (blind section) |
 | Node.js/Express backend with JSON API | **nosql-injection** (test operators) |
+
+### LDAP Injection
+
+| Response Pattern | Route To |
+|---|---|
+| `*` in password field bypasses auth or returns different user | **ldap-injection** (wildcard bypass) |
+| Error mentioning `ldap_search`, `Bad search filter`, `InvalidSearchFilterException` | **ldap-injection** |
+| `)(cn=*)` breakout changes response or triggers LDAP error | **ldap-injection** (filter breakout) |
+| Corporate app with AD/LDAP backend, login or directory search | **ldap-injection** (test wildcards) |
 
 ### File Upload
 
