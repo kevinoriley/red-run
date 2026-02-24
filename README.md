@@ -189,6 +189,23 @@ Large engagements generate more state than fits in a single conversation context
 
 Every skill reads `state.md` on activation and writes back on completion. The orchestrator uses `state.md` + Pivot Map to chain vulnerabilities toward maximum impact. Kept under ~200 lines — one-liner per item, current state not history.
 
+## The retrospective loop
+
+The skills in this repo are a starting point. The retrospective skill is what makes them yours.
+
+After an engagement, run a retrospective. Claude reads the engagement directory — `activity.md`, `state.md`, `findings.md` — and analyzes what happened. It reviews every skill routing decision, identifies gaps in payloads and methodology, flags techniques that were done by hand instead of through a skill, and produces a prioritized list of improvements: skill updates, new skills to build, routing fixes.
+
+The actionable items are specific. Not "improve the XXE skill" but "add a Custom Sudo Script Analysis section to `linux-sudo-suid-capabilities` covering eval/exec/os.system sinks in sudo-allowed scripts, with constraint-satisfaction methodology." You discuss the findings with Claude, decide what to change, and update the skills right there in the same session.
+
+This is where red-run starts to work differently for you than for anyone else. After a few engagements:
+
+- Your web skills carry the payloads that actually worked against the stacks you see most often
+- Your AD skills reflect the tools and authentication workflows you prefer
+- Your privesc skills cover the edge cases you've personally hit
+- Your discovery skills route to techniques in the order that matches your methodology
+
+The cycle is: **engage → retrospective → improve skills → engage again**. Each pass through the loop makes the library more effective for the specific types of targets, environments, and toolchains you work with. The skills become a living record of your methodology — refined by real engagements, not hypothetical coverage.
+
 ## Installation
 
 ### Install
