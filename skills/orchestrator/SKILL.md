@@ -134,7 +134,7 @@ Route to **network-recon** with the target IP, hostname, or CIDR range. It will:
 5. Update state.md with all discovered hosts, ports, and services
 6. Return routing recommendations for next steps
 
-The default scan for single targets:
+The default scan for single targets (requires root — present to user for manual execution):
 ```bash
 sudo nmap -A -p- -T4 -oA engagement/evidence/nmap-TARGET -vvv TARGET_IP
 ```

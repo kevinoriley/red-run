@@ -91,6 +91,33 @@ export KRB5CCNAME=user.ccache
 # Enumeration commands below use -k -no-pass
 ```
 
+## Privileged Commands
+
+Claude Code cannot execute `sudo` commands. The following tools require root
+and must be handed off to the user for manual execution:
+
+- **ntlmrelayx.py** — NTLM relay listener (binds SMB/HTTP/LDAP ports, needs raw sockets)
+- **responder** — LLMNR/NBNS/mDNS/WPAD poisoning (needs raw sockets)
+- **krbrelayx.py** — Kerberos relay listener (needs raw sockets)
+- **mitm6** — IPv6 DNS takeover (needs raw sockets)
+- **systemctl** — stopping local services (e.g., `systemctl stop smbd` before relay)
+
+**Handoff protocol:**
+
+1. Present the full command including `sudo` to the user
+2. Ask the user to run it in their terminal
+3. Read output or wait for callback confirmation
+4. Continue analysis based on results
+
+**Non-privileged commands** Claude can execute directly:
+- Coercion tools: `PetitPotam.py`, `DFSCoerce.py`, `printerbug.py`, `ShadowCoerce`, `CheeseOunce`
+- Enumeration: `netexec smb --gen-relay-list`, `certipy find`, `bloodyAD`
+- Kerberos auth setup: `getTGT.py`, `export KRB5CCNAME`
+- Post-relay exploitation: `getST.py`, `secretsdump.py`, `certipy auth`
+
+**Autonomous mode:** Batch all pending privileged commands (relay listener +
+poisoner + coercion trigger) so the user can start them in one pass.
+
 ## Step 1: Assess Relay Feasibility
 
 Before coercing, check what relay targets are available.
@@ -544,7 +571,7 @@ If signing is required, relay to AD CS (HTTP) or SMB instead.
 
 - Verify listener IP is reachable from target network
 - Check firewall allows inbound on port 445 (SMB) or 80/443 (HTTP)
-- Stop local SMB service: `sudo systemctl stop smbd`
+- Stop local SMB service: `sudo systemctl stop smbd` (requires root — present to user)
 - Stop local HTTP service if relaying HTTP
 
 ### MachineAccountQuota is 0

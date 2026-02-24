@@ -192,46 +192,6 @@ Skills install to `~/.claude/skills/red-run-<skill-name>/SKILL.md`.
 
 Always run red-run from a VM or dedicated pentesting machine. Skills execute commands, transfer tools, and interact with targets — you want network isolation and a disposable environment. A purpose-built Linux VM with your pentesting tools and Claude Code installed is the intended setup.
 
-### sudo nmap setup
-
-Skills use `sudo nmap` for SYN scans (`-sS`), OS detection (`-O`), UDP scans (`-sU`), and NSE scripts that need raw sockets. Without sudo, nmap silently falls back to TCP connect scans — slower, noisier, and less reliable. Claude Code's permission system blocks `sudo` by default, so two things need to be configured:
-
-**1. Allow `sudo nmap` in Claude Code**
-
-This project ships `.claude/settings.json` with permission rules that auto-approve `sudo nmap` and `sudo masscan` commands:
-
-```json
-{
-  "permissions": {
-    "allow": [
-      "Bash(sudo nmap *)",
-      "Bash(sudo masscan *)"
-    ]
-  }
-}
-```
-
-This is already configured — no action needed if you're using the repo as-is. If you maintain your own settings, add these rules to your project or user-level settings.
-
-**2. Passwordless sudo for nmap**
-
-Claude Code can't respond to interactive `sudo` password prompts. Configure passwordless sudo for nmap and masscan:
-
-```bash
-# /etc/sudoers.d/nmap (create this file with visudo)
-# Replace YOUR_USERNAME with your actual username
-YOUR_USERNAME ALL=(ALL) NOPASSWD: /usr/bin/nmap, /usr/bin/masscan
-```
-
-```bash
-# Quick setup (run this once)
-echo "$(whoami) ALL=(ALL) NOPASSWD: $(which nmap), $(which masscan)" | sudo tee /etc/sudoers.d/nmap
-sudo chmod 440 /etc/sudoers.d/nmap
-sudo visudo -c  # Validate syntax
-```
-
-**Safety note:** This grants your user passwordless sudo for nmap and masscan only — not blanket root access. Since you should already be running red-run from a dedicated pentesting VM, this is a reasonable trade-off. Do not configure this on a shared or production system.
-
 ### Recommended configuration
 
 This project was built with the [Trail of Bits Claude Code configuration](https://github.com/trailofbits/claude-code-config) in mind:

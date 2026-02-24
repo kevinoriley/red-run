@@ -414,7 +414,8 @@ domain info, and mode.
 
 ### KRB_AP_ERR_SKEW (Clock Skew)
 
-Kerberos requires clocks within 5 minutes of the DC:
+Kerberos requires clocks within 5 minutes of the DC (requires root — present
+to user for manual execution):
 ```bash
 sudo ntpdate DC_IP
 ```
