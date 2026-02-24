@@ -541,7 +541,7 @@ After establishing persistence:
   across trust boundaries
 - **Credential harvesting active**: Check custom SSP logs periodically
   for new credentials -> route to **pass-the-hash**
-- **Need formal writeup**: Route to pentest-findings skill
+- **Need formal writeup**: Document persistence mechanisms in engagement/findings.md
 - **Engagement complete**: Document all persistence mechanisms and
   cleanup steps in findings
 
