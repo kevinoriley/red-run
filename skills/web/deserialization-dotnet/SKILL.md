@@ -51,7 +51,7 @@ Check for `./engagement/` directory. If absent:
 When an engagement directory exists, log as you work:
 - **Activity** → append to `engagement/activity.md` at milestones (deserialization
   confirmed, gadget chain identified, RCE achieved, pivot to another skill):
-  `### [HH:MM] deserialization-dotnet → <target>` with bullet points of actions/results.
+  `### [YYYY-MM-DD HH:MM:SS] deserialization-dotnet → <target>` with bullet points of actions/results.
 - **Findings** → append to `engagement/findings.md` when a vulnerability is confirmed:
   `## N. Title [Severity]` with target, technique, impact, evidence path, repro command.
 - **Evidence** → save significant output to `engagement/evidence/` with descriptive
@@ -68,13 +68,14 @@ log invocation to both the screen and activity.md:
    sees which skill is running.
 2. **activity.md**: Append:
    ```
-   ### [HH:MM] deserialization-dotnet → <target>
+   ### [YYYY-MM-DD HH:MM:SS] deserialization-dotnet → <target>
    - Invoked (assessment starting)
    ```
 
-**Timestamps:** Replace `[HH:MM]` with the actual current time. Run
-`date +%H:%M` to get it. Never write the literal placeholder `[HH:MM]` —
-activity.md entries need real timestamps for timeline reconstruction.
+**Timestamps:** Replace `[YYYY-MM-DD HH:MM:SS]` with the actual current date
+and time. Run `date '+%Y-%m-%d %H:%M:%S'` to get it. Never write the literal
+placeholder `[YYYY-MM-DD HH:MM:SS]` — activity.md entries need real timestamps
+with date and second precision for timeline reconstruction.
 
 This entry must be written NOW, not deferred. Subsequent milestone entries
 append bullet points under this same header.

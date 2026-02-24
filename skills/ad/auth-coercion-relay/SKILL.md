@@ -59,7 +59,7 @@ Check for `./engagement/` directory. If absent:
 - **Autonomous**: Create it automatically.
 
 When an engagement directory exists:
-- **Activity** -> `### [HH:MM] auth-coercion-relay -> <target>` with
+- **Activity** -> `### [YYYY-MM-DD HH:MM:SS] auth-coercion-relay -> <target>` with
   coercion method, relay target, outcome.
 - **Findings** -> Log successful relay (machine account created, RBCD
   set, certificate obtained, code execution achieved).
@@ -75,13 +75,14 @@ log invocation to both the screen and activity.md:
    sees which skill is running.
 2. **activity.md**: Append:
    ```
-   ### [HH:MM] auth-coercion-relay → <target>
+   ### [YYYY-MM-DD HH:MM:SS] auth-coercion-relay → <target>
    - Invoked (assessment starting)
    ```
 
-**Timestamps:** Replace `[HH:MM]` with the actual current time. Run
-`date +%H:%M` to get it. Never write the literal placeholder `[HH:MM]` —
-activity.md entries need real timestamps for timeline reconstruction.
+**Timestamps:** Replace `[YYYY-MM-DD HH:MM:SS]` with the actual current date
+and time. Run `date '+%Y-%m-%d %H:%M:%S'` to get it. Never write the literal
+placeholder `[YYYY-MM-DD HH:MM:SS]` — activity.md entries need real timestamps
+with date and second precision for timeline reconstruction.
 
 This entry must be written NOW, not deferred. Subsequent milestone entries
 append bullet points under this same header.
