@@ -68,6 +68,40 @@ After establishing tunnels, update `engagement/state.md`:
 - Know what's available on the compromised host (SSH, outbound connectivity,
   installed tools, OS)
 
+## Privileged Commands
+
+Claude Code cannot execute `sudo` commands. The following tools require root
+on the **attacker machine** and must be handed off to the user:
+
+- **ssh -w** (VPN/tun mode) — creates tun device (requires `PermitTunnel` on both ends)
+- **ip addr / ip link / ip route / ip tuntap** — network interface and route configuration
+- **iptables** — NAT/masquerade rules for tunnel routing
+- **sshuttle** — transparent proxy (needs root for iptables rules)
+- **iodined / iodine** — DNS tunnel server/client (needs tun device)
+- **hans** — ICMP tunnel (needs raw sockets)
+- **ptunnel-ng** — ICMP tunnel (needs raw sockets)
+
+**Handoff protocol:**
+
+1. Present the full command including `sudo` to the user
+2. For multi-step setups (e.g., create tun + add route + add NAT), batch
+   all commands so the user can run them sequentially
+3. Verify connectivity after the user confirms completion
+4. Continue with proxychains configuration and tool usage
+
+**Non-privileged commands** Claude can execute directly:
+- SSH port forwarding: `ssh -L`, `ssh -R`, `ssh -D`, `ssh -J` (jump hosts)
+- Chisel (client/server as user binary)
+- Ligolo-ng agent (on pivot host)
+- Socat port forwarding
+- Plink (Windows SSH)
+- Proxychains configuration and usage
+- FRP client/server
+
+**Note:** Ligolo-ng **proxy** setup requires root on the attacker machine
+(`ip tuntap add`, `ip link set`, `ip route add`). The **agent** on the
+pivot host runs unprivileged.
+
 ## Tool Selection Decision Tree
 
 Choose the right tool based on what's available:

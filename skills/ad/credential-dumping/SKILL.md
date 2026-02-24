@@ -540,7 +540,7 @@ Update `engagement/state.md` with all extracted credentials and access.
 
 - Target may require SMB3, add `-smb2support` or check Impacket version
 - Try `-use-vss` flag for VSS-based extraction instead of DRSUAPI
-- Clock skew: `sudo ntpdate DC_IP`
+- Clock skew: `sudo ntpdate DC_IP` (requires root — present to user for manual execution)
 
 ### LAPS Attribute Empty
 

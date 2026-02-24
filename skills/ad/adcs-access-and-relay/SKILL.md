@@ -82,6 +82,25 @@ export KRB5CCNAME=user.ccache
 # All Certipy/Impacket commands use -k -no-pass
 ```
 
+## Privileged Commands
+
+Claude Code cannot execute `sudo` commands. The relay infrastructure tools
+require root and must be handed off to the user:
+
+- **ntlmrelayx.py** — NTLM relay listener (ESC8/ESC11, binds SMB/HTTP ports)
+- **krbrelayx.py** — Kerberos relay listener (ESC8/ESC11 variant)
+- **mitm6** — IPv6 DNS takeover for coercion (used with relay)
+
+**Handoff protocol:** Present the full command including `sudo` to the user.
+For relay chains (relay listener + coercion trigger), batch the privileged
+commands so the user can start them before Claude triggers coercion.
+
+**Non-privileged commands** Claude can execute directly:
+- ACL abuse (ESC4/5/7): `certipy`, `Certify.exe`, `modifyCertTemplate.py`
+- Coercion triggers: `PetitPotam.py`, `printerbug.py`, `DFSCoerce.py`
+- Certificate auth: `certipy auth`, `Rubeus.exe asktgt`
+- Post-exploitation: `secretsdump.py -k -no-pass`
+
 ## Step 1: Identify Attack Path
 
 ### From BloodHound / enumeration results

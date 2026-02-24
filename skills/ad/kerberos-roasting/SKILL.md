@@ -79,6 +79,23 @@ GetUserSPNs.py DOMAIN/user@DC.DOMAIN.LOCAL -k -no-pass -request
 GetNPUsers.py DOMAIN/user@DC.DOMAIN.LOCAL -k -no-pass
 ```
 
+## Privileged Commands
+
+Claude Code cannot execute `sudo` commands. The following require root and
+must be handed off to the user:
+
+- **timeroast.py** — NTP authentication hash extraction (needs raw sockets for UDP 123)
+- **ntpdate / rdate** — clock synchronization (needed for Kerberos, requires root)
+
+**Handoff protocol:** Present the full command including `sudo`, ask the user
+to run it, then read the output file (`tee` captures timeroast output) or
+confirm completion (ntpdate).
+
+**Non-privileged commands** Claude can execute directly:
+- All roasting tools: `GetUserSPNs.py`, `GetNPUsers.py`, `netexec`, `Rubeus`
+- Targeted kerberoasting: `targetedKerberoast.py`, `bloodyAD`
+- Cracking: `hashcat`, `john`
+
 ## Step 1: Assess
 
 Determine what access level is available:
@@ -385,7 +402,8 @@ When routing, pass: cracked username/password, domain, DC hostname, and mode.
 
 ### KRB_AP_ERR_SKEW (Clock Skew)
 
-Kerberos requires clocks within 5 minutes. Sync with the DC:
+Kerberos requires clocks within 5 minutes. Sync with the DC (requires root —
+present to user for manual execution):
 ```bash
 sudo ntpdate DC_IP
 # or

@@ -470,7 +470,7 @@ When routing, pass: valid username/password, domain, DC hostname, current mode.
 
 ### KRB_AP_ERR_SKEW (kerbrute)
 
-Clock out of sync. Fix with:
+Clock out of sync. Fix with (requires root — present to user for manual execution):
 ```bash
 sudo ntpdate DC01.DOMAIN.LOCAL
 ```

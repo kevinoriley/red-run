@@ -416,7 +416,8 @@ Update `engagement/state.md` with:
 
 ### Cross-Forest Access Denied
 
-- **Clock skew**: Ensure time sync between forests: `sudo ntpdate TARGET_DC`.
+- **Clock skew**: Ensure time sync between forests: `sudo ntpdate TARGET_DC`
+  (requires root — present to user for manual execution).
 - **DNS resolution**: Target DC must be resolvable. Add `/etc/hosts` entries
   or configure DNS forwarding.
 - **Service ticket refused**: Verify the service exists and the trust account

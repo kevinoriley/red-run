@@ -467,7 +467,7 @@ work — the target computer validates RBCD differently.
 
 ### KRB_AP_ERR_SKEW
 
-Clock skew > 5 minutes. Sync time:
+Clock skew > 5 minutes. Sync time (requires root — present to user for manual execution):
 ```bash
 sudo ntpdate DC_IP
 ```
