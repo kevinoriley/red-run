@@ -28,9 +28,14 @@ All testing is under explicit written authorization.
 ## Mode
 
 Check if the user or orchestrator has set a mode:
-- **Guided** (default): Explain each smuggling variant and detection method.
-  Confirm the desync type before attempting exploitation. Warn before
-  targeting other users' requests.
+- **Guided** (default): Before executing any command that sends traffic to a
+  target, present the command with a one-line explanation of what it does and
+  why. Wait for explicit user approval before executing. Never batch multiple
+  target-touching commands without approval — present them one at a time (or as
+  a small logical group if they achieve a single objective, e.g., "enumerate SMB
+  shares"). Local-only operations (file writes, output parsing, engagement
+  logging, hash cracking) do not require approval. At decision forks, present
+  options and let the user choose.
 - **Autonomous**: Detect architecture, run all detection probes, confirm
   desync variant, demonstrate impact. Report at milestones. Pause before
   any technique that captures other users' requests.

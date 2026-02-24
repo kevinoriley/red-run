@@ -24,8 +24,11 @@ enumeration. All testing is under explicit written authorization.
 ## Mode
 
 Check if the user or orchestrator has set a mode:
-- **Guided** (default): Explain scan types and trade-offs before executing. Present
-  findings after each phase. Ask which services to dig into. Explain nmap output.
+- **Guided** (default): Before executing any command that sends traffic to a
+  target, present the command with a one-line explanation of what it does and
+  why. Wait for explicit user approval before executing. Never batch multiple
+  target-touching commands without approval. Explain scan types and trade-offs.
+  Present findings after each phase. Ask which services to dig into.
 - **Autonomous**: Run full recon pipeline, enumerate all services, present complete
   attack surface with routing recommendations. Only pause for aggressive/noisy scans.
 
@@ -84,9 +87,14 @@ handed off to the user for manual execution. This applies to:
 4. Read the output file when the user confirms completion
 5. Continue analysis based on the parsed output
 
-**Non-privileged commands** can be executed directly by Claude:
-- `nmap -sT` (TCP connect scan), `nmap -sV` (service detection without SYN)
-- NSE scripts that don't require raw sockets
+**nmap always requires the sudo handoff protocol.** Do not run nmap directly —
+not even non-privileged scan types like `-sT` or `-sV`. Unprivileged nmap
+produces unreliable results (connect scans miss filtered ports, no OS detection,
+no raw-socket NSE scripts). Always write a handoff script and wait for the user
+to run it and confirm completion before proceeding.
+
+**Non-privileged commands** that CAN be executed directly by Claude for
+post-scan service enumeration:
 - `httpx`, `netexec`, `nuclei`, `whatweb`, `gobuster`, `ffuf`
 - `ldapsearch`, `smbclient`, `rpcclient`, `snmpwalk`
 

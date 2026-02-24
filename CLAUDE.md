@@ -7,10 +7,17 @@ Claude Code skill library for penetration testing and CTF work.
 Skills are Claude Code native `SKILL.md` files that auto-trigger based on conversation context. No slash commands needed — Claude infers which skill to use from the `description` field in each skill's frontmatter.
 
 ### Modes
-- **Guided** (default): Interactive. Explain each step, ask before executing, present options at forks.
-- **Autonomous**: Execute end-to-end. Make triage decisions. Report at milestones. Only pause for destructive or high-OPSEC actions.
+- **Guided** (default): Interactive. Every command that touches the target
+  requires explicit user approval before execution. Present what you want to
+  run and why, then wait. Local-only operations (file writes, parsing, hash
+  cracking) don't need approval. Present options at decision forks.
+- **Autonomous**: No guardrails. Execute recon through exploitation, make
+  triage decisions, route to skills automatically. Report at milestones. Only
+  pause for destructive or high-OPSEC actions.
 
 Mode is set by the user or the orchestrator and propagated via conversation context.
+
+> **On autonomous mode:** Autonomous mode pairs with `claude --dangerously-skip-permissions` (a.k.a. yolo mode). We do not recommend this. We do not endorse this. We are not responsible for what happens. You will watch Claude chain four skills, pop a shell, and pivot to a subnet you forgot was in scope. It is exhilarating and horrifying in equal measure. Use guided mode or avoid `--dangerously-skip-permissions` for the sake of us all.
 
 ### Skill Types
 - **Orchestrator** (`skills/orchestrator/`): Takes a target, runs recon, routes to discovery skills

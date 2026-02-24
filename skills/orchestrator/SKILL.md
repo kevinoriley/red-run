@@ -38,9 +38,12 @@ the skill library.
 ## Mode
 
 Check if the user has set a mode:
-- **Guided** (default): Present findings at each phase. Ask which attack
-  paths to pursue. Explain routing decisions. Confirm before moving to
-  exploitation.
+- **Guided** (default): Before executing any command that sends traffic to a
+  target, present it with a one-line explanation and wait for user approval.
+  Present attack surface maps, chain analysis, and routing decisions — let the
+  user choose which paths to pursue. Confirm before invoking each technique
+  skill. Never execute multiple target-touching commands without approval
+  between them.
 - **Autonomous**: Execute recon through exploitation. Make triage decisions.
   Route to technique skills automatically. Report at phase boundaries and
   when significant access is gained.
@@ -134,13 +137,9 @@ Route to **network-recon** with the target IP, hostname, or CIDR range. It will:
 5. Update state.md with all discovered hosts, ports, and services
 6. Return routing recommendations for next steps
 
-The default scan for single targets (requires root — present to user for manual execution):
-```bash
-sudo nmap -A -p- -T4 -oA engagement/evidence/nmap-TARGET -vvv TARGET_IP
-```
-
-For networks/subnets, network-recon handles the full discovery → scan → enumerate
-pipeline with OPSEC-appropriate timing.
+**Always route to network-recon for scanning — do not run nmap directly.**
+Network-recon handles the sudo handoff protocol and scan configuration.
+Wait for scan results before proceeding to attack surface mapping.
 
 ### Web Discovery (if HTTP/HTTPS found)
 

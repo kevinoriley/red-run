@@ -21,8 +21,14 @@ exploiting token privileges. All testing is under explicit written authorization
 ## Mode
 
 Check if the user or orchestrator has set a mode:
-- **Guided** (default): Explain which Potato variant to use and why. Show the command
-  before executing. Explain output. Present alternatives if the first attempt fails.
+- **Guided** (default): Before executing any command that sends traffic to a
+  target, present the command with a one-line explanation of what it does and
+  why. Wait for explicit user approval before executing. Never batch multiple
+  target-touching commands without approval — present them one at a time (or as
+  a small logical group if they achieve a single objective, e.g., "enumerate SMB
+  shares"). Local-only operations (file writes, output parsing, engagement
+  logging, hash cracking) do not require approval. At decision forks, present
+  options and let the user choose.
 - **Autonomous**: Check privileges, select optimal Potato variant for OS version,
   execute, verify SYSTEM access. Fall back to alternatives on failure.
 

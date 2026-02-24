@@ -25,9 +25,10 @@ testing is under explicit written authorization.
 ## Mode
 
 Check if the user or orchestrator has set a mode:
-- **Guided** (default): Explain each technique before executing. Show exactly what file
-  will be modified and what the change does. Ask before writing to critical files
-  (/etc/passwd, /etc/shadow, /etc/sudoers). Present rollback steps.
+- **Guided** (default): Before executing any command that sends traffic to a
+  target, present it and wait for user approval. Explain each technique before
+  executing. Show exactly what file will be modified. Ask before writing to
+  critical files.
 - **Autonomous**: Execute the most reliable technique. Prefer file writes over complex
   chains. Report results at each stage. Only pause before destructive file modifications.
 
