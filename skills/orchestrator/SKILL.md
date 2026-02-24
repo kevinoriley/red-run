@@ -457,6 +457,16 @@ objective completion>
 <Prioritized remediation guidance>
 ```
 
+### Retrospective
+
+After presenting the engagement summary, suggest running a retrospective:
+
+> Engagement complete. Want to run a retrospective? It reviews skill routing
+> decisions, identifies payload and methodology gaps, and produces actionable
+> improvements to make the skills work better for you next time.
+
+If the user agrees, invoke **retrospective** via the Skill tool.
+
 ## OPSEC Notes
 
 - Recon phase (nmap, httpx) is relatively low-OPSEC but generates network
