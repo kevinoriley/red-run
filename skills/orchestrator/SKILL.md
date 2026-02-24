@@ -22,6 +22,13 @@ vulnerabilities, chain them for maximum impact, and route to the correct
 technique skills for exploitation. All testing is under explicit written
 authorization.
 
+> **DO NOT RUN SCANNING TOOLS.** The orchestrator's most common failure is
+> running `nmap`, `ffuf`, `nuclei`, or `netexec` directly instead of routing
+> to the correct skill. You are a router, not a scanner. If you are about to
+> type `nmap`, invoke **network-recon** instead. If you are about to type `ffuf`,
+> invoke **web-discovery** instead. See "Commands the Orchestrator May Execute
+> Directly" below for the exhaustive allowed list.
+
 ## Skill Routing Is Mandatory
 
 When this skill says "Route to **skill-name**", you MUST invoke the named
@@ -60,6 +67,9 @@ The only commands the orchestrator may execute directly are:
 
 Everything else — nmap, netexec, ffuf, nuclei, sqlmap, any exploitation tool —
 MUST go through the appropriate skill via the Skill tool.
+
+**If you are unsure whether a command is on the allowed list, it is not.
+Route to a skill.**
 
 ### Pre-Routing Checkpoint
 
