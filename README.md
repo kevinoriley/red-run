@@ -204,6 +204,26 @@ Skills install to `~/.claude/skills/red-run-<skill-name>/SKILL.md`.
 
 Always run red-run from a VM or dedicated pentesting machine. Skills execute commands, transfer tools, and interact with targets — you want network isolation and a disposable environment. A purpose-built Linux VM with your pentesting tools and Claude Code installed is the intended setup.
 
+### Sandbox and network commands
+
+Claude Code's bwrap sandbox blocks network socket creation. Since pentesting skills are almost entirely network commands, every tool (`nmap`, `netexec`, `sqlmap`, etc.) will fail on first attempt, then retry with sandbox disabled — doubling execution time.
+
+**Fix:** Add a network tools exception to your global `~/.claude/CLAUDE.md` that tells Claude to proactively use `dangerouslyDisableSandbox: true` for network-touching commands. Local-only commands (file I/O, hash cracking, parsing) should keep sandbox enabled. Example:
+
+```markdown
+## Sandbox
+
+Always use `dangerouslyDisableSandbox: true` for commands that make network
+connections: nmap, ping, netexec, curl, wget, sqlmap, impacket-*, certipy,
+bloodyAD, ffuf, nuclei, httpx, responder, tcpdump, ssh, smbclient, ldapsearch,
+crackmapexec, gobuster, hydra, chisel, ligolo, socat, nc, bbot, nikto, wfuzz,
+feroxbuster, enum4linux-ng, rpcclient, scp, rsync, proxychains,
+python3 -m http.server.
+
+For everything else (file reads, writes, local processing, hash cracking),
+keep sandbox enabled.
+```
+
 ### Recommended configuration
 
 This project was built with the [Trail of Bits Claude Code configuration](https://github.com/trailofbits/claude-code-config) in mind:
