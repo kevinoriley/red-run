@@ -40,7 +40,7 @@ Skills auto-trigger based on conversation context. Say "I found a SQL injection 
 Say "switch to autonomous" or "guide me through this" at any point.
 
 &nbsp;
-<div align="center"<br><b>⚠️⚠️⚠️⚠️⚠️⚠️ WARNING ⚠️⚠️⚠️⚠️⚠️⚠️</b></div>
+<div align="center"<br><b>⚠️⚠️⚠️⚠️ WARNING ⚠️⚠️⚠️⚠️</b></div>
 
 &nbsp;
 
@@ -48,7 +48,7 @@ Autonomous mode pairs with `claude --dangerously-skip-permissions` (a.k.a. yolo 
 
 &nbsp;
 
-<div align="center"><b>⚠️⚠️⚠️⚠️⚠️⚠️ WARNING ⚠️⚠️⚠️⚠️⚠️⚠️</b></div>
+<div align="center"><b>⚠️⚠️⚠️⚠️ WARNING ⚠️⚠️⚠️⚠️</b></div>
 
 &nbsp;
 
