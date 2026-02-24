@@ -66,7 +66,7 @@ MUST go through the appropriate skill via the Skill tool.
 Before every skill invocation, write `engagement/state.md` and append to
 `engagement/activity.md` with current findings. Format:
 ```
-### [HH:MM] orchestrator → routing to <skill-name>
+### [YYYY-MM-DD HH:MM:SS] orchestrator → routing to <skill-name>
 - State: <brief summary of what's known>
 - Reason: <why this skill was chosen>
 ```
@@ -109,13 +109,14 @@ to the screen:
    sees the engagement is starting.
 2. **activity.md**: After creating the engagement directory in Step 1, append:
    ```
-   ### [HH:MM] orchestrator → <target>
+   ### [YYYY-MM-DD HH:MM:SS] orchestrator → <target>
    - Invoked (engagement starting)
    ```
 
-**Timestamps:** Replace `[HH:MM]` with the actual current time. Run
-`date +%H:%M` to get it. Never write the literal placeholder `[HH:MM]` —
-activity.md entries need real timestamps for timeline reconstruction.
+**Timestamps:** Replace `[YYYY-MM-DD HH:MM:SS]` with the actual current date
+and time. Run `date '+%Y-%m-%d %H:%M:%S'` to get it. Never write the literal
+placeholder `[YYYY-MM-DD HH:MM:SS]` — activity.md entries need real timestamps
+with date and second precision for timeline reconstruction.
 
 This entry must be written as soon as the engagement directory exists.
 Subsequent milestone entries append bullet points under this same header or
@@ -234,7 +235,7 @@ with discovered hosts, ports, services, and technologies.
 
 Log to `engagement/activity.md`:
 ```markdown
-### [HH:MM] orchestrator → recon
+### [YYYY-MM-DD HH:MM:SS] orchestrator → recon
 - Routed to network-recon → N open ports found
 - Web services found: <list>
 - Technologies: <list>

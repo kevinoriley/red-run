@@ -52,7 +52,7 @@ Check for `./engagement/` directory. If absent:
 - **Autonomous**: Create it automatically.
 
 When an engagement directory exists:
-- **Activity** -> `### [HH:MM] ad-persistence -> <target DC>` with
+- **Activity** -> `### [YYYY-MM-DD HH:MM:SS] ad-persistence -> <target DC>` with
   persistence type, target, and verification status.
 - **Findings** -> Log persistence mechanisms planted with cleanup steps.
 - **Evidence** -> Save to `engagement/evidence/` (e.g.,
@@ -68,13 +68,14 @@ log invocation to both the screen and activity.md:
    sees which skill is running.
 2. **activity.md**: Append:
    ```
-   ### [HH:MM] ad-persistence → <target>
+   ### [YYYY-MM-DD HH:MM:SS] ad-persistence → <target>
    - Invoked (assessment starting)
    ```
 
-**Timestamps:** Replace `[HH:MM]` with the actual current time. Run
-`date +%H:%M` to get it. Never write the literal placeholder `[HH:MM]` —
-activity.md entries need real timestamps for timeline reconstruction.
+**Timestamps:** Replace `[YYYY-MM-DD HH:MM:SS]` with the actual current date
+and time. Run `date '+%Y-%m-%d %H:%M:%S'` to get it. Never write the literal
+placeholder `[YYYY-MM-DD HH:MM:SS]` — activity.md entries need real timestamps
+with date and second precision for timeline reconstruction.
 
 This entry must be written NOW, not deferred. Subsequent milestone entries
 append bullet points under this same header.

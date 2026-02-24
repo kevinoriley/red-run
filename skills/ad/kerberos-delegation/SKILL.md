@@ -51,7 +51,7 @@ Check for `./engagement/` directory. If absent:
 - **Autonomous**: Create it automatically.
 
 When an engagement directory exists:
-- **Activity** -> `### [HH:MM] kerberos-delegation -> <target>` with delegation
+- **Activity** -> `### [YYYY-MM-DD HH:MM:SS] kerberos-delegation -> <target>` with delegation
   type, coercion method, impersonated user, access obtained.
 - **Findings** -> Log successful delegation abuse with access level and path.
 - **Evidence** -> Save tickets to `engagement/evidence/deleg-<type>-<target>.ccache`,
@@ -66,13 +66,14 @@ log invocation to both the screen and activity.md:
    sees which skill is running.
 2. **activity.md**: Append:
    ```
-   ### [HH:MM] kerberos-delegation → <target>
+   ### [YYYY-MM-DD HH:MM:SS] kerberos-delegation → <target>
    - Invoked (assessment starting)
    ```
 
-**Timestamps:** Replace `[HH:MM]` with the actual current time. Run
-`date +%H:%M` to get it. Never write the literal placeholder `[HH:MM]` —
-activity.md entries need real timestamps for timeline reconstruction.
+**Timestamps:** Replace `[YYYY-MM-DD HH:MM:SS]` with the actual current date
+and time. Run `date '+%Y-%m-%d %H:%M:%S'` to get it. Never write the literal
+placeholder `[YYYY-MM-DD HH:MM:SS]` — activity.md entries need real timestamps
+with date and second precision for timeline reconstruction.
 
 This entry must be written NOW, not deferred. Subsequent milestone entries
 append bullet points under this same header.

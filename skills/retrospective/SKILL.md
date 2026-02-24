@@ -42,7 +42,7 @@ retrospective:
 1. **On-screen**: Print `[retrospective] Activated → engagement review`
 2. **activity.md**: Append:
    ```
-   ### [HH:MM] retrospective → engagement review
+   ### [YYYY-MM-DD HH:MM:SS] retrospective → engagement review
    - Invoked (post-engagement analysis starting)
    ```
 
@@ -223,7 +223,7 @@ Priority-ordered list:
 After writing the report, append a summary to `engagement/activity.md`:
 
 ```
-### [HH:MM] retrospective → complete
+### [YYYY-MM-DD HH:MM:SS] retrospective → complete
 - Report written to engagement/retrospective.md
 - Actionable items: N skill-update, N new-skill, N routing-fix, N template-fix
 ```

