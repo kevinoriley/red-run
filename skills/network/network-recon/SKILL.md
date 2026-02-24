@@ -66,6 +66,33 @@ After completing recon, update `engagement/state.md`:
 - Scope confirmation (which IPs/ranges are authorized)
 - nmap installed (core tool — all other tools optional)
 
+## Privileged Commands
+
+Claude Code cannot execute `sudo` commands. Any command requiring root must be
+handed off to the user for manual execution. This applies to:
+
+- **nmap** — SYN scans (`-sS`), UDP scans (`-sU`), OS detection (`-O`), and most NSE scripts that need raw sockets
+- **masscan** — all scans (requires raw sockets)
+- **responder** — LLMNR/NBNS/mDNS poisoning (requires raw sockets)
+- **mount** — NFS/SMB mounting
+
+**Handoff protocol:**
+
+1. Present the full command including `sudo` to the user
+2. Specify the output file path (ensure commands include `-oA`, `-oG`, or `-oL` flags)
+3. Ask the user to run it in their terminal
+4. Read the output file when the user confirms completion
+5. Continue analysis based on the parsed output
+
+**Non-privileged commands** can be executed directly by Claude:
+- `nmap -sT` (TCP connect scan), `nmap -sV` (service detection without SYN)
+- NSE scripts that don't require raw sockets
+- `httpx`, `netexec`, `nuclei`, `whatweb`, `gobuster`, `ffuf`
+- `ldapsearch`, `smbclient`, `rpcclient`, `snmpwalk`
+
+**Autonomous mode:** Batch all pending privileged commands so the user can run
+them in one pass. Present them as a numbered list, each with its output file path.
+
 ## Step 1: Passive Reconnaissance
 
 Gather information without touching the target. Skip if the target is a lab/CTF
@@ -112,19 +139,19 @@ Identify live hosts in the target range. Skip for single-host targets.
 
 ```bash
 # ARP ping (fastest — same subnet only)
-sudo nmap -sn -PR 10.10.10.0/24
+sudo nmap -sn -PR 10.10.10.0/24 -oG discovery.gnmap
 
 # ICMP echo + TCP SYN(80,443) + TCP ACK(80) + ICMP timestamp (default -sn)
-sudo nmap -sn 10.10.10.0/24
+sudo nmap -sn 10.10.10.0/24 -oG discovery.gnmap
 
 # TCP-only host discovery (ICMP blocked)
-sudo nmap -sn -PS22,80,135,443,445,3389,8080 10.10.10.0/24
+sudo nmap -sn -PS22,80,135,443,445,3389,8080 10.10.10.0/24 -oG discovery.gnmap
 
 # UDP host discovery
-sudo nmap -sn -PU53,161,137 10.10.10.0/24
+sudo nmap -sn -PU53,161,137 10.10.10.0/24 -oG discovery.gnmap
 
 # Combined — most thorough
-sudo nmap -sn -PE -PP -PS21,22,25,80,113,135,443,445,3389,8080 -PU53,111,137,161 10.10.10.0/24
+sudo nmap -sn -PE -PP -PS21,22,25,80,113,135,443,445,3389,8080 -PU53,111,137,161 10.10.10.0/24 -oG discovery.gnmap
 ```
 
 **For large ranges (> /16), use masscan for speed:**
@@ -178,19 +205,19 @@ sudo nmap -sS -sU -p T:1-65535,U:53,67,68,69,111,123,137,138,161,162,500,514,520
 
 ```bash
 # Fragmented packets
-sudo nmap -sS -f -p- -T3 TARGET_IP
+sudo nmap -sS -f -p- -T3 -oA evasion_HOSTNAME TARGET_IP
 
 # Decoys (hide real source among fakes)
-sudo nmap -sS -D RND:5 -p- -T3 TARGET_IP
+sudo nmap -sS -D RND:5 -p- -T3 -oA evasion_HOSTNAME TARGET_IP
 
 # Source port spoofing (some firewalls allow 53/80/443)
-sudo nmap -sS -g 53 -p- -T3 TARGET_IP
+sudo nmap -sS -g 53 -p- -T3 -oA evasion_HOSTNAME TARGET_IP
 
 # Idle/zombie scan (completely blind — packets come from zombie)
-sudo nmap -sI ZOMBIE_IP:80 -p- TARGET_IP
+sudo nmap -sI ZOMBIE_IP:80 -p- -oA evasion_HOSTNAME TARGET_IP
 
 # Slow and low (one packet per second)
-sudo nmap -sS -p- -T1 --scan-delay 1s TARGET_IP
+sudo nmap -sS -p- -T1 --scan-delay 1s -oA evasion_HOSTNAME TARGET_IP
 ```
 
 **Alternative scanners:**
@@ -583,10 +610,10 @@ If `-A` didn't provide reliable OS detection:
 
 ```bash
 # Aggressive OS detection
-sudo nmap -O --osscan-guess TARGET_IP
+sudo nmap -O --osscan-guess -oA os_HOSTNAME TARGET_IP
 
 # TCP/IP stack fingerprinting
-sudo nmap -O -sV --version-intensity 5 TARGET_IP
+sudo nmap -O -sV --version-intensity 5 -oA os_HOSTNAME TARGET_IP
 ```
 
 **Quick heuristics from open ports:**
@@ -616,11 +643,11 @@ After service enumeration, run targeted vulnerability checks.
 
 ```bash
 # Safe vulnerability checks
-sudo nmap -sV --script vuln -p OPEN_PORTS TARGET_IP
+sudo nmap -sV --script vuln -p OPEN_PORTS -oA vuln_HOSTNAME TARGET_IP
 
 # Specific vulnerability categories
-sudo nmap -sV --script "smb-vuln*" -p445 TARGET_IP
-sudo nmap -sV --script "http-vuln*" -p80,443 TARGET_IP
+sudo nmap -sV --script "smb-vuln*" -p445 -oA vuln_HOSTNAME TARGET_IP
+sudo nmap -sV --script "http-vuln*" -p80,443 -oA vuln_HOSTNAME TARGET_IP
 ```
 
 **Nuclei (template-based scanning):**
@@ -811,7 +838,7 @@ Firewall or IDS blocking scans. Try:
 
 Increase version detection intensity:
 ```bash
-sudo nmap -sV --version-intensity 9 -p PORT TARGET_IP
+sudo nmap -sV --version-intensity 9 -p PORT -oA svc_detail_HOSTNAME TARGET_IP
 ```
 
 Or grab the banner manually:
@@ -851,12 +878,17 @@ exec 3<>/dev/tcp/TARGET_IP/PORT; echo "" >&3; cat <&3; exec 3>&-
 
 ### Permission errors running nmap
 
-Most scan types require root/sudo. Without root:
-- `-sT` (connect scan) works unprivileged but is slower and more detectable
-- `-sV` (service detection) works unprivileged
-- `--top-ports` reduces scan time
+Most scan types (`-sS`, `-sU`, `-O`) require root. Claude Code cannot run `sudo`
+commands — use the handoff protocol described in the **Privileged Commands**
+section above. Present the full `sudo nmap ...` command to the user with an
+output flag (`-oA`/`-oG`), wait for them to run it, then read the output file.
+
+For scans that work without root:
+- `-sT` (connect scan) — slower and more detectable but unprivileged
+- `-sV` (service detection) — works unprivileged
+- NSE scripts that don't require raw sockets
 
 ```bash
-# Unprivileged scan
-nmap -sT -sV --top-ports 1000 TARGET_IP
+# Unprivileged scan (Claude can execute directly)
+nmap -sT -sV --top-ports 1000 -oA unprivileged_HOSTNAME TARGET_IP
 ```
