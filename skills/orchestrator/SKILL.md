@@ -321,10 +321,34 @@ Think through these chains systematically:
 - SQLi dumps users table → password reuse → admin panel
 
 **Access → Deeper Access:**
-- Web shell → host enumeration → privilege escalation
-- Database access → xp_cmdshell or UDF → OS command execution
-- JWT forgery → admin panel → file upload → web shell
-- Deserialization RCE → service account → AD enumeration
+
+Common chains that produce shell access on a host:
+- Web shell / backdoor with default or discovered credentials → shell access
+- Database access → xp_cmdshell (MSSQL) / UDF (MySQL) / COPY TO/FROM PROGRAM
+  (PostgreSQL) → OS command execution → shell access
+- JWT forgery → admin panel → file upload → web shell → shell access
+- Deserialization RCE → service account → shell access
+- Command injection confirmed → shell access
+- File upload bypass → web shell → shell access
+
+> **Shell access gained → host discovery routing (mandatory).**
+> When any chain above produces shell access (web shell, reverse shell, SSH,
+> WinRM, database command execution) on a host where you do NOT already have
+> root/SYSTEM, STOP. Do NOT run `sudo -l`, `find -perm -4000`, `whoami /priv`,
+> `net user`, or any host enumeration commands inline. Route to the appropriate
+> discovery skill:
+>
+> - Linux target → STOP. Invoke **linux-discovery** via the Skill tool.
+> - Windows target → STOP. Invoke **windows-discovery** via the Skill tool.
+>
+> Pass: target hostname/IP, current user, access method, current mode, any
+> credentials. The discovery skill enumerates systematically and routes to the
+> correct technique skill (sudo/SUID abuse, cron/MOTD exploitation, kernel
+> exploits, token impersonation, etc.). Inline enumeration skips methodology
+> and misses vectors.
+>
+> This applies every time new shell access is gained — including after lateral
+> movement to a new host.
 
 **Lateral Movement:**
 - Credentials from one host → test against all others in scope
@@ -345,13 +369,17 @@ Think through these chains systematically:
 When reading state.md, the orchestrator should:
 
 1. **Check for unexploited vulns** — route to the appropriate technique skill
-2. **Check for unchained access** — can existing access reach new targets?
-3. **Check credentials** — have all found credentials been tested against all
+2. **Check for shell access without root/SYSTEM** — if the Access section shows
+   a non-root shell on Linux or non-SYSTEM/non-admin shell on Windows, invoke
+   **linux-discovery** or **windows-discovery** via the Skill tool. Do not
+   enumerate privilege escalation vectors inline.
+3. **Check for unchained access** — can existing access reach new targets?
+4. **Check credentials** — have all found credentials been tested against all
    services?
-4. **Check pivot map** — are there identified paths not yet followed?
-5. **Check blocked items** — has anything changed that might unblock a
+5. **Check pivot map** — are there identified paths not yet followed?
+6. **Check blocked items** — has anything changed that might unblock a
    previously failed technique?
-6. **Assess progress toward objectives** — are we closer to the goal defined
+7. **Assess progress toward objectives** — are we closer to the goal defined
    in scope.md?
 
 **In guided mode**: Present the chain analysis and recommend next steps.
