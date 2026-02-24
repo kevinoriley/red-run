@@ -90,9 +90,6 @@ red-run/
     containers/           # Docker, Kubernetes, CI/CD
     c2/                   # Command and control
     redteam/              # Initial access, evasion, persistence, creds
-  task_plan.md            # Phased build plan
-  progress.md             # Session log
-  findings.md             # Source material research notes
 ```
 
 ## Skill File Format
@@ -145,29 +142,3 @@ description: >
 
 Skills install to `~/.claude/skills/red-run-<skill-name>/SKILL.md`.
 
-## Workflow
-
-**Source of truth:** `task_plan.md` and `progress.md` are the persistent memory across sessions. Always read both at the start of a new session to pick up where we left off.
-
-- `task_plan.md` — what to build, current phase, per-skill status
-- `progress.md` — what was done, decisions made, observations, next steps
-- `findings.md` — source material research notes
-
-**Branching:** Never push directly to main. Create a feature branch per skill batch and PR it for review.
-
-| Branch pattern | Scope |
-|----------------|-------|
-| `skills/web-sqli` | All SQL injection skills |
-| `skills/web-xss` | All XSS skills |
-| `skills/ad-core` | AD discovery + technique skills |
-| `arch/*` | Architecture changes |
-
-**Before starting work:** Read `task_plan.md` and `progress.md`, check git branch and status.
-
-**Before ending a session:** Update `task_plan.md` (skill statuses) and `progress.md` (what was done, next steps), commit, push.
-
-### Extended / Backlog Phases
-
-Each core phase (web, AD, privesc, etc.) may produce an "extended" sub-phase (e.g., Phase 3b) during its coverage audit. Extended phases contain important but lower-priority techniques that didn't make the core cut. They live in `task_plan.md` alongside the core phase and can be built as capacity allows or interleaved with later phases.
-
-The Backlog section in `task_plan.md` holds niche or reference-only topics that are too specialized for a dedicated skill but worth tracking. Build these on-demand if they come up during an engagement.
