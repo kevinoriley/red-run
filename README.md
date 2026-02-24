@@ -46,7 +46,7 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 
 ## Skills
 
-### Web Application (29 skills)
+### Web Application (30 skills)
 
 | Skill | Technique | Lines |
 |-------|-----------|-------|
@@ -72,6 +72,7 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 | `jwt-attacks` | alg:none, key confusion, kid injection, jwk/jku spoofing, secret brute force, claim tampering | 533 |
 | `request-smuggling` | CL.TE, TE.CL, TE.TE obfuscation, H2 downgrade, h2c smuggling, response desync, cache poisoning | 570 |
 | `nosql-injection` | MongoDB operator injection, auth bypass, blind regex extraction, $where JS execution, Mongoose RCE | 519 |
+| `ldap-injection` | LDAP filter injection, wildcard auth bypass, blind attribute extraction, filter breakout, AD/OpenLDAP | 574 |
 | `idor` | Horizontal/vertical access control bypass, UUID/ObjectId prediction, API IDOR, encoding bypass | 569 |
 | `cors-misconfiguration` | Origin reflection, null origin, regex bypass, subdomain trust, wildcard abuse, CORS+IDOR chain | 565 |
 | `csrf` | Token bypass, SameSite bypass, JSON CSRF, file upload CSRF, WebSocket CSRF, clickjacking chain | 609 |
@@ -248,7 +249,7 @@ You should **modify skills to match your own processes and tools**. Every pentes
 
 ## Status
 
-Phase 6 (Infrastructure & Network) complete. 60 skills built, ~32,400 lines.
+61 skills built, ~33,000 lines.
 
 ## Disclaimer
 
