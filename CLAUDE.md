@@ -121,9 +121,10 @@ description: >
 2. **Mode**: Check for guided vs autonomous
 3. **Engagement Logging**: Check for engagement dir, log invocation immediately, log activity/findings/evidence at milestones
 4. **State Management**: Read state.md on activation, write at checkpoints (vuln confirmed, exploitation, pre-routing)
-5. **Prerequisites**: Access, tools, conditions
-6. **Steps**: Assess → Confirm → Exploit → Escalate/Pivot
-7. **Troubleshooting**: Common failures and fixes
+5. **Exploit and Tool Transfer**: Attackbox-first workflow for external tools/exploits
+6. **Prerequisites**: Access, tools, conditions
+7. **Steps**: Assess → Confirm → Exploit → Escalate/Pivot
+8. **Troubleshooting**: Common failures and fixes
 
 ### Conventions
 - Skill names use kebab-case: `sql-injection-union`, `kerberoasting`, `docker-socket-escape`
@@ -133,6 +134,7 @@ description: >
 - Inter-skill routing: bold skill names in escalation sections
 - **Discovery skill maintenance**: When creating a new technique skill, update the corresponding discovery skill's routing table to include it. `web-discovery` must route to every web technique skill.
 - **AD OPSEC: Kerberos-first authentication**: All AD skills default to Kerberos authentication via ccache to avoid NTLM-specific detections (Event 4776, CrowdStrike Identity Module PTH signatures). Each AD skill's Prerequisites section includes the `getTGT.py` → `KRB5CCNAME` → `-k -no-pass` workflow. All embedded tool commands use Kerberos auth flags: Impacket (`-k -no-pass`), NetExec (`--use-kcache`), Certipy (`-k`), bloodyAD (`-k`). Skills where Kerberos auth doesn't apply (relay, coercion, password spraying) explicitly state why and note the NTLM detection surface.
+- **Attackbox-first transfer**: Never download exploits, scripts, or tools directly to the target from the internet. Targets may lack outbound access, and operators must review files before execution on target. Workflow: (1) download/clone on attackbox, (2) review, (3) serve via `python3 -m http.server` or transfer with `scp`/`nc`/base64, (4) pull from target. Inline source code in heredocs is fine — the operator can read it in the skill.
 
 ## Sandbox
 

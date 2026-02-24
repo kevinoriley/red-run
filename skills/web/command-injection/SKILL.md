@@ -457,6 +457,26 @@ Update `engagement/state.md` with any new credentials, access, vulns, or pivot p
 When routing, pass along: confirmed platform, working injection operator, bypass
 technique used, blind vs visible output, current mode.
 
+### Credential-Based Access Handoff
+
+When command injection reveals credentials (`.env` files, config files, SSH
+keys, database connection strings), do NOT attempt to use them programmatically
+from the injection context:
+
+- **Do NOT** try `sshpass`, SSH key injection, or automated SSH from injection
+- **Do NOT** spend turns debugging interactive authentication workarounds
+
+Instead, immediately write a handoff script for the operator:
+
+1. Save discovered credentials to `engagement/evidence/`
+2. Write connection commands the operator can run
+3. Update `engagement/state.md` with credentials and Pivot Map entry
+4. Tell the operator: "Credentials found. SSH handoff ready — connect from
+   your terminal."
+
+The operator establishes the interactive session. The orchestrator or operator
+decides the next skill to invoke.
+
 ## OPSEC Notes
 
 - Commands execute as OS processes — visible in `ps`, `/proc`, process monitors
