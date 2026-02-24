@@ -134,6 +134,14 @@ description: >
 - **Discovery skill maintenance**: When creating a new technique skill, update the corresponding discovery skill's routing table to include it. `web-discovery` must route to every web technique skill.
 - **AD OPSEC: Kerberos-first authentication**: All AD skills default to Kerberos authentication via ccache to avoid NTLM-specific detections (Event 4776, CrowdStrike Identity Module PTH signatures). Each AD skill's Prerequisites section includes the `getTGT.py` → `KRB5CCNAME` → `-k -no-pass` workflow. All embedded tool commands use Kerberos auth flags: Impacket (`-k -no-pass`), NetExec (`--use-kcache`), Certipy (`-k`), bloodyAD (`-k`). Skills where Kerberos auth doesn't apply (relay, coercion, password spraying) explicitly state why and note the NTLM detection surface.
 
+## Sandbox & Network Commands
+
+Claude Code's bwrap sandbox blocks network socket creation. Since pentesting skills are almost entirely network commands, this causes every tool (`nmap`, `netexec`, `sqlmap`, etc.) to fail on first attempt, then retry with sandbox disabled — doubling execution time.
+
+**Fix:** Add a network tools exception to your global `~/.claude/CLAUDE.md` that tells Claude to proactively use `dangerouslyDisableSandbox: true` for network-touching commands. See the sandbox section in the [global CLAUDE.md template](https://github.com/kevinoriley/claude-config) for the full list.
+
+Local-only commands (file I/O, hash cracking, parsing) should keep sandbox enabled.
+
 ## Installation
 
 ```bash
