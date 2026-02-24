@@ -61,6 +61,10 @@ log invocation to both the screen and activity.md:
    - Invoked (assessment starting)
    ```
 
+**Timestamps:** Replace `[HH:MM]` with the actual current time. Run
+`date +%H:%M` to get it. Never write the literal placeholder `[HH:MM]` —
+activity.md entries need real timestamps for timeline reconstruction.
+
 This entry must be written NOW, not deferred. Subsequent milestone entries
 append bullet points under this same header.
 
@@ -868,8 +872,11 @@ Writable shares, SYSVOL access, or null session enumeration successful.
 | SNMP default community | Extract users, processes, installed software |
 | IPMI cipher 0 | Dump hashes → crack → access BMC |
 | Default creds on any service | Use them, escalate |
-| EternalBlue (MS17-010) | Direct SYSTEM shell → invoke **credential-dumping** via Skill tool |
-| BlueKeep (CVE-2019-0708) | Direct SYSTEM shell (unstable) |
+| MS08-067 (CVE-2008-4250) | STOP. Invoke **smb-exploitation** via Skill tool. Pass: target IP, OS, vuln confirmed |
+| EternalBlue (MS17-010) | STOP. Invoke **smb-exploitation** via Skill tool. Pass: target IP, OS, architecture, vuln confirmed |
+| SMBGhost (CVE-2020-0796) | STOP. Invoke **smb-exploitation** via Skill tool. Pass: target IP, OS build (must be v1903/v1909) |
+| MS09-050 (CVE-2009-3103) | STOP. Invoke **smb-exploitation** via Skill tool. Pass: target IP, OS (Vista/Server 2008 only) |
+| BlueKeep (CVE-2019-0708) | Direct SYSTEM shell (unstable — no dedicated skill yet) |
 
 ### Internal Network from a Pivot
 
