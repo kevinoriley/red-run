@@ -44,7 +44,7 @@ Say "switch to autonomous" or "guide me through this" at any point.
 
 &nbsp;
 
-Autonomous mode pairs with `claude --dangerously-skip-permissions` (a.k.a. yolo mode). **We do not recommend this.** We do not endorse this. We are not responsible for what happens. You will watch Claude chain four skills, pop a shell, and pivot to a subnet you forgot was in scope. It is exhilarating and horrifying in equal measure. Use guided mode or avoid `--dangerously-skip-permissions` entirely. Remember that skills are really just suggestions. YOU are responsible for containing Claude responsibly on your systems.
+Autonomous mode pairs with `claude --dangerously-skip-permissions` (a.k.a. yolo mode). **We do not recommend this.** We do not endorse this. We are not responsible for what happens. You will watch Claude chain four skills, pop a shell, and pivot to a subnet you forgot was in scope. It is exhilarating and horrifying in equal measure. Use guided mode or avoid `--dangerously-skip-permissions` entirely. Remember that skills are really just suggestions. YOU are responsible for containing Claude responsibly on your systems. YOU are liable for any legal consequences under the CFAA or equivalent legislation in your jurisdiction.
 
 &nbsp;
 
