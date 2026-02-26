@@ -1,0 +1,14 @@
+[project]
+name = "red-run-skill-router"
+version = "0.1.0"
+description = "MCP server for semantic skill discovery and retrieval in red-run"
+requires-python = ">=3.11"
+dependencies = [
+    "chromadb>=1.0.0",
+    "mcp[cli]>=1.0.0",
+    "pyyaml>=6.0",
+    "sentence-transformers>=3.0.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
