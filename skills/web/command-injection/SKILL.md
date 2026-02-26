@@ -477,16 +477,15 @@ execution and note the limitation in state.md.
 `engagement/activity.md` with results so far. The next skill reads state.md
 on activation — stale state means duplicate work or missed context.
 
-- **Got command execution**: Establish reverse shell, route to privilege
-  escalation
+- **Got RCE + shell stabilized**: STOP. Return to orchestrator recommending
+  **linux-discovery** or **windows-discovery** (based on target OS). Pass:
+  hostname, current user, shell session ID, access method, current mode.
 - **Blind only**: Use OOB exfiltration to extract credentials, SSH keys, or
   cloud tokens, then pivot directly
 - **Got file read via command**: Extract application config files, database
   credentials, API keys
 - **Found additional web vulns** during exploitation: Route to **sql-injection-error**,
   **lfi**, **ssrf**, etc.
-- **Windows target**: Route to Windows privilege escalation
-- **Linux target**: Route to Linux privilege escalation
 
 Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
 
@@ -515,18 +514,28 @@ decides the next skill to invoke.
 
 ## Stall Detection
 
-If you have spent **5 or more tool-calling rounds** troubleshooting the same
-failure with no meaningful progress — same error, no new information gained,
-no change in output — **stop**.
+If you have spent **5 or more tool-calling rounds** on the same failure with
+no meaningful progress — same error, no new information, no change in output
+— **stop**.
 
-Retrying a command with adjusted syntax, different flags, or additional context
-counts as progress. Stalling means repeating the same approach and getting the
-same result.
+**What counts as progress:**
+- Trying a variant or alternative **documented in this skill**
+- Adjusting syntax, flags, or parameters per the Troubleshooting section
+- Gaining new diagnostic information (different error, partial success)
+
+**What does NOT count as progress:**
+- Writing custom exploit code not provided in this skill
+- Inventing workarounds using techniques from other domains
+- Retrying the same command with trivially different input
+- Compiling or transferring tools not mentioned in this skill
+
+If you find yourself writing code that isn't in this skill, you have left
+methodology. That is a stall.
 
 Do not loop. Work through failures systematically:
 1. Try each variant or alternative **once**
 2. Check the Troubleshooting section for known fixes
-3. If nothing changes the outcome after 5 rounds, you are stalled
+3. If nothing works after 5 rounds, you are stalled
 
 **When stalled, return to the orchestrator immediately with:**
 - What was attempted (commands, variants, alternatives tried)

