@@ -1,35 +1,21 @@
 # red-run
 
-A redteam runbook that turns Claude Code into a pentest and CTF partner.
+A redteam runbook that turns Claude Code into a pentester.
 
 ## What is this?
 
 red-run is a redteam partner that knows the techniques, carries the payloads, and can execute when you allow it to.
 
-In **guided mode** (default), Claude walks you through each attack step, shows you the command it would run, explains what to look for in the output, and asks before executing. You stay in the driver's seat. In **autonomous mode**, Claude runs commands directly, makes triage decisions at forks, and only pauses for destructive or high-OPSEC actions. Autonomous mode is better suited for CTFs and lab environments where OPSEC doesn't matter and you can break things.
+In **guided mode** (default), Claude walks you through each attack step, shows you the command it would run, explains what to look for in the output, and asks before executing. You stay in the driver's seat most of the time and can guide Claude through things when it starts to veer off course.
 
-Skills auto-trigger based on conversation context. Say "I found a SQL injection with error messages" and the `sql-injection-error` skill activates with embedded payloads for 4 database engines. Say "enumerate this domain" and `ad-discovery` runs BloodHound collection and routes findings to technique skills. No slash commands needed.
-
-### What it actually does for you
-
-- **Holds the decision trees** — which technique to try next based on what you're seeing
-- **Carries the payloads** — top 2-3 per variant embedded directly, with deep references for the long tail
-- **Builds correct commands** — right flags, right syntax, right tool for the job
-- **Tracks engagement state** — what's been tried, what worked, what credentials you have, what leads where
-- **Routes between attack paths** — chains findings across skills as the engagement evolves
-- **Handles OPSEC trade-offs** — ranks techniques by detection risk, defaults to Kerberos-first auth in AD
-
-### What it doesn't do
-
-- Make scope decisions for you
-- Replace your judgment on OPSEC/risk trade-offs in a real engagement
+In **autonomous mode**, Claude runs commands directly, makes triage decisions at forks, and rarely pauses for your input. Autonomous mode is better suited for CTFs and lab environments where OPSEC doesn't matter and you can break things.
 
 ## How it works
 
 ### Skill types
 
-- **Orchestrator** — takes a target, runs recon, routes to discovery skills, chains vulnerabilities via state management
-- **Discovery skills** — identify vulnerabilities and route to the correct technique skill via decision tree
+- **Orchestrator** — routes to discovery skills, chains vulnerabilities via state management
+- **Discovery skills** — identify vulnerabilities and route to the correct technique skill
 - **Technique skills** — exploit a specific vulnerability class with embedded payloads and bypass techniques
 
 ### Modes
@@ -40,7 +26,7 @@ Skills auto-trigger based on conversation context. Say "I found a SQL injection 
 Say "switch to autonomous" or "guide me through this" at any point.
 
 &nbsp;
-<div align="center"<br><b>⚠️⚠️⚠️⚠️ WARNING ⚠️⚠️⚠️⚠️</b></div>
+<div align="center"><br><b>⚠️⚠️⚠️⚠️ WARNING ⚠️⚠️⚠️⚠️</b></div>
 
 &nbsp;
 
@@ -54,10 +40,10 @@ Autonomous mode pairs with `claude --dangerously-skip-permissions` (a.k.a. yolo 
 
 ### Architecture
 
-The **orchestrator** is a native Claude Code skill that auto-triggers based on conversation context. All other skills (63 discovery + technique skills) are served on-demand via the **MCP skill-router** — a FastMCP server backed by ChromaDB and sentence-transformer embeddings. This keeps the system prompt lean; technique skills load only when needed.
+The **orchestrator** is a native Claude Code skill that auto-triggers based on conversation context. All other skills are served on-demand via the **MCP skill-router** — a FastMCP server backed by ChromaDB and sentence-transformer embeddings. This keeps the system prompt lean; technique skills load only when needed.
 
 The MCP server provides three tools:
-- `search_skills(query)` — semantic search across all indexed skills (e.g., "blind SQL injection in a login form")
+- `search_skills(query)` — semantic search across all indexed skills
 - `get_skill(name)` — load a skill's full SKILL.md content by name
 - `list_skills([category])` — browse the skill inventory
 
@@ -81,7 +67,7 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 
 ## Engagement logging
 
-Skills support optional engagement logging for structured pentests. When an engagement directory exists, skills automatically log activity, findings, and evidence.
+Skills carry out engagement logging for structured pentests and state tracking. When an engagement directory exists, skills automatically log activity, findings, and evidence.
 
 ```
 engagement/
@@ -92,11 +78,8 @@ engagement/
 └── evidence/         # Saved output, responses, dumps
 ```
 
-- **Guided mode** asks if you want to create an engagement directory at the start
-- **Autonomous mode** creates it automatically
 - Activity logged at milestones (test confirmed, data extracted, finding discovered)
 - Findings numbered with severity, target, technique, impact, and reproduction steps
-- No engagement directory = no logging (skills work fine without it)
 
 ### State management
 
@@ -119,7 +102,7 @@ The skills in this repo are a starting point. The retrospective skill is what ma
 
 After an engagement, run a retrospective. Claude reads the engagement directory — `activity.md`, `state.md`, `findings.md` — and analyzes what happened. It reviews every skill routing decision, identifies gaps in payloads and methodology, flags techniques that were done by hand instead of through a skill, and produces a prioritized list of improvements: skill updates, new skills to build, routing fixes.
 
-The actionable items are specific. Not "improve the XXE skill" but "add a Custom Sudo Script Analysis section to `linux-sudo-suid-capabilities` covering eval/exec/os.system sinks in sudo-allowed scripts, with constraint-satisfaction methodology." You discuss the findings with Claude, decide what to change, and update the skills right there in the same session.
+The actionable items are specific. Not "improve the SQL injection skill" but "`sql-injection-blind` only carried MySQL `SLEEP()` payloads — add MSSQL `WAITFOR DELAY` and PostgreSQL `pg_sleep()` for time-based detection." You discuss the findings with Claude, decide what to change, and update the skills right there in the same session.
 
 This is where red-run starts to work differently for you than for anyone else. After a few engagements:
 
@@ -184,18 +167,14 @@ keep sandbox enabled.
 
 ### Recommended configuration
 
-This project was built with the [Trail of Bits Claude Code configuration](https://github.com/trailofbits/claude-code-config) in mind:
-
-- **Sandbox enabled** — bwrap sandboxing with deny rules for sensitive paths
-- **Hooks** — Trail of Bits' two default hooks (pre-tool approval + post-tool logging)
-- **Autonomous mode** — for CTFs and lab environments where OPSEC doesn't matter
-- **MCP skill-router** — 62 technique/discovery skills served on-demand via semantic search (ChromaDB + sentence-transformer embeddings)
+- **Linux VM** with your pentesting tools installed (Kali, Parrot, or a custom build)
+- **Claude Code** installed in the VM — skills execute commands directly, so Claude needs to be where the tools are
+- **Pentesting tools** — nmap, netexec, impacket, sqlmap, ffuf, hashcat, etc. Skills reference tools by name; a skill→tool index is coming
+- **[Trail of Bits Claude Code configuration](https://github.com/trailofbits/claude-code-config)** — sandbox, hooks, and guardrails this project was built around
 
 ### Baseline skills — customize for your workflow
 
 These skills are a **baseline** built from researching publicly available offensive security methodologies. They cover the most common techniques with the top 2-3 payloads per variant. Nearly all skill content was generated by Claude and has not been thoroughly human-reviewed — treat it as a starting point, not a verified reference. Expect errors, gaps, and techniques that need validation against real targets.
-
-You should **modify skills to match your own processes and tools**. Everyone has preferred toolchains, custom scripts, internal playbooks, and engagement-specific workflows that generic skills can't capture. Fork this repo, edit the SKILL.md files directly, and make them yours. The skill format is plain Markdown — no build step, no compilation, changes take effect immediately.
 
 ## Status
 
