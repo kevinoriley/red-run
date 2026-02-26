@@ -197,6 +197,7 @@ Use this table to pick the right agent for each skill:
 | windows-token-impersonation, windows-service-dll-abuse, windows-uac-bypass | privesc-agent | Windows privesc |
 | windows-credential-harvesting, windows-kernel-exploits | privesc-agent | Windows privesc |
 | container-escapes | privesc-agent | Container context |
+| credential-cracking | _(inline — no agent needed)_ | Local-only, no target interaction |
 | retrospective | _(inline — no agent needed)_ | Post-engagement, no target interaction |
 
 #### Orchestrator Loop
@@ -228,8 +229,11 @@ access and cannot invoke skills. Never use them for target-level work:
 
 **What built-in sub-agents may be used for:**
 - Pure research (searching for CVE details, reading documentation)
-- Local processing (parsing scan output, cracking hashes, compiling exploits)
+- Local processing (parsing scan output, compiling exploits)
 - Anything that does not require skill routing or target interaction
+
+For hash cracking and encrypted file cracking, use the **credential-cracking**
+skill (inline) instead of ad-hoc cracking in a built-in sub-agent.
 
 ### Pre-Routing Checkpoint
 
@@ -551,6 +555,10 @@ Common chains that produce shell access on a host:
 >
 > This applies every time new shell access is gained — including after lateral
 > movement to a new host.
+>
+> **File exfiltration:** When retrieving files from a target (loot, backups,
+> configs, databases), follow the File Exfiltration decision tree in the skill
+> template — prefer direct download (HTTP, SCP, SMB) over base64 encoding.
 
 **Lateral Movement:**
 - Credentials from one host → test against all others in scope
@@ -579,12 +587,17 @@ When reading state.md, the orchestrator should:
 3. **Check for unchained access** — can existing access reach new targets?
 4. **Check credentials** — have all found credentials been tested against all
    services?
-5. **Check pivot map** — are there identified paths not yet followed?
-6. **Check blocked items** — has anything changed that might unblock a
+5. **Check for uncracked hashes** — if the Credentials section contains hashes
+   without plaintext (NTLM, Kerberos TGS, shadow, etc.) or the engagement has
+   encrypted files (ZIP, Office, KeePass, SSH key), load **credential-cracking**
+   inline via `get_skill("credential-cracking")`. Cracked passwords unlock new
+   testing against all services.
+6. **Check pivot map** — are there identified paths not yet followed?
+7. **Check blocked items** — has anything changed that might unblock a
    previously failed technique?
-7. **Assess progress toward objectives** — are we closer to the goal defined
+8. **Assess progress toward objectives** — are we closer to the goal defined
    in scope.md?
-8. **No hardcoded route matches** — if the scenario doesn't match any routing
+9. **No hardcoded route matches** — if the scenario doesn't match any routing
    above, use dynamic search:
    a. Call `search_skills("description of what you need")` — results below 0.4
       similarity are filtered automatically.

