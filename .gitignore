@@ -20,6 +20,7 @@ __pycache__/
 
 # Skill router (MCP server)
 tools/skill-router/.chromadb/
+tools/skill-router/tools/
 tools/skill-router/uv.lock
 
 # Engagement data — never commit

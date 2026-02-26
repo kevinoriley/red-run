@@ -30,6 +30,13 @@ application passes user-controlled input to a system shell command without prope
 sanitization. The goal is to execute arbitrary commands on the underlying
 operating system. All testing is under explicit written authorization.
 
+**Not Python eval()/exec() injection.** This skill covers injection into OS
+shell commands (bash, cmd.exe, PowerShell) via operators like `;`, `|`, `&&`,
+backticks, and `$()`. If the injection context is a Python eval() or exec()
+call — where you need to write Python expressions, not shell commands — route
+to **python-code-injection** instead. Key indicator: shell operators (`;id`,
+`|id`) don't work, but Python expressions (`__import__('os').popen('id')`) do.
+
 ## Mode
 
 Check if the user or orchestrator has set a mode:

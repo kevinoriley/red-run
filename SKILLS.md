@@ -1,12 +1,12 @@
 # Skills Inventory
 
-63 skills across 6 categories. All skills are `SKILL.md` files under `skills/`.
+64 skills across 6 categories. All skills are `SKILL.md` files under `skills/`.
 
-## Web Application (30 skills)
+## Web Application (31 skills)
 
 | Skill | Technique | Lines |
 |-------|-----------|-------|
-| `web-discovery` | Content discovery, parameter fuzzing, vulnerability routing | 682 |
+| `web-discovery` | Content discovery, parameter fuzzing, vulnerability routing | 781 |
 | `sql-injection-union` | UNION-based extraction (MySQL, MSSQL, Postgres, Oracle, SQLite) | 349 |
 | `sql-injection-error` | Error-based extraction (EXTRACTVALUE, CONVERT, CAST) | 303 |
 | `sql-injection-blind` | Boolean, time-based, OOB blind extraction | 364 |
@@ -19,7 +19,8 @@
 | `ssti-freemarker` | Freemarker/Java SSTI (+ Velocity, SpEL, Thymeleaf, Pebble, Groovy) | 446 |
 | `ssrf` | Basic/blind SSRF, cloud metadata, filter bypass, gopher/dict protocol | 564 |
 | `lfi` | LFI, PHP wrappers, 8 LFI-to-RCE methods, filter bypass, RFI | 571 |
-| `command-injection` | OS command injection, filter bypass, blind techniques, argument injection, credential handoff | 545 |
+| `command-injection` | OS command injection, filter bypass, blind techniques, argument injection, credential handoff | 560 |
+| `python-code-injection` | Python eval()/exec()/compile() injection, sandbox escape, subclass chain bypass | 698 |
 | `xxe` | Classic/blind/OOB XXE, error-based (remote + local DTD), XInclude, file format injection | 515 |
 | `file-upload-bypass` | Extension/content-type/magic byte bypass, config exploitation, polyglots, archive traversal | 549 |
 | `deserialization-java` | ysoserial gadget chains, JNDI/Log4Shell, JSF ViewState, WebLogic/JBoss/Jenkins | 449 |

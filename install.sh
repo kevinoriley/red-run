@@ -142,7 +142,7 @@ fi
 # --- Summary ---
 echo ""
 echo "Installed ${native_count} native skill(s) to ${SKILLS_DST}/ (${MODE} mode)"
-echo "62 technique/discovery skills served via MCP skill-router"
+echo "63 technique/discovery skills served via MCP skill-router"
 if [[ "$config_warnings" -eq 0 ]]; then
     echo ""
     echo "Done! Start Claude Code from this repo directory to activate."
