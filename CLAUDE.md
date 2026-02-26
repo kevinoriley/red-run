@@ -4,7 +4,16 @@ Claude Code skill library for penetration testing and CTF work.
 
 ## Architecture
 
-Skills are Claude Code native `SKILL.md` files that auto-trigger based on conversation context. No slash commands needed — Claude infers which skill to use from the `description` field in each skill's frontmatter.
+The **orchestrator** is installed as a native Claude Code skill that auto-triggers based on conversation context. All other skills (62 discovery + technique skills) are served on-demand via the **MCP skill-router** — a FastMCP server backed by ChromaDB and sentence-transformer embeddings (`all-MiniLM-L6-v2`). This keeps the system prompt lean; technique skills load only when needed.
+
+### MCP Skill Router
+
+The MCP server at `tools/skill-router/` provides three tools:
+- `search_skills(query)` — semantic search across all indexed skills
+- `get_skill(name)` — load a skill's full SKILL.md content by name
+- `list_skills([category])` — browse the skill inventory
+
+Skills are indexed by `indexer.py` using structured frontmatter fields (description, keywords, tools, opsec) for high-quality embedding documents.
 
 ### Modes
 - **Guided** (default): Interactive. Every command that touches the target
@@ -25,11 +34,13 @@ Mode is set by the user or the orchestrator and propagated via conversation cont
 - **Technique** (`skills/<category>/<technique>/`): Exploits a specific vulnerability class
 
 ### Inter-Skill Routing
-Skills route to each other using bold skill names in their escalation sections (e.g., "Route to **sql-injection-blind**"). Claude's skill matching picks up the context. When routing, pass: injection point, target technology, current mode, and any payloads that already succeeded.
+Skills route to each other at escalation points using `get_skill()` from the MCP skill-router. When a skill says "Route to **skill-name**", call `get_skill("skill-name")` to load the full skill methodology, then follow its instructions. When routing, pass: injection point, target technology, current mode, and any payloads that already succeeded.
 
-**Mandatory skill invocation**: When a skill says "Route to **skill-name**", you MUST invoke that skill using the Skill tool. Never execute a technique inline when a matching skill exists — even if you already know the technique. Skills contain methodology, edge cases, payloads, and troubleshooting that general knowledge does not. This applies in both guided and autonomous modes.
+**Mandatory skill loading**: When a skill says "Route to **skill-name**", you MUST load that skill via `get_skill()`. Never execute a technique inline when a matching skill exists — even if you already know the technique. Skills contain methodology, edge cases, payloads, and troubleshooting that general knowledge does not. This applies in both guided and autonomous modes.
 
-**Task sub-agents cannot invoke skills.** The Skill tool is only available in the main conversation thread. Never delegate target-level work (scanning, exploitation, post-exploitation) to Task sub-agents — they bypass all skill routing, engagement logging, and state management. Use Task sub-agents only for local processing (hash cracking, output parsing, research). See the orchestrator's "Multi-Target Engagements" section for the correct approach to multiple targets.
+**Skill discovery**: If unsure which skill to use, call `search_skills(query)` with a description of the situation. Validate the result before loading — check that the skill's description matches what you need.
+
+**Task sub-agents cannot use MCP tools.** MCP tools are only available in the main conversation thread. Never delegate target-level work (scanning, exploitation, post-exploitation) to Task sub-agents — they bypass all skill routing, engagement logging, and state management. Use Task sub-agents only for local processing (hash cracking, output parsing, research). See the orchestrator's "Multi-Target Engagements" section for the correct approach to multiple targets.
 
 ### Engagement Logging
 
@@ -86,19 +97,20 @@ engagement/
 
 ```
 red-run/
-  install.sh              # Symlinks skills to ~/.claude/skills/red-run-*/
-  uninstall.sh            # Removes installed skills
+  install.sh              # Installs orchestrator + sets up MCP skill-router
+  uninstall.sh            # Removes installed skills + MCP data
   skills/
     _template/SKILL.md    # Canonical template
-    orchestrator/SKILL.md # Master orchestrator
+    orchestrator/SKILL.md # Master orchestrator (native skill)
     web/                  # Web application attacks
     ad/                   # Active Directory
     privesc/              # Privilege escalation
-    cloud/                # AWS, Azure, GCP
     network/              # Recon, protocols, pivoting
-    containers/           # Docker, Kubernetes, CI/CD
-    c2/                   # Command and control
-    redteam/              # Initial access, evasion, persistence, creds
+  tools/
+    skill-router/         # MCP server (ChromaDB + embeddings)
+      server.py           # FastMCP server — search_skills, get_skill, list_skills
+      indexer.py           # Indexes SKILL.md frontmatter into ChromaDB
+      pyproject.toml       # Python dependencies (chromadb, sentence-transformers)
 ```
 
 ## Skill File Format
@@ -112,10 +124,18 @@ Every skill lives at `skills/<category>/<skill-name>/SKILL.md`.
 name: skill-name
 description: >
   What it does. When to trigger (be pushy — Claude undertriggers by default).
-  Explicit trigger phrases. OPSEC level. Tools needed.
-  Negative conditions (when NOT to use, and what to use instead).
+  Explicit trigger phrases. Negative conditions (when NOT to use).
+keywords:
+  - technique-specific search terms
+  - tool names, CVE IDs, protocol names
+tools:
+  - tool1
+  - tool2
+opsec: low|medium|high
 ---
 ```
+
+The MCP indexer builds embedding documents from these structured fields. `description` provides semantic context, `keywords` provide exact search terms, `tools` enable tool-name lookups, and `opsec` is included in search results.
 
 ### Body structure
 
@@ -155,5 +175,5 @@ The bwrap sandbox blocks network socket creation. Users must configure their glo
 ./uninstall.sh
 ```
 
-Skills install to `~/.claude/skills/red-run-<skill-name>/SKILL.md`.
+The installer puts the orchestrator in `~/.claude/skills/red-run-orchestrator/` and sets up the MCP skill-router (Python venv + ChromaDB index). Requires [uv](https://docs.astral.sh/uv/).
 
