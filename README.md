@@ -113,7 +113,7 @@ Every skill reads `state.md` on activation and writes back on completion. The or
 
 ## The retrospective loop
 
-The skills in this repo are a starting point. The retrospective skill is what makes them yours.
+The skills in this repo are a starting point. The `retrospective` skill is what makes them yours.
 
 After an engagement, run a retrospective. Claude reads the engagement directory — `activity.md`, `state.md`, `findings.md` — and analyzes what happened. It reviews every skill routing decision, identifies gaps in payloads and methodology, flags techniques that were done by hand instead of through a skill, and produces a prioritized list of improvements: skill updates, new skills to build, routing fixes.
 
