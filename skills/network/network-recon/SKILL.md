@@ -153,8 +153,30 @@ At each checkpoint and on completion, update the relevant sections of
 
 ## Privileged Commands
 
-Claude Code cannot execute `sudo` commands. Any command requiring root must be
-handed off to the user for manual execution. This applies to:
+Claude Code cannot execute `sudo` commands directly. Nmap requires root for SYN
+scans, UDP scans, OS detection, and most NSE scripts. How nmap runs depends on
+whether the nmap MCP server is available.
+
+### MCP nmap Server (Subagent Mode)
+
+When running as a subagent with nmap MCP access, use the `nmap_scan` tool
+directly — no sudo handoff needed. The MCP server runs `sudo nmap` in a
+subprocess and returns parsed JSON.
+
+```
+nmap_scan(target="10.10.10.5", options="-A -p- -T4")
+```
+
+- Returns structured JSON: hosts, ports, services, scripts, OS detection.
+- Raw XML is saved to `engagement/evidence/` automatically.
+- Use `get_scan(scan_id)` to retrieve previous results.
+- The **Nmap Is the Gate** principle still applies — do not run other network
+  tools until `nmap_scan` completes and you've parsed the results.
+
+### Handoff Protocol (Inline Mode)
+
+When running inline without nmap MCP access, hand off to the user for manual
+execution. This applies to:
 
 - **nmap** — SYN scans (`-sS`), UDP scans (`-sU`), OS detection (`-O`), and most NSE scripts that need raw sockets
 - **responder** — LLMNR/NBNS/mDNS poisoning (requires raw sockets)
@@ -168,18 +190,17 @@ handed off to the user for manual execution. This applies to:
 4. Read the output file when the user confirms completion
 5. Continue analysis based on the parsed output
 
-**nmap always requires the sudo handoff protocol.** Do not run nmap directly —
-not even non-privileged scan types like `-sT` or `-sV`. Unprivileged nmap
-produces unreliable results (connect scans miss filtered ports, no OS detection,
-no raw-socket NSE scripts). Always write a handoff script and wait for the user
-to run it and confirm completion before proceeding.
+**nmap always requires either MCP or the handoff protocol.** Do not run nmap
+directly from Bash — not even non-privileged scan types like `-sT` or `-sV`.
+Unprivileged nmap produces unreliable results (connect scans miss filtered
+ports, no OS detection, no raw-socket NSE scripts).
 
 ### Nmap Is the Gate — Hard Stop
 
-**After writing the nmap handoff script, STOP. Do nothing else until the user
-confirms the scan is complete and output files exist.** No httpx, no curl, no
-netexec, no nuclei, no "quick triage" — nothing touches the network until nmap
-results are parsed. This applies in both guided and autonomous modes.
+**After starting an nmap scan (via MCP or handoff), STOP. Do nothing else until
+scan results are available.** No httpx, no curl, no netexec, no nuclei, no
+"quick triage" — nothing touches the network until nmap results are parsed.
+This applies in both guided and autonomous modes.
 
 The nmap scan is the foundation. Every subsequent decision — which services to
 enumerate, which skills to route to, which quick wins to check — depends on
@@ -189,8 +210,7 @@ ports that actually matter.
 
 **Autonomous mode does not bypass this gate.** Autonomous means you make
 decisions without asking — it does not mean you fill wait time with speculative
-network traffic. Write the handoff script, tell the user to run it, then stop
-and wait.
+network traffic.
 
 **Non-privileged commands** that CAN be executed directly by Claude for
 **post-scan** service enumeration (only AFTER nmap results are parsed):

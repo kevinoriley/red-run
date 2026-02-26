@@ -12,6 +12,16 @@
       "env": {
         "HF_HUB_OFFLINE": "1"
       }
+    },
+    "nmap-server": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "tools/nmap-server",
+        "python",
+        "server.py"
+      ]
     }
   }
 }

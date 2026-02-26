@@ -39,11 +39,28 @@ authorization.
 
 ## Skill Routing Is Mandatory
 
-When this skill says "Route to **skill-name**", you MUST:
+When this skill says "Route to **skill-name**", you MUST execute that skill
+through a domain subagent (preferred) or inline via `get_skill()` (fallback).
+
+### Primary Path: Subagent Delegation
+
+1. Look up the skill in the **Skill-to-Agent Routing Table** (see Subagent
+   Delegation section) to find the correct domain agent.
+2. Spawn the agent via the Task tool with the skill name, target info, mode,
+   and relevant context from state.md.
+3. Wait for the agent to return with findings.
+4. Re-read `engagement/state.md` and run decision logic.
+
+### Fallback Path: Inline Execution
+
+If custom subagents are not installed (agent files missing from
+`~/.claude/agents/`), fall back to inline execution:
 
 1. Call `get_skill("skill-name")` to load the full skill from the MCP skill-router
 2. Read the returned SKILL.md content
 3. Follow its instructions end-to-end
+
+### Core Principle
 
 Do NOT execute techniques inline — even if the attack path seems obvious or you
 already know the technique. Technique skills contain curated payloads, edge-case
@@ -96,32 +113,119 @@ engagement directory, route to network-recon, and wait.
 **If you are unsure whether a command is on the allowed list, it is not.
 Route to a skill.**
 
-### Do Not Delegate Targets to Sub-Agents
+### Subagent Delegation
 
-**Never use the Task tool to delegate target-level work to sub-agents.** The
-Skill tool is only available in the main conversation thread. Task sub-agents
-cannot invoke skills — they execute techniques inline, bypassing all skill
-routing, engagement logging, and state management. This defeats the entire
-purpose of the skill library.
+The orchestrator delegates skill execution to **custom domain subagents** that
+have full MCP access to the skill-router and category-specific servers. Each
+subagent invocation executes **one skill** and returns — the orchestrator makes
+every routing decision.
 
-This is the orchestrator's most dangerous failure mode in multi-target
-engagements. The temptation to parallelize by spawning one agent per target is
-strong, especially in autonomous mode. Resist it. A sub-agent "doing pentesting"
-without skills is just general-purpose Claude improvising — it skips
-methodology, misses edge cases, and produces inconsistent results.
+**Available subagents:**
 
-**What you may use Task sub-agents for:**
+| Agent | Domain | MCP Servers | Use For |
+|-------|--------|-------------|---------|
+| `network-recon-agent` | Network | skill-router, nmap-server | network-recon, smb-exploitation, pivoting-tunneling |
+| `web-agent` | Web | skill-router | All web discovery + technique skills |
+| `ad-agent` | Active Directory | skill-router | All AD discovery + technique skills |
+| `privesc-agent` | Privilege Escalation | skill-router | Linux/Windows discovery + technique skills, container escapes |
+
+**How to delegate:**
+
+Spawn the appropriate domain agent via the Task tool:
+
+```
+Task(
+    subagent_type="network-recon-agent",
+    prompt="Load skill 'network-recon'. Target: 10.10.10.5. Mode: guided. No credentials provided.",
+    description="Network recon on 10.10.10.5"
+)
+```
+
+The agent will:
+1. Call `get_skill("network-recon")` to load the skill
+2. Follow the methodology, using MCP tools as needed (e.g., `nmap_scan`)
+3. Update engagement files (state.md, activity.md, findings.md, evidence/)
+4. Return a summary of findings and routing recommendations
+
+**After every subagent return:**
+1. Re-read `engagement/state.md` — the agent updated it
+2. Check for new credentials, access, vulns, or blocked items
+3. Run the Step 5 decision logic
+4. Spawn the next agent with the appropriate skill
+
+**Each invocation = one skill.** Discovery skills find things and return.
+The orchestrator decides which technique skill to invoke next. Subagents
+never load a second skill or route to other skills — when the skill text says
+"Route to X", that's the agent's cue to report findings and stop.
+
+**Inline fallback:** If a custom subagent is not available (agent files not
+installed), fall back to loading the skill inline via `get_skill()` and
+executing the methodology in the main thread. The subagent model is the
+preferred path, but the inline model still works.
+
+#### Skill-to-Agent Routing Table
+
+Use this table to pick the right agent for each skill:
+
+| Skill | Agent | Why |
+|-------|-------|-----|
+| network-recon | network-recon-agent | Needs nmap MCP |
+| smb-exploitation | network-recon-agent | Network-level exploitation |
+| pivoting-tunneling | network-recon-agent | Network-level tools |
+| web-discovery | web-agent | Web tools + conventions |
+| sql-injection-union, sql-injection-blind, sql-injection-error, sql-injection-stacked | web-agent | Web |
+| xss-reflected, xss-stored, xss-dom | web-agent | Web |
+| ssti-identification, ssti-jinja2, ssti-dotnet | web-agent | Web |
+| command-injection, python-code-injection | web-agent | Web |
+| ssrf, lfi, file-upload, xxe | web-agent | Web |
+| deserialization-java, deserialization-dotnet, deserialization-php | web-agent | Web |
+| jwt-attacks, request-smuggling, nosql-injection, ldap-injection | web-agent | Web |
+| idor, cors-misconfiguration, csrf | web-agent | Web |
+| oauth-attacks, password-reset-poisoning, 2fa-bypass, race-conditions | web-agent | Web |
+| ad-discovery | ad-agent | Kerberos-first workflow |
+| kerberoasting, as-rep-roasting, delegation-abuse | ad-agent | AD |
+| adcs-esc1, adcs-esc4, adcs-esc8 | ad-agent | AD |
+| acl-abuse, credential-dumping, pass-the-hash, password-spraying | ad-agent | AD |
+| gpo-abuse, trust-attacks, ad-persistence, auth-coercion-relay, sccm-exploitation | ad-agent | AD |
+| linux-discovery | privesc-agent | Shell access + host enum |
+| linux-sudo-suid-capabilities, linux-cron-service-abuse, linux-file-path-abuse, linux-kernel-exploits | privesc-agent | Linux privesc |
+| windows-discovery | privesc-agent | Shell access + host enum |
+| windows-token-impersonation, windows-service-dll-abuse, windows-uac-bypass | privesc-agent | Windows privesc |
+| windows-credential-harvesting, windows-kernel-exploits | privesc-agent | Windows privesc |
+| container-escapes | privesc-agent | Container context |
+| retrospective | _(inline — no agent needed)_ | Post-engagement, no target interaction |
+
+#### Orchestrator Loop
+
+The orchestrator runs a decision loop. Each iteration:
+
+```
+while objectives_not_met:
+    read state.md
+    analyze: unexploited vulns, unchained access, untested creds, pivot map
+    pick highest-value next action → select skill + domain agent
+    pre-routing checkpoint (write state.md, log to activity.md)
+    spawn agent with: skill name, target info, mode, context
+    agent returns: findings summary, routing recommendations
+    post-routing checkpoint (re-read state.md, check new state)
+    update activity.md with routing decision + outcome
+```
+
+Each iteration is one skill invocation. The orchestrator never runs two skills
+in parallel — sequential execution ensures state.md stays consistent.
+
+#### Built-in Task Sub-Agents (Warning)
+
+**Built-in** Task sub-agents (Explore, Plan, general-purpose) do NOT have MCP
+access and cannot invoke skills. Never use them for target-level work:
+- No scanning or enumeration tools against targets
+- No exploiting vulnerabilities
+- No post-exploitation or privilege escalation
+
+**What built-in sub-agents may be used for:**
 - Pure research (searching for CVE details, reading documentation)
 - Local processing (parsing scan output, cracking hashes, compiling exploits)
 - Anything that does not require skill routing or target interaction
-
-**What you must NOT use Task sub-agents for:**
-- Running scanning or enumeration tools against targets
-- Exploiting vulnerabilities
-- Post-exploitation enumeration or privilege escalation
-- Anything a skill exists for
-
-See "Multi-Target Engagements" (Step 8) for the correct approach.
 
 ### Pre-Routing Checkpoint
 
@@ -258,15 +362,23 @@ mkdir -p engagement/evidence
 
 ## Step 2: Reconnaissance
 
-Map the attack surface by routing to discovery skills. Do not run scanning or
-enumeration tools directly from the orchestrator.
+Map the attack surface by routing to discovery skills via subagent delegation.
+Do not run scanning or enumeration tools directly from the orchestrator.
 
 ### Network Recon (if IP/subnet in scope)
 
-STOP. Route to **network-recon** — call `get_skill("network-recon")` and follow
-its instructions. Pass: target IP, hostname, or CIDR range, current mode, and
-any credentials from scope. Do not execute nmap, masscan, or netexec commands
-inline.
+STOP. Spawn **network-recon-agent** with skill `network-recon`:
+
+```
+Task(
+    subagent_type="network-recon-agent",
+    prompt="Load skill 'network-recon'. Target: <IP/range>. Mode: <mode>. Credentials: <creds or 'none'>.",
+    description="Network recon on <target>"
+)
+```
+
+Do not execute nmap, masscan, or netexec commands inline. The agent has nmap
+MCP access and will handle scanning directly.
 
 Network-recon will:
 1. Run host discovery (for subnets) and full port scanning
@@ -277,25 +389,40 @@ Network-recon will:
 5. Update state.md with all discovered hosts, ports, and services
 6. Return routing recommendations for next steps
 
-Wait for network-recon to complete before proceeding to attack surface mapping.
+Wait for the agent to return before proceeding to attack surface mapping.
 
 ### Web Discovery (if HTTP/HTTPS found)
 
-STOP. Route to **web-discovery** — call `get_skill("web-discovery")` and follow
-its instructions. Pass: target URL, technology stack (from network-recon
-results), current mode. Do not execute ffuf, httpx, or nuclei commands inline.
+STOP. Spawn **web-agent** with skill `web-discovery`:
+
+```
+Task(
+    subagent_type="web-agent",
+    prompt="Load skill 'web-discovery'. Target: <URL>. Tech stack: <from recon>. Mode: <mode>.",
+    description="Web discovery on <target>"
+)
+```
+
+Do not execute ffuf, httpx, or nuclei commands inline.
 
 ### Host Enumeration (if domain environment suspected)
 
-STOP. Route to **ad-discovery** — call `get_skill("ad-discovery")` and follow
-its instructions. Pass: target IP, domain name (from LDAP rootDSE or SMB
-discovery), any credentials. Do not execute netexec or ldapsearch commands
-inline.
+STOP. Spawn **ad-agent** with skill `ad-discovery`:
+
+```
+Task(
+    subagent_type="ad-agent",
+    prompt="Load skill 'ad-discovery'. DC: <IP>. Domain: <name>. Credentials: <creds>. Mode: <mode>.",
+    description="AD discovery on <domain>"
+)
+```
+
+Do not execute netexec or ldapsearch commands inline.
 
 ### Update State
 
-After discovery skills return, update `engagement/state.md` Targets section
-with discovered hosts, ports, services, and technologies.
+After each agent returns, re-read `engagement/state.md` (the agent updated it)
+and check for new findings before routing to the next skill.
 
 Log to `engagement/activity.md`:
 ```markdown
@@ -310,16 +437,16 @@ Log to `engagement/activity.md`:
 
 Based on recon results, categorize the attack surface:
 
-| Surface | Indicators | Action |
-|---------|-----------|--------|
-| Web application | HTTP/HTTPS, login forms, APIs | Route to **web-discovery** via `get_skill()` |
-| Active Directory | LDAP (389/636), Kerberos (88), SMB domain | Route to **ad-discovery** via `get_skill()` |
-| Containers / K8s | Docker API (2375), K8s API (6443/8443), kubelet (10250), etcd (2379), or inside a container | Route to **container-escapes** via `get_skill()` |
+| Surface | Indicators | Agent → Skill |
+|---------|-----------|---------------|
+| Web application | HTTP/HTTPS, login forms, APIs | web-agent → `web-discovery` |
+| Active Directory | LDAP (389/636), Kerberos (88), SMB domain | ad-agent → `ad-discovery` |
+| Containers / K8s | Docker API (2375), K8s API (6443/8443), kubelet (10250), etcd (2379), or inside a container | privesc-agent → `container-escapes` |
 | Database | MySQL (3306), MSSQL (1433), PostgreSQL (5432) | Direct DB testing |
 | Mail | SMTP (25/587), IMAP (143/993) | Credential attacks, phishing |
-| SMB vulnerability | SMB (445) + confirmed CVE (MS08-067, MS17-010, SMBGhost, MS09-050) | Route to **smb-exploitation** via `get_skill()` |
+| SMB vulnerability | SMB (445) + confirmed CVE (MS08-067, MS17-010, SMBGhost, MS09-050) | network-recon-agent → `smb-exploitation` |
 | File shares | SMB (445), NFS (2049) | Enumeration, sensitive files |
-| Remote access | SSH (22), RDP (3389), WinRM (5985) | Route to **password-spraying** via `get_skill()` |
+| Remote access | SSH (22), RDP (3389), WinRM (5985) | ad-agent → `password-spraying` |
 | Custom services | Non-standard ports | Manual investigation |
 
 **In guided mode**: Present the attack surface map and ask which paths to
@@ -337,24 +464,23 @@ Route to discovery skills based on attack surface. Pass along:
 
 ### Web Applications
 
-STOP. Route to **web-discovery** — call `get_skill("web-discovery")` and follow
-its instructions. Pass: target URL, technology stack, current mode, any
-credentials. Do not execute ffuf, httpx, or nuclei commands inline.
+STOP. Spawn **web-agent** with skill `web-discovery`. Pass: target URL,
+technology stack, current mode, any credentials. Do not execute ffuf, httpx,
+or nuclei commands inline.
 
 ### Active Directory
 
-STOP. Route to **ad-discovery** — call `get_skill("ad-discovery")` and follow
-its instructions. Pass: DC IP, domain name, any credentials, current mode.
-Do not execute netexec, ldapsearch, or bloodhound commands inline.
+STOP. Spawn **ad-agent** with skill `ad-discovery`. Pass: DC IP, domain name,
+any credentials, current mode. Do not execute netexec, ldapsearch, or
+bloodhound commands inline.
 
 ### Credential Attacks
 
 For services with authentication (SSH, RDP, SMB, web login):
 
-STOP. Route to **password-spraying** — call `get_skill("password-spraying")`
-and follow its instructions. Pass: target IP, service type(s), any known
-usernames and passwords, current mode. Do not execute netexec or hydra commands
-inline.
+STOP. Spawn **ad-agent** with skill `password-spraying`. Pass: target IP,
+service type(s), any known usernames and passwords, current mode. Do not
+execute netexec or hydra commands inline.
 
 ## Step 5: Vulnerability Chaining
 
@@ -366,8 +492,8 @@ analyze the Pivot Map to chain vulnerabilities for maximum impact.
 Think through these chains systematically:
 
 **Direct Access (no credentials needed):**
-- SMB vulnerability confirmed → route to **smb-exploitation** via `get_skill()` → SYSTEM shell
-- SMB exploitation → SYSTEM → route to **credential-dumping** via `get_skill()` → lateral movement
+- SMB vulnerability confirmed → network-recon-agent(`smb-exploitation`) → SYSTEM shell
+- SMB exploitation → SYSTEM → ad-agent(`credential-dumping`) → lateral movement
 
 **Information → Access:**
 - LFI reads config → credentials → database/service access
@@ -405,43 +531,43 @@ Common chains that produce shell access on a host:
 >
 > **2. Route to the appropriate discovery skill.**
 > Do NOT run `sudo -l`, `find -perm -4000`, `whoami /priv`, `net user`, or any
-> host enumeration commands inline. Route:
+> host enumeration commands inline. Spawn:
 >
-> - Linux target → STOP. Route to **linux-discovery** via `get_skill("linux-discovery")`.
-> - Windows target → STOP. Route to **windows-discovery** via `get_skill("windows-discovery")`.
+> - Linux target → STOP. Spawn **privesc-agent** with skill `linux-discovery`.
+> - Windows target → STOP. Spawn **privesc-agent** with skill `windows-discovery`.
 >
 > Pass: target hostname/IP, current user, access method (specify: interactive
 > reverse shell on port X, SSH session, WinRM, etc.), current mode, any
-> credentials. The discovery skill enumerates systematically and routes to the
-> correct technique skill (sudo/SUID abuse, cron/MOTD exploitation, kernel
-> exploits, token impersonation, etc.). Inline enumeration skips methodology
-> and misses vectors.
+> credentials. The discovery skill enumerates systematically and returns findings
+> — the orchestrator then decides which technique skill to invoke next (sudo/SUID
+> abuse, cron/MOTD exploitation, kernel exploits, token impersonation, etc.).
 >
 > This applies every time new shell access is gained — including after lateral
 > movement to a new host.
 
 **Lateral Movement:**
 - Credentials from one host → test against all others in scope
-- Service account → Kerberoasting → more credentials
+- Service account → ad-agent(`kerberoasting`) → more credentials
 - Machine keys from IIS → ViewState RCE on other IIS sites
 - Database link → linked server → second database
-- Host access on new subnet → route to **pivoting-tunneling** via `get_skill()` → then route to **network-recon** via `get_skill()` on internal network
+- Host access on new subnet → network-recon-agent(`pivoting-tunneling`) → then network-recon-agent(`network-recon`) on internal network
 
 **Privilege Escalation:**
-- Local admin → dump credentials → domain user
-- Domain user → Kerberoasting/ASREProasting → service accounts
-- Service account → delegation abuse → domain admin
-- ADCS misconfiguration → certificate forgery → domain admin
-- Containerized shell → route to **container-escapes** via `get_skill()` → host access → route to **linux-discovery** or **windows-discovery** via `get_skill()`
+- Local admin → ad-agent(`credential-dumping`) → domain user
+- Domain user → ad-agent(`kerberoasting`)/ad-agent(`as-rep-roasting`) → service accounts
+- Service account → ad-agent(`delegation-abuse`) → domain admin
+- ADCS misconfiguration → ad-agent(`adcs-esc1`/`adcs-esc4`/`adcs-esc8`) → domain admin
+- Containerized shell → privesc-agent(`container-escapes`) → host access → privesc-agent(`linux-discovery`/`windows-discovery`)
 
 ### Decision Logic
 
 When reading state.md, the orchestrator should:
 
-1. **Check for unexploited vulns** — route to the appropriate technique skill
+1. **Check for unexploited vulns** — spawn the appropriate agent with the
+   technique skill (look up in Skill-to-Agent Routing Table)
 2. **Check for shell access without root/SYSTEM** — if the Access section shows
-   a non-root shell on Linux or non-SYSTEM/non-admin shell on Windows, route to
-   **linux-discovery** or **windows-discovery** via `get_skill()`. Do not
+   a non-root shell on Linux or non-SYSTEM/non-admin shell on Windows, spawn
+   **privesc-agent** with `linux-discovery` or `windows-discovery`. Do not
    enumerate privilege escalation vectors inline.
 3. **Check for unchained access** — can existing access reach new targets?
 4. **Check credentials** — have all found credentials been tested against all
@@ -460,11 +586,10 @@ When reading state.md, the orchestrator should:
       does not guarantee relevance — the embedding model can confuse adjacent
       techniques (e.g., SSRF/CSRF, IDOR/ACL-abuse). If the description
       doesn't fit, skip it and check the next result or try a different query.
-   c. Load the validated skill with `get_skill()` and **re-check after loading**:
-      scan the skill's Prerequisites and Step 1 (Assess). If the skill expects
-      conditions that don't match the current engagement state (wrong OS,
-      wrong protocol, requires access you don't have), STOP — do not force-fit
-      the skill. Return to the search results or fall back to general methodology.
+   c. Look up the skill in the Skill-to-Agent Routing Table and spawn the
+      appropriate domain agent. If the skill isn't in the table, determine
+      the domain (web/ad/privesc/network) from its category and use the
+      corresponding agent.
    d. If no search result is relevant, proceed with general methodology and
       note the coverage gap in `engagement/activity.md`.
 
@@ -515,9 +640,9 @@ Save output to `engagement/evidence/` with descriptive filenames.
 ## Step 7: Multi-Target Engagements
 
 When the scope includes multiple targets (multiple IPs, a subnet, a CTF with
-several boxes), the orchestrator must process them without breaking skill
-routing. The key constraint: **skills can only be invoked from the main
-conversation thread**, so all target work must flow through the orchestrator.
+several boxes), the orchestrator must process them methodically. Each subagent
+invocation has isolated context, which prevents context pollution across
+targets — but all routing decisions still flow through the orchestrator.
 
 ### Strategy: Phase-Based Cycling
 
@@ -554,15 +679,15 @@ exhausted or objectives are met.
 
 ### What NOT To Do
 
-- **Do not spawn one Task sub-agent per target.** Sub-agents cannot invoke
-  skills. This is the single most common orchestrator failure in multi-target
-  engagements — it looks efficient but produces skill-less, methodology-free
-  improvisation on every target.
+- **Do not spawn built-in Task sub-agents (Explore, Plan, general-purpose) per
+  target.** They lack MCP access and cannot invoke skills. Use only the custom
+  domain subagents listed in the Skill-to-Agent Routing Table.
 - **Do not go deep on one target while ignoring others.** If you're stuck on
   privesc for target A, move to target B. Fresh targets often yield quick wins
   that unlock progress elsewhere.
 - **Do not run the same skill on multiple targets simultaneously.** Invoke
-  skills one at a time. The sequential overhead is the price of methodology.
+  agents one at a time. The sequential overhead is the price of methodology and
+  consistent state management.
 
 ### State Management for Multiple Targets
 

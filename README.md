@@ -40,18 +40,26 @@ Autonomous mode pairs with `claude --dangerously-skip-permissions` (a.k.a. yolo 
 
 ### Architecture
 
-The **orchestrator** is a native Claude Code skill that auto-triggers based on conversation context. All other skills are served on-demand via the **MCP skill-router** — a FastMCP server backed by ChromaDB and sentence-transformer embeddings. This keeps the system prompt lean; technique skills load only when needed.
+The **orchestrator** is a native Claude Code skill that runs in the main conversation thread. It delegates skill execution to **custom domain subagents** — focused agents with MCP access that each handle one skill per invocation. This keeps context isolated (each agent starts fresh) and eliminates the sudo nmap handoff bottleneck.
 
-The MCP server provides three tools:
-- `search_skills(query)` — semantic search across all indexed skills
-- `get_skill(name)` — load a skill's full SKILL.md content by name
-- `list_skills([category])` — browse the skill inventory
+**Subagents:**
 
-Skills are indexed from structured YAML frontmatter (description, keywords, tools, opsec rating) for high-quality embeddings. When a discovery skill identifies a vulnerability, it calls `get_skill()` to load the matching technique skill and hands off the injection point, working payloads, and engagement context.
+| Agent | Domain | Key capability |
+|-------|--------|----------------|
+| `network-recon-agent` | Network recon + exploitation | Has nmap MCP — runs `sudo nmap` directly |
+| `web-agent` | Web application security | Injection, auth bypass, deserialization, etc. |
+| `ad-agent` | Active Directory attacks | Kerberos-first auth baked in |
+| `privesc-agent` | Privilege escalation | Linux + Windows + containers |
+
+Each invocation: agent loads one skill, follows the methodology, updates engagement files, returns findings. The orchestrator reads state and routes to the next skill. If subagents aren't installed, the orchestrator falls back to inline skill execution.
+
+**MCP servers:**
+- **skill-router** — semantic search + skill loading via ChromaDB + sentence-transformer embeddings
+- **nmap-server** — wraps `sudo nmap`, returns parsed JSON (no manual handoff)
 
 ### Inter-skill routing
 
-Skills route to each other at escalation points. When SQL injection leads to credentials, the skill suggests pivoting to privilege escalation. When BloodHound reveals an ACL path, the discovery skill routes to `acl-abuse`. Context (injection point, working payloads, target platform, mode) is passed along.
+The orchestrator makes every routing decision. When SQL injection leads to credentials, the orchestrator spawns the next agent with the appropriate skill. When BloodHound reveals an ACL path, the orchestrator routes to `acl-abuse` via the AD agent. Context (injection point, working payloads, target platform, mode) is passed in the agent's Task prompt.
 
 ## Skills
 
@@ -117,7 +125,8 @@ The cycle is: **engage → retrospective → improve skills → engage again**. 
 
 ### Prerequisites
 
-- [uv](https://docs.astral.sh/uv/) — Python package manager (for the MCP skill-router)
+- [uv](https://docs.astral.sh/uv/) — Python package manager (for MCP servers)
+- Passwordless `sudo nmap` — for the nmap MCP server (see `tools/nmap-server/README.md`)
 
 ### Install
 
@@ -134,8 +143,9 @@ The cycle is: **engage → retrospective → improve skills → engage again**. 
 
 The installer:
 1. Installs the **orchestrator** as a native Claude Code skill (`~/.claude/skills/`)
-2. Sets up the **MCP skill-router** — Python venv + ChromaDB index for on-demand technique skill loading
-3. Verifies project config (`.mcp.json`, settings)
+2. Installs **custom subagents** to `~/.claude/agents/`
+3. Sets up **MCP servers** — skill-router (ChromaDB + embeddings) + nmap-server (sudo nmap wrapper)
+4. Verifies project config (`.mcp.json`, settings, sudo nmap)
 
 The repo must stay in place — the MCP server reads skills from `skills/` at runtime.
 

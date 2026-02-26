@@ -3,23 +3,25 @@ set -euo pipefail
 
 # install.sh — Install red-run skill library
 #
-# Installs the orchestrator as a native Claude Code skill and sets up the MCP
-# skill-router server (ChromaDB + embeddings) for on-demand technique skill
-# loading.
+# Installs the orchestrator as a native Claude Code skill, custom subagents,
+# and sets up MCP servers (skill-router + nmap-server) for on-demand skill
+# loading and privileged scanning.
 #
 # Default: creates symlinks (edits in repo reflect immediately)
-# --copy:  copies orchestrator (for machines without persistent repo access)
+# --copy:  copies files (for machines without persistent repo access)
 #
-# The MCP server always reads skills from the repo, so the repo must stay in
-# place regardless of mode.
+# MCP servers always read from the repo, so the repo must stay in place.
 #
 # Requires: uv (https://docs.astral.sh/uv/)
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 SKILLS_SRC="${REPO_DIR}/skills"
 SKILLS_DST="${HOME}/.claude/skills"
+AGENTS_SRC="${REPO_DIR}/agents"
+AGENTS_DST="${HOME}/.claude/agents"
 PREFIX="red-run"
-MCP_DIR="${REPO_DIR}/tools/skill-router"
+MCP_SKILL_ROUTER="${REPO_DIR}/tools/skill-router"
+MCP_NMAP_SERVER="${REPO_DIR}/tools/nmap-server"
 
 # Only the orchestrator is installed as a native Claude Code skill.
 # Everything else is served on-demand via the MCP skill-router.
@@ -30,7 +32,7 @@ if [[ "${1:-}" == "--copy" ]]; then
     MODE="copy"
 fi
 
-mkdir -p "${SKILLS_DST}"
+mkdir -p "${SKILLS_DST}" "${AGENTS_DST}"
 
 # --- Step 1: Clean up old native installs ---
 # Previous versions installed all 62+ skills natively. The MCP architecture
@@ -106,9 +108,38 @@ for skill_name in "${NATIVE_SKILLS[@]}"; do
     fi
 done
 
-# --- Step 4: Set up MCP skill-router ---
+# --- Step 4: Install custom subagents ---
 echo ""
-echo "Setting up MCP skill-router..."
+echo "Installing custom subagents..."
+agent_count=0
+for agent_file in "${AGENTS_SRC}"/*.md; do
+    [[ -f "$agent_file" ]] || continue
+    agent_basename="$(basename "$agent_file")"
+    dest_file="${AGENTS_DST}/${agent_basename}"
+
+    rm -f "$dest_file"
+    if [[ "$MODE" == "symlink" ]]; then
+        ln -s "$agent_file" "$dest_file"
+    else
+        cp "$agent_file" "$dest_file"
+    fi
+
+    echo "  ${agent_basename} -> ${agent_file}"
+    agent_count=$((agent_count + 1))
+done
+
+# Validate agent installs
+for agent_file in "${AGENTS_DST}"/*.md; do
+    [[ -f "$agent_file" ]] || continue
+    if [[ ! -r "$agent_file" ]]; then
+        echo "ERROR: Broken agent: ${agent_file}" >&2
+        exit 1
+    fi
+done
+
+# --- Step 5: Set up MCP servers ---
+echo ""
+echo "Setting up MCP servers..."
 
 if ! command -v uv &>/dev/null; then
     echo "ERROR: uv is required but not found." >&2
@@ -116,17 +147,33 @@ if ! command -v uv &>/dev/null; then
     exit 1
 fi
 
-echo "  Installing Python dependencies..."
-uv sync --directory "${MCP_DIR}" --quiet
+# Skill-router (ChromaDB + embeddings)
+echo "  [skill-router] Installing Python dependencies..."
+uv sync --directory "${MCP_SKILL_ROUTER}" --quiet
 
-echo "  Indexing skills into ChromaDB (downloads embedding model on first run)..."
-uv run --directory "${MCP_DIR}" python indexer.py
+echo "  [skill-router] Indexing skills into ChromaDB (downloads embedding model on first run)..."
+uv run --directory "${MCP_SKILL_ROUTER}" python indexer.py
 
-# --- Step 5: Verify project config ---
+# nmap-server
+echo "  [nmap-server] Installing Python dependencies..."
+uv sync --directory "${MCP_NMAP_SERVER}" --quiet
+
+# Check sudo nmap availability
+if sudo -n nmap --version &>/dev/null 2>&1; then
+    echo "  [nmap-server] sudo nmap: OK"
+else
+    echo ""
+    echo "  WARNING: passwordless sudo for nmap not configured."
+    echo "  The nmap MCP server requires it. Add to /etc/sudoers.d/nmap:"
+    echo "    $USER ALL=(root) NOPASSWD: /usr/bin/nmap"
+    echo ""
+fi
+
+# --- Step 6: Verify project config ---
 config_warnings=0
 if [[ ! -f "${REPO_DIR}/.mcp.json" ]]; then
     echo ""
-    echo "WARNING: .mcp.json not found — MCP server won't auto-start."
+    echo "WARNING: .mcp.json not found — MCP servers won't auto-start."
     config_warnings=$((config_warnings + 1))
 fi
 
@@ -142,7 +189,9 @@ fi
 # --- Summary ---
 echo ""
 echo "Installed ${native_count} native skill(s) to ${SKILLS_DST}/ (${MODE} mode)"
+echo "Installed ${agent_count} custom subagent(s) to ${AGENTS_DST}/"
 echo "63 technique/discovery skills served via MCP skill-router"
+echo "nmap MCP server ready (sudo nmap wrapper)"
 if [[ "$config_warnings" -eq 0 ]]; then
     echo ""
     echo "Done! Start Claude Code from this repo directory to activate."
