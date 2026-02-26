@@ -2,7 +2,9 @@
 name: linux-file-path-abuse
 description: >
   Exploit writable critical files, NFS misconfigurations, shared library
-  hijacking, and privileged group membership for privilege escalation.
+  hijacking, and privileged group membership (docker, lxd, disk, adm, video,
+  staff) for Linux privilege escalation. Use when a user belongs to a
+  privileged group or has write access to sensitive files or paths.
 keywords:
   - writable passwd
   - nfs privesc
@@ -11,8 +13,12 @@ keywords:
   - ld.so.conf
   - rpath abuse
   - docker group escape
+  - docker group privilege escalation
   - lxd group privesc
+  - lxd group privilege escalation
+  - lxc group
   - disk group debugfs
+  - privileged group membership
   - path hijack
   - symlink attack
   - profile injection

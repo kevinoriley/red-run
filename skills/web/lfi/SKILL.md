@@ -439,6 +439,20 @@ auto-deserializes PHAR metadata.
 /var/www/html/config/database.yml  # Rails
 ```
 
+**Tomcat** (high-value — credentials and DB connections):
+
+```
+/var/lib/tomcat9/conf/tomcat-users.xml   # Manager credentials + roles
+/var/lib/tomcat8/conf/tomcat-users.xml
+/var/lib/tomcat7/conf/tomcat-users.xml
+/var/lib/tomcat10/conf/tomcat-users.xml
+/opt/tomcat/conf/tomcat-users.xml        # Manual installs
+/etc/tomcat9/tomcat-users.xml            # Debian/Ubuntu alternative
+/var/lib/tomcat9/conf/server.xml         # Connectors, AJP, ports
+/var/lib/tomcat9/conf/context.xml        # Database connection strings (JNDI)
+/var/lib/tomcat9/conf/web.xml            # Servlet mappings
+```
+
 **Logs (for poisoning):**
 
 ```

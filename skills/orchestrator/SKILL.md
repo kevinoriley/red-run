@@ -181,6 +181,7 @@ Use this table to pick the right agent for each skill:
 | ssti-identification, ssti-jinja2, ssti-dotnet | web-agent | Web |
 | command-injection, python-code-injection | web-agent | Web |
 | ajp-ghostcat | web-agent | Web (Tomcat AJP exploitation) |
+| tomcat-manager-deploy | web-agent | Web (Tomcat Manager WAR deployment) |
 | ssrf, lfi, file-upload, xxe | web-agent | Web |
 | deserialization-java, deserialization-dotnet, deserialization-php | web-agent | Web |
 | jwt-attacks, request-smuggling, nosql-injection, ldap-injection | web-agent | Web |

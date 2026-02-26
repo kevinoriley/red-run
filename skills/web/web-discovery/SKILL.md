@@ -738,6 +738,14 @@ execute exploitation commands inline — even if the technique seems simple.
 | Rate limit bypassed via HTTP/2 multiplexed parallel requests | **race-condition** (rate limit bypass) |
 | Multi-step operation with observable delay between check and action | **race-condition** (TOCTOU) |
 
+### Tomcat Manager
+
+| Response Pattern | Route To |
+|---|---|
+| Tomcat Manager accessible with valid credentials (manager-script or manager-gui role) | **tomcat-manager-deploy** (WAR deployment RCE) |
+| Tomcat Manager 401 with default/discovered credentials untested | **tomcat-manager-deploy** (credential verification + WAR deploy) |
+| `tomcat-users.xml` leaked via LFI/config exposure with manager roles | **tomcat-manager-deploy** (authenticated WAR deploy) |
+
 ### AJP / Apache JServ Protocol
 
 | Response Pattern | Route To |
