@@ -52,17 +52,28 @@ Autonomous mode pairs with `claude --dangerously-skip-permissions` (a.k.a. yolo 
 
 &nbsp;
 
+### Architecture
+
+The **orchestrator** is a native Claude Code skill that auto-triggers based on conversation context. All other skills (63 discovery + technique skills) are served on-demand via the **MCP skill-router** — a FastMCP server backed by ChromaDB and sentence-transformer embeddings. This keeps the system prompt lean; technique skills load only when needed.
+
+The MCP server provides three tools:
+- `search_skills(query)` — semantic search across all indexed skills (e.g., "blind SQL injection in a login form")
+- `get_skill(name)` — load a skill's full SKILL.md content by name
+- `list_skills([category])` — browse the skill inventory
+
+Skills are indexed from structured YAML frontmatter (description, keywords, tools, opsec rating) for high-quality embeddings. When a discovery skill identifies a vulnerability, it calls `get_skill()` to load the matching technique skill and hands off the injection point, working payloads, and engagement context.
+
 ### Inter-skill routing
 
 Skills route to each other at escalation points. When SQL injection leads to credentials, the skill suggests pivoting to privilege escalation. When BloodHound reveals an ACL path, the discovery skill routes to `acl-abuse`. Context (injection point, working payloads, target platform, mode) is passed along.
 
 ## Skills
 
-63 skills across 6 categories — see **[SKILLS.md](SKILLS.md)** for the full inventory with technique details and line counts.
+64 skills across 6 categories — see **[SKILLS.md](SKILLS.md)** for the full inventory with technique details and line counts.
 
 | Category | Skills | Coverage |
 |----------|--------|----------|
-| Web Application | 30 | SQLi, XSS, SSTI, deserialization, SSRF, auth bypass, and more |
+| Web Application | 31 | SQLi, XSS, SSTI, deserialization, SSRF, auth bypass, and more |
 | Active Directory | 16 | Kerberos, ADCS, ACLs, GPO, trust, persistence, lateral movement |
 | Privilege Escalation | 11 | Windows + Linux enumeration and technique skills |
 | Infrastructure | 4 | Network recon, pivoting, container escapes, SMB exploitation |
@@ -188,7 +199,7 @@ You should **modify skills to match your own processes and tools**. Everyone has
 
 ## Status
 
-63 skills, ~36,900 lines.
+64 skills, ~37,400 lines.
 
 ## Disclaimer
 
