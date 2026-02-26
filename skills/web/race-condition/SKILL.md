@@ -1,18 +1,27 @@
 ---
 name: race-condition
 description: >
-  Exploit race conditions and TOCTOU vulnerabilities in web applications during
-  authorized penetration testing. Use when the user needs to exploit limit-overrun
-  flaws, bypass rate limits via parallel requests, perform double-spend or coupon
-  reuse attacks, or exploit time-of-check-to-time-of-use gaps. Also triggers on:
-  "race condition", "TOCTOU", "limit overrun", "double spend", "single-packet
-  attack", "HTTP/2 race", "turbo intruder race", "concurrent requests", "parallel
-  requests exploit", "coupon reuse", "rate limit race", "last-byte sync". OPSEC:
-  medium — generates bursts of concurrent requests that may trigger rate limiting
-  or anomaly detection. Tools: burpsuite (Turbo Intruder), python3, httpx, ffuf.
-  Do NOT use for general rate limit bypass without a race window — use rate limit
-  techniques within the specific skill (e.g., **2fa-bypass** for OTP brute-force).
-  Do NOT use for kernel/OS-level TOCTOU — this skill covers web application races.
+  Exploit race conditions and TOCTOU vulnerabilities in web applications
+  during authorized penetration testing.
+keywords:
+  - race condition
+  - TOCTOU
+  - limit overrun
+  - double spend
+  - single-packet attack
+  - HTTP/2 race
+  - turbo intruder race
+  - concurrent requests
+  - parallel requests exploit
+  - coupon reuse
+  - rate limit race
+  - last-byte sync
+tools:
+  - burpsuite (Turbo Intruder)
+  - python3
+  - httpx
+  - ffuf
+opsec: medium
 ---
 
 # Race Condition Exploitation

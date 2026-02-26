@@ -1,16 +1,27 @@
 ---
 name: web-discovery
 description: >
-  Discover web application injection points and route to the correct exploitation
-  skill during authorized penetration testing. Use when the user has a web target
-  and needs to find vulnerabilities, or when starting a web application
-  assessment. Also triggers on: "find vulns", "fuzz the target", "test for
-  injection", "parameter discovery", "content discovery", "web recon", "find
-  hidden parameters", "test this endpoint", "what's vulnerable", "start web
-  testing", "web app pentest", "hunt for bugs". OPSEC: low — mostly passive
-  discovery and lightweight fuzzing. Tools: ffuf, arjun, paramspider, burpsuite.
-  Do NOT use for exploiting a known vulnerability — route to the specific
-  technique skill instead (e.g., sql-injection-union, xss-reflected, ssti-jinja2).
+  Discover web application injection points and route to the correct
+  exploitation skill during authorized penetration testing.
+keywords:
+  - find vulns
+  - fuzz the target
+  - test for injection
+  - parameter discovery
+  - content discovery
+  - web recon
+  - find hidden parameters
+  - test this endpoint
+  - what's vulnerable
+  - start web testing
+  - web app pentest
+  - hunt for bugs
+tools:
+  - ffuf
+  - arjun
+  - paramspider
+  - burpsuite
+opsec: low
 ---
 
 # Web Vulnerability Discovery
@@ -73,14 +84,23 @@ append bullet points under this same header.
 
 ## Skill Routing Is Mandatory
 
-When this skill's routing tables say to invoke a skill, you MUST invoke that
-skill using the Skill tool. Do NOT execute the technique inline — even if the
-attack is trivial or you already know the answer. Skills contain operator-specific
-methodology, client-scoped payloads, and edge-case handling that general
-knowledge does not.
+When this skill's routing tables say to route to a skill, you MUST load and
+follow that skill:
+
+1. Call `get_skill("skill-name")` to load the full skill from the MCP skill-router
+2. Read the returned SKILL.md content
+3. Follow its instructions end-to-end
+
+Do NOT execute the technique inline — even if the attack is trivial or you
+already know the answer. Skills contain operator-specific methodology,
+client-scoped payloads, and edge-case handling that general knowledge does not.
 
 This applies in both guided and autonomous modes. Autonomous mode means you
 make routing decisions without asking — it does not mean you skip skills.
+
+If you need a skill but don't know the exact name, use
+`search_skills("description of what you need")` to find it. Verify the returned
+description matches your scenario before loading.
 
 ### Scope Boundary
 
@@ -97,6 +117,12 @@ You MUST NOT:
   appropriate **xss-*** skill
 - Perform SSTI exploitation (RCE payloads) — route to the appropriate
   **ssti-*** skill
+- Perform command injection exploitation (`id`, `whoami`, reverse shells,
+  system enumeration) — route to **command-injection**
+- Perform Python code injection exploitation (`__import__('os')`, file reads,
+  reverse shells) — route to **python-code-injection**
+- Perform deserialization exploitation (gadget chains, RCE payloads) — route
+  to **deserialization-java**, **deserialization-php**, or **deserialization-dotnet**
 - Perform any other technique-specific exploitation — route to the named skill
 
 When you identify an injection point: update state.md, log to activity.md,
@@ -206,6 +232,12 @@ These trigger detectable behavior across multiple vulnerability classes:
 
 ### Per-Class Test Payloads
 
+For each class below: inject the probes, observe the response. **The moment any
+probe triggers** (error message, evaluated output, time delay, callback), STOP.
+Do not try more payloads. Do not attempt exploitation. Update
+`engagement/state.md` and route to the skill listed in the `→ ROUTE` callout
+immediately. The technique skill has the methodology — you do not.
+
 **SQL Injection:**
 ```
 '
@@ -218,6 +250,8 @@ These trigger detectable behavior across multiple vulnerability classes:
 1' ORDER BY 1--+
 ```
 
+> **→ ROUTE ON HIT:** DB error with syntax details → **sql-injection-error**. Different content for `1=1` vs `1=2` → **sql-injection-blind**. Delay on `SLEEP(5)`/`WAITFOR DELAY` → **sql-injection-blind**. `ORDER BY`/`UNION SELECT` returns data → **sql-injection-union**. Stacked queries execute → **sql-injection-stacked**. See Step 4 routing table for DBMS fingerprinting.
+
 **SSTI:**
 ```
 {{7*7}}
@@ -227,6 +261,8 @@ ${7*7}
 *{7*7}
 ```
 
+> **→ ROUTE ON HIT:** `49` from `{{7*7}}` → disambiguate: `{{7*'7'}}` returns `7777777` = **ssti-jinja2**, returns `49` = **ssti-twig**. `49` from `${7*7}` → **ssti-freemarker**. `49` from `<%= 7*7 %>` → ERB SSTI (use `search_skills("ERB SSTI")`).
+
 **XSS:**
 ```
 <script>alert(1)</script>
@@ -234,6 +270,8 @@ ${7*7}
 '-alert(1)-'
 javascript:alert(1)
 ```
+
+> **→ ROUTE ON HIT:** Payload reflected verbatim in HTML response → **xss-reflected**. Payload persists on subsequent page loads → **xss-stored**. Payload appears in DOM via JS but not in HTTP response body → **xss-dom**.
 
 **Command Injection:**
 ```
@@ -244,12 +282,26 @@ $(id)
 ; sleep 5
 ```
 
+> **→ ROUTE ON HIT:** Command output (`uid=`, hostname) in response → **command-injection**. Delay on `sleep 5` but no output → **command-injection** (blind section). Callback received → **command-injection** (OOB section).
+
+**Python Code Injection:**
+```
+7*7
+str(7*7)
+'A'*3
+__import__('os').popen('id').read()
+```
+
+> **→ ROUTE ON HIT:** `49` from bare `7*7` but `{{7*7}}` returns literal → **python-code-injection**. Python traceback (`SyntaxError`, `NameError`, `eval()` in stack trace) → **python-code-injection**. This is NOT command injection (shell operators `;`, `|` don't work) and NOT SSTI (template delimiters `{{}}` return literal).
+
 **SSRF:**
 ```
 http://127.0.0.1
 http://169.254.169.254/latest/meta-data/
 http://COLLABORATOR.oastify.com
 ```
+
+> **→ ROUTE ON HIT:** Localhost/internal content returned → **ssrf**. Callback received but no response data → **ssrf** (blind section). Cloud metadata returned → **ssrf** (cloud section).
 
 **LFI:**
 ```
@@ -258,12 +310,16 @@ http://COLLABORATOR.oastify.com
 php://filter/convert.base64-encode/resource=index.php
 ```
 
+> **→ ROUTE ON HIT:** File contents (`root:x:0:0:`) in response → **lfi**. Base64 from `php://filter` → **lfi** (PHP wrappers). Remote file loaded and executed → **lfi** (RFI section).
+
 **XXE** (inject into XML input or Content-Type: application/xml):
 ```xml
 <?xml version="1.0"?>
 <!DOCTYPE test [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>
 <root>&xxe;</root>
 ```
+
+> **→ ROUTE ON HIT:** File contents in XML response → **xxe**. Callback from XML parsing → **xxe** (blind/OOB section). Error message with file contents → **xxe** (error section).
 
 **Deserialization** (check for serialized objects in parameters, cookies, headers):
 ```
@@ -277,6 +333,8 @@ O:8:"stdClass":1:{s:1:"a";s:1:"b";}
 {"$type":"System.Object"}
 ```
 
+> **→ ROUTE ON HIT:** Java serialized data (`rO0AB`, `AC ED 00 05`) → **deserialization-java**. PHP serialized data (`O:`, `a:`) → **deserialization-php**. .NET serialized data (`AAEAAAD`, `$type`, ViewState) → **deserialization-dotnet**. Error mentioning `ObjectInputStream`/`unserialize`/`BinaryFormatter` → route by language.
+
 **JWT** (check Authorization headers, cookies, and parameters for `eyJ` prefix):
 ```
 # Identify JWTs — three Base64URL segments separated by dots
@@ -287,6 +345,8 @@ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature
 echo -n 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9' | base64 -d
 # {"alg":"HS256","typ":"JWT"}
 ```
+
+> **→ ROUTE ON HIT:** JWT found (`eyJ...` in header/cookie/parameter) → **jwt-attacks**. `alg: none` or weak HMAC suspected → **jwt-attacks** (alg:none / brute force). RSA JWT with JWKS endpoint → **jwt-attacks** (key confusion). `kid`/`jku`/`x5u` in header → **jwt-attacks** (header injection).
 
 **File Upload** (test upload endpoints for bypass opportunities):
 ```
@@ -306,6 +366,8 @@ echo -n 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9' | base64 -d
 # .htaccess (Apache), web.config (IIS), .user.ini (PHP-FPM)
 ```
 
+> **→ ROUTE ON HIT:** Uploaded file executed server-side → **file-upload-bypass**. Alternative extension accepted → **file-upload-bypass**. Config file accepted (`.htaccess`, `web.config`) → **file-upload-bypass** (config exploitation).
+
 **NoSQL Injection** (test JSON APIs and Node.js backends):
 ```
 # URL-encoded operator injection
@@ -318,6 +380,8 @@ param[$exists]=true
 {"param": {"$gt": ""}}
 {"param": {"$regex": ".*"}}
 ```
+
+> **→ ROUTE ON HIT:** Auth bypass with `$ne`/`$gt`/`$regex` → **nosql-injection**. MongoDB error (`MongoError`, `$operator` in stack) → **nosql-injection**. Different response for operators vs normal input → **nosql-injection** (blind section).
 
 **LDAP Injection** (test login forms and search fields backed by LDAP/AD):
 ```
@@ -334,6 +398,8 @@ admin)(&)
 \
 ```
 
+> **→ ROUTE ON HIT:** `*` bypasses auth or returns extra results → **ldap-injection**. LDAP error (`ldap_search`, `Bad search filter`) → **ldap-injection**. Filter breakout changes response → **ldap-injection** (filter breakout).
+
 **Request Smuggling** (test for CL/TE desync on multi-tier architectures):
 ```
 # Check for mixed HTTP version (H2 front-end, H1 back-end)
@@ -345,6 +411,8 @@ curl -sI https://TARGET/ | grep -iE 'server|via|x-cache|x-forwarded'
 # Automated detection with smuggler.py
 python3 -m smuggler -u https://TARGET/
 ```
+
+> **→ ROUTE ON HIT:** Timeout/405 from CL.TE/TE.CL probes → **request-smuggling**. Unexpected response on pipelined request → **request-smuggling**. HTTP/2 front with HTTP/1.1 back → **request-smuggling** (H2 downgrade).
 
 **IDOR / Broken Access Control** (test endpoints that reference objects by ID):
 ```
@@ -363,6 +431,8 @@ PUT /api/users/OTHER_ID/profile
 DELETE /api/users/OTHER_ID/documents/123
 ```
 
+> **→ ROUTE ON HIT:** Different user's data returned → **idor** (horizontal). Admin data with low-priv session → **idor** (vertical). Write on another user's resource succeeds → **idor** (state-changing).
+
 **CORS Misconfiguration** (check cross-origin headers on sensitive endpoints):
 ```bash
 # Test origin reflection
@@ -376,6 +446,8 @@ curl -sI -H "Origin: null" https://TARGET/api/endpoint \
 # Look for: Access-Control-Allow-Origin reflecting input + Allow-Credentials: true
 ```
 
+> **→ ROUTE ON HIT:** Origin reflected + `Allow-Credentials: true` → **cors-misconfiguration**. Null origin accepted + credentials → **cors-misconfiguration**. Wildcard `*` on sensitive endpoint → **cors-misconfiguration**.
+
 **CSRF** (check state-changing endpoints for token protection):
 ```
 # Capture a POST request to a state-changing endpoint (change email, password, etc.)
@@ -384,6 +456,8 @@ curl -sI -H "Origin: null" https://TARGET/api/endpoint \
 curl -sI https://TARGET/login | grep -i "set-cookie" | grep -i "samesite"
 # Check for custom header requirements (X-CSRF-Token, X-Requested-With)
 ```
+
+> **→ ROUTE ON HIT:** Request succeeds without CSRF token → **csrf**. Token removed/emptied still works → **csrf** (token bypass). `SameSite=None` or missing → **csrf** (SameSite bypass). State-change via GET → **csrf** (GET-based).
 
 **OAuth / OpenID Connect** (check for OAuth-based authentication):
 ```bash
@@ -396,6 +470,8 @@ curl -s "https://TARGET/.well-known/openid-configuration" | jq .
 # Check for social login buttons (Google, Facebook, GitHub, Apple)
 ```
 
+> **→ ROUTE ON HIT:** OAuth login flow detected → **oauth-attacks**. `redirect_uri` accepts arbitrary domains → **oauth-attacks** (redirect URI bypass). Missing/unvalidated `state` parameter → **oauth-attacks** (state bypass). JWT tokens found → **jwt-attacks** first, then **oauth-attacks** if OAuth context.
+
 **Password Reset** (check reset flow for token theft vectors):
 ```
 # Request password reset, analyze the email link:
@@ -407,6 +483,8 @@ curl -s -X POST -H "X-Forwarded-Host: attacker.com" \
   -d "email=test@target.com" "https://TARGET/reset-password"
 ```
 
+> **→ ROUTE ON HIT:** Reset link domain changes with Host header → **password-reset-poisoning**. Short/predictable token → **password-reset-poisoning** (token weakness). Reset page loads external resources → **password-reset-poisoning** (Referer leakage).
+
 **2FA / MFA** (check for second-factor bypass):
 ```
 # After login with valid credentials, test 2FA enforcement:
@@ -416,6 +494,8 @@ curl -s -X POST -H "X-Forwarded-Host: attacker.com" \
 # - Check SameSite cookie attribute on session cookies
 # - Check for alternative login paths (OAuth, API, mobile)
 ```
+
+> **→ ROUTE ON HIT:** 2FA prompt found → **2fa-bypass**. Direct navigation bypasses 2FA → **2fa-bypass** (force browse). Empty/null OTP accepted → **2fa-bypass** (null code). No rate limit on OTP → **2fa-bypass** (brute-force).
 
 **Race Conditions** (check state-changing endpoints for concurrent request handling):
 ```
@@ -433,6 +513,8 @@ curl -sI --http2 https://TARGET/ -o /dev/null -w '%{http_version}\n'
 # or duplicate tabs × 10-20 and fire simultaneously
 ```
 
+> **→ ROUTE ON HIT:** State-changing endpoint without idempotency → **race-condition**. Token accepted multiple times → **race-condition** (token reuse). Rate limit bypassable via H2 → **race-condition** (rate limit bypass).
+
 ## Step 4: Response Analysis & Routing
 
 **Before routing**: Write `engagement/state.md` and append to
@@ -443,14 +525,14 @@ Analyze responses from Step 3 to identify vulnerability type, then route to
 the correct exploitation skill.
 
 **Routing is mandatory.** When a match is found in the tables below, STOP.
-Invoke the named skill via the Skill tool. Pass: the confirmed injection point
+Load the skill — call `get_skill("skill-name")` and follow its instructions. Pass: the confirmed injection point
 (URL, parameter, method), observed response behavior, suspected DBMS (if SQL),
 current mode, and any payloads that already succeeded. Do not execute
 exploitation commands inline — even if the technique seems simple.
 
 ### SQL Injection
 
-| Response Pattern | Indicates | Invoke via Skill Tool |
+| Response Pattern | Indicates | Route To |
 |---|---|---|
 | DB error message with syntax details | Error-based SQLi | **sql-injection-error** |
 | Different content for `1=1` vs `1=2` | Boolean-based blind | **sql-injection-blind** |
@@ -471,7 +553,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### Server-Side Template Injection
 
-| Response Pattern | Indicates | Invoke via Skill Tool |
+| Response Pattern | Indicates | Route To |
 |---|---|---|
 | `49` from `{{7*7}}` | Jinja2 or Twig | **ssti-jinja2** or **ssti-twig** |
 | `49` from `${7*7}` | Freemarker / Java EL | **ssti-freemarker** |
@@ -486,7 +568,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### XSS
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | Payload reflected verbatim in HTML | **xss-reflected** |
 | Payload persists on subsequent loads | **xss-stored** |
@@ -494,7 +576,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### SSRF
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | Localhost/internal content returned | **ssrf** |
 | Callback received but no response data | **ssrf** (blind section) |
@@ -502,15 +584,32 @@ exploitation commands inline — even if the technique seems simple.
 
 ### Command Injection
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | Command output (`uid=`, hostname) in response | **command-injection** |
 | Delay with `sleep 5` but no output | **command-injection** (blind section) |
 | Callback received | **command-injection** (OOB section) |
 
+### Python Code Injection
+
+| Response Pattern | Route To |
+|---|---|
+| `49` from bare `7*7` but `{{7*7}}` returns literal (not SSTI) | **python-code-injection** |
+| Python traceback (`SyntaxError`, `NameError`, `eval()` in stack) | **python-code-injection** |
+| `__import__` or `__builtins__` in error message | **python-code-injection** |
+| Shell operators (`;`, `\|`) fail but Python expressions evaluate | **python-code-injection** |
+
+**Disambiguation from Command Injection and SSTI:**
+
+| Probe | Command Injection | Python Code Injection | SSTI |
+|---|---|---|---|
+| `; id` | Returns `uid=...` | Error or literal | Error or literal |
+| `7*7` | Literal `7*7` | Returns `49` | Literal `7*7` |
+| `{{7*7}}` | Literal | Literal `{{7*7}}` | Returns `49` |
+
 ### LFI / File Inclusion
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | File contents (`root:x:0:0:`) in response | **lfi** |
 | Base64 from `php://filter` | **lfi** (PHP wrappers) |
@@ -518,7 +617,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### XXE
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | File contents in XML response | **xxe** |
 | Callback from XML parsing | **xxe** (blind/OOB section) |
@@ -526,7 +625,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### Deserialization
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | Java serialized object (`rO0AB`, `AC ED 00 05`) in parameter/cookie | **deserialization-java** |
 | PHP serialized object (`O:`, `a:`) in parameter/cookie | **deserialization-php** |
@@ -535,7 +634,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### JWT
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | JWT found in auth header, cookie, or parameter (`eyJ...`) | **jwt-attacks** |
 | `alg` set to `none` or weak HMAC key suspected | **jwt-attacks** (alg:none / brute force) |
@@ -544,7 +643,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### NoSQL Injection
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | Auth bypass with `$ne`/`$gt`/`$regex` operators | **nosql-injection** |
 | MongoDB error (`MongoError`, `$operator` in stack trace) | **nosql-injection** |
@@ -553,7 +652,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### LDAP Injection
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | `*` in password field bypasses auth or returns different user | **ldap-injection** (wildcard bypass) |
 | Error mentioning `ldap_search`, `Bad search filter`, `InvalidSearchFilterException` | **ldap-injection** |
@@ -562,7 +661,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### File Upload
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | Uploaded file executed server-side | **file-upload-bypass** |
 | Extension blocked but alternative accepted | **file-upload-bypass** |
@@ -570,7 +669,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### Request Smuggling
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | Timeout or 405 from CL.TE/TE.CL detection probes | **request-smuggling** |
 | Unexpected response on second pipelined request | **request-smuggling** |
@@ -579,7 +678,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### IDOR / Broken Access Control
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | Different user's data returned when ID is changed | **idor** (horizontal) |
 | Admin/privileged data accessible with low-priv session | **idor** (vertical) |
@@ -588,7 +687,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### CORS Misconfiguration
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | `Access-Control-Allow-Origin` reflects arbitrary origin + `Allow-Credentials: true` | **cors-misconfiguration** (origin reflection) |
 | `Access-Control-Allow-Origin: null` + `Allow-Credentials: true` | **cors-misconfiguration** (null origin) |
@@ -597,7 +696,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### CSRF
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | State-changing endpoint accepts request without CSRF token | **csrf** (missing token) |
 | CSRF token present but removing/emptying it still works | **csrf** (token bypass) |
@@ -606,7 +705,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### OAuth / OpenID Connect
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | OAuth login flow detected (social login, SSO) | **oauth-attacks** |
 | redirect_uri accepts arbitrary or manipulated domains | **oauth-attacks** (redirect URI bypass) |
@@ -616,7 +715,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### Password Reset
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | Reset link domain changes with Host/X-Forwarded-Host header | **password-reset-poisoning** (host header poisoning) |
 | Reset token is short, sequential, or predictable | **password-reset-poisoning** (token weakness) |
@@ -625,7 +724,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### 2FA / MFA
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | 2FA prompt found after password authentication | **2fa-bypass** |
 | Direct navigation to authenticated pages bypasses 2FA | **2fa-bypass** (force browse) |
@@ -635,7 +734,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### Race Conditions
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | State-changing endpoint (coupon, transfer, vote) without idempotency controls | **race-condition** (limit-overrun) |
 | Single-use token accepted multiple times under concurrent requests | **race-condition** (token reuse) |
@@ -645,7 +744,7 @@ exploitation commands inline — even if the technique seems simple.
 Update `engagement/state.md` with any new targets, confirmed vulns, or blocked
 techniques before routing.
 
-When invoking a technique skill via the Skill tool, pass along: the confirmed
+When loading a technique skill via `get_skill()`, pass along: the confirmed
 injection point (URL, parameter, method), observed response behavior, suspected
 DBMS (if SQL), current mode, and any payloads that already succeeded.
 Do not execute exploitation commands inline.

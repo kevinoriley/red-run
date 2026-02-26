@@ -2,16 +2,28 @@
 name: ssrf
 description: >
   Guide server-side request forgery (SSRF) exploitation during authorized
-  penetration testing. Use when the user has found a parameter that causes the
-  server to make HTTP requests, or when testing URL/webhook/import functionality
-  for SSRF. Also triggers on: "SSRF", "server-side request forgery", "URL fetch",
-  "webhook exploit", "cloud metadata", "169.254.169.254", "IMDS", "internal
-  port scan", "gopher SSRF", "blind SSRF", "SSRF to RCE", "SSRF bypass",
-  "file:// read", "SSRF filter bypass". OPSEC: low-medium — read-only requests
-  from the server, but internal service interactions may create artifacts. Tools:
-  burpsuite, ssrfmap, gopherus, interactsh.
-  Do NOT use for client-side request forgery or open redirect — those are
-  different vulnerability classes.
+  penetration testing.
+keywords:
+  - SSRF
+  - server-side request forgery
+  - URL fetch
+  - webhook exploit
+  - cloud metadata
+  - 169.254.169.254
+  - IMDS
+  - internal port scan
+  - gopher SSRF
+  - blind SSRF
+  - SSRF to RCE
+  - SSRF bypass
+  - file:// read
+  - SSRF filter bypass
+tools:
+  - burpsuite
+  - ssrfmap
+  - gopherus
+  - interactsh
+opsec: low
 ---
 
 # Server-Side Request Forgery (SSRF)

@@ -2,15 +2,27 @@
 name: kerberos-roasting
 description: >
   Extracts and cracks Kerberos service tickets (Kerberoasting) and AS-REP
-  hashes (AS-REP Roasting) for offline password recovery. Use when targeting
-  AD service accounts with SPNs or accounts with pre-auth disabled. Triggers
-  on: "kerberoast", "asreproast", "AS-REP", "GetUserSPNs", "service ticket",
-  "SPN cracking", "roasting", "GetNPUsers", "pre-authentication disabled".
-  OPSEC: medium (TGS/AS-REP requests logged as Event 4769/4768; RC4 requests
-  are anomalous in AES-hardened domains). Tools: Impacket (GetUserSPNs.py,
-  GetNPUsers.py), Rubeus, netexec, hashcat, john, targetedKerberoast.py.
-  Do NOT use for password guessing — use **password-spraying** instead.
-  Do NOT use for ticket forging — use **kerberos-ticket-forging** instead.
+  hashes (AS-REP Roasting) for offline password recovery.
+keywords:
+  - kerberoast
+  - asreproast
+  - AS-REP
+  - GetUserSPNs
+  - service ticket
+  - SPN cracking
+  - roasting
+  - GetNPUsers
+  - pre-authentication disabled
+  - targeting AD service accounts with SPNs or accounts with pre-auth disabled
+tools:
+  - Impacket (GetUserSPNs.py
+  - GetNPUsers.py)
+  - Rubeus
+  - netexec
+  - hashcat
+  - john
+  - targetedKerberoast.py
+opsec: medium
 ---
 
 # Kerberos Roasting

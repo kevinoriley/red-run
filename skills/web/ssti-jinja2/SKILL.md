@@ -2,17 +2,24 @@
 name: ssti-jinja2
 description: >
   Guide Jinja2/Python server-side template injection exploitation during
-  authorized penetration testing. Use when the user has confirmed SSTI in a
-  Python application (Flask, Django with Jinja2) and needs to escalate to RCE,
-  file read, or config extraction. Also triggers on: "Jinja2 SSTI", "Flask SSTI",
-  "Python template injection", "{{7*'7'}} returns 7777777", "Mako SSTI",
-  "Tornado template injection", "Django template injection", "sandbox escape
-  Jinja2", "__class__.__mro__", "Python sandbox bypass". OPSEC: medium — payloads
-  execute server-side, visible in application logs. Tools: burpsuite, sstimap,
-  tplmap, fenjing.
-  Do NOT use for PHP template injection (Twig, Smarty) — use ssti-twig instead.
-  Do NOT use for Java template injection (Freemarker, Velocity) — use
-  ssti-freemarker instead.
+  authorized penetration testing.
+keywords:
+  - Jinja2 SSTI
+  - Flask SSTI
+  - Python template injection
+  - "{{7*'7'}} returns 7777777"
+  - Mako SSTI
+  - Tornado template injection
+  - Django template injection
+  - sandbox escape Jinja2
+  - __class__.__mro__
+  - Python sandbox bypass
+tools:
+  - burpsuite
+  - sstimap
+  - tplmap
+  - fenjing
+opsec: medium
 ---
 
 # Jinja2 / Python SSTI

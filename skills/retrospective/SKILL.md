@@ -1,17 +1,20 @@
 ---
 name: retrospective
 description: >
-  Post-engagement lessons-learned retrospective. Reads the engagement directory,
-  analyzes skill routing decisions, identifies knowledge gaps and missing skills,
-  and produces an actionable improvement report. Use when the user asks for a
-  retrospective, lessons learned, engagement review, skill gaps analysis, or
-  post-engagement review. Also triggers on: "what went wrong", "what worked",
-  "review the engagement", "skill coverage audit", "how did the skills perform".
-  OPSEC: low — reads local files only, no target interaction.
-  Tools: none (file reads and analysis only).
-  Do NOT use during an active engagement — this is a post-mortem skill.
-  Do NOT use for formal finding writeups — this skill analyzes skill library
-  performance, not individual vulnerabilities.
+  Post-engagement lessons-learned retrospective. Reads the engagement
+  directory, analyzes skill routing decisions, identifies knowledge gaps and
+  missing skills, and produces an actionable improvement report.
+keywords:
+  - what went wrong
+  - what worked
+  - review the engagement
+  - skill coverage audit
+  - how did the skills perform
+tools:
+  - search_skills (MCP skill-router)
+  - get_skill (MCP skill-router)
+  - list_skills (MCP skill-router)
+opsec: low
 ---
 
 # Engagement Retrospective
@@ -26,7 +29,7 @@ items. All analysis is local — you never touch the target.
 - `engagement/` directory must exist with at least `activity.md` and `state.md`
 - The engagement should be complete or paused — this is a post-mortem, not a
   mid-engagement review
-- Access to the red-run skill library (installed via `install.sh`)
+- MCP skill-router available (`search_skills`, `get_skill`, `list_skills`)
 
 If `engagement/activity.md` or `engagement/state.md` are missing, tell the user:
 
@@ -73,16 +76,22 @@ scope changes mid-engagement).
 
 ## Step 2: Skill Routing Analysis
 
-Read `engagement/activity.md` and compare against the skill library.
+First, load the full skill inventory: call `list_skills()` to get every
+available skill with its category and description. This is your reference for
+what the library covers.
+
+Read `engagement/activity.md` and compare each activity against the inventory.
 
 For each activity entry, determine:
-1. **Was a skill invoked?** Check for skill name references in activity entries.
-2. **Was it the right skill?** Did the activity match the skill's scope?
+1. **Was a skill loaded?** Check for `get_skill()` calls or skill name
+   references in activity entries.
+2. **Was it the right skill?** Call `get_skill("skill-name")` to read the
+   skill's actual scope and compare against what was done.
 3. **Were any skills skipped?** Look for technique execution that should have
    been routed through a skill (e.g., running sqlmap directly instead of
-   invoking sql-injection-union).
+   loading sql-injection-union).
 4. **Was anything done inline that a skill covers?** Identify commands or
-   techniques executed outside the skill framework.
+   techniques executed without loading the corresponding skill.
 
 Build a routing ledger:
 
@@ -96,7 +105,8 @@ wrong or suboptimal.
 
 ## Step 3: Knowledge Gap Analysis
 
-For each skill that was invoked during the engagement, evaluate:
+For each skill that was invoked during the engagement, call
+`get_skill("skill-name")` to load its full content, then evaluate:
 
 1. **Did the skill have adequate payloads?** Were hand-crafted payloads needed
    that should be embedded in the skill?
@@ -121,11 +131,18 @@ skill. Consider:
 3. **Edge-case techniques** — bypass methods, unusual attack paths, or niche
    protocols encountered
 
-For each missing skill, propose:
+**Before proposing a new skill**, verify it doesn't already exist: call
+`search_skills("description of the technique")` and check results. A skill may
+exist but was missed during the engagement (routing gap, not a coverage gap).
+
+For each confirmed missing skill, propose:
 - **Skill name** (kebab-case)
 - **Category** (web, ad, privesc, network, etc.)
 - **What it would cover**
 - **Why it's needed** (one-off or likely to recur?)
+
+For techniques where a skill exists but wasn't used, add these to the routing
+ledger in Step 2 instead.
 
 ## Step 5: Operational Review
 
@@ -230,6 +247,45 @@ After writing the report, append a summary to `engagement/activity.md`:
 
 Present the actionable items to the user and ask which ones to prioritize.
 
+## Step 8: Implement Improvements
+
+After the user selects which items to prioritize, make the edits. Skills are
+plain Markdown files at `skills/<category>/<skill-name>/SKILL.md` — edit them
+directly.
+
+For each prioritized item:
+
+### [skill-update] — Edit an existing skill
+1. Read the SKILL.md file (path is in the `get_skill()` output metadata, or
+   find it at `skills/<category>/<skill-name>/SKILL.md`)
+2. Make the change — add payloads, fix methodology, update troubleshooting,
+   etc.
+3. Preserve the existing structure and conventions (frontmatter, sections,
+   embedded payloads format)
+
+### [new-skill] — Create a new skill
+1. Read `skills/_template/SKILL.md` for the canonical structure
+2. Write the new skill to `skills/<category>/<skill-name>/SKILL.md`
+3. Update the corresponding discovery skill's routing table to include it
+
+### [routing-fix] — Fix skill routing
+1. Read the skill that needs the routing update
+2. Add or fix the routing reference: "Route to **skill-name** — call
+   `get_skill("skill-name")` and follow its instructions"
+
+### [template-fix] — Update conventions
+1. Read `skills/_template/SKILL.md`
+2. Make the change and note which existing skills may need the same update
+
+After all edits are complete, re-index so the MCP skill-router picks up
+changes:
+
+```bash
+uv run --directory tools/skill-router python indexer.py
+```
+
+Show the user what was changed and suggest committing.
+
 ## Troubleshooting
 
 ### Engagement directory exists but files are empty
@@ -238,9 +294,10 @@ from conversation context instead — ask the user to describe what happened, th
 analyze the current session transcript.
 
 ### Activity log has no skill references
-Skills may have been executed inline (without the Skill tool) or the engagement
-predates the current skill library. Flag this as a routing gap and reconstruct
-the timeline from state.md and findings.md instead.
+Techniques may have been executed inline (without loading the skill via
+`get_skill()`) or the engagement predates the current skill library. Flag this
+as a routing gap and reconstruct the timeline from state.md and findings.md
+instead.
 
 ### Multiple engagement directories
 If the user has run multiple engagements, ask which one to review. Look for

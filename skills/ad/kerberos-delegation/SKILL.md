@@ -5,17 +5,32 @@ description: >
   lateral movement in Active Directory. Covers Unconstrained Delegation (TGT
   harvesting via coercion), Constrained Delegation (S4U2Self + S4U2Proxy with
   SPN swapping), and Resource-Based Constrained Delegation (RBCD via writable
-  machine accounts). Use when BloodHound or enumeration reveals delegation
-  misconfigurations, or when you have write access to a computer object. Triggers
-  on: "delegation", "unconstrained delegation", "constrained delegation", "RBCD",
-  "resource-based constrained delegation", "S4U", "S4U2Self", "S4U2Proxy",
-  "TrustedForDelegation", "msDS-AllowedToDelegateTo",
-  "msDS-AllowedToActOnBehalfOfOtherIdentity", "TGT harvesting", "SpoolService",
-  "printer bug", "SPN swapping", "altservice".
-  OPSEC: medium-high (unconstrained requires coercion; RBCD modifies AD objects).
-  Tools: Impacket, Rubeus, bloodyAD, NetExec, krbrelayx, SpoolSample.
-  Do NOT use for ticket forging from scratch — use **kerberos-ticket-forging**.
-  Do NOT use for direct PTH lateral movement — use **pass-the-hash**.
+  machine accounts).
+keywords:
+  - delegation
+  - unconstrained delegation
+  - constrained delegation
+  - RBCD
+  - resource-based constrained delegation
+  - S4U
+  - S4U2Self
+  - S4U2Proxy
+  - TrustedForDelegation
+  - msDS-AllowedToDelegateTo
+  - msDS-AllowedToActOnBehalfOfOtherIdentity
+  - TGT harvesting
+  - SpoolService
+  - printer bug
+  - SPN swapping
+  - altservice
+tools:
+  - Impacket
+  - Rubeus
+  - bloodyAD
+  - NetExec
+  - krbrelayx
+  - SpoolSample
+opsec: medium
 ---
 
 # Kerberos Delegation Exploitation

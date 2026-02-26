@@ -1,22 +1,38 @@
 ---
 name: pivoting-tunneling
 description: >
-  Network pivoting, port forwarding, and tunneling through compromised hosts to
-  reach internal networks. Use this skill when the user needs to pivot through a
-  host, set up a tunnel, forward ports, proxy traffic, or access an internal network
-  from a compromised machine. Triggers on: "pivot", "tunnel", "port forward",
-  "SOCKS proxy", "proxychains", "access internal network", "double pivot",
-  "SSH tunnel", "ligolo", "chisel", "sshuttle", "reach another subnet",
-  "lateral movement networking", "I can't reach the internal network", "set up a
-  proxy", "route traffic through". Also triggers when network-recon discovers a
-  new subnet from a compromised host, or when the orchestrator needs to establish
-  access to a segmented network. OPSEC: varies — SSH native tunnels are low
-  detection, third-party tools (chisel/ligolo) are medium, DNS/ICMP tunnels are
-  high bandwidth anomaly. Tools: SSH, Ligolo-ng, Chisel, sshuttle, socat,
-  proxychains, plink, netsh, dnscat2, iodine, FRP.
-  Do NOT use for initial network scanning — use network-recon instead.
-  Do NOT use for lateral movement with credentials — use pass-the-hash or
-  the appropriate AD skill.
+  Network pivoting, port forwarding, and tunneling through compromised hosts
+  to reach internal networks.
+keywords:
+  - pivot
+  - tunnel
+  - port forward
+  - SOCKS proxy
+  - proxychains
+  - access internal network
+  - double pivot
+  - SSH tunnel
+  - ligolo
+  - chisel
+  - sshuttle
+  - reach another subnet
+  - lateral movement networking
+  - I can't reach the internal network
+  - set up a proxy
+  - route traffic through
+tools:
+  - SSH
+  - Ligolo-ng
+  - Chisel
+  - sshuttle
+  - socat
+  - proxychains
+  - plink
+  - netsh
+  - dnscat2
+  - iodine
+  - FRP
+opsec: medium
 ---
 
 # Pivoting and Tunneling

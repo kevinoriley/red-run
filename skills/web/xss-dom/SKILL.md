@@ -1,17 +1,23 @@
 ---
 name: xss-dom
 description: >
-  Guide DOM-based XSS exploitation during authorized penetration testing. Use
-  when JavaScript in the page reads attacker-controlled input (URL fragment,
-  query params, cookies, postMessage, localStorage) and writes it to a dangerous
-  sink (innerHTML, eval, document.write, location) without sanitization. Also
-  triggers on: "DOM XSS", "DOM-based XSS", "innerHTML injection", "eval
-  injection", "document.write XSS", "postMessage XSS", "source and sink",
-  "client-side XSS", "JavaScript DOM manipulation". OPSEC: low — entirely
-  client-side, no server-side artifacts. Tools: burpsuite, DOM Invader,
-  domloggerpp, domdig.
-  Do NOT use for reflected XSS where the payload appears in the HTTP response —
-  use xss-reflected instead. Do NOT use for stored XSS — use xss-stored instead.
+  Guide DOM-based XSS exploitation during authorized penetration testing.
+keywords:
+  - DOM XSS
+  - DOM-based XSS
+  - innerHTML injection
+  - eval injection
+  - document.write XSS
+  - postMessage XSS
+  - source and sink
+  - client-side XSS
+  - JavaScript DOM manipulation
+tools:
+  - burpsuite
+  - DOM Invader
+  - domloggerpp
+  - domdig
+opsec: low
 ---
 
 # DOM-Based XSS

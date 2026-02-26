@@ -2,17 +2,27 @@
 name: deserialization-java
 description: >
   Exploit Java deserialization vulnerabilities during authorized penetration
-  testing. Use when the user has found a Java deserialization endpoint, sees
-  serialized Java objects (AC ED 00 05 / rO0AB), or wants to exploit
-  ysoserial gadget chains, JNDI injection, or Log4Shell. Also triggers on:
-  "java deserialization", "ysoserial", "gadget chain", "CommonsCollections",
-  "JNDI injection", "log4shell", "log4j exploit", "JSF ViewState", "T3
-  protocol", "WebLogic deserialize", "JBoss deserialize", "RMI exploit",
-  "ObjectInputStream", "readObject exploit". OPSEC: medium — payloads may
-  trigger WAF signatures, DNS callbacks visible. Tools: ysoserial,
-  marshalsec, burpsuite.
-  Do NOT use for PHP deserialization — use deserialization-php instead.
-  Do NOT use for .NET deserialization — use deserialization-dotnet instead.
+  testing.
+keywords:
+  - java deserialization
+  - ysoserial
+  - gadget chain
+  - CommonsCollections
+  - JNDI injection
+  - log4shell
+  - log4j exploit
+  - JSF ViewState
+  - T3 protocol
+  - WebLogic deserialize
+  - JBoss deserialize
+  - RMI exploit
+  - ObjectInputStream
+  - readObject exploit
+tools:
+  - ysoserial
+  - marshalsec
+  - burpsuite
+opsec: medium
 ---
 
 # Java Deserialization

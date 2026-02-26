@@ -1,15 +1,26 @@
 ---
 name: windows-discovery
 description: >
-  Windows local privilege escalation enumeration and attack surface mapping. Use this
-  skill when the user has a shell on a Windows machine and needs to escalate privileges,
-  or says "enumerate privesc", "check for privilege escalation", "run winpeas",
-  "windows privesc", "local privesc", "check my privileges". Also triggers on:
-  "escalate on windows", "what can I escalate", "post-exploitation windows".
-  OPSEC: low-medium (enumeration tools create process artifacts).
-  Tools: WinPEAS, PowerUp, Seatbelt, Watson, WES-NG, PrivescCheck, accesschk.
-  Do NOT use for Linux privesc — use linux-discovery instead.
-  Do NOT use for AD-level attacks — use ad-discovery instead.
+  Windows local privilege escalation enumeration and attack surface mapping.
+keywords:
+  - enumerate privesc
+  - check for privilege escalation
+  - run winpeas
+  - windows privesc
+  - local privesc
+  - check my privileges
+  - escalate on windows
+  - what can I escalate
+  - post-exploitation windows
+tools:
+  - WinPEAS
+  - PowerUp
+  - Seatbelt
+  - Watson
+  - WES-NG
+  - PrivescCheck
+  - accesschk
+opsec: low
 ---
 
 # Windows Local Privilege Escalation Discovery
@@ -69,14 +80,23 @@ append bullet points under this same header.
 
 ## Skill Routing Is Mandatory
 
-When this skill says "→ STOP. Invoke **skill-name**" or "route to
-**skill-name**", you MUST invoke that skill using the Skill tool. Do NOT
-execute the technique inline — even if the attack is trivial or you already
-know the answer. Skills contain operator-specific methodology, client-scoped
-payloads, and edge-case handling that general knowledge does not.
+When this skill says "→ STOP. Route to **skill-name**" or "route to
+**skill-name**", you MUST load and follow that skill:
+
+1. Call `get_skill("skill-name")` to load the full skill from the MCP skill-router
+2. Read the returned SKILL.md content
+3. Follow its instructions end-to-end
+
+Do NOT execute the technique inline — even if the attack is trivial or you
+already know the answer. Skills contain operator-specific methodology,
+client-scoped payloads, and edge-case handling that general knowledge does not.
 
 This applies in both guided and autonomous modes. Autonomous mode means you
 make routing decisions without asking — it does not mean you skip skills.
+
+If you need a skill but don't know the exact name, use
+`search_skills("description of what you need")` to find it. Verify the returned
+description matches your scenario before loading.
 
 ### Scope Boundary
 
@@ -283,8 +303,7 @@ wmic process list full
 Get-Process | Select-Object Name, Id, Path | Where-Object {$_.Path -notlike "C:\Windows\System32\*"} | Sort-Object Path
 ```
 
-Any finding here → STOP. Invoke **windows-service-dll-abuse** via the Skill
-tool. Pass: hostname, current user, specific findings (unquoted paths, writable
+Any finding here → STOP. Route to **windows-service-dll-abuse** — call `get_skill("windows-service-dll-abuse")` and follow its instructions. Pass: hostname, current user, specific findings (unquoted paths, writable
 binaries, modifiable services, DLL hijack targets), OS version, current mode.
 Do not execute exploitation commands inline.
 
@@ -319,8 +338,7 @@ reg query HKCU\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallEle
 reg query HKLM\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated
 ```
 
-Both must return `0x1` — if so, STOP. Invoke **windows-uac-bypass** via the
-Skill tool. Pass: hostname, current user, AlwaysInstallElevated confirmation,
+Both must return `0x1` — if so, STOP. Route to **windows-uac-bypass** — call `get_skill("windows-uac-bypass")` and follow its instructions. Pass: hostname, current user, AlwaysInstallElevated confirmation,
 OS version, current mode. Do not execute MSI payload commands inline.
 
 ## Step 5: Network and Shares
@@ -420,8 +438,7 @@ icacls C:\Windows\System32\config\SAM
 
 If `BUILTIN\Users:(I)(RX)` appears → SAM readable by non-admin users.
 
-Any credentials found → STOP. Invoke **windows-credential-harvesting** via the
-Skill tool. Pass: hostname, current user, credential locations found, OS
+Any credentials found → STOP. Route to **windows-credential-harvesting** — call `get_skill("windows-credential-harvesting")` and follow its instructions. Pass: hostname, current user, credential locations found, OS
 version, current mode. Do not execute credential extraction commands inline.
 
 ## Step 7: Security Controls Detection
@@ -517,7 +534,7 @@ Based on enumeration findings, route to the appropriate technique skill:
 
 SeImpersonate, SeAssignPrimaryToken, SeDebug, SeBackup, SeTakeOwnership,
 SeRestore, SeLoadDriver, SeManageVolume
-→ STOP. Invoke **windows-token-impersonation** via the Skill tool. Pass:
+→ STOP. Route to **windows-token-impersonation** — call `get_skill("windows-token-impersonation")` and follow its instructions. Pass:
   hostname, current user, specific privileges found, OS version and build,
   current mode. Do not execute token impersonation commands inline.
 
@@ -526,7 +543,7 @@ SeRestore, SeLoadDriver, SeManageVolume
 Unquoted service paths, writable service binaries, modifiable service config,
 weak service registry ACLs, DLL search order hijacking, writable PATH directories,
 auto-updater abuse
-→ STOP. Invoke **windows-service-dll-abuse** via the Skill tool. Pass:
+→ STOP. Route to **windows-service-dll-abuse** — call `get_skill("windows-service-dll-abuse")` and follow its instructions. Pass:
   hostname, current user, specific findings (unquoted paths / writable binaries /
   modifiable services / DLL hijack targets), OS version, current mode. Do not
   execute exploitation commands inline.
@@ -535,7 +552,7 @@ auto-updater abuse
 
 High-integrity needed but running medium-integrity, UAC enabled,
 AlwaysInstallElevated
-→ STOP. Invoke **windows-uac-bypass** via the Skill tool. Pass: hostname,
+→ STOP. Route to **windows-uac-bypass** — call `get_skill("windows-uac-bypass")` and follow its instructions. Pass: hostname,
   current user, integrity level, UAC settings, AlwaysInstallElevated status,
   OS version, current mode. Do not execute UAC bypass commands inline.
 
@@ -543,7 +560,7 @@ AlwaysInstallElevated
 
 Registry passwords, unattend files, PowerShell history, DPAPI blobs,
 HiveNightmare, credential vault entries
-→ STOP. Invoke **windows-credential-harvesting** via the Skill tool. Pass:
+→ STOP. Route to **windows-credential-harvesting** — call `get_skill("windows-credential-harvesting")` and follow its instructions. Pass:
   hostname, current user, credential locations found (registry / unattend /
   history / vault), OS version, current mode. Do not execute credential
   extraction commands inline.
@@ -552,7 +569,7 @@ HiveNightmare, credential vault entries
 
 Watson/WES-NG hits, old OS without patches, vulnerable drivers loaded,
 BYOVD candidates
-→ STOP. Invoke **windows-kernel-exploits** via the Skill tool. Pass: hostname,
+→ STOP. Route to **windows-kernel-exploits** — call `get_skill("windows-kernel-exploits")` and follow its instructions. Pass: hostname,
   OS version and build, installed hotfixes, Watson/WES-NG output, vulnerable
   drivers identified, current mode. Do not execute kernel exploits inline.
 

@@ -6,21 +6,36 @@ description: >
   Covers authentication coercion (PetitPotam, PrinterBug, DFSCoerce,
   ShadowCoerce, CheeseOunce), NTLM relay (ntlmrelayx to LDAP/SMB/AD CS/MSSQL),
   Kerberos relay (krbrelayx, mitm6), and name resolution poisoning
-  (LLMNR/NBNS/WPAD via Responder). Use when you need to escalate from
-  domain user to local admin or domain admin via coercion+relay, capture
-  NetNTLM hashes on the wire, perform NTLM relay attacks, set up IPv6
-  DNS takeover, or exploit multicast name resolution. Triggers on: "petitpotam",
-  "printerbug", "coercion", "ntlm relay", "ntlmrelayx", "responder",
-  "LLMNR", "NBNS", "WPAD", "mitm6", "krbrelayx", "DFSCoerce",
-  "ShadowCoerce", "relay to LDAP", "relay to ADCS", "ESC8",
-  "hash capture", "authentication coercion", "forced authentication".
-  OPSEC: high (coercion creates auth events, relay triggers signing
-  violations, poisoning generates network anomalies). Tools: ntlmrelayx.py,
-  krbrelayx.py, Responder, mitm6, PetitPotam, DFSCoerce, netexec.
-  Do NOT use for certificate enrollment exploitation after relay — use
-  **adcs-access-and-relay** (ESC8/ESC11). Do NOT use for exploiting
-  captured hashes offline — use **kerberos-roasting** (cracking) or
-  **pass-the-hash** (authentication).
+  (LLMNR/NBNS/WPAD via Responder).
+keywords:
+  - petitpotam
+  - printerbug
+  - coercion
+  - ntlm relay
+  - ntlmrelayx
+  - responder
+  - LLMNR
+  - NBNS
+  - WPAD
+  - mitm6
+  - krbrelayx
+  - DFSCoerce
+  - ShadowCoerce
+  - relay to LDAP
+  - relay to ADCS
+  - ESC8
+  - hash capture
+  - authentication coercion
+  - forced authentication
+tools:
+  - ntlmrelayx.py
+  - krbrelayx.py
+  - Responder
+  - mitm6
+  - PetitPotam
+  - DFSCoerce
+  - netexec
+opsec: high
 ---
 
 # Authentication Coercion & Relay

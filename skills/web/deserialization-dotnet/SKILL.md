@@ -2,19 +2,29 @@
 name: deserialization-dotnet
 description: >
   Exploit .NET deserialization vulnerabilities during authorized penetration
-  testing. Use when the user has found a .NET deserialization endpoint, sees
-  AAEAAAD signatures, or wants to exploit ysoserial.net gadgets, ViewState
-  attacks, or JSON.NET TypeNameHandling. Also triggers on: ".net
-  deserialization", "ysoserial.net", "dotnet deserialization",
-  "BinaryFormatter exploit", "ViewState exploit", "ViewState RCE",
-  "machine key exploit", "JSON.NET deserialization", "TypeNameHandling
-  exploit", "ObjectDataProvider", "TypeConfuseDelegate", ".NET Remoting
-  exploit", "LosFormatter", "SoapFormatter", "SharePoint deserialization",
-  "Sitecore deserialization". OPSEC: medium — payloads may trigger WAF/EDR
-  signatures, ViewState manipulation logged. Tools: ysoserial.net,
-  blacklist3r, burpsuite.
-  Do NOT use for Java deserialization — use deserialization-java instead.
-  Do NOT use for PHP deserialization — use deserialization-php instead.
+  testing.
+keywords:
+  - .net deserialization
+  - ysoserial.net
+  - dotnet deserialization
+  - BinaryFormatter exploit
+  - ViewState exploit
+  - ViewState RCE
+  - machine key exploit
+  - JSON.NET deserialization
+  - TypeNameHandling exploit
+  - ObjectDataProvider
+  - TypeConfuseDelegate
+  - .NET Remoting exploit
+  - LosFormatter
+  - SoapFormatter
+  - SharePoint deserialization
+  - Sitecore deserialization
+tools:
+  - ysoserial.net
+  - blacklist3r
+  - burpsuite
+opsec: medium
 ---
 
 # .NET Deserialization

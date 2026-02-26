@@ -1,16 +1,21 @@
 ---
 name: xss-reflected
 description: >
-  Guide reflected XSS exploitation during authorized penetration testing. Use
-  when the user has found input reflected in an HTTP response and wants to
-  achieve JavaScript execution, or when reflected XSS is suggested by another
-  skill. Also triggers on: "reflected XSS", "XSS filter bypass", "WAF bypass
-  XSS", "CSP bypass", "payload reflected in page", "input echoed in response",
-  "script injection", "HTML injection". OPSEC: low — read-only, no server-side
-  artifacts. Tools: burpsuite, dalfox, XSStrike.
-  Do NOT use for stored/persistent XSS — use xss-stored instead. Do NOT use for
-  DOM-based XSS where the payload never appears in the HTTP response — use
-  xss-dom instead.
+  Guide reflected XSS exploitation during authorized penetration testing.
+keywords:
+  - reflected XSS
+  - XSS filter bypass
+  - WAF bypass XSS
+  - CSP bypass
+  - payload reflected in page
+  - input echoed in response
+  - script injection
+  - HTML injection
+tools:
+  - burpsuite
+  - dalfox
+  - XSStrike
+opsec: low
 ---
 
 # Reflected XSS

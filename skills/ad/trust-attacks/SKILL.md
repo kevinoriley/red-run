@@ -6,21 +6,35 @@ description: >
   (nltest, PowerView, BloodHound), SID history injection (child domain to
   forest root via golden/diamond ticket with extra SIDs), inter-realm TGT
   forging using trust keys, cross-forest trust abuse (SID filtering bypass,
-  RBCD, Kerberoasting via trust account), and PAM trust exploitation
-  (shadow principals in bastion forests). Use when the user has compromised
-  a child domain and wants to escalate to the parent/forest root, when trust
-  relationships are discovered during enumeration, when exploring cross-forest
-  attack paths, or when bastion/PAM forest infrastructure is identified.
-  Triggers on: "trust attacks", "domain trust", "forest trust", "SID history",
-  "child to parent", "cross-forest", "inter-realm", "trust key", "extra SID",
-  "raiseChild", "PAM trust", "shadow principals", "bastion forest",
-  "trust enumeration", "SID filtering", "forest root". OPSEC: medium
-  (golden/diamond tickets with extra SIDs generate standard Kerberos events;
-  diamond ticket is stealthier). Tools: Mimikatz, Rubeus, Impacket
-  (ticketer.py, raiseChild.py, lookupsid.py), PowerView, bloodyAD, NetExec.
-  Do NOT use for basic Kerberos ticket forging without trust context — use
-  **kerberos-ticket-forging**. Do NOT use for ACL-based attacks within a
-  single domain — use **acl-abuse**.
+  RBCD, Kerberoasting via trust account), and PAM trust exploitation (shadow
+  principals in bastion forests).
+keywords:
+  - trust attacks
+  - domain trust
+  - forest trust
+  - SID history
+  - child to parent
+  - cross-forest
+  - inter-realm
+  - trust key
+  - extra SID
+  - raiseChild
+  - PAM trust
+  - shadow principals
+  - bastion forest
+  - trust enumeration
+  - SID filtering
+  - forest root
+tools:
+  - Mimikatz
+  - Rubeus
+  - Impacket (ticketer.py
+  - raiseChild.py
+  - lookupsid.py)
+  - PowerView
+  - bloodyAD
+  - NetExec
+opsec: medium
 ---
 
 # Trust Attacks

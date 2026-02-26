@@ -2,16 +2,26 @@
 name: ssti-freemarker
 description: >
   Guide Freemarker/Java server-side template injection exploitation during
-  authorized penetration testing. Use when the user has confirmed SSTI in a Java
-  application and needs to escalate to RCE, file read, or information disclosure.
-  Also triggers on: "Freemarker SSTI", "Java template injection", "Velocity SSTI",
-  "Thymeleaf SSTI", "Pebble SSTI", "Spring EL injection", "SpEL injection",
-  "Java EL injection", "Expression Language injection", "Groovy SSTI", "${7*7}
-  returns 49 in Java", "Jinjava SSTI", "HubL injection". OPSEC: medium — payloads
-  execute server-side on the JVM, visible in application logs. Tools: burpsuite,
-  sstimap, tplmap.
-  Do NOT use for Python template injection (Jinja2) — use ssti-jinja2 instead.
-  Do NOT use for PHP template injection (Twig) — use ssti-twig instead.
+  authorized penetration testing.
+keywords:
+  - Freemarker SSTI
+  - Java template injection
+  - Velocity SSTI
+  - Thymeleaf SSTI
+  - Pebble SSTI
+  - Spring EL injection
+  - SpEL injection
+  - Java EL injection
+  - Expression Language injection
+  - Groovy SSTI
+  - ${7*7} returns 49 in Java
+  - Jinjava SSTI
+  - HubL injection
+tools:
+  - burpsuite
+  - sstimap
+  - tplmap
+opsec: medium
 ---
 
 # Freemarker / Java SSTI

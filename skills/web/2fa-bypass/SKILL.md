@@ -2,16 +2,28 @@
 name: 2fa-bypass
 description: >
   Bypass two-factor authentication (2FA/MFA) during authorized penetration
-  testing. Use when the user has found an application with 2FA and wants to
-  test for bypass techniques. Also triggers on: "2fa bypass", "mfa bypass",
-  "two-factor bypass", "otp bypass", "otp brute force", "2fa brute force",
-  "totp bypass", "sms bypass", "backup code brute force", "2fa response
-  manipulation", "skip 2fa", "bypass mfa", "second factor bypass",
-  "authentication bypass 2fa". OPSEC: medium — brute-force attempts generate
-  many requests and may trigger account lockout or security alerts. Tools:
-  burpsuite (Turbo Intruder), curl, python scripts.
-  Do NOT use for password reset attacks — use password-reset-poisoning instead.
-  Do NOT use for OAuth bypasses — use oauth-attacks instead.
+  testing.
+keywords:
+  - 2fa bypass
+  - mfa bypass
+  - two-factor bypass
+  - otp bypass
+  - otp brute force
+  - 2fa brute force
+  - totp bypass
+  - sms bypass
+  - backup code brute force
+  - 2fa response manipulation
+  - skip 2fa
+  - bypass mfa
+  - second factor bypass
+  - authentication bypass 2fa
+  - the user has found an application with 2FA and wants to test for bypass techniques
+tools:
+  - burpsuite (Turbo Intruder)
+  - curl
+  - python scripts
+opsec: medium
 ---
 
 # 2FA / MFA Bypass

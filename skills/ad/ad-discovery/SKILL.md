@@ -2,15 +2,26 @@
 name: ad-discovery
 description: >
   Enumerates Active Directory domains and maps attack surface for penetration
-  testing. Use when targeting an AD environment, starting a domain assessment,
-  or when the orchestrator identifies AD services (port 88, 389, 445, 636).
-  Triggers on: "enumerate domain", "AD recon", "bloodhound", "domain enumeration",
-  "active directory", "find attack paths", "domain controllers", "kerberos".
-  OPSEC: medium (LDAP queries, SMB connections, BloodHound collection generate
-  logs). Tools: bloodhound-python, rusthound-ce, netexec, certipy, bloodyAD,
-  kerbrute, Impacket, PowerView.
-  Do NOT use for web application testing — use **web-discovery** instead.
-  Do NOT use for cloud-only Azure AD/Entra ID — use cloud-specific skills.
+  testing.
+keywords:
+  - enumerate domain
+  - AD recon
+  - bloodhound
+  - domain enumeration
+  - active directory
+  - find attack paths
+  - domain controllers
+  - kerberos
+tools:
+  - bloodhound-python
+  - rusthound-ce
+  - netexec
+  - certipy
+  - bloodyAD
+  - kerbrute
+  - Impacket
+  - PowerView
+opsec: medium
 ---
 
 # AD Attack Discovery
@@ -76,14 +87,23 @@ append bullet points under this same header.
 
 ## Skill Routing Is Mandatory
 
-When this skill says "→ STOP. Invoke **skill-name**" or "route to
-**skill-name**", you MUST invoke that skill using the Skill tool. Do NOT
-execute the technique inline — even if the attack path seems obvious or you
-already know the technique. Skills contain operator-specific methodology,
+When this skill says "→ STOP. Route to **skill-name**" or "route to
+**skill-name**", you MUST load and follow that skill:
+
+1. Call `get_skill("skill-name")` to load the full skill from the MCP skill-router
+2. Read the returned SKILL.md content
+3. Follow its instructions end-to-end
+
+Do NOT execute the technique inline — even if the attack path seems obvious or
+you already know the technique. Skills contain operator-specific methodology,
 client-scoped payloads, and edge-case handling that general knowledge does not.
 
 This applies in both guided and autonomous modes. Autonomous mode means you
 make routing decisions without asking — it does not mean you skip skills.
+
+If you need a skill but don't know the exact name, use
+`search_skills("description of what you need")` to find it. Verify the returned
+description matches your scenario before loading.
 
 ### Scope Boundary
 
@@ -234,7 +254,7 @@ Use output as username list for **password-spraying** and AS-REP roasting checks
 ### LLMNR/NBT-NS/mDNS Poisoning Check
 
 If network position allows, note LLMNR/NBT-NS traffic for Responder-based
-hash capture. → STOP. Invoke **auth-coercion-relay** via the Skill tool.
+hash capture. → STOP. Route to **auth-coercion-relay** — call `get_skill("auth-coercion-relay")` and follow its instructions.
 Pass: DC IP, domain name, network position, LLMNR/NBT-NS traffic details,
 current mode. Do not execute poisoning or relay commands inline.
 
@@ -334,8 +354,7 @@ nxc ldap DC01.DOMAIN.LOCAL -u 'user' -p 'Password123' --kerberoasting output.txt
 .\Rubeus.exe kerberoast /stats
 ```
 
-If SPNs found on user accounts → STOP. Invoke **kerberos-roasting** via the
-Skill tool. Pass: DC IP, domain name, SPN list, current credentials, current
+If SPNs found on user accounts → STOP. Route to **kerberos-roasting** — call `get_skill("kerberos-roasting")` and follow its instructions. Pass: DC IP, domain name, SPN list, current credentials, current
 mode. Do not request or crack service tickets inline.
 
 ### AS-REP Roastable Accounts
@@ -350,7 +369,7 @@ bloodyAD -u user -p 'Password123' -d DOMAIN.LOCAL --host DC_IP \
   --attr sAMAccountName
 ```
 
-If found → STOP. Invoke **kerberos-roasting** via the Skill tool (AS-REP
+If found → STOP. Route to **kerberos-roasting** — call `get_skill("kerberos-roasting")` and follow its instructions (AS-REP
 section). Pass: DC IP, domain name, AS-REP roastable user list, current mode.
 Do not request or crack AS-REP hashes inline.
 
@@ -378,7 +397,7 @@ Get-DomainUser -TrustedToAuth
 Get-DomainComputer -TrustedToAuth
 ```
 
-If found → STOP. Invoke **kerberos-delegation** via the Skill tool. Pass: DC
+If found → STOP. Route to **kerberos-delegation** — call `get_skill("kerberos-delegation")` and follow its instructions. Pass: DC
 IP, domain name, delegation type and targets, current credentials, current
 mode. Do not exploit delegation inline.
 
@@ -405,7 +424,7 @@ nxc ldap DC01.DOMAIN.LOCAL -u 'user' -p 'Password123' -M laps
 nxc ldap DC01.DOMAIN.LOCAL -u 'user' -p 'Password123' --gmsa
 ```
 
-If readable → STOP. Invoke **credential-dumping** via the Skill tool. Pass:
+If readable → STOP. Route to **credential-dumping** — call `get_skill("credential-dumping")` and follow its instructions. Pass:
 DC IP, domain name, LAPS/gMSA target details, current credentials, current
 mode. Do not extract managed passwords inline.
 
@@ -425,7 +444,7 @@ Get-DomainForeignUser
 Get-DomainForeignGroupMember
 ```
 
-If trusts found → STOP. Invoke **trust-attacks** via the Skill tool. Pass:
+If trusts found → STOP. Route to **trust-attacks** — call `get_skill("trust-attacks")` and follow its instructions. Pass:
 DC IP, domain name, trust relationships enumerated, trust types and directions,
 current credentials, current mode. Do not exploit trust relationships inline.
 
@@ -465,7 +484,7 @@ nxc smb 10.10.10.0/24 -u 'user' -p 'Password123'
 Find-LocalAdminAccess -Verbose
 ```
 
-If local admin found → STOP. Invoke **credential-dumping** via the Skill tool
+If local admin found → STOP. Route to **credential-dumping** — call `get_skill("credential-dumping")` and follow its instructions
 (SAM/LSASS). Pass: target hostname, local admin credentials, DC IP, domain
 name, current mode. Do not dump credentials inline. After credential-dumping
 returns, invoke **pass-the-hash** for lateral movement.
@@ -477,14 +496,14 @@ returns, invoke **pass-the-hash** for lateral movement.
 python3 sccmhunter.py find -u 'user' -p 'Password123' -d DOMAIN.LOCAL -dc-ip DC_IP
 ```
 
-If SCCM found → STOP. Invoke **sccm-exploitation** via the Skill tool. Pass:
+If SCCM found → STOP. Route to **sccm-exploitation** — call `get_skill("sccm-exploitation")` and follow its instructions. Pass:
 DC IP, domain name, SCCM server details, current credentials, current mode.
 Do not exploit SCCM inline.
 
 ## Step 5: Attack Surface Routing
 
 Map enumeration findings to technique skills. This is the core routing table.
-When a match below is found, STOP — invoke the named skill via the Skill tool.
+When a match below is found, STOP — load the skill — call `get_skill("skill-name")` and follow its instructions.
 Do not execute attack techniques inline.
 
 | Finding | Indicator | Route To |

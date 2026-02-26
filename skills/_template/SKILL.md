@@ -1,10 +1,16 @@
 ---
 name: <skill-name>
 description: >
-  <What this skill does in one sentence>. Use this skill when the user
-  <explicit trigger conditions>. Also triggers on: "<phrase1>", "<phrase2>",
-  "<phrase3>". OPSEC: <low|medium|high>. Tools: <tool1>, <tool2>.
-  Do NOT use when <negative conditions> — use <other-skill> instead.
+  <What this skill does in 2-3 sentences. Focus on technique scope and when
+  to use it. No trigger phrases, negative conditions, or OPSEC details here.>
+keywords:
+  - <operator search term>
+  - <technique name or acronym>
+  - <tool name that implies this technique>
+tools:
+  - <tool1>
+  - <tool2>
+opsec: <low|medium|high>
 ---
 
 # <Skill Display Name>
@@ -69,11 +75,21 @@ append bullet points under this same header.
 
 ## Skill Routing Is Mandatory
 
-When this skill says "Route to **skill-name**" or "→ **skill-name**", you MUST
-invoke that skill using the Skill tool. Do NOT execute the technique inline —
-even if the attack is trivial or you already know the answer. Skills contain
-operator-specific methodology, client-scoped payloads, and edge-case handling
-that general knowledge does not.
+When this skill says "Route to **skill-name**" or "→ **skill-name**", you MUST:
+
+1. Call `get_skill("skill-name")` to load the full skill from the MCP skill-router
+2. Read the returned SKILL.md content
+3. Follow its instructions end-to-end
+
+Do NOT execute the technique inline — even if the attack is trivial or you
+already know the answer. Skills contain operator-specific methodology,
+client-scoped payloads, and edge-case handling that general knowledge does not.
+
+If you need a skill but don't know the exact name, use
+`search_skills("description")` to find it. Before loading a search result,
+verify the returned description matches your scenario — embedding similarity
+does not guarantee relevance. After loading, check the skill's Prerequisites
+and Step 1 against current engagement state before following it.
 
 This applies in both guided and autonomous modes. Autonomous mode means you
 make routing decisions without asking — it does not mean you skip skills.
@@ -169,8 +185,8 @@ command arg1 arg2
 on activation — stale state means duplicate work or missed context.
 
 After completing this technique:
-- <Outcome 1>: STOP. Invoke **<other-skill-name>** via the Skill tool. Pass: <context>. Do not execute <category> commands inline.
-- <Outcome 2>: STOP. Invoke **<other-skill-name>** via the Skill tool. Pass: <context>. Do not execute <category> commands inline.
+- <Outcome 1>: STOP. Route to **<other-skill-name>** — call `get_skill("<other-skill-name>")` and follow its instructions. Pass: <context>. Do not execute <category> commands inline.
+- <Outcome 2>: STOP. Route to **<other-skill-name>** — call `get_skill("<other-skill-name>")` and follow its instructions. Pass: <context>. Do not execute <category> commands inline.
 - <Outcome 3>: Summarize findings, suggest next steps
 
 When routing, always pass along: injection point, target technology, current

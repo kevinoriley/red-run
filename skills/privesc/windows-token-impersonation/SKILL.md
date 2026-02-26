@@ -1,16 +1,28 @@
 ---
 name: windows-token-impersonation
 description: >
-  Exploit Windows token privileges for local privilege escalation to SYSTEM. Use this
-  skill when the user has SeImpersonatePrivilege, SeAssignPrimaryTokenPrivilege,
-  SeDebugPrivilege, SeBackupPrivilege, or other dangerous token privileges. Also
-  triggers on: "potato exploit", "juicypotato", "printspoofer", "godpotato",
-  "token impersonation", "SeImpersonate", "SeDebug", "dangerous privileges",
-  "service account to system". OPSEC: medium (creates new processes, COM/RPC activity).
-  Tools: JuicyPotato, PrintSpoofer, GodPotato, RoguePotato, EfsPotato, SigmaPotato,
-  FullPowers, mimikatz, incognito.
-  Do NOT use for service/DLL exploitation — use windows-service-dll-abuse instead.
-  Do NOT use for kernel exploits — use windows-kernel-exploits instead.
+  Exploit Windows token privileges for local privilege escalation to SYSTEM.
+keywords:
+  - potato exploit
+  - juicypotato
+  - printspoofer
+  - godpotato
+  - token impersonation
+  - SeImpersonate
+  - SeDebug
+  - dangerous privileges
+  - service account to system
+tools:
+  - JuicyPotato
+  - PrintSpoofer
+  - GodPotato
+  - RoguePotato
+  - EfsPotato
+  - SigmaPotato
+  - FullPowers
+  - mimikatz
+  - incognito
+opsec: medium
 ---
 
 # Windows Token Impersonation & Dangerous Privileges

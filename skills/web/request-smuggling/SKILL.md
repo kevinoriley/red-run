@@ -2,18 +2,28 @@
 name: request-smuggling
 description: >
   Guide HTTP request smuggling exploitation during authorized penetration
-  testing. Use when the user suspects desync between a front-end proxy and
-  back-end server, or when testing for CL.TE, TE.CL, TE.TE, or HTTP/2
-  downgrade smuggling. Also triggers on: "request smuggling", "HTTP desync",
-  "CL.TE", "TE.CL", "H2 smuggling", "h2c smuggling", "transfer-encoding
-  chunked", "content-length desync", "HTTP/2 downgrade", "response desync",
-  "connection state attack", "hop-by-hop", "HTTP pipeline", "websocket
-  smuggling". OPSEC: medium — smuggled requests hit back-end and appear in
-  server logs, but root cause is difficult to attribute. Tools: burpsuite
-  (HTTP Request Smuggler extension), smuggler.py, smuggleFuzz, h2csmuggler.
-  Do NOT use for CRLF injection without desync context — check command-injection
-  or xss-reflected for header injection. Do NOT use for web cache poisoning
-  without a smuggling primitive — that's a separate technique.
+  testing.
+keywords:
+  - request smuggling
+  - HTTP desync
+  - CL.TE
+  - TE.CL
+  - H2 smuggling
+  - h2c smuggling
+  - transfer-encoding chunked
+  - content-length desync
+  - HTTP/2 downgrade
+  - response desync
+  - connection state attack
+  - hop-by-hop
+  - HTTP pipeline
+  - websocket smuggling
+tools:
+  - burpsuite (HTTP Request Smuggler extension)
+  - smuggler.py
+  - smuggleFuzz
+  - h2csmuggler
+opsec: medium
 ---
 
 # HTTP Request Smuggling

@@ -2,19 +2,30 @@
 name: oauth-attacks
 description: >
   Exploit OAuth 2.0 and OpenID Connect vulnerabilities during authorized
-  penetration testing. Use when the user has found an application using OAuth
-  for authentication or authorization (social login, SSO, API access) and wants
-  to test for misconfigurations. Also triggers on: "oauth", "oauth attack",
-  "oauth bypass", "openid connect", "oidc attack", "social login bypass",
-  "redirect uri bypass", "oauth token theft", "authorization code theft",
-  "oauth misconfiguration", "sso bypass", "login with google", "login with
-  facebook", "oauth account takeover", "pkce bypass", "oauth state bypass",
-  "oauth scope escalation". OPSEC: low — testing involves manipulating URL
-  parameters and observing redirects, indistinguishable from normal OAuth
-  flows. Tools: burpsuite, jwt_tool, curl.
-  Do NOT use for JWT-specific attacks (alg:none, key confusion) — use
-  jwt-attacks instead. Do NOT use for CSRF without OAuth context — use csrf
-  instead.
+  penetration testing.
+keywords:
+  - oauth
+  - oauth attack
+  - oauth bypass
+  - openid connect
+  - oidc attack
+  - social login bypass
+  - redirect uri bypass
+  - oauth token theft
+  - authorization code theft
+  - oauth misconfiguration
+  - sso bypass
+  - login with google
+  - login with facebook
+  - oauth account takeover
+  - pkce bypass
+  - oauth state bypass
+  - oauth scope escalation
+tools:
+  - burpsuite
+  - jwt_tool
+  - curl
+opsec: low
 ---
 
 # OAuth 2.0 / OpenID Connect Attacks

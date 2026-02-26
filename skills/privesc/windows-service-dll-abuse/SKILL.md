@@ -1,15 +1,25 @@
 ---
 name: windows-service-dll-abuse
 description: >
-  Exploit Windows service misconfigurations and DLL hijacking for local privilege
-  escalation. Use this skill when the user finds writable service binaries, unquoted
-  service paths, weak service permissions, or DLL hijacking opportunities. Also
-  triggers on: "unquoted service path", "dll hijacking", "service exploitation",
-  "writable service", "dll search order", "binpath", "sc config", "accesschk".
-  OPSEC: medium (modifies services/files, creates processes, may trigger EDR).
-  Tools: accesschk, sc, PowerUp, Process Monitor, icacls, mingw (DLL compilation).
-  Do NOT use for token impersonation — use windows-token-impersonation instead.
-  Do NOT use for kernel exploits — use windows-kernel-exploits instead.
+  Exploit Windows service misconfigurations and DLL hijacking for local
+  privilege escalation.
+keywords:
+  - unquoted service path
+  - dll hijacking
+  - service exploitation
+  - writable service
+  - dll search order
+  - binpath
+  - sc config
+  - accesschk
+tools:
+  - accesschk
+  - sc
+  - PowerUp
+  - Process Monitor
+  - icacls
+  - mingw (DLL compilation)
+opsec: medium
 ---
 
 # Windows Service Misconfiguration & DLL Hijacking

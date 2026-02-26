@@ -2,16 +2,26 @@
 name: cors-misconfiguration
 description: >
   Exploit CORS (Cross-Origin Resource Sharing) misconfigurations during
-  authorized penetration testing. Use when the user has found a web application
-  or API that returns Access-Control-Allow-Origin headers, or when testing for
-  cross-origin data theft. Also triggers on: "cors", "cors misconfiguration",
-  "cors bypass", "cross-origin", "origin reflection", "null origin", "access
-  control allow origin", "cors wildcard", "cors credentials", "cross-origin
-  data theft", "cors exploitation", "sop bypass". OPSEC: low — testing involves
-  sending HTTP requests with custom Origin headers, indistinguishable from
-  normal cross-origin browsing. Tools: burpsuite, curl, corsy, CORScanner.
-  Do NOT use for XSS — use xss-reflected, xss-stored, or xss-dom instead.
-  Do NOT use for CSRF without CORS angle — use csrf instead.
+  authorized penetration testing.
+keywords:
+  - cors
+  - cors misconfiguration
+  - cors bypass
+  - cross-origin
+  - origin reflection
+  - null origin
+  - access control allow origin
+  - cors wildcard
+  - cors credentials
+  - cross-origin data theft
+  - cors exploitation
+  - sop bypass
+tools:
+  - burpsuite
+  - curl
+  - corsy
+  - CORScanner
+opsec: low
 ---
 
 # CORS Misconfiguration

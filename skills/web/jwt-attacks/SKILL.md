@@ -2,17 +2,33 @@
 name: jwt-attacks
 description: >
   Exploit JWT (JSON Web Token) vulnerabilities during authorized penetration
-  testing. Use when the user has found JWTs in authentication, wants to forge
-  tokens, or needs to bypass JWT-based access control. Also triggers on: "JWT
-  attack", "JWT bypass", "forge JWT", "alg none", "algorithm confusion",
-  "RS256 to HS256", "kid injection", "jwk injection", "jku spoofing",
-  "crack JWT secret", "brute force JWT", "JWT key confusion", "weak JWT
-  secret", "json web token exploit", "JWT header injection", "ViewState JWT",
-  "jwt_tool", "JWT privilege escalation", "JWT claim tampering".
-  OPSEC: low — token manipulation is client-side; brute-forcing is offline.
-  Tools: jwt_tool, hashcat, burpsuite (JWT Editor extension), openssl.
-  Do NOT use for session token manipulation that isn't JWT-based.
-  Do NOT use for OAuth-specific attacks beyond JWT token forgery.
+  testing.
+keywords:
+  - JWT attack
+  - JWT bypass
+  - forge JWT
+  - alg none
+  - algorithm confusion
+  - RS256 to HS256
+  - kid injection
+  - jwk injection
+  - jku spoofing
+  - crack JWT secret
+  - brute force JWT
+  - JWT key confusion
+  - weak JWT secret
+  - json web token exploit
+  - JWT header injection
+  - ViewState JWT
+  - jwt_tool
+  - JWT privilege escalation
+  - JWT claim tampering
+tools:
+  - jwt_tool
+  - hashcat
+  - burpsuite (JWT Editor extension)
+  - openssl
+opsec: low
 ---
 
 # JWT Attacks

@@ -2,17 +2,23 @@
 name: sql-injection-blind
 description: >
   Guide blind SQL injection exploitation (boolean-based, time-based, and
-  out-of-band) during authorized penetration testing. Use when the user has a
-  SQL injection point but the application does not display query results or error
-  messages, or when blind techniques are suggested by another skill. Also
-  triggers on: "blind SQLi", "boolean-based", "time-based", "SLEEP injection",
-  "WAITFOR DELAY", "pg_sleep", "no output visible", "no errors shown",
-  "inferential SQLi", "OOB SQL injection", "DNS exfiltration SQL". OPSEC:
-  medium — high request volume for boolean; time-based creates slow query log
-  entries; OOB requires external callback infrastructure. Tools: sqlmap,
-  burpsuite.
-  Do NOT use when errors are visible — use sql-injection-error instead. Do NOT
-  use when query output is directly visible — use sql-injection-union instead.
+  out-of-band) during authorized penetration testing.
+keywords:
+  - blind SQLi
+  - boolean-based
+  - time-based
+  - SLEEP injection
+  - WAITFOR DELAY
+  - pg_sleep
+  - no output visible
+  - no errors shown
+  - inferential SQLi
+  - OOB SQL injection
+  - DNS exfiltration SQL
+tools:
+  - sqlmap
+  - burpsuite
+opsec: medium
 ---
 
 # Blind SQL Injection

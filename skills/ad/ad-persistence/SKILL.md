@@ -1,29 +1,41 @@
 ---
 name: ad-persistence
 description: >
-  Establishes persistent access in Active Directory environments after
-  domain compromise. Covers DCShadow (rogue DC attribute modification),
-  Skeleton Key (LSASS master password), custom SSP injection (credential
-  logging via mimilib/memssp), security descriptor backdoors (WMI/WinRM/
-  DCOM/registry ACL modification), ADFS Golden SAML (DKM key extraction
-  and forged SAML tokens), SID history persistence (DA SID in regular
-  user), and certificate-based persistence (golden certificate, renewal,
-  enrollment agent). Use when the user has achieved domain admin and needs
-  to maintain access, when post-compromise persistence is required, or
-  when exploring stealthy persistence mechanisms. Triggers on: "AD
-  persistence", "domain persistence", "DCShadow", "skeleton key",
-  "custom SSP", "mimilib", "memssp", "Golden SAML", "ADFS persistence",
-  "security descriptor backdoor", "DAMP", "SID history persistence",
-  "golden certificate", "maintain access", "post-DA persistence",
-  "domain backdoor". OPSEC: varies (DCShadow is very stealthy; skeleton
-  key and custom SSP are moderate; golden certificate is hard to detect).
-  Tools: Mimikatz, ADFSDump, ADFSpoof, ForgeCert, Certipy, Rubeus,
-  Impacket (ticketer.py), Nishang, bloodyAD.
-  Do NOT use for initial credential extraction — use **credential-dumping**.
-  Do NOT use for ACL-based attacks as an escalation method — use
-  **acl-abuse**. Do NOT use for ADCS escalation (ESC1-15) — use the
-  adcs-* skills. Do NOT use for DSRM credential extraction (covered by
-  **credential-dumping**).
+  Establishes persistent access in Active Directory environments after domain
+  compromise. Covers DCShadow (rogue DC attribute modification), Skeleton Key
+  (LSASS master password), custom SSP injection (credential logging via
+  mimilib/memssp), security descriptor backdoors (WMI/WinRM/ DCOM/registry ACL
+  modification), ADFS Golden SAML (DKM key extraction and forged SAML tokens),
+  SID history persistence (DA SID in regular user), and certificate-based
+  persistence (golden certificate, renewal, enrollment agent).
+keywords:
+  - AD persistence
+  - domain persistence
+  - DCShadow
+  - skeleton key
+  - custom SSP
+  - mimilib
+  - memssp
+  - Golden SAML
+  - ADFS persistence
+  - security descriptor backdoor
+  - DAMP
+  - SID history persistence
+  - golden certificate
+  - maintain access
+  - post-DA persistence
+  - domain backdoor
+tools:
+  - Mimikatz
+  - ADFSDump
+  - ADFSpoof
+  - ForgeCert
+  - Certipy
+  - Rubeus
+  - Impacket (ticketer.py)
+  - Nishang
+  - bloodyAD
+opsec: medium
 ---
 
 # AD Persistence

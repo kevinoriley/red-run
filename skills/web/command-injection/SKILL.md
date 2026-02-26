@@ -1,18 +1,26 @@
 ---
 name: command-injection
 description: >
-  Guide OS command injection exploitation during authorized penetration testing.
-  Use when the user has found an input that gets passed to a system shell command,
-  or when testing for command injection in web applications, APIs, or network
-  services. Also triggers on: "command injection", "OS injection", "RCE via shell",
-  "shell injection", "system() injection", "exec() injection", "ping injection",
-  "backtick injection", "command execution", "blind command injection", "argument
-  injection", "parameter injection". OPSEC: medium — commands execute server-side,
-  visible in process lists and application logs. Tools: burpsuite, commix,
-  interactsh.
-  Do NOT use for SQL injection — use sql-injection-* skills instead. Do NOT use
-  for SSTI — use ssti-* skills instead. Do NOT use for file inclusion — use lfi
-  instead.
+  Guide OS command injection exploitation during authorized penetration
+  testing.
+keywords:
+  - command injection
+  - OS injection
+  - RCE via shell
+  - shell injection
+  - system() injection
+  - exec() injection
+  - ping injection
+  - backtick injection
+  - command execution
+  - blind command injection
+  - argument injection
+  - parameter injection
+tools:
+  - burpsuite
+  - commix
+  - interactsh
+opsec: medium
 ---
 
 # OS Command Injection
@@ -21,6 +29,13 @@ You are helping a penetration tester exploit OS command injection. The target
 application passes user-controlled input to a system shell command without proper
 sanitization. The goal is to execute arbitrary commands on the underlying
 operating system. All testing is under explicit written authorization.
+
+**Not Python eval()/exec() injection.** This skill covers injection into OS
+shell commands (bash, cmd.exe, PowerShell) via operators like `;`, `|`, `&&`,
+backticks, and `$()`. If the injection context is a Python eval() or exec()
+call — where you need to write Python expressions, not shell commands — route
+to **python-code-injection** instead. Key indicator: shell operators (`;id`,
+`|id`) don't work, but Python expressions (`__import__('os').popen('id')`) do.
 
 ## Mode
 

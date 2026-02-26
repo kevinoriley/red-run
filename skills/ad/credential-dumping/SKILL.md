@@ -3,21 +3,35 @@ name: credential-dumping
 description: >
   Extracts credentials from Active Directory: DCSync replication, NTDS.dit
   database extraction, SAM hive dump, LAPS passwords (legacy + Windows LAPS),
-  gMSA passwords (KDS root key + GoldenGMSA), dMSA exploitation
-  (BadSuccessor CVE-2025-21293), and DSRM credentials. Use when you have
-  domain admin or replication rights and need to extract domain hashes, when
-  you have local admin and need machine credentials, when you can read LAPS
-  attributes, or when you find gMSA/dMSA accounts. Triggers on: "DCSync",
-  "secretsdump", "NTDS.dit", "ntds extraction", "SAM dump", "LAPS password",
-  "gMSA password", "dMSA", "BadSuccessor", "DSRM", "credential dump",
-  "extract hashes", "domain hashes", "krbtgt hash", "hashdump",
-  "GoldenGMSA", "KDS root key", "dump credentials", "dump domain".
-  OPSEC: varies (DCSync=medium with replication events; LAPS=low read-only;
-  NTDS extraction=high requires DC access). Tools: secretsdump.py,
-  mimikatz, netexec, bloodyAD, gMSADumper.
-  Do NOT use for LSASS process memory dumping — that is a post-exploitation
-  technique. Do NOT use for Kerberos hash extraction (roasting) — use
-  **kerberos-roasting** instead.
+  gMSA passwords (KDS root key + GoldenGMSA), dMSA exploitation (BadSuccessor
+  CVE-2025-21293), and DSRM credentials.
+keywords:
+  - DCSync
+  - secretsdump
+  - NTDS.dit
+  - ntds extraction
+  - SAM dump
+  - LAPS password
+  - gMSA password
+  - dMSA
+  - BadSuccessor
+  - DSRM
+  - credential dump
+  - extract hashes
+  - domain hashes
+  - krbtgt hash
+  - hashdump
+  - GoldenGMSA
+  - KDS root key
+  - dump credentials
+  - dump domain
+tools:
+  - secretsdump.py
+  - mimikatz
+  - netexec
+  - bloodyAD
+  - gMSADumper
+opsec: medium
 ---
 
 # Credential Dumping

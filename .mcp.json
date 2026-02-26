@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "skill-router": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "tools/skill-router",
+        "python",
+        "server.py"
+      ],
+      "env": {
+        "HF_HUB_OFFLINE": "1"
+      }
+    }
+  }
+}

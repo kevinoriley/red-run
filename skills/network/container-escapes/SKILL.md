@@ -1,20 +1,38 @@
 ---
 name: container-escapes
 description: >
-  Container escape, Docker breakout, and Kubernetes exploitation. Use this skill
-  when the user is inside a container and needs to escape to the host, or when
-  targeting Kubernetes clusters. Triggers on: "container escape", "docker breakout",
-  "escape this container", "I'm in a container", "kubernetes exploitation",
-  "pod escape", "privileged container", "docker socket", "k8s pentest",
-  "service account token", "kubelet", "etcd", "container enumeration",
-  "am I in a container", "cgroup escape", "nsenter", "hostPID", "hostNetwork",
-  "cap_sys_admin container". Also triggers when linux-discovery detects a
-  containerized environment (/.dockerenv, cgroup indicators). OPSEC: medium-high
-  (container escapes create host-level artifacts, K8s API calls are logged in
-  audit logs). Tools: kubectl, crictl, ctr, CDK, deepce, amicontained, linpeas,
-  curl (for API interaction), nsenter.
-  Do NOT use for Docker/LXD group privesc from the HOST — use linux-file-path-abuse instead.
-  Do NOT use for general Linux privesc inside a container — use linux-discovery first.
+  Container escape, Docker breakout, and Kubernetes exploitation.
+keywords:
+  - container escape
+  - docker breakout
+  - escape this container
+  - I'm in a container
+  - kubernetes exploitation
+  - pod escape
+  - privileged container
+  - docker socket
+  - k8s pentest
+  - service account token
+  - kubelet
+  - etcd
+  - container enumeration
+  - am I in a container
+  - cgroup escape
+  - nsenter
+  - hostPID
+  - hostNetwork
+  - cap_sys_admin container
+tools:
+  - kubectl
+  - crictl
+  - ctr
+  - CDK
+  - deepce
+  - amicontained
+  - linpeas
+  - curl (for API interaction)
+  - nsenter
+opsec: medium
 ---
 
 # Container Escapes and Kubernetes Exploitation

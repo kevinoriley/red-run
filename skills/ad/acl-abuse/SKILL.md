@@ -1,21 +1,39 @@
 ---
 name: acl-abuse
 description: >
-  Exploits misconfigured Active Directory ACLs for privilege escalation. Covers
-  GenericAll, GenericWrite, WriteDACL, WriteOwner, ForceChangePassword, targeted
-  Kerberoasting via SPN manipulation, shadow credentials (msDS-KeyCredentialLink
-  → PKINIT), and AdminSDHolder persistence. Use when BloodHound shows ACL-based
-  attack paths or when you have write access to AD objects. Triggers on:
-  "ACL abuse", "ACE abuse", "GenericAll", "GenericWrite", "WriteDACL",
-  "WriteOwner", "ForceChangePassword", "shadow credentials", "msDS-KeyCredentialLink",
-  "PKINIT", "pywhisker", "whisker", "AdminSDHolder", "SDProp", "targeted
-  kerberoasting", "SPN manipulation", "dacledit", "AD permissions", "BloodHound
-  attack path".
-  OPSEC: medium (attribute modification logged as Event 5136; shadow credentials
-  = low because no password change). Tools: bloodyAD, PowerView, pywhisker,
-  Certipy, dacledit.py, Impacket.
-  Do NOT use for Kerberoasting without ACL context — use **kerberos-roasting**.
-  Do NOT use for delegation abuse — use **kerberos-delegation**.
+  Exploits misconfigured Active Directory ACLs for privilege escalation.
+  Covers GenericAll, GenericWrite, WriteDACL, WriteOwner, ForceChangePassword,
+  targeted Kerberoasting via SPN manipulation, shadow credentials
+  (msDS-KeyCredentialLink → PKINIT), and AdminSDHolder persistence.
+keywords:
+  - ACL abuse
+  - ACE abuse
+  - GenericAll
+  - GenericWrite
+  - WriteDACL
+  - WriteOwner
+  - ForceChangePassword
+  - shadow credentials
+  - msDS-KeyCredentialLink
+  - PKINIT
+  - pywhisker
+  - whisker
+  - AdminSDHolder
+  - SDProp
+  - targeted kerberoasting
+  - SPN manipulation
+  - dacledit
+  - AD permissions
+  - BloodHound attack path
+  - BloodHound shows ACL-based attack paths or when you have write access to AD objects
+tools:
+  - bloodyAD
+  - PowerView
+  - pywhisker
+  - Certipy
+  - dacledit.py
+  - Impacket
+opsec: medium
 ---
 
 # ACL/ACE Abuse

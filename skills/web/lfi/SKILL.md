@@ -1,18 +1,28 @@
 ---
 name: lfi
 description: >
-  Guide Local File Inclusion (LFI) and Remote File Inclusion (RFI) exploitation
-  during authorized penetration testing. Use when the user has found a parameter
-  that includes files (path traversal, PHP include, template loading) and needs to
-  read source code, access sensitive files, or escalate to RCE. Also triggers on:
-  "LFI", "local file inclusion", "path traversal", "directory traversal",
-  "file inclusion", "php://filter", "PHP wrappers", "log poisoning", "RFI",
-  "remote file inclusion", "LFI to RCE", "../../../etc/passwd", "file read
-  vulnerability", "include vulnerability". OPSEC: low-medium — file reads are
-  quiet, but log poisoning and RCE payloads create artifacts. Tools: burpsuite,
-  ffuf, php_filter_chain_generator.
-  Do NOT use for arbitrary file upload vulnerabilities — use file-upload-bypass
-  instead. Do NOT use for XXE-based file read — use xxe instead.
+  Guide Local File Inclusion (LFI) and Remote File Inclusion (RFI)
+  exploitation during authorized penetration testing.
+keywords:
+  - LFI
+  - local file inclusion
+  - path traversal
+  - directory traversal
+  - file inclusion
+  - php://filter
+  - PHP wrappers
+  - log poisoning
+  - RFI
+  - remote file inclusion
+  - LFI to RCE
+  - ../../../etc/passwd
+  - file read vulnerability
+  - include vulnerability
+tools:
+  - burpsuite
+  - ffuf
+  - php_filter_chain_generator
+opsec: low
 ---
 
 # Local File Inclusion / Remote File Inclusion

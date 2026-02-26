@@ -2,15 +2,19 @@
 name: sql-injection-error
 description: >
   Guide error-based SQL injection exploitation during authorized penetration
-  testing. Use when the user has found a SQL injection point and the application
-  returns database error messages, or when error-based extraction is suggested
-  by another skill. Also triggers on: "error-based SQLi", "EXTRACTVALUE",
-  "UPDATEXML", "CONVERT INT", "CAST AS INT", "database errors in response",
-  "verbose SQL errors". OPSEC: medium — payloads appear in application and DB
-  logs. Tools: sqlmap, burpsuite.
-  Do NOT use for blind injection (no visible errors) — use sql-injection-blind
-  instead. Do NOT use when UNION output is directly visible — use
-  sql-injection-union instead.
+  testing.
+keywords:
+  - error-based SQLi
+  - EXTRACTVALUE
+  - UPDATEXML
+  - CONVERT INT
+  - CAST AS INT
+  - database errors in response
+  - verbose SQL errors
+tools:
+  - sqlmap
+  - burpsuite
+opsec: medium
 ---
 
 # Error-Based SQL Injection

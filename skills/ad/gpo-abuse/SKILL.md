@@ -1,24 +1,38 @@
 ---
 name: gpo-abuse
 description: >
-  Exploits Group Policy Objects for code execution, privilege escalation,
-  and lateral movement in Active Directory. Covers GPO enumeration
-  (GPOHound, BloodHound, PowerView), exploitation via immediate tasks,
-  logon scripts, and registry modifications (SharpGPOAbuse, PowerGPOAbuse,
-  pyGPOAbuse, GroupPolicyBackdoor), SYSVOL/NETLOGON logon script poisoning,
-  and GPP password extraction. Use when BloodHound shows write access to
-  a GPO, when you have GenericWrite/WriteDACL on a GPO object, when you
-  find writable logon scripts in SYSVOL, or when hunting for GPP
-  passwords in SYSVOL. Triggers on: "GPO abuse", "group policy",
-  "SharpGPOAbuse", "PowerGPOAbuse", "GPOHound", "GPO write",
-  "immediate task", "logon script", "SYSVOL", "NETLOGON", "GPP password",
-  "cpassword", "group policy preferences", "GPO lateral movement",
-  "GPO persistence", "GPO escalation", "writable GPO".
-  OPSEC: medium-high (GPO modifications apply domain-wide, leave artifacts
-  in SYSVOL, generate scheduled task events). Tools: SharpGPOAbuse,
-  PowerGPOAbuse, pyGPOAbuse, GPOHound, GroupPolicyBackdoor, netexec.
-  Do NOT use for ACL-based attacks on non-GPO objects — use **acl-abuse**
-  instead. Do NOT use for general AD enumeration — use **ad-discovery**.
+  Exploits Group Policy Objects for code execution, privilege escalation, and
+  lateral movement in Active Directory. Covers GPO enumeration (GPOHound,
+  BloodHound, PowerView), exploitation via immediate tasks, logon scripts, and
+  registry modifications (SharpGPOAbuse, PowerGPOAbuse, pyGPOAbuse,
+  GroupPolicyBackdoor), SYSVOL/NETLOGON logon script poisoning, and GPP
+  password extraction.
+keywords:
+  - GPO abuse
+  - group policy
+  - SharpGPOAbuse
+  - PowerGPOAbuse
+  - GPOHound
+  - GPO write
+  - immediate task
+  - logon script
+  - SYSVOL
+  - NETLOGON
+  - GPP password
+  - cpassword
+  - group policy preferences
+  - GPO lateral movement
+  - GPO persistence
+  - GPO escalation
+  - writable GPO
+tools:
+  - SharpGPOAbuse
+  - PowerGPOAbuse
+  - pyGPOAbuse
+  - GPOHound
+  - GroupPolicyBackdoor
+  - netexec
+opsec: medium
 ---
 
 # GPO Abuse
