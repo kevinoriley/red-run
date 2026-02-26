@@ -247,6 +247,45 @@ After writing the report, append a summary to `engagement/activity.md`:
 
 Present the actionable items to the user and ask which ones to prioritize.
 
+## Step 8: Implement Improvements
+
+After the user selects which items to prioritize, make the edits. Skills are
+plain Markdown files at `skills/<category>/<skill-name>/SKILL.md` — edit them
+directly.
+
+For each prioritized item:
+
+### [skill-update] — Edit an existing skill
+1. Read the SKILL.md file (path is in the `get_skill()` output metadata, or
+   find it at `skills/<category>/<skill-name>/SKILL.md`)
+2. Make the change — add payloads, fix methodology, update troubleshooting,
+   etc.
+3. Preserve the existing structure and conventions (frontmatter, sections,
+   embedded payloads format)
+
+### [new-skill] — Create a new skill
+1. Read `skills/_template/SKILL.md` for the canonical structure
+2. Write the new skill to `skills/<category>/<skill-name>/SKILL.md`
+3. Update the corresponding discovery skill's routing table to include it
+
+### [routing-fix] — Fix skill routing
+1. Read the skill that needs the routing update
+2. Add or fix the routing reference: "Route to **skill-name** — call
+   `get_skill("skill-name")` and follow its instructions"
+
+### [template-fix] — Update conventions
+1. Read `skills/_template/SKILL.md`
+2. Make the change and note which existing skills may need the same update
+
+After all edits are complete, re-index so the MCP skill-router picks up
+changes:
+
+```bash
+uv run --directory tools/skill-router python indexer.py
+```
+
+Show the user what was changed and suggest committing.
+
 ## Troubleshooting
 
 ### Engagement directory exists but files are empty
