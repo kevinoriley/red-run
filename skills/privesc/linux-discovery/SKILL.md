@@ -1,16 +1,27 @@
 ---
 name: linux-discovery
 description: >
-  Linux local privilege escalation enumeration and attack surface mapping. Use this
-  skill when the user has a shell on a Linux machine and needs to escalate privileges,
-  or says "enumerate linux privesc", "check for privilege escalation", "run linpeas",
-  "linux privesc", "local privesc linux", "check my privileges on linux". Also triggers
-  on: "escalate on linux", "what can I escalate", "post-exploitation linux",
-  "enumerate this linux box". OPSEC: low-medium (enumeration tools create process
-  artifacts and file I/O). Tools: LinPEAS, LinEnum, linux-smart-enumeration, pspy,
-  linux-exploit-suggester, SUDO_KILLER, unix-privesc-check.
-  Do NOT use for Windows privesc — use windows-discovery instead.
-  Do NOT use for AD-level attacks — use ad-discovery instead.
+  Linux local privilege escalation enumeration and attack surface mapping.
+keywords:
+  - enumerate linux privesc
+  - check for privilege escalation
+  - run linpeas
+  - linux privesc
+  - local privesc linux
+  - check my privileges on linux
+  - escalate on linux
+  - what can I escalate
+  - post-exploitation linux
+  - enumerate this linux box
+tools:
+  - LinPEAS
+  - LinEnum
+  - linux-smart-enumeration
+  - pspy
+  - linux-exploit-suggester
+  - SUDO_KILLER
+  - unix-privesc-check
+opsec: low
 ---
 
 # Linux Local Privilege Escalation Discovery

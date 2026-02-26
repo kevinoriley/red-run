@@ -1,19 +1,34 @@
 ---
 name: linux-file-path-abuse
 description: >
-  Exploit writable critical files, NFS misconfigurations, shared library hijacking,
-  and privileged group membership for privilege escalation. Use this skill when the
-  user has found writable /etc/passwd, writable sudoers, NFS no_root_squash, missing
-  shared libraries, Docker/LXD/disk group membership, writable PATH directories, or
-  writable profile scripts. Also triggers on: "writable passwd", "nfs privesc",
-  "no_root_squash", "library hijacking", "ld.so.conf", "rpath abuse", "docker group
-  escape", "lxd group privesc", "disk group debugfs", "path hijack", "symlink
-  attack", "profile injection", "writable shadow", "ldconfig". OPSEC: medium-high
-  (file modifications create obvious artifacts, container operations logged).
-  Tools: gcc, readelf, ldd, strace, docker, lxc, debugfs, showmount, ldconfig.
-  Do NOT use for sudo/SUID/capability abuse — use linux-sudo-suid-capabilities instead.
-  Do NOT use for cron/service/D-Bus abuse — use linux-cron-service-abuse instead.
-  Do NOT use for kernel exploits — use linux-kernel-exploits instead.
+  Exploit writable critical files, NFS misconfigurations, shared library
+  hijacking, and privileged group membership for privilege escalation.
+keywords:
+  - writable passwd
+  - nfs privesc
+  - no_root_squash
+  - library hijacking
+  - ld.so.conf
+  - rpath abuse
+  - docker group escape
+  - lxd group privesc
+  - disk group debugfs
+  - path hijack
+  - symlink attack
+  - profile injection
+  - writable shadow
+  - ldconfig
+tools:
+  - gcc
+  - readelf
+  - ldd
+  - strace
+  - docker
+  - lxc
+  - debugfs
+  - showmount
+  - ldconfig
+opsec: medium
 ---
 
 # Linux File, Path, and Group-Based Privilege Escalation

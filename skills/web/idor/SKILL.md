@@ -2,18 +2,25 @@
 name: idor
 description: >
   Exploit Insecure Direct Object Reference (IDOR) and broken access control
-  vulnerabilities during authorized penetration testing. Use when the user has
-  found an API endpoint or web page that references objects by ID (numeric,
-  UUID, hash, encoded) and wants to test for unauthorized access. Also triggers
-  on: "idor", "insecure direct object reference", "broken access control",
-  "horizontal privilege escalation", "vertical privilege escalation", "parameter
-  tampering", "uuid enumeration", "api idor", "object reference", "access
-  control bypass", "bola", "broken object level authorization". OPSEC: low —
-  standard HTTP requests with modified parameters, indistinguishable from normal
-  browsing unless enumeration is high-volume. Tools: burpsuite (Autorize/AuthMatrix
-  extensions), ffuf, curl.
-  Do NOT use for authentication bypass without object references — use
-  nosql-injection, sql-injection-*, or oauth-attacks instead.
+  vulnerabilities during authorized penetration testing.
+keywords:
+  - idor
+  - insecure direct object reference
+  - broken access control
+  - horizontal privilege escalation
+  - vertical privilege escalation
+  - parameter tampering
+  - uuid enumeration
+  - api idor
+  - object reference
+  - access control bypass
+  - bola
+  - broken object level authorization
+tools:
+  - burpsuite (Autorize/AuthMatrix extensions)
+  - ffuf
+  - curl
+opsec: low
 ---
 
 # IDOR / Broken Access Control

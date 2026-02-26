@@ -1,7 +1,8 @@
 """Index red-run SKILL.md files into ChromaDB for semantic search.
 
-Parses frontmatter (name, description) and section headers from each SKILL.md,
-builds a single embedding per skill, and upserts into a ChromaDB collection.
+Reads structured frontmatter (name, description, keywords, tools, opsec) and
+section headers from each SKILL.md, builds a compact embedding document per
+skill, and upserts into a ChromaDB collection.
 
 Usage:
     uv run python indexer.py [--skills-dir PATH] [--db-dir PATH]
@@ -40,15 +41,28 @@ def parse_frontmatter(content: str) -> dict[str, str]:
 
 
 def extract_headers(content: str) -> list[str]:
-    """Extract ## section headers from skill body (not code block headers)."""
+    """Extract ## and ### section headers, filtering boilerplate."""
+    boilerplate = {
+        "Mode",
+        "Engagement Logging",
+        "Skill Routing Is Mandatory",
+        "State Management",
+        "Exploit and Tool Transfer",
+        "Prerequisites",
+        "Troubleshooting",
+        "OPSEC Notes",
+        "Invocation Log",
+        "Scope Boundary",
+    }
     headers = []
     in_code_block = False
     for line in content.splitlines():
         if line.startswith("```"):
             in_code_block = not in_code_block
-        if not in_code_block and re.match(r"^##\s+", line):
+        if not in_code_block and re.match(r"^#{2,3}\s+", line):
             header = re.sub(r"^#+\s+", "", line).strip()
-            headers.append(header)
+            if header not in boilerplate:
+                headers.append(header)
     return headers
 
 
@@ -62,13 +76,32 @@ def derive_category(skill_path: Path, skills_dir: Path) -> str:
     return "uncategorized"
 
 
+MAX_HEADERS = 15  # Cap headers to stay within embedding model's 256-token limit
+
+
 def build_document(
-    name: str, description: str, category: str, headers: list[str]
+    name: str,
+    description: str,
+    category: str,
+    keywords: list[str],
+    tools: list[str],
+    headers: list[str],
 ) -> str:
-    """Build the text document to embed for a single skill."""
+    """Build the text document to embed for a single skill.
+
+    Uses structured frontmatter fields (description, keywords, tools) to build
+    a compact, keyword-rich document within the model's 256-token limit. Each
+    field is purpose-built: description provides semantic context, keywords
+    provide exact search terms, tools enable tool-name lookups, and headers
+    add technique-specific section names as bonus context.
+    """
     parts = [f"name: {name}", f"category: {category}", f"description: {description}"]
+    if keywords:
+        parts.append(f"keywords: {', '.join(keywords)}")
+    if tools:
+        parts.append(f"tools: {', '.join(tools)}")
     if headers:
-        parts.append(f"sections: {', '.join(headers)}")
+        parts.append(f"sections: {', '.join(headers[:MAX_HEADERS])}")
     return "\n".join(parts)
 
 
@@ -106,9 +139,13 @@ def index_skills(skills_dir: Path, db_dir: Path) -> int:
             skipped.append(f"{relative} (no description)")
             continue
 
+        keywords = frontmatter.get("keywords", []) or []
+        tools = frontmatter.get("tools", []) or []
+        opsec = frontmatter.get("opsec", "medium")
+
         category = derive_category(skill_path, skills_dir)
         headers = extract_headers(content)
-        document = build_document(name, description, category, headers)
+        document = build_document(name, description, category, keywords, tools, headers)
 
         indexed.append(
             {
@@ -119,6 +156,7 @@ def index_skills(skills_dir: Path, db_dir: Path) -> int:
                     "category": category,
                     "path": str(skill_path),
                     "description": description,
+                    "opsec": str(opsec),
                 },
             }
         )

@@ -2,14 +2,19 @@
 name: sql-injection-union
 description: >
   Guide UNION-based SQL injection exploitation during authorized penetration
-  testing. Use when the user has a SQL injection point where query results are
-  rendered in the HTTP response, or when UNION-based extraction is suggested by
-  another skill. Also triggers on: "UNION SELECT", "union injection", "column
-  count", "ORDER BY injection", "data in the response", "query output visible",
-  "displayed columns". OPSEC: medium — UNION and information_schema references
-  appear in logs. Tools: sqlmap, burpsuite.
-  Do NOT use when query output is not visible in the response — use
-  sql-injection-error or sql-injection-blind instead.
+  testing.
+keywords:
+  - UNION SELECT
+  - union injection
+  - column count
+  - ORDER BY injection
+  - data in the response
+  - query output visible
+  - displayed columns
+tools:
+  - sqlmap
+  - burpsuite
+opsec: medium
 ---
 
 # UNION-Based SQL Injection

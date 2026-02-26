@@ -2,16 +2,28 @@
 name: xxe
 description: >
   Guide XML External Entity (XXE) injection exploitation during authorized
-  penetration testing. Use when the user has found an endpoint that parses XML,
-  or when testing for XXE in web applications, APIs, SOAP services, file upload
-  (SVG, DOCX, XLSX), or SAML endpoints. Also triggers on: "XXE", "XML injection",
-  "XML external entity", "DTD injection", "XML entity expansion", "blind XXE",
-  "OOB XXE", "out-of-band XXE", "error-based XXE", "XInclude", "SVG XXE",
-  "DOCX XXE", "XLSX XXE", "SOAP XXE". OPSEC: medium — external entity resolution
-  generates outbound HTTP/DNS requests visible to network monitoring. Tools:
-  burpsuite, xxeserv, oxml_xxe, interactsh.
-  Do NOT use for SSTI — use ssti-* skills instead. Do NOT use for SSRF without
-  XML parsing — use ssrf instead.
+  penetration testing.
+keywords:
+  - XXE
+  - XML injection
+  - XML external entity
+  - DTD injection
+  - XML entity expansion
+  - blind XXE
+  - OOB XXE
+  - out-of-band XXE
+  - error-based XXE
+  - XInclude
+  - SVG XXE
+  - DOCX XXE
+  - XLSX XXE
+  - SOAP XXE
+tools:
+  - burpsuite
+  - xxeserv
+  - oxml_xxe
+  - interactsh
+opsec: medium
 ---
 
 # XML External Entity (XXE) Injection

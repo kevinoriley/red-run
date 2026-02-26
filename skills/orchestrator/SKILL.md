@@ -25,36 +25,49 @@ authorization.
 > **DO NOT RUN SCANNING TOOLS.** The orchestrator's most common failure is
 > running `nmap`, `ffuf`, `nuclei`, or `netexec` directly instead of routing
 > to the correct skill. You are a router, not a scanner. If you are about to
-> type `nmap`, invoke **network-recon** instead. If you are about to type `ffuf`,
-> invoke **web-discovery** instead. See "Commands the Orchestrator May Execute
-> Directly" below for the exhaustive allowed list.
+> type `nmap`, route to **network-recon** instead. If you are about to type
+> `ffuf`, route to **web-discovery** instead. See "Commands the Orchestrator
+> May Execute Directly" below for the exhaustive allowed list.
 
 ## Skill Routing Is Mandatory
 
-When this skill says "Route to **skill-name**", you MUST invoke the named
-skill using the Skill tool. Do NOT execute techniques inline — even if the
-attack path seems obvious or you already know the technique. Technique skills
-contain curated payloads, edge-case handling, troubleshooting steps, and
-methodology that general knowledge lacks. Skipping skill invocation trades
-thoroughness for speed and risks missing things on harder targets.
+When this skill says "Route to **skill-name**", you MUST:
+
+1. Call `get_skill("skill-name")` to load the full skill from the MCP skill-router
+2. Read the returned SKILL.md content
+3. Follow its instructions end-to-end
+
+Do NOT execute techniques inline — even if the attack path seems obvious or you
+already know the technique. Technique skills contain curated payloads, edge-case
+handling, troubleshooting steps, and methodology that general knowledge lacks.
+Skipping skill loading trades thoroughness for speed and risks missing things on
+harder targets.
 
 This applies in both guided and autonomous modes. Autonomous mode means you
 make triage and routing decisions without asking — it does not mean you bypass
 the skill library.
 
-### If the Skill Tool Fails
+### Finding Skills
 
-If invoking a skill via the Skill tool returns an error (file not found, skill
-not loaded, empty content), **STOP**. Do not fall back to executing the
-technique inline. Do not read the skill file with the Read tool and execute its
-contents. Tell the user:
+When you need a skill but don't know the exact name:
+- `search_skills("description of what you need")` — semantic search, returns ranked matches
+- `list_skills(category="web")` — browse all skills in a category
 
-> Skill invocation failed. Run `./install.sh` from the red-run repo directory
-> to reinstall skills, then restart this session.
+**Relevance validation**: Search results are ranked by embedding similarity, not
+guaranteed relevance. Before loading a search result with `get_skill()`, verify
+the returned description actually matches your scenario. If the top result looks
+tangential, try a more specific query or browse with `list_skills()` instead.
 
-Skills fail when symlinks are broken (repo moved, install pointed at wrong
-path). Inline execution is never an acceptable fallback — it skips payloads,
-edge-case handling, and methodology that the skill contains.
+### If the MCP Skill Router Is Unavailable
+
+If `get_skill()`, `search_skills()`, or `list_skills()` return errors or are
+not available as tools, **STOP**. Do not fall back to executing techniques
+inline. Tell the user:
+
+> MCP skill-router is not connected. Verify `.mcp.json` is configured and the
+> server is running. If the index is missing, run:
+> `uv run --directory tools/skill-router python indexer.py`
+> then restart Claude Code.
 
 ### Commands the Orchestrator May Execute Directly
 
@@ -64,9 +77,10 @@ The only commands the orchestrator may execute directly are:
 - `mkdir -p engagement/evidence` — engagement directory creation
 - File writes to `engagement/` — scope.md, state.md, activity.md, findings.md
 - `httpx -u <target> -title -tech-detect -status-code -follow-redirects` — initial web triage only
+- MCP tool calls (`get_skill`, `search_skills`, `list_skills`) — skill routing
 
 Everything else — nmap, netexec, ffuf, nuclei, sqlmap, any exploitation tool —
-MUST go through the appropriate skill via the Skill tool.
+MUST go through the appropriate skill.
 
 **If you are unsure whether a command is on the allowed list, it is not.
 Route to a skill.**
@@ -238,9 +252,10 @@ enumeration tools directly from the orchestrator.
 
 ### Network Recon (if IP/subnet in scope)
 
-STOP. Invoke **network-recon** via the Skill tool. Pass: target IP, hostname,
-or CIDR range, current mode, and any credentials from scope.
-Do not execute nmap, masscan, or netexec commands inline.
+STOP. Route to **network-recon** — call `get_skill("network-recon")` and follow
+its instructions. Pass: target IP, hostname, or CIDR range, current mode, and
+any credentials from scope. Do not execute nmap, masscan, or netexec commands
+inline.
 
 Network-recon will:
 1. Run host discovery (for subnets) and full port scanning
@@ -255,15 +270,16 @@ Wait for network-recon to complete before proceeding to attack surface mapping.
 
 ### Web Discovery (if HTTP/HTTPS found)
 
-STOP. Invoke **web-discovery** via the Skill tool. Pass: target URL,
-technology stack (from network-recon results), current mode.
-Do not execute ffuf, httpx, or nuclei commands inline.
+STOP. Route to **web-discovery** — call `get_skill("web-discovery")` and follow
+its instructions. Pass: target URL, technology stack (from network-recon
+results), current mode. Do not execute ffuf, httpx, or nuclei commands inline.
 
 ### Host Enumeration (if domain environment suspected)
 
-STOP. Invoke **ad-discovery** via the Skill tool. Pass: target IP, domain name
-(from LDAP rootDSE or SMB discovery), any credentials.
-Do not execute netexec or ldapsearch commands inline.
+STOP. Route to **ad-discovery** — call `get_skill("ad-discovery")` and follow
+its instructions. Pass: target IP, domain name (from LDAP rootDSE or SMB
+discovery), any credentials. Do not execute netexec or ldapsearch commands
+inline.
 
 ### Update State
 
@@ -285,14 +301,14 @@ Based on recon results, categorize the attack surface:
 
 | Surface | Indicators | Action |
 |---------|-----------|--------|
-| Web application | HTTP/HTTPS, login forms, APIs | STOP. Invoke **web-discovery** via the Skill tool. |
-| Active Directory | LDAP (389/636), Kerberos (88), SMB domain | STOP. Invoke **ad-discovery** via the Skill tool. |
-| Containers / K8s | Docker API (2375), K8s API (6443/8443), kubelet (10250), etcd (2379), or inside a container | STOP. Invoke **container-escapes** via the Skill tool. |
+| Web application | HTTP/HTTPS, login forms, APIs | Route to **web-discovery** via `get_skill()` |
+| Active Directory | LDAP (389/636), Kerberos (88), SMB domain | Route to **ad-discovery** via `get_skill()` |
+| Containers / K8s | Docker API (2375), K8s API (6443/8443), kubelet (10250), etcd (2379), or inside a container | Route to **container-escapes** via `get_skill()` |
 | Database | MySQL (3306), MSSQL (1433), PostgreSQL (5432) | Direct DB testing |
 | Mail | SMTP (25/587), IMAP (143/993) | Credential attacks, phishing |
-| SMB vulnerability | SMB (445) + confirmed CVE (MS08-067, MS17-010, SMBGhost, MS09-050) | STOP. Invoke **smb-exploitation** via the Skill tool. |
+| SMB vulnerability | SMB (445) + confirmed CVE (MS08-067, MS17-010, SMBGhost, MS09-050) | Route to **smb-exploitation** via `get_skill()` |
 | File shares | SMB (445), NFS (2049) | Enumeration, sensitive files |
-| Remote access | SSH (22), RDP (3389), WinRM (5985) | STOP. Invoke **password-spraying** via the Skill tool. |
+| Remote access | SSH (22), RDP (3389), WinRM (5985) | Route to **password-spraying** via `get_skill()` |
 | Custom services | Non-standard ports | Manual investigation |
 
 **In guided mode**: Present the attack surface map and ask which paths to
@@ -310,23 +326,24 @@ Route to discovery skills based on attack surface. Pass along:
 
 ### Web Applications
 
-STOP. Invoke **web-discovery** via the Skill tool. Pass: target URL,
-technology stack, current mode, any credentials.
-Do not execute ffuf, httpx, or nuclei commands inline.
+STOP. Route to **web-discovery** — call `get_skill("web-discovery")` and follow
+its instructions. Pass: target URL, technology stack, current mode, any
+credentials. Do not execute ffuf, httpx, or nuclei commands inline.
 
 ### Active Directory
 
-STOP. Invoke **ad-discovery** via the Skill tool. Pass: DC IP, domain name,
-any credentials, current mode.
+STOP. Route to **ad-discovery** — call `get_skill("ad-discovery")` and follow
+its instructions. Pass: DC IP, domain name, any credentials, current mode.
 Do not execute netexec, ldapsearch, or bloodhound commands inline.
 
 ### Credential Attacks
 
 For services with authentication (SSH, RDP, SMB, web login):
 
-STOP. Invoke **password-spraying** via the Skill tool. Pass: target IP,
-service type(s), any known usernames and passwords, current mode.
-Do not execute netexec or hydra commands inline.
+STOP. Route to **password-spraying** — call `get_skill("password-spraying")`
+and follow its instructions. Pass: target IP, service type(s), any known
+usernames and passwords, current mode. Do not execute netexec or hydra commands
+inline.
 
 ## Step 5: Vulnerability Chaining
 
@@ -338,8 +355,8 @@ analyze the Pivot Map to chain vulnerabilities for maximum impact.
 Think through these chains systematically:
 
 **Direct Access (no credentials needed):**
-- SMB vulnerability confirmed → invoke **smb-exploitation** via Skill tool → SYSTEM shell
-- SMB exploitation → SYSTEM → invoke **credential-dumping** via Skill tool → lateral movement
+- SMB vulnerability confirmed → route to **smb-exploitation** via `get_skill()` → SYSTEM shell
+- SMB exploitation → SYSTEM → route to **credential-dumping** via `get_skill()` → lateral movement
 
 **Information → Access:**
 - LFI reads config → credentials → database/service access
@@ -379,8 +396,8 @@ Common chains that produce shell access on a host:
 > Do NOT run `sudo -l`, `find -perm -4000`, `whoami /priv`, `net user`, or any
 > host enumeration commands inline. Route:
 >
-> - Linux target → STOP. Invoke **linux-discovery** via the Skill tool.
-> - Windows target → STOP. Invoke **windows-discovery** via the Skill tool.
+> - Linux target → STOP. Route to **linux-discovery** via `get_skill("linux-discovery")`.
+> - Windows target → STOP. Route to **windows-discovery** via `get_skill("windows-discovery")`.
 >
 > Pass: target hostname/IP, current user, access method (specify: interactive
 > reverse shell on port X, SSH session, WinRM, etc.), current mode, any
@@ -397,14 +414,14 @@ Common chains that produce shell access on a host:
 - Service account → Kerberoasting → more credentials
 - Machine keys from IIS → ViewState RCE on other IIS sites
 - Database link → linked server → second database
-- Host access on new subnet → invoke **pivoting-tunneling** via Skill tool → then invoke **network-recon** via Skill tool on internal network
+- Host access on new subnet → route to **pivoting-tunneling** via `get_skill()` → then route to **network-recon** via `get_skill()` on internal network
 
 **Privilege Escalation:**
 - Local admin → dump credentials → domain user
 - Domain user → Kerberoasting/ASREProasting → service accounts
 - Service account → delegation abuse → domain admin
 - ADCS misconfiguration → certificate forgery → domain admin
-- Containerized shell → invoke **container-escapes** via Skill tool → host access → invoke **linux-discovery** or **windows-discovery** via Skill tool
+- Containerized shell → route to **container-escapes** via `get_skill()` → host access → route to **linux-discovery** or **windows-discovery** via `get_skill()`
 
 ### Decision Logic
 
@@ -412,8 +429,8 @@ When reading state.md, the orchestrator should:
 
 1. **Check for unexploited vulns** — route to the appropriate technique skill
 2. **Check for shell access without root/SYSTEM** — if the Access section shows
-   a non-root shell on Linux or non-SYSTEM/non-admin shell on Windows, invoke
-   **linux-discovery** or **windows-discovery** via the Skill tool. Do not
+   a non-root shell on Linux or non-SYSTEM/non-admin shell on Windows, route to
+   **linux-discovery** or **windows-discovery** via `get_skill()`. Do not
    enumerate privilege escalation vectors inline.
 3. **Check for unchained access** — can existing access reach new targets?
 4. **Check credentials** — have all found credentials been tested against all
@@ -423,6 +440,22 @@ When reading state.md, the orchestrator should:
    previously failed technique?
 7. **Assess progress toward objectives** — are we closer to the goal defined
    in scope.md?
+8. **No hardcoded route matches** — if the scenario doesn't match any routing
+   above, use dynamic search:
+   a. Call `search_skills("description of what you need")` — results below 0.4
+      similarity are filtered automatically.
+   b. **Validate before loading**: Read the returned description for each
+      result. Does it match the current scenario? A high similarity score
+      does not guarantee relevance — the embedding model can confuse adjacent
+      techniques (e.g., SSRF/CSRF, IDOR/ACL-abuse). If the description
+      doesn't fit, skip it and check the next result or try a different query.
+   c. Load the validated skill with `get_skill()` and **re-check after loading**:
+      scan the skill's Prerequisites and Step 1 (Assess). If the skill expects
+      conditions that don't match the current engagement state (wrong OS,
+      wrong protocol, requires access you don't have), STOP — do not force-fit
+      the skill. Return to the search results or fall back to general methodology.
+   d. If no search result is relevant, proceed with general methodology and
+      note the coverage gap in `engagement/activity.md`.
 
 **In guided mode**: Present the chain analysis and recommend next steps.
 Show the reasoning: "We have SQLi on the web app. We could extract credentials
@@ -579,7 +612,8 @@ After presenting the engagement summary, suggest running a retrospective:
 > decisions, identifies payload and methodology gaps, and produces actionable
 > improvements to make the skills work better for you next time.
 
-If the user agrees, invoke **retrospective** via the Skill tool.
+If the user agrees, route to **retrospective** — call `get_skill("retrospective")`
+and follow its instructions.
 
 ## OPSEC Notes
 

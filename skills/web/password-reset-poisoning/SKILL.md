@@ -1,18 +1,25 @@
 ---
 name: password-reset-poisoning
 description: >
-  Exploit password reset vulnerabilities during authorized penetration testing.
-  Use when the user has found a password reset endpoint and wants to test for
-  token theft, host header poisoning, email injection, or weak token generation.
-  Also triggers on: "password reset poisoning", "password reset bypass",
-  "forgot password bypass", "reset token theft", "host header poisoning",
-  "password reset token", "account recovery bypass", "reset link manipulation",
-  "password reset email injection", "token prediction", "reset token leakage".
-  OPSEC: low — testing involves sending password reset requests with modified
-  headers, indistinguishable from normal reset flows. Tools: burpsuite, curl,
-  ffuf.
-  Do NOT use for 2FA bypass — use 2fa-bypass instead. Do NOT use for OAuth
-  account takeover — use oauth-attacks instead.
+  Exploit password reset vulnerabilities during authorized penetration
+  testing.
+keywords:
+  - password reset poisoning
+  - password reset bypass
+  - forgot password bypass
+  - reset token theft
+  - host header poisoning
+  - password reset token
+  - account recovery bypass
+  - reset link manipulation
+  - password reset email injection
+  - token prediction
+  - reset token leakage
+tools:
+  - burpsuite
+  - curl
+  - ffuf
+opsec: low
 ---
 
 # Password Reset Poisoning

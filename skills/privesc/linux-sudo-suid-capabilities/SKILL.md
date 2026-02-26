@@ -1,17 +1,34 @@
 ---
 name: linux-sudo-suid-capabilities
 description: >
-  Exploit sudo misconfigurations, SUID/SGID binaries, and Linux capabilities for
-  privilege escalation. Use this skill when the user has found sudo NOPASSWD entries,
-  SUID binaries, or capabilities on binaries, or says "exploit sudo", "abuse suid",
-  "gtfobins", "ld_preload", "capability escalation", "baron samedit", "sudo exploit".
-  Also triggers on: "sudo -l shows NOPASSWD", "found suid binary", "getcap shows
-  cap_setuid", "linux capabilities privesc", "polkit privesc", "CVE-2021-3560",
-  "CVE-2021-4034", "pwnkit", "polkit dbus bypass". OPSEC: low-medium (binary
-  execution, library loading create process artifacts). Tools: GTFOBins reference,
-  gcc, python3, getcap, strace, ltrace, dbus-send.
-  Do NOT use for cron/service/D-Bus abuse — use linux-cron-service-abuse instead.
-  Do NOT use for file permission/path abuse — use linux-file-path-abuse instead.
+  Exploit sudo misconfigurations, SUID/SGID binaries, and Linux capabilities
+  for privilege escalation.
+keywords:
+  - exploit sudo
+  - abuse suid
+  - gtfobins
+  - ld_preload
+  - capability escalation
+  - baron samedit
+  - sudo exploit
+  - sudo -l shows NOPASSWD
+  - found suid binary
+  - getcap shows cap_setuid
+  - linux capabilities privesc
+  - polkit privesc
+  - CVE-2021-3560
+  - CVE-2021-4034
+  - pwnkit
+  - polkit dbus bypass
+tools:
+  - GTFOBins reference
+  - gcc
+  - python3
+  - getcap
+  - strace
+  - ltrace
+  - dbus-send
+opsec: low
 ---
 
 # Linux Sudo, SUID, and Capabilities Exploitation

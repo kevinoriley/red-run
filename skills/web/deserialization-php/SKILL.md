@@ -2,17 +2,25 @@
 name: deserialization-php
 description: >
   Exploit PHP deserialization vulnerabilities during authorized penetration
-  testing. Use when the user has found a PHP unserialize endpoint, sees
-  serialized PHP objects (O: or a: prefix), or wants to exploit POP chains,
-  phar:// deserialization, or PHPGGC gadgets. Also triggers on: "php
-  deserialization", "php object injection", "unserialize exploit",
-  "__wakeup exploit", "__destruct exploit", "phar deserialization",
-  "phar polyglot", "PHPGGC", "Laravel deserialization", "PHP POP chain",
-  "php magic methods exploit", "type juggling auth bypass". OPSEC: medium —
-  payloads visible in request logs, phar files persist on disk. Tools:
-  phpggc, burpsuite, exiftool.
-  Do NOT use for Java deserialization — use deserialization-java instead.
-  Do NOT use for .NET deserialization — use deserialization-dotnet instead.
+  testing.
+keywords:
+  - php deserialization
+  - php object injection
+  - unserialize exploit
+  - __wakeup exploit
+  - __destruct exploit
+  - phar deserialization
+  - phar polyglot
+  - PHPGGC
+  - Laravel deserialization
+  - PHP POP chain
+  - php magic methods exploit
+  - type juggling auth bypass
+tools:
+  - phpggc
+  - burpsuite
+  - exiftool
+opsec: medium
 ---
 
 # PHP Deserialization

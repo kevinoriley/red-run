@@ -1,15 +1,26 @@
 ---
 name: windows-discovery
 description: >
-  Windows local privilege escalation enumeration and attack surface mapping. Use this
-  skill when the user has a shell on a Windows machine and needs to escalate privileges,
-  or says "enumerate privesc", "check for privilege escalation", "run winpeas",
-  "windows privesc", "local privesc", "check my privileges". Also triggers on:
-  "escalate on windows", "what can I escalate", "post-exploitation windows".
-  OPSEC: low-medium (enumeration tools create process artifacts).
-  Tools: WinPEAS, PowerUp, Seatbelt, Watson, WES-NG, PrivescCheck, accesschk.
-  Do NOT use for Linux privesc — use linux-discovery instead.
-  Do NOT use for AD-level attacks — use ad-discovery instead.
+  Windows local privilege escalation enumeration and attack surface mapping.
+keywords:
+  - enumerate privesc
+  - check for privilege escalation
+  - run winpeas
+  - windows privesc
+  - local privesc
+  - check my privileges
+  - escalate on windows
+  - what can I escalate
+  - post-exploitation windows
+tools:
+  - WinPEAS
+  - PowerUp
+  - Seatbelt
+  - Watson
+  - WES-NG
+  - PrivescCheck
+  - accesschk
+opsec: low
 ---
 
 # Windows Local Privilege Escalation Discovery

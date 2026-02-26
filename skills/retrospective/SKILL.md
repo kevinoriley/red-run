@@ -1,17 +1,18 @@
 ---
 name: retrospective
 description: >
-  Post-engagement lessons-learned retrospective. Reads the engagement directory,
-  analyzes skill routing decisions, identifies knowledge gaps and missing skills,
-  and produces an actionable improvement report. Use when the user asks for a
-  retrospective, lessons learned, engagement review, skill gaps analysis, or
-  post-engagement review. Also triggers on: "what went wrong", "what worked",
-  "review the engagement", "skill coverage audit", "how did the skills perform".
-  OPSEC: low — reads local files only, no target interaction.
-  Tools: none (file reads and analysis only).
-  Do NOT use during an active engagement — this is a post-mortem skill.
-  Do NOT use for formal finding writeups — this skill analyzes skill library
-  performance, not individual vulnerabilities.
+  Post-engagement lessons-learned retrospective. Reads the engagement
+  directory, analyzes skill routing decisions, identifies knowledge gaps and
+  missing skills, and produces an actionable improvement report.
+keywords:
+  - what went wrong
+  - what worked
+  - review the engagement
+  - skill coverage audit
+  - how did the skills perform
+tools:
+  - none (file reads and analysis only)
+opsec: low
 ---
 
 # Engagement Retrospective

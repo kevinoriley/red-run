@@ -1,15 +1,31 @@
 ---
 name: windows-uac-bypass
 description: >
-  Bypass Windows User Account Control to escalate from medium to high integrity.
-  Use this skill when the user is a local administrator but running at medium integrity,
-  or says "bypass UAC", "UAC bypass", "get high integrity", "fodhelper", "eventvwr bypass",
-  "silentcleanup", "always install elevated", "COM hijacking", "autorun privesc".
-  Also triggers on: "medium to high integrity", "elevation bypass", "auto-elevate".
-  OPSEC: low-medium (registry writes + process creation, most cleanup automatically).
-  Tools: fodhelper, eventvwr, sdclt, cmstp, WSReset, UACMe, PowerUp, msfvenom (MSI).
-  Do NOT use for token impersonation — use windows-token-impersonation instead.
-  Do NOT use for kernel exploits — use windows-kernel-exploits instead.
+  Bypass Windows User Account Control to escalate from medium to high
+  integrity.
+keywords:
+  - bypass UAC
+  - UAC bypass
+  - get high integrity
+  - fodhelper
+  - eventvwr bypass
+  - silentcleanup
+  - always install elevated
+  - COM hijacking
+  - autorun privesc
+  - medium to high integrity
+  - elevation bypass
+  - auto-elevate
+tools:
+  - fodhelper
+  - eventvwr
+  - sdclt
+  - cmstp
+  - WSReset
+  - UACMe
+  - PowerUp
+  - msfvenom (MSI)
+opsec: low
 ---
 
 # Windows UAC Bypass

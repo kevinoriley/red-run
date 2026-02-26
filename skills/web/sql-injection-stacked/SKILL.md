@@ -2,16 +2,22 @@
 name: sql-injection-stacked
 description: >
   Guide stacked query SQL injection and second-order injection exploitation
-  during authorized penetration testing. Use when the user needs to execute
-  arbitrary SQL statements (INSERT, UPDATE, DELETE, command execution) via
-  semicolons, or when a stored payload triggers in a different query context.
-  Also triggers on: "stacked queries", "multi-statement injection",
-  "xp_cmdshell", "COPY TO PROGRAM", "command execution via SQL", "second-order
-  SQLi", "stored injection", "data modification via SQLi", "write webshell SQL",
-  "OS command from database". OPSEC: high — modifies data, enables command
-  execution, triggers DBA alerts and EDR. Tools: sqlmap, burpsuite.
-  Do NOT use for read-only data extraction — use sql-injection-union,
-  sql-injection-error, or sql-injection-blind instead.
+  during authorized penetration testing.
+keywords:
+  - stacked queries
+  - multi-statement injection
+  - xp_cmdshell
+  - COPY TO PROGRAM
+  - command execution via SQL
+  - second-order SQLi
+  - stored injection
+  - data modification via SQLi
+  - write webshell SQL
+  - OS command from database
+tools:
+  - sqlmap
+  - burpsuite
+opsec: high
 ---
 
 # Stacked Queries & Second-Order SQL Injection

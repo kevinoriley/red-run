@@ -1,16 +1,24 @@
 ---
 name: password-spraying
 description: >
-  Performs password spraying against Active Directory accounts with lockout-safe
-  techniques. Use when you have a username list and need to find valid domain
-  credentials, or when initial access requires credential guessing. Triggers on:
-  "password spray", "spray passwords", "domain spray", "brute force domain",
-  "find valid credentials", "lockout policy", "kerbrute spray", "credential
-  guessing". OPSEC: high (failed logons generate Event 4625/4771; risk of
-  account lockout if policy not respected). Tools: kerbrute, netexec, SpearSpray,
-  DomainPasswordSpray, spray.sh.
-  Do NOT use for hash-based authentication — use **pass-the-hash** instead.
-  Do NOT use for offline hash cracking — use **kerberos-roasting** instead.
+  Performs password spraying against Active Directory accounts with
+  lockout-safe techniques.
+keywords:
+  - password spray
+  - spray passwords
+  - domain spray
+  - brute force domain
+  - find valid credentials
+  - lockout policy
+  - kerbrute spray
+  - credential guessing
+tools:
+  - kerbrute
+  - netexec
+  - SpearSpray
+  - DomainPasswordSpray
+  - spray.sh
+opsec: high
 ---
 
 # Password Spraying

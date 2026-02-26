@@ -1,19 +1,23 @@
 ---
 name: ldap-injection
 description: >
-  Exploit LDAP injection vulnerabilities during authorized penetration testing.
-  Use when the user has found an input processed by an LDAP directory (login form,
-  search field, user lookup, group membership check) or when testing applications
-  backed by Active Directory or OpenLDAP. Also triggers on: "ldap injection",
-  "ldap filter injection", "ldap auth bypass", "ldap wildcard", "ldap blind
-  extraction", "ldap search injection", "active directory login bypass",
-  "ldap enumeration via injection", "ldap attribute extraction". OPSEC: medium —
-  queries execute server-side, visible in LDAP server logs and application logs.
-  Malformed filters may generate errors logged by directory services.
-  Tools: ldapsearch, burpsuite, curl.
-  Do NOT use for SQL injection — use sql-injection-* skills instead.
-  Do NOT use for NoSQL injection — use nosql-injection instead.
-  Do NOT use for AD enumeration with valid credentials — use ad-discovery instead.
+  Exploit LDAP injection vulnerabilities during authorized penetration
+  testing.
+keywords:
+  - ldap injection
+  - ldap filter injection
+  - ldap auth bypass
+  - ldap wildcard
+  - ldap blind extraction
+  - ldap search injection
+  - active directory login bypass
+  - ldap enumeration via injection
+  - ldap attribute extraction
+tools:
+  - ldapsearch
+  - burpsuite
+  - curl
+opsec: medium
 ---
 
 # LDAP Injection

@@ -2,15 +2,26 @@
 name: ad-discovery
 description: >
   Enumerates Active Directory domains and maps attack surface for penetration
-  testing. Use when targeting an AD environment, starting a domain assessment,
-  or when the orchestrator identifies AD services (port 88, 389, 445, 636).
-  Triggers on: "enumerate domain", "AD recon", "bloodhound", "domain enumeration",
-  "active directory", "find attack paths", "domain controllers", "kerberos".
-  OPSEC: medium (LDAP queries, SMB connections, BloodHound collection generate
-  logs). Tools: bloodhound-python, rusthound-ce, netexec, certipy, bloodyAD,
-  kerbrute, Impacket, PowerView.
-  Do NOT use for web application testing — use **web-discovery** instead.
-  Do NOT use for cloud-only Azure AD/Entra ID — use cloud-specific skills.
+  testing.
+keywords:
+  - enumerate domain
+  - AD recon
+  - bloodhound
+  - domain enumeration
+  - active directory
+  - find attack paths
+  - domain controllers
+  - kerberos
+tools:
+  - bloodhound-python
+  - rusthound-ce
+  - netexec
+  - certipy
+  - bloodyAD
+  - kerbrute
+  - Impacket
+  - PowerView
+opsec: medium
 ---
 
 # AD Attack Discovery

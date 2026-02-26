@@ -2,16 +2,22 @@
 name: ssti-twig
 description: >
   Guide Twig/PHP server-side template injection exploitation during authorized
-  penetration testing. Use when the user has confirmed SSTI in a PHP application
-  (Symfony, Laravel, CraftCMS) and needs to escalate to RCE, file read, or
-  information disclosure. Also triggers on: "Twig SSTI", "PHP template injection",
-  "Smarty SSTI", "Blade SSTI", "Latte SSTI", "{{7*'7'}} returns 49", "Symfony
-  template injection", "Laravel template injection", "PHP sandbox escape". OPSEC:
-  medium — payloads execute server-side, visible in application logs. Tools:
-  burpsuite, sstimap, tplmap.
-  Do NOT use for Python template injection (Jinja2) — use ssti-jinja2 instead.
-  Do NOT use for Java template injection (Freemarker) — use ssti-freemarker
-  instead.
+  penetration testing.
+keywords:
+  - Twig SSTI
+  - PHP template injection
+  - Smarty SSTI
+  - Blade SSTI
+  - Latte SSTI
+  - "{{7*'7'}} returns 49"
+  - Symfony template injection
+  - Laravel template injection
+  - PHP sandbox escape
+tools:
+  - burpsuite
+  - sstimap
+  - tplmap
+opsec: medium
 ---
 
 # Twig / PHP SSTI

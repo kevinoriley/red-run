@@ -5,20 +5,33 @@ description: >
   Covers ESC9 (no security extension), ESC10 (weak certificate mapping),
   ESC12-15 (YubiHSM, issuance policy, altSecIdentities, application policies),
   Golden Certificate (forge with stolen CA key), certificate theft
-  (DPAPI/CAPI/CNG), and account persistence via certificate mapping. Use when
-  you have CA access or domain admin and want persistence, when you find weak
-  certificate mapping settings, or when you need to steal existing certificates.
-  Triggers on: "ESC9", "ESC10", "ESC12", "ESC13", "ESC14", "ESC15", "golden
-  certificate", "certificate theft", "certificate persistence", "certificate
-  mapping", "altSecurityIdentities", "DPAPI certificate", "forge certificate",
-  "CA private key", "KB5014754", "strong certificate binding",
-  "StrongCertificateBindingEnforcement". OPSEC: varies (certificate theft=low,
-  golden cert=medium, relay-dependent=high). Tools: Certipy, Certify.exe,
-  ForgeCert, mimikatz, SharpDPAPI, Rubeus.
-  Do NOT use for template misconfiguration (SAN/EKU abuse) — use
-  **adcs-template-abuse** (ESC1/2/3/6).
-  Do NOT use for template/CA ACL abuse or relay — use **adcs-access-and-relay**
-  (ESC4/5/7/8/11).
+  (DPAPI/CAPI/CNG), and account persistence via certificate mapping.
+keywords:
+  - ESC9
+  - ESC10
+  - ESC12
+  - ESC13
+  - ESC14
+  - ESC15
+  - golden certificate
+  - certificate theft
+  - certificate persistence
+  - certificate mapping
+  - altSecurityIdentities
+  - DPAPI certificate
+  - forge certificate
+  - CA private key
+  - KB5014754
+  - strong certificate binding
+  - StrongCertificateBindingEnforcement
+tools:
+  - Certipy
+  - Certify.exe
+  - ForgeCert
+  - mimikatz
+  - SharpDPAPI
+  - Rubeus
+opsec: medium
 ---
 
 # ADCS Persistence & Certificate Mapping Attacks

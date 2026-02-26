@@ -2,16 +2,24 @@
 name: nosql-injection
 description: >
   Guide NoSQL injection exploitation during authorized penetration testing.
-  Use when the user has found an input processed by a NoSQL database (MongoDB,
-  CouchDB, etc.) or when testing for NoSQL injection in web applications and
-  APIs. Also triggers on: "nosql injection", "mongodb injection", "nosqli",
-  "operator injection", "$ne injection", "$where injection", "mongo auth
-  bypass", "nosql auth bypass", "couchdb injection", "mongoose injection",
-  "graphql nosql", "nosql blind extraction". OPSEC: medium — queries execute
-  server-side, visible in database logs and application logs. Tools: burpsuite
-  (NoSQLi Scanner extension), nosqlmap, nosqli.
-  Do NOT use for SQL injection — use sql-injection-* skills instead. Do NOT use
-  for LDAP injection — use ldap-injection instead.
+keywords:
+  - nosql injection
+  - mongodb injection
+  - nosqli
+  - operator injection
+  - $ne injection
+  - $where injection
+  - mongo auth bypass
+  - nosql auth bypass
+  - couchdb injection
+  - mongoose injection
+  - graphql nosql
+  - nosql blind extraction
+tools:
+  - burpsuite (NoSQLi Scanner extension)
+  - nosqlmap
+  - nosqli
+opsec: medium
 ---
 
 # NoSQL Injection

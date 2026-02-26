@@ -1,16 +1,27 @@
 ---
 name: web-discovery
 description: >
-  Discover web application injection points and route to the correct exploitation
-  skill during authorized penetration testing. Use when the user has a web target
-  and needs to find vulnerabilities, or when starting a web application
-  assessment. Also triggers on: "find vulns", "fuzz the target", "test for
-  injection", "parameter discovery", "content discovery", "web recon", "find
-  hidden parameters", "test this endpoint", "what's vulnerable", "start web
-  testing", "web app pentest", "hunt for bugs". OPSEC: low — mostly passive
-  discovery and lightweight fuzzing. Tools: ffuf, arjun, paramspider, burpsuite.
-  Do NOT use for exploiting a known vulnerability — route to the specific
-  technique skill instead (e.g., sql-injection-union, xss-reflected, ssti-jinja2).
+  Discover web application injection points and route to the correct
+  exploitation skill during authorized penetration testing.
+keywords:
+  - find vulns
+  - fuzz the target
+  - test for injection
+  - parameter discovery
+  - content discovery
+  - web recon
+  - find hidden parameters
+  - test this endpoint
+  - what's vulnerable
+  - start web testing
+  - web app pentest
+  - hunt for bugs
+tools:
+  - ffuf
+  - arjun
+  - paramspider
+  - burpsuite
+opsec: low
 ---
 
 # Web Vulnerability Discovery

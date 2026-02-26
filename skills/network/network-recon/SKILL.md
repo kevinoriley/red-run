@@ -1,19 +1,34 @@
 ---
 name: network-recon
 description: >
-  Network reconnaissance, host discovery, port scanning, and service enumeration.
-  Use this skill when the user needs to scan a network, enumerate hosts, discover
-  services, or perform initial recon on a target. Triggers on: "scan this network",
-  "nmap", "port scan", "enumerate services", "host discovery", "recon this target",
-  "what's running on this host", "service enumeration", "network scan", "find open
-  ports", "scan this IP", "scan this subnet", "enumerate this box". Also triggers
-  when the orchestrator needs initial network-level recon before routing to
-  web-discovery or ad-discovery. OPSEC: configurable — passive (DNS/Shodan) through
-  aggressive (full port + service scan). Tools: nmap, masscan, Naabu, Shodan, nuclei,
-  httpx, NetExec, enum4linux-ng, snmpwalk, onesixtyone.
-  Do NOT use for web application testing — use web-discovery after identifying HTTP services.
-  Do NOT use for AD-specific enumeration — use ad-discovery after identifying domain services.
-  Do NOT use for pivoting/tunneling — use pivoting-tunneling instead.
+  Network reconnaissance, host discovery, port scanning, and service
+  enumeration.
+keywords:
+  - scan this network
+  - nmap
+  - port scan
+  - enumerate services
+  - host discovery
+  - recon this target
+  - what's running on this host
+  - service enumeration
+  - network scan
+  - find open ports
+  - scan this IP
+  - scan this subnet
+  - enumerate this box
+tools:
+  - nmap
+  - masscan
+  - Naabu
+  - Shodan
+  - nuclei
+  - httpx
+  - NetExec
+  - enum4linux-ng
+  - snmpwalk
+  - onesixtyone
+opsec: medium
 ---
 
 # Network Reconnaissance

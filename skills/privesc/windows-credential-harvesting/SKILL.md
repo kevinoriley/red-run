@@ -1,15 +1,28 @@
 ---
 name: windows-credential-harvesting
 description: >
-  Harvest stored credentials from a Windows system for privilege escalation or lateral
-  movement. Use this skill when the user has local access and needs to find passwords,
-  hashes, tokens, or secrets stored on the system. Also triggers on: "credential harvesting",
-  "DPAPI", "HiveNightmare", "stored credentials", "password hunting", "credential vault",
-  "browser passwords", "registry passwords", "cmdkey", "SharpDPAPI", "unattend.xml".
-  OPSEC: low-medium (file reads and registry queries; DPAPI/SAM extraction is medium).
-  Tools: SharpDPAPI, mimikatz, SharpChrome, SessionGopher, dpapi.py, secretsdump.py.
-  Do NOT use for AD-level credential extraction (DCSync, NTDS, LAPS) — use credential-dumping instead.
-  Do NOT use for token impersonation — use windows-token-impersonation instead.
+  Harvest stored credentials from a Windows system for privilege escalation or
+  lateral movement.
+keywords:
+  - credential harvesting
+  - DPAPI
+  - HiveNightmare
+  - stored credentials
+  - password hunting
+  - credential vault
+  - browser passwords
+  - registry passwords
+  - cmdkey
+  - SharpDPAPI
+  - unattend.xml
+tools:
+  - SharpDPAPI
+  - mimikatz
+  - SharpChrome
+  - SessionGopher
+  - dpapi.py
+  - secretsdump.py
+opsec: low
 ---
 
 # Windows Credential Harvesting

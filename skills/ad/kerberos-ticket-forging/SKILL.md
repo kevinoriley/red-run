@@ -2,19 +2,28 @@
 name: kerberos-ticket-forging
 description: >
   Forges Kerberos tickets for domain persistence and privilege escalation.
-  Covers Golden Ticket (krbtgt hash → forged TGT), Silver Ticket (service
-  hash → forged TGS), Diamond Ticket (decrypt/modify/re-encrypt legitimate
-  TGT for stealth), Sapphire Ticket (U2U PAC swap), and Pass-the-Ticket
-  injection. Use when you have krbtgt or service account key material and
-  need domain-wide access or persistence. Triggers on: "golden ticket",
-  "silver ticket", "diamond ticket", "sapphire ticket", "forge ticket",
-  "forged TGT", "forged TGS", "krbtgt hash", "ticket forging", "ticketer.py",
-  "kerberos persistence", "domain persistence".
-  OPSEC: golden=high (detectable 4768 gap), silver=medium, diamond=low
-  (legitimate TGT flow), sapphire=low (U2U fingerprint but rare detection).
-  Tools: Impacket (ticketer.py), Rubeus, mimikatz.
-  Do NOT use for delegation abuse — use **kerberos-delegation**.
-  Do NOT use for lateral movement with existing hashes — use **pass-the-hash**.
+  Covers Golden Ticket (krbtgt hash → forged TGT), Silver Ticket (service hash
+  → forged TGS), Diamond Ticket (decrypt/modify/re-encrypt legitimate TGT for
+  stealth), Sapphire Ticket (U2U PAC swap), and Pass-the-Ticket injection.
+keywords:
+  - golden ticket
+  - silver ticket
+  - diamond ticket
+  - sapphire ticket
+  - forge ticket
+  - forged TGT
+  - forged TGS
+  - krbtgt hash
+  - ticket forging
+  - ticketer.py
+  - kerberos persistence
+  - domain persistence
+  - you have krbtgt or service account key material and need domain-wide access or persistence
+tools:
+  - Impacket (ticketer.py)
+  - Rubeus
+  - mimikatz
+opsec: medium
 ---
 
 # Kerberos Ticket Forging

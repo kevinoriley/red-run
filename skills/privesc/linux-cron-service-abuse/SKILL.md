@@ -1,16 +1,25 @@
 ---
 name: linux-cron-service-abuse
 description: >
-  Exploit cron jobs, systemd timers/services, D-Bus services, and Unix sockets for
-  privilege escalation. Use this skill when the user has found writable cron scripts,
-  wildcard injection in scheduled tasks, writable systemd unit files, exploitable D-Bus
-  services, or writable Unix sockets. Also triggers on: "cron privesc", "wildcard
-  injection", "systemd abuse", "dbus exploit", "pspy found root process",
-  "writable cron script", "polkit bypass", "pwnkit". OPSEC: medium (modifying
-  scheduled tasks and services creates artifacts, D-Bus calls may be logged).
-  Tools: pspy, busctl, gdbus, dbus-send, systemctl, crontab.
-  Do NOT use for sudo/SUID/capability abuse — use linux-sudo-suid-capabilities instead.
-  Do NOT use for file permission/path abuse — use linux-file-path-abuse instead.
+  Exploit cron jobs, systemd timers/services, D-Bus services, and Unix sockets
+  for privilege escalation.
+keywords:
+  - cron privesc
+  - wildcard injection
+  - systemd abuse
+  - dbus exploit
+  - pspy found root process
+  - writable cron script
+  - polkit bypass
+  - pwnkit
+tools:
+  - pspy
+  - busctl
+  - gdbus
+  - dbus-send
+  - systemctl
+  - crontab
+opsec: medium
 ---
 
 # Linux Cron, Service, and D-Bus Exploitation

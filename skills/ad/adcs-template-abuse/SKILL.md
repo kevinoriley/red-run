@@ -4,17 +4,27 @@ description: >
   Exploits misconfigured AD CS certificate templates to impersonate any domain
   user via SAN manipulation or enrollment agent abuse. Covers ESC1 (enrollee
   supplies subject), ESC2 (any-purpose/no EKU), ESC3 (enrollment agent), ESC6
-  (EDITF_ATTRIBUTESUBJECTALTNAME2 CA flag). Use when Certipy/Certify finds
-  vulnerable templates, when you have enrollment rights on a template with
-  ENROLLEE_SUPPLIES_SUBJECT, or when the CA has the EDITF flag enabled.
-  Triggers on: "ESC1", "ESC2", "ESC3", "ESC6", "certificate template",
-  "ADCS escalation", "SAN abuse", "enrollment agent", "certipy req", "Certify
-  request", "ENROLLEE_SUPPLIES_SUBJECT", "any purpose EKU", "certificate
-  impersonation". OPSEC: medium (certificate enrollment logged, but blends with
-  normal enrollment traffic). Tools: Certipy, Certify.exe, Rubeus, certutil.
-  Do NOT use for template/CA ACL abuse — use **adcs-access-and-relay** (ESC4/5/7).
-  Do NOT use for NTLM relay to enrollment — use **adcs-access-and-relay** (ESC8/11).
-  Do NOT use for certificate theft or golden certs — use **adcs-persistence**.
+  (EDITF_ATTRIBUTESUBJECTALTNAME2 CA flag).
+keywords:
+  - ESC1
+  - ESC2
+  - ESC3
+  - ESC6
+  - certificate template
+  - ADCS escalation
+  - SAN abuse
+  - enrollment agent
+  - certipy req
+  - Certify request
+  - ENROLLEE_SUPPLIES_SUBJECT
+  - any purpose EKU
+  - certificate impersonation
+tools:
+  - Certipy
+  - Certify.exe
+  - Rubeus
+  - certutil
+opsec: medium
 ---
 
 # ADCS Template Abuse (ESC1 / ESC2 / ESC3 / ESC6)

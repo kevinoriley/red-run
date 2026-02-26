@@ -2,16 +2,25 @@
 name: csrf
 description: >
   Exploit Cross-Site Request Forgery (CSRF) vulnerabilities during authorized
-  penetration testing. Use when the user has found a state-changing endpoint
-  (password change, email update, fund transfer, admin action) and wants to test
-  for CSRF or build a PoC. Also triggers on: "csrf", "cross-site request
-  forgery", "csrf bypass", "csrf token bypass", "samesite bypass", "json csrf",
-  "csrf poc", "anti-csrf bypass", "state-changing attack", "forged request",
-  "csrf token", "login csrf", "cross-site request". OPSEC: low — testing
-  involves sending normal HTTP requests with modified or missing tokens; PoC
-  pages are hosted externally. Tools: burpsuite (CSRF PoC generator), curl.
-  Do NOT use for cross-origin data theft — use cors-misconfiguration instead.
-  Do NOT use for XSS — use xss-reflected, xss-stored, or xss-dom instead.
+  penetration testing.
+keywords:
+  - csrf
+  - cross-site request forgery
+  - csrf bypass
+  - csrf token bypass
+  - samesite bypass
+  - json csrf
+  - csrf poc
+  - anti-csrf bypass
+  - state-changing attack
+  - forged request
+  - csrf token
+  - login csrf
+  - cross-site request
+tools:
+  - burpsuite (CSRF PoC generator)
+  - curl
+opsec: low
 ---
 
 # CSRF (Cross-Site Request Forgery)

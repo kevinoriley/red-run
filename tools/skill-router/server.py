@@ -52,7 +52,12 @@ def create_server(skills_dir: Path, db_dir: Path) -> FastMCP:
     collection = _get_collection(db_dir)
 
     @mcp.tool()
-    def search_skills(query: str, n: int = 5, category: str | None = None) -> str:
+    def search_skills(
+        query: str,
+        n: int = 5,
+        category: str | None = None,
+        min_similarity: float = 0.4,
+    ) -> str:
         """Search for pentesting skills by describing a scenario or technique.
 
         Args:
@@ -62,6 +67,8 @@ def create_server(skills_dir: Path, db_dir: Path) -> FastMCP:
                    "Kerberos ticket forging for domain persistence").
             n: Maximum number of results to return (default 5).
             category: Optional filter by category (web, ad, privesc, network).
+            min_similarity: Minimum cosine similarity threshold (0.0-1.0).
+                           Results below this are excluded. Default 0.4.
         """
         where = {"category": category} if category else None
         results = collection.query(
@@ -81,11 +88,17 @@ def create_server(skills_dir: Path, db_dir: Path) -> FastMCP:
             results["distances"][0],
         ):
             similarity = 1 - distance  # cosine distance → similarity
+            if similarity < min_similarity:
+                continue
+            opsec = metadata.get("opsec", "unknown")
             lines.append(
-                f"**{id_}** ({metadata['category']}) "
+                f"**{id_}** ({metadata['category']}, opsec: {opsec}) "
                 f"[similarity: {similarity:.2f}]\n"
                 f"  {metadata['description'][:200]}"
             )
+
+        if not lines:
+            return f"No skills found above similarity threshold ({min_similarity})."
         return "\n\n".join(lines)
 
     @mcp.tool()

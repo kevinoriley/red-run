@@ -2,17 +2,26 @@
 name: file-upload-bypass
 description: >
   Guide file upload restriction bypass during authorized penetration testing.
-  Use when the user has found a file upload endpoint and wants to bypass
-  validation to achieve code execution, or when testing upload functionality
-  for vulnerabilities. Also triggers on: "file upload bypass", "upload shell",
-  "webshell upload", "extension bypass", "upload filter bypass", "magic byte
-  bypass", "content-type bypass", "upload RCE", "unrestricted file upload",
-  "image upload exploit", "upload polyglot", ".htaccess upload", "web.config
-  upload", "double extension". OPSEC: medium — uploaded files persist on disk,
-  visible in web logs and file system. Tools: burpsuite, exiftool, ffuf.
-  Do NOT use for command injection without upload — use command-injection instead.
-  Do NOT use for LFI/RFI without upload — use lfi instead. Do NOT use for
-  deserialization — use deserialization-* skills instead.
+keywords:
+  - file upload bypass
+  - upload shell
+  - webshell upload
+  - extension bypass
+  - upload filter bypass
+  - magic byte bypass
+  - content-type bypass
+  - upload RCE
+  - unrestricted file upload
+  - image upload exploit
+  - upload polyglot
+  - .htaccess upload
+  - web.config upload
+  - double extension
+tools:
+  - burpsuite
+  - exiftool
+  - ffuf
+opsec: medium
 ---
 
 # File Upload Bypass

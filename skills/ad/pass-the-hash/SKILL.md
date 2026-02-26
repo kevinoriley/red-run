@@ -2,16 +2,27 @@
 name: pass-the-hash
 description: >
   Authenticates to AD services using NTLM hashes, AES keys, or Kerberos
-  tickets without cracking passwords. Covers Pass-the-Hash, Over-Pass-the-Hash,
-  Pass-the-Key, and Pass-the-Ticket for lateral movement. Use when you have
-  credential material (NTLM hash, AES key, or Kerberos ticket) and need to
-  move laterally or access remote services. Triggers on: "pass the hash", "PTH",
-  "over-pass-the-hash", "pass the key", "pass the ticket", "NTLM hash lateral",
-  "use hash to authenticate", "lateral movement", "ptt", "opth", "ccache".
-  OPSEC: varies (PTH=high/NTLM-based; OPTH with AES=low/blends with normal
-  Kerberos; PTT=low). Tools: Impacket, Rubeus, mimikatz, netexec, evil-winrm.
-  Do NOT use for hash cracking — use **kerberos-roasting** instead.
-  Do NOT use for forging tickets from scratch — use **kerberos-ticket-forging**.
+  tickets without cracking passwords. Covers Pass-the-Hash,
+  Over-Pass-the-Hash, Pass-the-Key, and Pass-the-Ticket for lateral movement.
+keywords:
+  - pass the hash
+  - PTH
+  - over-pass-the-hash
+  - pass the key
+  - pass the ticket
+  - NTLM hash lateral
+  - use hash to authenticate
+  - lateral movement
+  - ptt
+  - opth
+  - ccache
+tools:
+  - Impacket
+  - Rubeus
+  - mimikatz
+  - netexec
+  - evil-winrm
+opsec: medium
 ---
 
 # Pass the Hash / Over-Pass-the-Hash / Pass the Key / Pass the Ticket

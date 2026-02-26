@@ -2,20 +2,33 @@
 name: adcs-access-and-relay
 description: >
   Exploits ADCS through ACL abuse on templates/CA objects and NTLM relay to
-  enrollment endpoints. Covers ESC4 (template ACL → modify to ESC1), ESC5
-  (PKI object ACLs), ESC7 (ManageCA/ManageCertificates abuse), ESC8 (NTLM
-  relay to HTTP enrollment), ESC11 (NTLM relay to ICPR RPC). Use when you
-  have write access to certificate templates or CA objects, ManageCA or
-  ManageCertificates permissions, or can coerce NTLM auth from a privileged
-  account. Triggers on: "ESC4", "ESC5", "ESC7", "ESC8", "ESC11", "template
-  ACL", "ManageCA", "ManageCertificates", "NTLM relay certificate", "relay
-  to AD CS", "certsrv relay", "web enrollment relay", "ICPR relay",
-  "certificate template permission", "modifyCertTemplate". OPSEC: medium
-  (ESC4/5/7 ACL abuse) to high (ESC8/11 NTLM relay). Tools: Certipy,
-  Certify.exe, ntlmrelayx.py, modifyCertTemplate.py, PetitPotam, Rubeus.
-  Do NOT use for template misconfiguration exploitation (SAN/EKU abuse) —
-  use **adcs-template-abuse** (ESC1/2/3/6).
-  Do NOT use for certificate theft or persistence — use **adcs-persistence**.
+  enrollment endpoints. Covers ESC4 (template ACL → modify to ESC1), ESC5 (PKI
+  object ACLs), ESC7 (ManageCA/ManageCertificates abuse), ESC8 (NTLM relay to
+  HTTP enrollment), ESC11 (NTLM relay to ICPR RPC).
+keywords:
+  - ESC4
+  - ESC5
+  - ESC7
+  - ESC8
+  - ESC11
+  - template ACL
+  - ManageCA
+  - ManageCertificates
+  - NTLM relay certificate
+  - relay to AD CS
+  - certsrv relay
+  - web enrollment relay
+  - ICPR relay
+  - certificate template permission
+  - modifyCertTemplate
+tools:
+  - Certipy
+  - Certify.exe
+  - ntlmrelayx.py
+  - modifyCertTemplate.py
+  - PetitPotam
+  - Rubeus
+opsec: medium
 ---
 
 # ADCS Access Control & Relay Attacks (ESC4 / ESC5 / ESC7 / ESC8 / ESC11)

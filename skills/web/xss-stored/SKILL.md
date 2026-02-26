@@ -2,15 +2,22 @@
 name: xss-stored
 description: >
   Guide stored (persistent) and blind XSS exploitation during authorized
-  penetration testing. Use when the user has found input that persists and
-  renders on subsequent page loads, or when testing for blind XSS in admin
-  panels, support tickets, or log viewers. Also triggers on: "stored XSS",
-  "persistent XSS", "blind XSS", "XSS in comments", "XSS in profile",
-  "XSS Hunter", "payload persists", "XSS in user-generated content",
-  "admin panel XSS". OPSEC: medium — payload is stored server-side and may be
-  visible to other users or admins. Tools: burpsuite, XSS Hunter, ezXSS.
-  Do NOT use for reflected XSS (payload in URL, not stored) — use xss-reflected
-  instead. Do NOT use for DOM-based XSS — use xss-dom instead.
+  penetration testing.
+keywords:
+  - stored XSS
+  - persistent XSS
+  - blind XSS
+  - XSS in comments
+  - XSS in profile
+  - XSS Hunter
+  - payload persists
+  - XSS in user-generated content
+  - admin panel XSS
+tools:
+  - burpsuite
+  - XSS Hunter
+  - ezXSS
+opsec: medium
 ---
 
 # Stored & Blind XSS
