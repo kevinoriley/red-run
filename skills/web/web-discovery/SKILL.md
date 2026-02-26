@@ -741,6 +741,14 @@ exploitation commands inline — even if the technique seems simple.
 | Rate limit bypassed via HTTP/2 multiplexed parallel requests | **race-condition** (rate limit bypass) |
 | Multi-step operation with observable delay between check and action | **race-condition** (TOCTOU) |
 
+### AJP / Apache JServ Protocol
+
+| Response Pattern | Route To |
+|---|---|
+| Port 8009 open, AJP service detected | **ajp-ghostcat** |
+| Tomcat < 9.0.31 / 8.5.51 / 7.0.100 with AJP port open | **ajp-ghostcat** (Ghostcat file read) |
+| Tomcat Manager 403/401 + AJP port open | **ajp-ghostcat** (AJP proxy bypass) |
+
 Update `engagement/state.md` with any new targets, confirmed vulns, or blocked
 techniques before routing.
 
