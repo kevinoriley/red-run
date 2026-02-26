@@ -46,6 +46,8 @@ Check if the user or orchestrator has set a mode:
   Present findings after each phase. Ask which services to dig into.
 - **Autonomous**: Run full recon pipeline, enumerate all services, present complete
   attack surface with routing recommendations. Only pause for aggressive/noisy scans.
+  **Autonomous does NOT mean "run other tools while waiting for nmap."** The nmap
+  handoff is a hard stop — see "Nmap Is the Gate" below.
 
 If unclear, default to guided.
 
@@ -176,8 +178,26 @@ produces unreliable results (connect scans miss filtered ports, no OS detection,
 no raw-socket NSE scripts). Always write a handoff script and wait for the user
 to run it and confirm completion before proceeding.
 
+### Nmap Is the Gate — Hard Stop
+
+**After writing the nmap handoff script, STOP. Do nothing else until the user
+confirms the scan is complete and output files exist.** No httpx, no curl, no
+netexec, no nuclei, no "quick triage" — nothing touches the network until nmap
+results are parsed. This applies in both guided and autonomous modes.
+
+The nmap scan is the foundation. Every subsequent decision — which services to
+enumerate, which skills to route to, which quick wins to check — depends on
+knowing the full port and service landscape. Running tools before nmap completes
+wastes time on assumptions, produces duplicate traffic, and risks missing the
+ports that actually matter.
+
+**Autonomous mode does not bypass this gate.** Autonomous means you make
+decisions without asking — it does not mean you fill wait time with speculative
+network traffic. Write the handoff script, tell the user to run it, then stop
+and wait.
+
 **Non-privileged commands** that CAN be executed directly by Claude for
-post-scan service enumeration:
+**post-scan** service enumeration (only AFTER nmap results are parsed):
 - `httpx`, `netexec`, `nuclei`, `whatweb`, `gobuster`, `ffuf`
 - `ldapsearch`, `smbclient`, `rpcclient`, `snmpwalk`
 

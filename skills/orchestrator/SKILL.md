@@ -18,13 +18,7 @@ keywords:
   - begin assessment
   - structured assessment
   - pentest orchestration
-tools:
-  - nmap
-  - httpx
-  - bbot
-  - ffuf
-  - netexec
-  - nuclei
+tools: []
 opsec: medium
 ---
 
@@ -90,11 +84,14 @@ The only commands the orchestrator may execute directly are:
 
 - `mkdir -p engagement/evidence` — engagement directory creation
 - File writes to `engagement/` — scope.md, state.md, activity.md, findings.md
-- `httpx -u <target> -title -tech-detect -status-code -follow-redirects` — initial web triage only
 - MCP tool calls (`get_skill`, `search_skills`, `list_skills`) — skill routing
 
-Everything else — nmap, netexec, ffuf, nuclei, sqlmap, any exploitation tool —
-MUST go through the appropriate skill.
+Everything else — nmap, netexec, ffuf, nuclei, httpx, sqlmap, curl, any tool
+that sends traffic to a target — MUST go through the appropriate skill.
+
+**No pre-scan triage.** Do not run httpx, curl, or any "quick look" at the
+target before network-recon completes. The orchestrator's job is to set up the
+engagement directory, route to network-recon, and wait.
 
 **If you are unsure whether a command is on the allowed list, it is not.
 Route to a skill.**
