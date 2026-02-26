@@ -19,9 +19,6 @@ keywords:
   - enumerate this box
 tools:
   - nmap
-  - masscan
-  - Naabu
-  - Shodan
   - nuclei
   - httpx
   - NetExec
@@ -160,7 +157,6 @@ Claude Code cannot execute `sudo` commands. Any command requiring root must be
 handed off to the user for manual execution. This applies to:
 
 - **nmap** — SYN scans (`-sS`), UDP scans (`-sU`), OS detection (`-O`), and most NSE scripts that need raw sockets
-- **masscan** — all scans (requires raw sockets)
 - **responder** — LLMNR/NBNS/mDNS poisoning (requires raw sockets)
 - **mount** — NFS/SMB mounting
 
@@ -204,47 +200,7 @@ and wait.
 **Autonomous mode:** Batch all pending privileged commands so the user can run
 them in one pass. Present them as a numbered list, each with its output file path.
 
-## Step 1: Passive Reconnaissance
-
-Gather information without touching the target. Skip if the target is a lab/CTF
-or if scope is a single IP.
-
-**DNS enumeration:**
-
-```bash
-# Forward lookups
-dig +short A target.com
-dig +short AAAA target.com
-dig +short MX target.com
-dig +short NS target.com
-dig +short TXT target.com
-dig +short SOA target.com
-
-# Zone transfer attempt
-dig axfr target.com @ns1.target.com
-
-# Reverse DNS on a range
-for ip in $(seq 1 254); do dig +short -x 10.10.10.$ip 2>/dev/null; done
-```
-
-**Passive OSINT (external targets only):**
-
-```bash
-# Shodan (if API key available)
-shodan host TARGET_IP
-shodan search "hostname:target.com"
-
-# Certificate transparency
-curl -s "https://crt.sh/?q=%.target.com&output=json" | jq -r '.[].name_value' | sort -u
-
-# Historical DNS
-curl -s "https://dns.bufferover.run/dns?q=target.com" | jq .
-```
-
-**In guided mode**, present passive findings before moving to active scanning.
-Note any hosts, subdomains, or services discovered.
-
-## Step 2: Host Discovery
+## Step 1: Host Discovery
 
 Identify live hosts in the target range. Skip for single-host targets.
 
@@ -265,13 +221,6 @@ sudo nmap -sn -PU53,161,137 10.10.10.0/24 -oG discovery.gnmap
 sudo nmap -sn -PE -PP -PS21,22,25,80,113,135,443,445,3389,8080 -PU53,111,137,161 10.10.10.0/24 -oG discovery.gnmap
 ```
 
-**For large ranges (> /16), use masscan for speed:**
-
-```bash
-# Fast host discovery
-sudo masscan 10.0.0.0/16 -p80,443,445,22 --rate 10000 -oL alive_hosts.txt
-```
-
 **Parse live hosts for next steps:**
 
 ```bash
@@ -282,7 +231,7 @@ grep "Status: Up" discovery.gnmap | awk '{print $2}' > live_hosts.txt
 **In guided mode**, present the list of live hosts. Ask which to scan further
 or proceed with all.
 
-## Step 3: Port Scanning
+## Step 2: Port Scanning
 
 **Default full scan (recommended starting point):**
 
@@ -296,54 +245,6 @@ detection, script scanning, and traceroute. `-p-` scans all 65535 ports. `-T4`
 is aggressive timing suitable for most networks. `-oA` saves in all formats
 (`.nmap`, `.gnmap`, `.xml`).
 
-**When you need different trade-offs:**
-
-```bash
-# Quick top-ports scan (initial triage)
-sudo nmap -sS -sV --top-ports 1000 -T4 -oA quick_HOSTNAME -vvv TARGET_IP
-
-# Stealthy scan (IDS evasion — slower)
-sudo nmap -sS -p- -T2 -f --data-length 50 -oA stealth_HOSTNAME TARGET_IP
-
-# UDP scan (slow but finds SNMP/DNS/TFTP/NTP/IPMI)
-sudo nmap -sU --top-ports 50 -sV -T4 -oA udp_HOSTNAME -vvv TARGET_IP
-
-# Combined TCP + UDP
-sudo nmap -sS -sU -p T:1-65535,U:53,67,68,69,111,123,137,138,161,162,500,514,520,631,1434,1900,4500,5353,49152 -sV -T4 -oA full_HOSTNAME -vvv TARGET_IP
-```
-
-**Scan evasion techniques (when IDS/IPS is blocking scans):**
-
-```bash
-# Fragmented packets
-sudo nmap -sS -f -p- -T3 -oA evasion_HOSTNAME TARGET_IP
-
-# Decoys (hide real source among fakes)
-sudo nmap -sS -D RND:5 -p- -T3 -oA evasion_HOSTNAME TARGET_IP
-
-# Source port spoofing (some firewalls allow 53/80/443)
-sudo nmap -sS -g 53 -p- -T3 -oA evasion_HOSTNAME TARGET_IP
-
-# Idle/zombie scan (completely blind — packets come from zombie)
-sudo nmap -sI ZOMBIE_IP:80 -p- -oA evasion_HOSTNAME TARGET_IP
-
-# Slow and low (one packet per second)
-sudo nmap -sS -p- -T1 --scan-delay 1s -oA evasion_HOSTNAME TARGET_IP
-```
-
-**Alternative scanners:**
-
-```bash
-# masscan (fastest — use for wide ranges, then nmap for service detection)
-sudo masscan TARGET_RANGE -p1-65535 --rate 5000 -oL masscan_results.txt
-# Follow up with nmap service detection on discovered ports
-cat masscan_results.txt | grep open | awk '{print $4}' | sort -u | \
-  xargs -I{} sudo nmap -sV -p$(grep {} masscan_results.txt | awk '{print $3}' | paste -sd,) {} -oA svc_{}
-
-# Naabu (fast port scanner, integrates with nuclei)
-naabu -host TARGET_IP -p - -o naabu_results.txt
-```
-
 **Parse scan results:**
 
 ```bash
@@ -354,7 +255,7 @@ grep "open" scan_HOSTNAME.gnmap | awk -F'[/ ]' '{for(i=1;i<=NF;i++) if($i=="open
 xmlstarlet sel -t -m "//port[state/@state='open']" -v "@portid" -o ":" -v "service/@name" -n scan_HOSTNAME.xml
 ```
 
-## Step 4: Service Enumeration — Per-Port Quick Wins
+## Step 3: Service Enumeration — Per-Port Quick Wins
 
 After port scanning, enumerate each discovered service. This section is organized
 by port with quick-win checks that often yield immediate access.
@@ -719,7 +620,7 @@ vncviewer TARGET_IP::5900
 
 **Quick wins:** No authentication, weak passwords, CVE-2006-2369 (auth bypass).
 
-## Step 5: OS Fingerprinting
+## Step 4: OS Fingerprinting
 
 If `-A` didn't provide reliable OS detection:
 
@@ -750,7 +651,7 @@ sudo nmap -O -sV --version-intensity 5 -oA os_HOSTNAME TARGET_IP
 | 128 | Windows |
 | 254-255 | Network device (Cisco, etc.) |
 
-## Step 6: Vulnerability Scanning
+## Step 5: Vulnerability Scanning
 
 After service enumeration, run targeted vulnerability checks.
 
@@ -800,7 +701,7 @@ nuclei -u http://TARGET_IP -tags log4j
 nmap -p443 --script ssl-heartbleed TARGET_IP
 ```
 
-## Step 7: Multi-Host Workflows
+## Step 6: Multi-Host Workflows
 
 For engagements with multiple targets or subnets.
 
@@ -842,7 +743,7 @@ netexec winrm live_hosts.txt -u USER -p PASSWORD
 netexec mssql live_hosts.txt -u USER -p PASSWORD
 ```
 
-## Step 8: Output Parsing and State Update
+## Step 7: Output Parsing and State Update
 
 After scanning, parse results into structured form for state management and
 next-step routing.
@@ -869,7 +770,7 @@ grep "Ports:" scan_HOSTNAME.gnmap | sed 's/Ports: //' | tr ',' '\n'
 - 10.10.10.10 | Windows 10 | Workstation | 135,139,445,3389,5985
 ```
 
-## Step 9: Routing Decision Tree
+## Step 8: Routing Decision Tree
 
 **Before routing**: Write `engagement/state.md` and append to
 `engagement/activity.md` with results so far. The next skill reads state.md
@@ -946,74 +847,3 @@ web app with known vuln > database with creds > default service access).
 When routing, pass along: target IP, open ports, identified services and versions,
 OS, any credentials or access found, current mode.
 
-## Troubleshooting
-
-### Scans returning no results / all ports filtered
-
-Firewall or IDS blocking scans. Try:
-1. Source port spoofing: `sudo nmap -sS -g 53 -p- TARGET_IP`
-2. Fragmentation: `sudo nmap -sS -f -p- TARGET_IP`
-3. Slow down: `sudo nmap -sS -p- -T1 --scan-delay 2s TARGET_IP`
-4. Different scan type: `-sA` (ACK) to map firewall rules, `-sW` (Window) for
-   open/closed distinction through stateless firewalls
-5. From a different source IP (pivot host)
-
-### Nmap service detection wrong or unknown
-
-Increase version detection intensity:
-```bash
-sudo nmap -sV --version-intensity 9 -p PORT -oA svc_detail_HOSTNAME TARGET_IP
-```
-
-Or grab the banner manually:
-```bash
-nc -nv TARGET_IP PORT
-echo "" | nc -nv TARGET_IP PORT
-openssl s_client -connect TARGET_IP:PORT  # For TLS services
-```
-
-### UDP scan too slow
-
-UDP scanning is inherently slow. Strategies:
-1. Scan only the most common UDP ports: `--top-ports 20`
-2. Target specific ports: `-p U:53,67,69,111,123,137,161,500,514,1434,5353`
-3. Use `--max-retries 1` and `--host-timeout 5m`
-4. Use masscan for UDP: `sudo masscan -pU:161,53,123,500 --rate 1000 TARGET_RANGE`
-
-### Running from a pivot with limited tools
-
-If nmap isn't available on the pivot host:
-```bash
-# Bash TCP port scan
-for port in 21 22 25 53 80 110 135 139 143 443 445 993 995 1433 3306 3389 5432 5985 8080; do
-  (echo >/dev/tcp/TARGET_IP/$port) 2>/dev/null && echo "OPEN: $port"
-done
-
-# Ping sweep with bash
-for ip in $(seq 1 254); do
-  ping -c 1 -W 1 10.10.10.$ip 2>/dev/null | grep "bytes from" &
-done; wait
-
-# Using /dev/tcp for banner grab
-exec 3<>/dev/tcp/TARGET_IP/PORT; echo "" >&3; cat <&3; exec 3>&-
-```
-
-→ STOP. Route to **pivoting-tunneling** — call `get_skill("pivoting-tunneling")` and follow its instructions to bring proper tools
-through to the pivot. Do not configure tunnels inline.
-
-### Permission errors running nmap
-
-Most scan types (`-sS`, `-sU`, `-O`) require root. Claude Code cannot run `sudo`
-commands — use the handoff protocol described in the **Privileged Commands**
-section above. Present the full `sudo nmap ...` command to the user with an
-output flag (`-oA`/`-oG`), wait for them to run it, then read the output file.
-
-For scans that work without root:
-- `-sT` (connect scan) — slower and more detectable but unprivileged
-- `-sV` (service detection) — works unprivileged
-- NSE scripts that don't require raw sockets
-
-```bash
-# Unprivileged scan (Claude can execute directly)
-nmap -sT -sV --top-ports 1000 -oA unprivileged_HOSTNAME TARGET_IP
-```
