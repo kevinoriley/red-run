@@ -29,6 +29,8 @@ Skills route to each other using bold skill names in their escalation sections (
 
 **Mandatory skill invocation**: When a skill says "Route to **skill-name**", you MUST invoke that skill using the Skill tool. Never execute a technique inline when a matching skill exists — even if you already know the technique. Skills contain methodology, edge cases, payloads, and troubleshooting that general knowledge does not. This applies in both guided and autonomous modes.
 
+**Task sub-agents cannot invoke skills.** The Skill tool is only available in the main conversation thread. Never delegate target-level work (scanning, exploitation, post-exploitation) to Task sub-agents — they bypass all skill routing, engagement logging, and state management. Use Task sub-agents only for local processing (hash cracking, output parsing, research). See the orchestrator's "Multi-Target Engagements" section for the correct approach to multiple targets.
+
 ### Engagement Logging
 
 Skills support optional engagement logging for structured pentests.
