@@ -3,8 +3,8 @@
 Thumbs.db
 
 # Editor
-.idea/
-.vscode/
+.idea
+.vscode
 *.swp
 *.swo
 *~
@@ -22,6 +22,26 @@ __pycache__/
 tools/skill-router/.chromadb/
 tools/skill-router/tools/
 tools/skill-router/uv.lock
+
+# Claude Code local state
+.claude/agents
+.claude/commands
+.claude/skills
+
+# bwrap sandbox sentinels (zero-byte read-only files)
+.bash_profile
+.bashrc
+.profile
+.zprofile
+.zshrc
+.gitconfig
+.gitmodules
+.ripgreprc
+HEAD
+config
+hooks
+objects
+refs
 
 # Engagement data — never commit
 loot/
