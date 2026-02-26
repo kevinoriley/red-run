@@ -46,16 +46,25 @@ The **orchestrator** is a native Claude Code skill that runs in the main convers
 
 | Agent | Domain | Key capability |
 |-------|--------|----------------|
-| `network-recon-agent` | Network recon + exploitation | Has nmap MCP — runs `sudo nmap` directly |
-| `web-agent` | Web application security | Injection, auth bypass, deserialization, etc. |
-| `ad-agent` | Active Directory attacks | Kerberos-first auth baked in |
-| `privesc-agent` | Privilege escalation | Linux + Windows + containers |
+| `network-recon-agent` | Network recon + exploitation | nmap MCP + shell-server |
+| `web-agent` | Web application security | shell-server for RCE → reverse shell |
+| `ad-agent` | Active Directory attacks | Kerberos-first auth + shell-server |
+| `privesc-agent` | Privilege escalation | shell-server for catching escalated shells |
 
 Each invocation: agent loads one skill, follows the methodology, updates engagement files, returns findings. The orchestrator reads state and routes to the next skill. If subagents aren't installed, the orchestrator falls back to inline skill execution.
 
 **MCP servers:**
 - **skill-router** — semantic search + skill loading via ChromaDB + sentence-transformer embeddings
 - **nmap-server** — wraps `sudo nmap`, returns parsed JSON (no manual handoff)
+- **shell-server** — TCP listener + reverse shell session manager (solves the persistent shell problem)
+
+### Reverse shells via MCP
+
+Claude Code's Bash tool runs each command as a separate process — there's no persistent shell session. This means interactive reverse shells, privilege escalation tools that spawn new shells (PwnKit, kernel exploits, sudo abuse), and anything requiring a connected session simply don't work through normal tool calls.
+
+The **shell-server** MCP solves this. It manages TCP listeners and reverse shell sessions as a long-lived server process. Subagents call `start_listener(port=4444)` to open a catcher, send a reverse shell payload through whatever RCE they've achieved, then interact with the shell via `send_command()`. Sessions persist across tool calls, support PTY upgrades for interactive programs, and save transcripts to `engagement/evidence/` on close.
+
+All RCE-producing technique skills (24 of them) prefer catching reverse shells through shell-server over inline command execution. This is especially critical for privilege escalation — you can't catch a PwnKit root shell through a webshell.
 
 ### Inter-skill routing
 
@@ -63,11 +72,11 @@ The orchestrator makes every routing decision. When SQL injection leads to crede
 
 ## Skills
 
-64 skills across 6 categories — see **[SKILLS.md](SKILLS.md)** for the full inventory with technique details and line counts.
+65 skills across 6 categories — see **[SKILLS.md](SKILLS.md)** for the full inventory with technique details and line counts.
 
 | Category | Skills | Coverage |
 |----------|--------|----------|
-| Web Application | 31 | SQLi, XSS, SSTI, deserialization, SSRF, auth bypass, and more |
+| Web Application | 32 | SQLi, XSS, SSTI, deserialization, SSRF, auth bypass, and more |
 | Active Directory | 16 | Kerberos, ADCS, ACLs, GPO, trust, persistence, lateral movement |
 | Privilege Escalation | 11 | Windows + Linux enumeration and technique skills |
 | Infrastructure | 4 | Network recon, pivoting, container escapes, SMB exploitation |
@@ -127,6 +136,7 @@ The cycle is: **engage → retrospective → improve skills → engage again**. 
 
 - [uv](https://docs.astral.sh/uv/) — Python package manager (for MCP servers)
 - Passwordless `sudo nmap` — for the nmap MCP server (see `tools/nmap-server/README.md`)
+- A port available for listening (e.g., 4444) — for the shell-server to catch reverse shells
 
 ### Install
 
@@ -144,7 +154,7 @@ The cycle is: **engage → retrospective → improve skills → engage again**. 
 The installer:
 1. Installs the **orchestrator** as a native Claude Code skill (`~/.claude/skills/`)
 2. Installs **custom subagents** to `~/.claude/agents/`
-3. Sets up **MCP servers** — skill-router (ChromaDB + embeddings) + nmap-server (sudo nmap wrapper)
+3. Sets up **MCP servers** — skill-router (ChromaDB + embeddings), nmap-server (sudo nmap wrapper), shell-server (reverse shell manager)
 4. Verifies project config (`.mcp.json`, settings, sudo nmap)
 
 The repo must stay in place — the MCP server reads skills from `skills/` at runtime.
@@ -188,7 +198,7 @@ These skills are a **baseline** built from researching publicly available offens
 
 ## Status
 
-64 skills, ~37,400 lines.
+65 skills, ~40,400 lines.
 
 ## Disclaimer
 
