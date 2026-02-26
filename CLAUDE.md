@@ -4,16 +4,38 @@ Claude Code skill library for penetration testing and CTF work.
 
 ## Architecture
 
-The **orchestrator** is installed as a native Claude Code skill that auto-triggers based on conversation context. All other skills (62 discovery + technique skills) are served on-demand via the **MCP skill-router** — a FastMCP server backed by ChromaDB and sentence-transformer embeddings (`all-MiniLM-L6-v2`). This keeps the system prompt lean; technique skills load only when needed.
+The **orchestrator** is a native Claude Code skill that runs in the main conversation thread. It routes skill execution to **custom domain subagents** — each subagent has MCP access and executes one skill per invocation. All other skills (63 discovery + technique skills) are served on-demand via the **MCP skill-router**.
 
-### MCP Skill Router
+### Subagent Model
 
-The MCP server at `tools/skill-router/` provides three tools:
-- `search_skills(query)` — semantic search across all indexed skills
-- `get_skill(name)` — load a skill's full SKILL.md content by name
-- `list_skills([category])` — browse the skill inventory
+The orchestrator spawns domain-specific subagents for each skill invocation:
 
-Skills are indexed by `indexer.py` using structured frontmatter fields (description, keywords, tools, opsec) for high-quality embedding documents.
+| Agent | Domain | MCP Servers | Skills |
+|-------|--------|-------------|--------|
+| `network-recon-agent` | Network | skill-router, nmap-server, shell-server | network-recon, smb-exploitation, pivoting-tunneling |
+| `web-agent` | Web | skill-router, shell-server | All web discovery + technique skills |
+| `ad-agent` | Active Directory | skill-router, shell-server | All AD discovery + technique skills |
+| `privesc-agent` | Privilege Escalation | skill-router, shell-server | Linux/Windows discovery + privesc + container escapes |
+
+Each invocation: agent loads one skill via `get_skill()`, executes methodology, updates engagement files, returns findings. The orchestrator reads state.md after every return and makes the next routing decision. Subagents never load a second skill or route to other skills.
+
+**Inline fallback**: If subagents aren't installed, the orchestrator loads skills inline via `get_skill()` in the main thread.
+
+Agent source files live in `agents/` (version controlled), installed to `~/.claude/agents/` by install.sh.
+
+### MCP Servers
+
+| Server | Location | Tools | Purpose |
+|--------|----------|-------|---------|
+| skill-router | `tools/skill-router/` | `search_skills`, `get_skill`, `list_skills` | Semantic skill discovery and loading |
+| nmap-server | `tools/nmap-server/` | `nmap_scan`, `get_scan`, `list_scans` | Privileged nmap scanning (no sudo handoff) |
+| shell-server | `tools/shell-server/` | `start_listener`, `send_command`, `read_output`, `stabilize_shell`, `list_sessions`, `close_session` | TCP listener and reverse shell session manager |
+
+The skill-router is backed by ChromaDB + sentence-transformer embeddings (`all-MiniLM-L6-v2`). Skills are indexed from structured frontmatter fields (description, keywords, tools, opsec).
+
+The nmap-server wraps `sudo nmap` and returns parsed JSON. Requires passwordless sudo for nmap.
+
+The shell-server manages TCP listeners and reverse shell sessions. It solves the persistent shell problem — Claude Code's Bash tool runs each command as a separate process, so interactive shells and privilege escalation tools that spawn new shells have no way to connect back.
 
 ### Modes
 - **Guided** (default): Interactive. Every command that touches the target
@@ -34,13 +56,14 @@ Mode is set by the user or the orchestrator and propagated via conversation cont
 - **Technique** (`skills/<category>/<technique>/`): Exploits a specific vulnerability class
 
 ### Inter-Skill Routing
-Skills route to each other at escalation points using `get_skill()` from the MCP skill-router. When a skill says "Route to **skill-name**", call `get_skill("skill-name")` to load the full skill methodology, then follow its instructions. When routing, pass: injection point, target technology, current mode, and any payloads that already succeeded.
 
-**Mandatory skill loading**: When a skill says "Route to **skill-name**", you MUST load that skill via `get_skill()`. Never execute a technique inline when a matching skill exists — even if you already know the technique. Skills contain methodology, edge cases, payloads, and troubleshooting that general knowledge does not. This applies in both guided and autonomous modes.
+The orchestrator makes every routing decision. When a skill says "Route to **skill-name**", the orchestrator looks up the correct domain agent in the Skill-to-Agent Routing Table and spawns it with that skill. Context (injection point, target technology, mode, working payloads) is passed in the Task prompt.
+
+**Mandatory skill loading**: When a skill says "Route to **skill-name**", that skill MUST be loaded via `get_skill()` — either by a subagent or inline. Never execute a technique without loading the matching skill. Skills contain methodology, edge cases, payloads, and troubleshooting that general knowledge does not. This applies in both guided and autonomous modes.
 
 **Skill discovery**: If unsure which skill to use, call `search_skills(query)` with a description of the situation. Validate the result before loading — check that the skill's description matches what you need.
 
-**Task sub-agents cannot use MCP tools.** MCP tools are only available in the main conversation thread. Never delegate target-level work (scanning, exploitation, post-exploitation) to Task sub-agents — they bypass all skill routing, engagement logging, and state management. Use Task sub-agents only for local processing (hash cracking, output parsing, research). See the orchestrator's "Multi-Target Engagements" section for the correct approach to multiple targets.
+**Custom subagents vs built-in sub-agents**: Custom domain subagents (`agents/*.md`) have MCP access and are the correct delegation model. Built-in Task sub-agents (Explore, Plan, general-purpose) do NOT have MCP access — use them only for local processing (hash cracking, output parsing, research), never for target-level work.
 
 ### Engagement Logging
 
@@ -97,8 +120,13 @@ engagement/
 
 ```
 red-run/
-  install.sh              # Installs orchestrator + sets up MCP skill-router
-  uninstall.sh            # Removes installed skills + MCP data
+  install.sh              # Installs orchestrator, agents, MCP servers
+  uninstall.sh            # Removes installed skills, agents, MCP data
+  agents/                 # Custom subagent definitions (installed to ~/.claude/agents/)
+    network-recon-agent.md
+    web-agent.md
+    ad-agent.md
+    privesc-agent.md
   skills/
     _template/SKILL.md    # Canonical template
     orchestrator/SKILL.md # Master orchestrator (native skill)
@@ -111,6 +139,12 @@ red-run/
       server.py           # FastMCP server — search_skills, get_skill, list_skills
       indexer.py           # Indexes SKILL.md frontmatter into ChromaDB
       pyproject.toml       # Python dependencies (chromadb, sentence-transformers)
+    nmap-server/          # MCP server (sudo nmap wrapper)
+      server.py           # FastMCP server — nmap_scan, get_scan, list_scans
+      pyproject.toml       # Python dependencies (mcp, python-libnmap)
+    shell-server/         # MCP server (TCP listener + shell manager)
+      server.py           # FastMCP server — start_listener, send_command, stabilize_shell, etc.
+      pyproject.toml       # Python dependencies (mcp)
 ```
 
 ## Skill File Format
@@ -175,5 +209,5 @@ The bwrap sandbox blocks network socket creation. Users must configure their glo
 ./uninstall.sh
 ```
 
-The installer puts the orchestrator in `~/.claude/skills/red-run-orchestrator/` and sets up the MCP skill-router (Python venv + ChromaDB index). Requires [uv](https://docs.astral.sh/uv/).
+The installer puts the orchestrator in `~/.claude/skills/red-run-orchestrator/`, subagents in `~/.claude/agents/`, and sets up MCP servers (skill-router, nmap-server, shell-server). Requires [uv](https://docs.astral.sh/uv/) and passwordless sudo for nmap.
 

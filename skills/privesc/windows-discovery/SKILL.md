@@ -78,32 +78,30 @@ with date and second precision for timeline reconstruction.
 This entry must be written NOW, not deferred. Subsequent milestone entries
 append bullet points under this same header.
 
-## Skill Routing Is Mandatory
+## Scope Boundary
 
-When this skill says "→ STOP. Route to **skill-name**" or "route to
-**skill-name**", you MUST load and follow that skill:
+This skill covers Windows host discovery — enumerating system configuration,
+identifying privilege escalation vectors, and routing to technique skills. When
+you reach the boundary of this scope — whether through a routing instruction
+("Route to **skill-name**") or by discovering findings outside your domain —
+**STOP**.
 
-1. Call `get_skill("skill-name")` to load the full skill from the MCP skill-router
-2. Read the returned SKILL.md content
-3. Follow its instructions end-to-end
+Do not load or execute another skill. Do not continue past your scope boundary.
+Instead:
 
-Do NOT execute the technique inline — even if the attack is trivial or you
-already know the answer. Skills contain operator-specific methodology,
-client-scoped payloads, and edge-case handling that general knowledge does not.
+1. Write `engagement/state.md` with current findings
+2. Return to the orchestrator with:
+   - What was found (vulns, credentials, access gained)
+   - Recommended next skill (the bold **skill-name** from routing instructions)
+   - Context to pass (injection point, target, working payloads, etc.)
 
-This applies in both guided and autonomous modes. Autonomous mode means you
-make routing decisions without asking — it does not mean you skip skills.
+The orchestrator decides what runs next. Your job is to execute this skill
+thoroughly and return clean findings.
 
-If you need a skill but don't know the exact name, use
-`search_skills("description of what you need")` to find it. Verify the returned
-description matches your scenario before loading.
-
-### Scope Boundary
-
-This skill's scope is **privilege escalation enumeration and attack surface
-mapping**. You identify vectors — you do not exploit them. The moment you
-confirm a vector exists, STOP — update state.md and route to the appropriate
-technique skill. Do not execute privilege escalation commands inline.
+**Stay in methodology.** Only use techniques documented in this skill. If you
+encounter a scenario not covered here, note it and return — do not improvise
+attacks, write custom exploit code, or apply techniques from other domains.
+The orchestrator will provide specific guidance or route to a different skill.
 
 ## State Management
 
@@ -303,9 +301,10 @@ wmic process list full
 Get-Process | Select-Object Name, Id, Path | Where-Object {$_.Path -notlike "C:\Windows\System32\*"} | Sort-Object Path
 ```
 
-Any finding here → STOP. Route to **windows-service-dll-abuse** — call `get_skill("windows-service-dll-abuse")` and follow its instructions. Pass: hostname, current user, specific findings (unquoted paths, writable
-binaries, modifiable services, DLL hijack targets), OS version, current mode.
-Do not execute exploitation commands inline.
+Any finding here → STOP. Return to orchestrator recommending
+**windows-service-dll-abuse**. Pass: hostname, current user, specific findings
+(unquoted paths, writable binaries, modifiable services, DLL hijack targets),
+OS version, current mode. Do not execute exploitation commands inline.
 
 ## Step 4: Scheduled Tasks and Autorun
 
@@ -338,8 +337,10 @@ reg query HKCU\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallEle
 reg query HKLM\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated
 ```
 
-Both must return `0x1` — if so, STOP. Route to **windows-uac-bypass** — call `get_skill("windows-uac-bypass")` and follow its instructions. Pass: hostname, current user, AlwaysInstallElevated confirmation,
-OS version, current mode. Do not execute MSI payload commands inline.
+Both must return `0x1` — if so, STOP. Return to orchestrator recommending
+**windows-uac-bypass**. Pass: hostname, current user, AlwaysInstallElevated
+confirmation, OS version, current mode. Do not execute MSI payload commands
+inline.
 
 ## Step 5: Network and Shares
 
@@ -438,8 +439,10 @@ icacls C:\Windows\System32\config\SAM
 
 If `BUILTIN\Users:(I)(RX)` appears → SAM readable by non-admin users.
 
-Any credentials found → STOP. Route to **windows-credential-harvesting** — call `get_skill("windows-credential-harvesting")` and follow its instructions. Pass: hostname, current user, credential locations found, OS
-version, current mode. Do not execute credential extraction commands inline.
+Any credentials found → STOP. Return to orchestrator recommending
+**windows-credential-harvesting**. Pass: hostname, current user, credential
+locations found, OS version, current mode. Do not execute credential extraction
+commands inline.
 
 ## Step 7: Security Controls Detection
 
@@ -534,8 +537,8 @@ Based on enumeration findings, route to the appropriate technique skill:
 
 SeImpersonate, SeAssignPrimaryToken, SeDebug, SeBackup, SeTakeOwnership,
 SeRestore, SeLoadDriver, SeManageVolume
-→ STOP. Route to **windows-token-impersonation** — call `get_skill("windows-token-impersonation")` and follow its instructions. Pass:
-  hostname, current user, specific privileges found, OS version and build,
+→ STOP. Return to orchestrator recommending **windows-token-impersonation**.
+  Pass: hostname, current user, specific privileges found, OS version and build,
   current mode. Do not execute token impersonation commands inline.
 
 ### Service Misconfigurations Found
@@ -543,7 +546,7 @@ SeRestore, SeLoadDriver, SeManageVolume
 Unquoted service paths, writable service binaries, modifiable service config,
 weak service registry ACLs, DLL search order hijacking, writable PATH directories,
 auto-updater abuse
-→ STOP. Route to **windows-service-dll-abuse** — call `get_skill("windows-service-dll-abuse")` and follow its instructions. Pass:
+→ STOP. Return to orchestrator recommending **windows-service-dll-abuse**. Pass:
   hostname, current user, specific findings (unquoted paths / writable binaries /
   modifiable services / DLL hijack targets), OS version, current mode. Do not
   execute exploitation commands inline.
@@ -552,16 +555,16 @@ auto-updater abuse
 
 High-integrity needed but running medium-integrity, UAC enabled,
 AlwaysInstallElevated
-→ STOP. Route to **windows-uac-bypass** — call `get_skill("windows-uac-bypass")` and follow its instructions. Pass: hostname,
-  current user, integrity level, UAC settings, AlwaysInstallElevated status,
-  OS version, current mode. Do not execute UAC bypass commands inline.
+→ STOP. Return to orchestrator recommending **windows-uac-bypass**. Pass:
+  hostname, current user, integrity level, UAC settings, AlwaysInstallElevated
+  status, OS version, current mode. Do not execute UAC bypass commands inline.
 
 ### Stored Credentials Found
 
 Registry passwords, unattend files, PowerShell history, DPAPI blobs,
 HiveNightmare, credential vault entries
-→ STOP. Route to **windows-credential-harvesting** — call `get_skill("windows-credential-harvesting")` and follow its instructions. Pass:
-  hostname, current user, credential locations found (registry / unattend /
+→ STOP. Return to orchestrator recommending **windows-credential-harvesting**.
+  Pass: hostname, current user, credential locations found (registry / unattend /
   history / vault), OS version, current mode. Do not execute credential
   extraction commands inline.
 
@@ -569,9 +572,10 @@ HiveNightmare, credential vault entries
 
 Watson/WES-NG hits, old OS without patches, vulnerable drivers loaded,
 BYOVD candidates
-→ STOP. Route to **windows-kernel-exploits** — call `get_skill("windows-kernel-exploits")` and follow its instructions. Pass: hostname,
-  OS version and build, installed hotfixes, Watson/WES-NG output, vulnerable
-  drivers identified, current mode. Do not execute kernel exploits inline.
+→ STOP. Return to orchestrator recommending **windows-kernel-exploits**. Pass:
+  hostname, OS version and build, installed hotfixes, Watson/WES-NG output,
+  vulnerable drivers identified, current mode. Do not execute kernel exploits
+  inline.
 
 ### Multiple Vectors Found
 

@@ -14,8 +14,8 @@ In **autonomous mode**, Claude runs commands directly, makes triage decisions at
 
 ### Skill types
 
-- **Orchestrator** — routes to discovery skills, chains vulnerabilities via state management
-- **Discovery skills** — identify vulnerabilities and route to the correct technique skill
+- **Orchestrator** — the main loop. Takes a target, runs recon, maps the attack surface, chains vulnerabilities toward objectives, and delegates each skill to a domain subagent. Reads `state.md` after every return and decides what to do next.
+- **Discovery skills** — enumerate an attack surface and identify vulnerabilities. Return findings to the orchestrator for triage.
 - **Technique skills** — exploit a specific vulnerability class with embedded payloads and bypass techniques
 
 ### Modes
@@ -40,26 +40,41 @@ Autonomous mode pairs with `claude --dangerously-skip-permissions` (a.k.a. yolo 
 
 ### Architecture
 
-The **orchestrator** is a native Claude Code skill that auto-triggers based on conversation context. All other skills are served on-demand via the **MCP skill-router** — a FastMCP server backed by ChromaDB and sentence-transformer embeddings. This keeps the system prompt lean; technique skills load only when needed.
+The **orchestrator** is a native Claude Code skill that runs in the main conversation thread. It delegates skill execution to **custom domain subagents** — focused agents with MCP access that each handle one skill per invocation. This keeps context isolated (each agent starts fresh) while the orchestrator maintains the big picture via `state.md`.
 
-The MCP server provides three tools:
-- `search_skills(query)` — semantic search across all indexed skills
-- `get_skill(name)` — load a skill's full SKILL.md content by name
-- `list_skills([category])` — browse the skill inventory
+**Subagents:**
 
-Skills are indexed from structured YAML frontmatter (description, keywords, tools, opsec rating) for high-quality embeddings. When a discovery skill identifies a vulnerability, it calls `get_skill()` to load the matching technique skill and hands off the injection point, working payloads, and engagement context.
+| Agent | Domain | Key capability |
+|-------|--------|----------------|
+| `network-recon-agent` | Network recon + exploitation | nmap MCP + shell-server |
+| `web-agent` | Web application security | shell-server for RCE → reverse shell |
+| `ad-agent` | Active Directory attacks | Kerberos-first auth + shell-server |
+| `privesc-agent` | Privilege escalation | shell-server for catching escalated shells |
+
+Each invocation: agent loads one skill, follows the methodology, updates engagement files, returns findings. The orchestrator reads state and routes to the next skill.
+
+**MCP servers:**
+- **skill-router** — semantic search + skill loading via ChromaDB + sentence-transformer embeddings
+- **nmap-server** — wraps `sudo nmap`, returns parsed JSON
+- **shell-server** — TCP listener + reverse shell session manager
+
+### Reverse shells via MCP
+
+Claude Code's Bash tool runs each command as a separate process — there's no persistent shell session. This means interactive reverse shells, privilege escalation tools that spawn new shells (PwnKit, kernel exploits, sudo abuse), and anything requiring a connected session simply don't work through normal tool calls.
+
+The **shell-server** MCP solves this. It manages TCP listeners and reverse shell sessions as a long-lived server process. Subagents call `start_listener(port=4444)` to open a catcher, send a reverse shell payload through whatever RCE they've achieved, then interact with the shell via `send_command()`. Sessions persist across tool calls, support PTY upgrades for interactive programs, and save transcripts to `engagement/evidence/` on close.
 
 ### Inter-skill routing
 
-Skills route to each other at escalation points. When SQL injection leads to credentials, the skill suggests pivoting to privilege escalation. When BloodHound reveals an ACL path, the discovery skill routes to `acl-abuse`. Context (injection point, working payloads, target platform, mode) is passed along.
+The orchestrator makes every routing decision. When an LFI reads Tomcat credentials, the orchestrator spawns the web agent with `tomcat-manager-deploy` to get a shell. When BloodHound reveals an ACL path, the orchestrator routes to `acl-abuse` via the AD agent. Context (injection point, working payloads, target platform, mode) is passed in the agent's Task prompt.
 
 ## Skills
 
-64 skills across 6 categories — see **[SKILLS.md](SKILLS.md)** for the full inventory with technique details and line counts.
+66 skills across 6 categories — see **[SKILLS.md](SKILLS.md)** for the full inventory with technique details and line counts.
 
 | Category | Skills | Coverage |
 |----------|--------|----------|
-| Web Application | 31 | SQLi, XSS, SSTI, deserialization, SSRF, auth bypass, and more |
+| Web Application | 33 | SQLi, XSS, SSTI, deserialization, SSRF, auth bypass, and more |
 | Active Directory | 16 | Kerberos, ADCS, ACLs, GPO, trust, persistence, lateral movement |
 | Privilege Escalation | 11 | Windows + Linux enumeration and technique skills |
 | Infrastructure | 4 | Network recon, pivoting, container escapes, SMB exploitation |
@@ -67,7 +82,7 @@ Skills route to each other at escalation points. When SQL injection leads to cre
 
 ## Engagement logging
 
-Skills carry out engagement logging for structured pentests and state tracking. When an engagement directory exists, skills automatically log activity, findings, and evidence.
+Skills carry out engagement logging for structured pentests and state tracking. The orchestrator creates the engagement directory on activation, and skills automatically log activity, findings, and evidence.
 
 ```
 engagement/
@@ -98,7 +113,7 @@ Every skill reads `state.md` on activation and writes back on completion. The or
 
 ## The retrospective loop
 
-The skills in this repo are a starting point. The retrospective skill is what makes them yours.
+The skills in this repo are a starting point. The `retrospective` skill is what makes them yours.
 
 After an engagement, run a retrospective. Claude reads the engagement directory — `activity.md`, `state.md`, `findings.md` — and analyzes what happened. It reviews every skill routing decision, identifies gaps in payloads and methodology, flags techniques that were done by hand instead of through a skill, and produces a prioritized list of improvements: skill updates, new skills to build, routing fixes.
 
@@ -113,11 +128,15 @@ This is where red-run starts to work differently for you than for anyone else. A
 
 The cycle is: **engage → retrospective → improve skills → engage again**. Each pass through the loop makes the library more effective for the specific types of targets, environments, and toolchains you work with. The skills become a living record of your methodology — refined by real engagements, not hypothetical coverage.
 
+**Coming soon:** automated tests that run after skill creation or modification — verifying frontmatter structure, checking that discovery skills route to the new skill, confirming the MCP index includes it with correct embeddings, and catching stale references or template placeholders left behind.
+
 ## Installation
 
 ### Prerequisites
 
-- [uv](https://docs.astral.sh/uv/) — Python package manager (for the MCP skill-router)
+- Linux VM with your pentesting tools installed
+- [uv](https://docs.astral.sh/uv/) — Python package manager (for MCP servers)
+- Passwordless `sudo nmap` — the install script checks for this and advises how to configure it if missing
 
 ### Install
 
@@ -133,9 +152,11 @@ The cycle is: **engage → retrospective → improve skills → engage again**. 
 ```
 
 The installer:
-1. Installs the **orchestrator** as a native Claude Code skill (`~/.claude/skills/`)
-2. Sets up the **MCP skill-router** — Python venv + ChromaDB index for on-demand technique skill loading
-3. Verifies project config (`.mcp.json`, settings)
+1. Removes any existing red-run skills from `~/.claude/skills/` (legacy installs used per-skill native skills — these are now served via MCP)
+2. Installs the **orchestrator** as a native Claude Code skill (`~/.claude/skills/`)
+3. Installs **custom subagents** to `~/.claude/agents/`
+4. Sets up **MCP servers** — skill-router (ChromaDB + embeddings), nmap-server, shell-server
+5. Verifies project config (`.mcp.json`, settings, passwordless sudo nmap)
 
 The repo must stay in place — the MCP server reads skills from `skills/` at runtime.
 
@@ -167,18 +188,12 @@ keep sandbox enabled.
 
 ### Recommended configuration
 
-- **Linux VM** with your pentesting tools installed (Kali, Parrot, or a custom build)
 - **Claude Code** installed in the VM — skills execute commands directly, so Claude needs to be where the tools are
-- **Pentesting tools** — nmap, netexec, impacket, sqlmap, ffuf, hashcat, etc. Skills reference tools by name; a skill→tool index is coming
 - **[Trail of Bits Claude Code configuration](https://github.com/trailofbits/claude-code-config)** — sandbox, hooks, and guardrails this project was built around
 
 ### Baseline skills — customize for your workflow
 
 These skills are a **baseline** built from researching publicly available offensive security methodologies. They cover the most common techniques with the top 2-3 payloads per variant. Nearly all skill content was generated by Claude and has not been thoroughly human-reviewed — treat it as a starting point, not a verified reference. Expect errors, gaps, and techniques that need validation against real targets.
-
-## Status
-
-64 skills, ~37,400 lines.
 
 ## Disclaimer
 

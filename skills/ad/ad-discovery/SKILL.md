@@ -85,32 +85,29 @@ with date and second precision for timeline reconstruction.
 This entry must be written NOW, not deferred. Subsequent milestone entries
 append bullet points under this same header.
 
-## Skill Routing Is Mandatory
+## Scope Boundary
 
-When this skill says "→ STOP. Route to **skill-name**" or "route to
-**skill-name**", you MUST load and follow that skill:
+This skill covers Active Directory discovery — enumerating domain objects,
+identifying misconfigurations, and routing to technique skills. When you reach
+the boundary of this scope — whether through a routing instruction ("Route to
+**skill-name**") or by discovering findings outside your domain — **STOP**.
 
-1. Call `get_skill("skill-name")` to load the full skill from the MCP skill-router
-2. Read the returned SKILL.md content
-3. Follow its instructions end-to-end
+Do not load or execute another skill. Do not continue past your scope boundary.
+Instead:
 
-Do NOT execute the technique inline — even if the attack path seems obvious or
-you already know the technique. Skills contain operator-specific methodology,
-client-scoped payloads, and edge-case handling that general knowledge does not.
+1. Write `engagement/state.md` with current findings
+2. Return to the orchestrator with:
+   - What was found (vulns, credentials, access gained)
+   - Recommended next skill (the bold **skill-name** from routing instructions)
+   - Context to pass (injection point, target, working payloads, etc.)
 
-This applies in both guided and autonomous modes. Autonomous mode means you
-make routing decisions without asking — it does not mean you skip skills.
+The orchestrator decides what runs next. Your job is to execute this skill
+thoroughly and return clean findings.
 
-If you need a skill but don't know the exact name, use
-`search_skills("description of what you need")` to find it. Verify the returned
-description matches your scenario before loading.
-
-### Scope Boundary
-
-This skill's scope is **Active Directory enumeration and attack surface
-mapping**. You identify attack paths — you do not exploit them. The moment you
-confirm an exploitable finding, STOP — update state.md and route to the
-appropriate technique skill. Do not execute AD attack techniques inline.
+**Stay in methodology.** Only use techniques documented in this skill. If you
+encounter a scenario not covered here, note it and return — do not improvise
+attacks, write custom exploit code, or apply techniques from other domains.
+The orchestrator will provide specific guidance or route to a different skill.
 
 You MUST NOT:
 - Perform Kerberoasting or AS-REP roasting beyond identifying targets — route
@@ -254,7 +251,7 @@ Use output as username list for **password-spraying** and AS-REP roasting checks
 ### LLMNR/NBT-NS/mDNS Poisoning Check
 
 If network position allows, note LLMNR/NBT-NS traffic for Responder-based
-hash capture. → STOP. Route to **auth-coercion-relay** — call `get_skill("auth-coercion-relay")` and follow its instructions.
+hash capture. → STOP. Return to orchestrator recommending **auth-coercion-relay**.
 Pass: DC IP, domain name, network position, LLMNR/NBT-NS traffic details,
 current mode. Do not execute poisoning or relay commands inline.
 
@@ -354,8 +351,9 @@ nxc ldap DC01.DOMAIN.LOCAL -u 'user' -p 'Password123' --kerberoasting output.txt
 .\Rubeus.exe kerberoast /stats
 ```
 
-If SPNs found on user accounts → STOP. Route to **kerberos-roasting** — call `get_skill("kerberos-roasting")` and follow its instructions. Pass: DC IP, domain name, SPN list, current credentials, current
-mode. Do not request or crack service tickets inline.
+If SPNs found on user accounts → STOP. Return to orchestrator recommending
+**kerberos-roasting**. Pass: DC IP, domain name, SPN list, current credentials,
+current mode. Do not request or crack service tickets inline.
 
 ### AS-REP Roastable Accounts
 
@@ -369,9 +367,9 @@ bloodyAD -u user -p 'Password123' -d DOMAIN.LOCAL --host DC_IP \
   --attr sAMAccountName
 ```
 
-If found → STOP. Route to **kerberos-roasting** — call `get_skill("kerberos-roasting")` and follow its instructions (AS-REP
-section). Pass: DC IP, domain name, AS-REP roastable user list, current mode.
-Do not request or crack AS-REP hashes inline.
+If found → STOP. Return to orchestrator recommending **kerberos-roasting**
+(AS-REP section). Pass: DC IP, domain name, AS-REP roastable user list, current
+mode. Do not request or crack AS-REP hashes inline.
 
 ### Delegation Enumeration
 
@@ -397,9 +395,9 @@ Get-DomainUser -TrustedToAuth
 Get-DomainComputer -TrustedToAuth
 ```
 
-If found → STOP. Route to **kerberos-delegation** — call `get_skill("kerberos-delegation")` and follow its instructions. Pass: DC
-IP, domain name, delegation type and targets, current credentials, current
-mode. Do not exploit delegation inline.
+If found → STOP. Return to orchestrator recommending **kerberos-delegation**.
+Pass: DC IP, domain name, delegation type and targets, current credentials,
+current mode. Do not exploit delegation inline.
 
 ### Privileged Group Membership
 
@@ -424,9 +422,9 @@ nxc ldap DC01.DOMAIN.LOCAL -u 'user' -p 'Password123' -M laps
 nxc ldap DC01.DOMAIN.LOCAL -u 'user' -p 'Password123' --gmsa
 ```
 
-If readable → STOP. Route to **credential-dumping** — call `get_skill("credential-dumping")` and follow its instructions. Pass:
-DC IP, domain name, LAPS/gMSA target details, current credentials, current
-mode. Do not extract managed passwords inline.
+If readable → STOP. Return to orchestrator recommending **credential-dumping**.
+Pass: DC IP, domain name, LAPS/gMSA target details, current credentials,
+current mode. Do not extract managed passwords inline.
 
 ### Trust Enumeration
 
@@ -444,9 +442,10 @@ Get-DomainForeignUser
 Get-DomainForeignGroupMember
 ```
 
-If trusts found → STOP. Route to **trust-attacks** — call `get_skill("trust-attacks")` and follow its instructions. Pass:
-DC IP, domain name, trust relationships enumerated, trust types and directions,
-current credentials, current mode. Do not exploit trust relationships inline.
+If trusts found → STOP. Return to orchestrator recommending **trust-attacks**.
+Pass: DC IP, domain name, trust relationships enumerated, trust types and
+directions, current credentials, current mode. Do not exploit trust
+relationships inline.
 
 ### Share Enumeration
 
@@ -484,10 +483,9 @@ nxc smb 10.10.10.0/24 -u 'user' -p 'Password123'
 Find-LocalAdminAccess -Verbose
 ```
 
-If local admin found → STOP. Route to **credential-dumping** — call `get_skill("credential-dumping")` and follow its instructions
-(SAM/LSASS). Pass: target hostname, local admin credentials, DC IP, domain
-name, current mode. Do not dump credentials inline. After credential-dumping
-returns, invoke **pass-the-hash** for lateral movement.
+If local admin found → STOP. Return to orchestrator recommending
+**credential-dumping** (SAM/LSASS). Pass: target hostname, local admin
+credentials, DC IP, domain name, current mode. Do not dump credentials inline.
 
 ### SCCM / Deployment
 
@@ -496,15 +494,15 @@ returns, invoke **pass-the-hash** for lateral movement.
 python3 sccmhunter.py find -u 'user' -p 'Password123' -d DOMAIN.LOCAL -dc-ip DC_IP
 ```
 
-If SCCM found → STOP. Route to **sccm-exploitation** — call `get_skill("sccm-exploitation")` and follow its instructions. Pass:
-DC IP, domain name, SCCM server details, current credentials, current mode.
-Do not exploit SCCM inline.
+If SCCM found → STOP. Return to orchestrator recommending
+**sccm-exploitation**. Pass: DC IP, domain name, SCCM server details, current
+credentials, current mode. Do not exploit SCCM inline.
 
 ## Step 5: Attack Surface Routing
 
 Map enumeration findings to technique skills. This is the core routing table.
-When a match below is found, STOP — load the skill — call `get_skill("skill-name")` and follow its instructions.
-Do not execute attack techniques inline.
+When a match below is found, STOP — return to the orchestrator recommending
+the matched skill. Do not execute attack techniques inline.
 
 | Finding | Indicator | Route To |
 |---------|-----------|----------|

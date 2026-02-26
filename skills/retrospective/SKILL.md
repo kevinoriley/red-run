@@ -12,7 +12,6 @@ keywords:
   - how did the skills perform
 tools:
   - search_skills (MCP skill-router)
-  - get_skill (MCP skill-router)
   - list_skills (MCP skill-router)
 opsec: low
 ---
@@ -29,7 +28,7 @@ items. All analysis is local — you never touch the target.
 - `engagement/` directory must exist with at least `activity.md` and `state.md`
 - The engagement should be complete or paused — this is a post-mortem, not a
   mid-engagement review
-- MCP skill-router available (`search_skills`, `get_skill`, `list_skills`)
+- MCP skill-router available (`search_skills`, `list_skills`)
 
 If `engagement/activity.md` or `engagement/state.md` are missing, tell the user:
 
@@ -83,10 +82,10 @@ what the library covers.
 Read `engagement/activity.md` and compare each activity against the inventory.
 
 For each activity entry, determine:
-1. **Was a skill loaded?** Check for `get_skill()` calls or skill name
-   references in activity entries.
-2. **Was it the right skill?** Call `get_skill("skill-name")` to read the
-   skill's actual scope and compare against what was done.
+1. **Was a skill loaded?** Check for skill name references in activity entries.
+2. **Was it the right skill?** Read the skill's SKILL.md at
+   `skills/<category>/<skill-name>/SKILL.md` to check its actual scope and
+   compare against what was done.
 3. **Were any skills skipped?** Look for technique execution that should have
    been routed through a skill (e.g., running sqlmap directly instead of
    loading sql-injection-union).
@@ -105,8 +104,8 @@ wrong or suboptimal.
 
 ## Step 3: Knowledge Gap Analysis
 
-For each skill that was invoked during the engagement, call
-`get_skill("skill-name")` to load its full content, then evaluate:
+For each skill that was invoked during the engagement, read its SKILL.md at
+`skills/<category>/<skill-name>/SKILL.md`, then evaluate:
 
 1. **Did the skill have adequate payloads?** Were hand-crafted payloads needed
    that should be embedded in the skill?
@@ -256,8 +255,7 @@ directly.
 For each prioritized item:
 
 ### [skill-update] — Edit an existing skill
-1. Read the SKILL.md file (path is in the `get_skill()` output metadata, or
-   find it at `skills/<category>/<skill-name>/SKILL.md`)
+1. Read the SKILL.md file at `skills/<category>/<skill-name>/SKILL.md`
 2. Make the change — add payloads, fix methodology, update troubleshooting,
    etc.
 3. Preserve the existing structure and conventions (frontmatter, sections,
@@ -270,8 +268,8 @@ For each prioritized item:
 
 ### [routing-fix] — Fix skill routing
 1. Read the skill that needs the routing update
-2. Add or fix the routing reference: "Route to **skill-name** — call
-   `get_skill("skill-name")` and follow its instructions"
+2. Add or fix the routing reference: "STOP. Return to orchestrator
+   recommending **skill-name**. Pass: <context>."
 
 ### [template-fix] — Update conventions
 1. Read `skills/_template/SKILL.md`
@@ -294,8 +292,8 @@ from conversation context instead — ask the user to describe what happened, th
 analyze the current session transcript.
 
 ### Activity log has no skill references
-Techniques may have been executed inline (without loading the skill via
-`get_skill()`) or the engagement predates the current skill library. Flag this
+Techniques may have been executed inline (without loading the corresponding
+skill) or the engagement predates the current skill library. Flag this
 as a routing gap and reconstruct the timeline from state.md and findings.md
 instead.
 

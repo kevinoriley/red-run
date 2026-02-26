@@ -18,10 +18,11 @@ __pycache__/
 *.pyc
 .venv/
 
-# Skill router (MCP server)
+# MCP servers
 tools/skill-router/.chromadb/
 tools/skill-router/tools/
 tools/skill-router/uv.lock
+tools/nmap-server/uv.lock
 
 # Claude Code local state
 .claude/agents
