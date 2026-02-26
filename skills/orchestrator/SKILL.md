@@ -1,17 +1,31 @@
 ---
 name: orchestrator
 description: >
-  Master orchestrator for penetration testing engagements. Use when the user
-  provides a target (IP, hostname, URL, subnet) and wants to start a
-  structured assessment. Handles scoping, recon, attack surface mapping,
+  Master orchestrator for penetration testing engagements. Takes a target (IP,
+  hostname, URL, subnet), handles scoping, recon, attack surface mapping,
   vulnerability chaining, and routing to discovery and technique skills.
-  Also triggers on: "pentest this target", "start an engagement", "scan this
-  host", "assess this network", "attack this target", "full pentest",
-  "start testing", "engagement against", "begin assessment".
-  OPSEC: varies by phase — recon is low, exploitation is medium-high.
-  Tools: nmap, httpx, bbot, ffuf, netexec, nuclei.
   Do NOT use for single-technique exploitation — route directly to the
-  relevant technique skill instead (e.g., sql-injection-union, xss-reflected).
+  relevant technique skill instead.
+keywords:
+  - pentest this target
+  - start an engagement
+  - scan this host
+  - assess this network
+  - attack this target
+  - full pentest
+  - start testing
+  - engagement against
+  - begin assessment
+  - structured assessment
+  - pentest orchestration
+tools:
+  - nmap
+  - httpx
+  - bbot
+  - ffuf
+  - netexec
+  - nuclei
+opsec: medium
 ---
 
 # Penetration Test Orchestrator

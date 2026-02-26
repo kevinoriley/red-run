@@ -84,14 +84,23 @@ append bullet points under this same header.
 
 ## Skill Routing Is Mandatory
 
-When this skill's routing tables say to invoke a skill, you MUST invoke that
-skill using the Skill tool. Do NOT execute the technique inline — even if the
-attack is trivial or you already know the answer. Skills contain operator-specific
-methodology, client-scoped payloads, and edge-case handling that general
-knowledge does not.
+When this skill's routing tables say to route to a skill, you MUST load and
+follow that skill:
+
+1. Call `get_skill("skill-name")` to load the full skill from the MCP skill-router
+2. Read the returned SKILL.md content
+3. Follow its instructions end-to-end
+
+Do NOT execute the technique inline — even if the attack is trivial or you
+already know the answer. Skills contain operator-specific methodology,
+client-scoped payloads, and edge-case handling that general knowledge does not.
 
 This applies in both guided and autonomous modes. Autonomous mode means you
 make routing decisions without asking — it does not mean you skip skills.
+
+If you need a skill but don't know the exact name, use
+`search_skills("description of what you need")` to find it. Verify the returned
+description matches your scenario before loading.
 
 ### Scope Boundary
 
@@ -454,14 +463,14 @@ Analyze responses from Step 3 to identify vulnerability type, then route to
 the correct exploitation skill.
 
 **Routing is mandatory.** When a match is found in the tables below, STOP.
-Invoke the named skill via the Skill tool. Pass: the confirmed injection point
+Load the skill — call `get_skill("skill-name")` and follow its instructions. Pass: the confirmed injection point
 (URL, parameter, method), observed response behavior, suspected DBMS (if SQL),
 current mode, and any payloads that already succeeded. Do not execute
 exploitation commands inline — even if the technique seems simple.
 
 ### SQL Injection
 
-| Response Pattern | Indicates | Invoke via Skill Tool |
+| Response Pattern | Indicates | Route To |
 |---|---|---|
 | DB error message with syntax details | Error-based SQLi | **sql-injection-error** |
 | Different content for `1=1` vs `1=2` | Boolean-based blind | **sql-injection-blind** |
@@ -482,7 +491,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### Server-Side Template Injection
 
-| Response Pattern | Indicates | Invoke via Skill Tool |
+| Response Pattern | Indicates | Route To |
 |---|---|---|
 | `49` from `{{7*7}}` | Jinja2 or Twig | **ssti-jinja2** or **ssti-twig** |
 | `49` from `${7*7}` | Freemarker / Java EL | **ssti-freemarker** |
@@ -497,7 +506,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### XSS
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | Payload reflected verbatim in HTML | **xss-reflected** |
 | Payload persists on subsequent loads | **xss-stored** |
@@ -505,7 +514,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### SSRF
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | Localhost/internal content returned | **ssrf** |
 | Callback received but no response data | **ssrf** (blind section) |
@@ -513,7 +522,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### Command Injection
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | Command output (`uid=`, hostname) in response | **command-injection** |
 | Delay with `sleep 5` but no output | **command-injection** (blind section) |
@@ -521,7 +530,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### LFI / File Inclusion
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | File contents (`root:x:0:0:`) in response | **lfi** |
 | Base64 from `php://filter` | **lfi** (PHP wrappers) |
@@ -529,7 +538,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### XXE
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | File contents in XML response | **xxe** |
 | Callback from XML parsing | **xxe** (blind/OOB section) |
@@ -537,7 +546,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### Deserialization
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | Java serialized object (`rO0AB`, `AC ED 00 05`) in parameter/cookie | **deserialization-java** |
 | PHP serialized object (`O:`, `a:`) in parameter/cookie | **deserialization-php** |
@@ -546,7 +555,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### JWT
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | JWT found in auth header, cookie, or parameter (`eyJ...`) | **jwt-attacks** |
 | `alg` set to `none` or weak HMAC key suspected | **jwt-attacks** (alg:none / brute force) |
@@ -555,7 +564,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### NoSQL Injection
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | Auth bypass with `$ne`/`$gt`/`$regex` operators | **nosql-injection** |
 | MongoDB error (`MongoError`, `$operator` in stack trace) | **nosql-injection** |
@@ -564,7 +573,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### LDAP Injection
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | `*` in password field bypasses auth or returns different user | **ldap-injection** (wildcard bypass) |
 | Error mentioning `ldap_search`, `Bad search filter`, `InvalidSearchFilterException` | **ldap-injection** |
@@ -573,7 +582,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### File Upload
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | Uploaded file executed server-side | **file-upload-bypass** |
 | Extension blocked but alternative accepted | **file-upload-bypass** |
@@ -581,7 +590,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### Request Smuggling
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | Timeout or 405 from CL.TE/TE.CL detection probes | **request-smuggling** |
 | Unexpected response on second pipelined request | **request-smuggling** |
@@ -590,7 +599,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### IDOR / Broken Access Control
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | Different user's data returned when ID is changed | **idor** (horizontal) |
 | Admin/privileged data accessible with low-priv session | **idor** (vertical) |
@@ -599,7 +608,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### CORS Misconfiguration
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | `Access-Control-Allow-Origin` reflects arbitrary origin + `Allow-Credentials: true` | **cors-misconfiguration** (origin reflection) |
 | `Access-Control-Allow-Origin: null` + `Allow-Credentials: true` | **cors-misconfiguration** (null origin) |
@@ -608,7 +617,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### CSRF
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | State-changing endpoint accepts request without CSRF token | **csrf** (missing token) |
 | CSRF token present but removing/emptying it still works | **csrf** (token bypass) |
@@ -617,7 +626,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### OAuth / OpenID Connect
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | OAuth login flow detected (social login, SSO) | **oauth-attacks** |
 | redirect_uri accepts arbitrary or manipulated domains | **oauth-attacks** (redirect URI bypass) |
@@ -627,7 +636,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### Password Reset
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | Reset link domain changes with Host/X-Forwarded-Host header | **password-reset-poisoning** (host header poisoning) |
 | Reset token is short, sequential, or predictable | **password-reset-poisoning** (token weakness) |
@@ -636,7 +645,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### 2FA / MFA
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | 2FA prompt found after password authentication | **2fa-bypass** |
 | Direct navigation to authenticated pages bypasses 2FA | **2fa-bypass** (force browse) |
@@ -646,7 +655,7 @@ exploitation commands inline — even if the technique seems simple.
 
 ### Race Conditions
 
-| Response Pattern | Invoke via Skill Tool |
+| Response Pattern | Route To |
 |---|---|
 | State-changing endpoint (coupon, transfer, vote) without idempotency controls | **race-condition** (limit-overrun) |
 | Single-use token accepted multiple times under concurrent requests | **race-condition** (token reuse) |
@@ -656,7 +665,7 @@ exploitation commands inline — even if the technique seems simple.
 Update `engagement/state.md` with any new targets, confirmed vulns, or blocked
 techniques before routing.
 
-When invoking a technique skill via the Skill tool, pass along: the confirmed
+When loading a technique skill via `get_skill()`, pass along: the confirmed
 injection point (URL, parameter, method), observed response behavior, suspected
 DBMS (if SQL), current mode, and any payloads that already succeeded.
 Do not execute exploitation commands inline.

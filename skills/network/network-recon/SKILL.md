@@ -86,12 +86,22 @@ append bullet points under this same header.
 
 ## Skill Routing Is Mandatory
 
-When this skill says "→ STOP. Invoke **skill-name**", you MUST invoke that
-skill using the Skill tool. Do NOT execute the technique inline — even if the
-attack path seems obvious or you already know the technique.
+When this skill says "→ STOP. Route to **skill-name**", you MUST load and
+follow that skill:
+
+1. Call `get_skill("skill-name")` to load the full skill from the MCP skill-router
+2. Read the returned SKILL.md content
+3. Follow its instructions end-to-end
+
+Do NOT execute the technique inline — even if the attack path seems obvious or
+you already know the technique.
 
 This applies in both guided and autonomous modes. Autonomous mode means you
 make routing decisions without asking — it does not mean you skip skills.
+
+If you need a skill but don't know the exact name, use
+`search_skills("description of what you need")` to find it. Verify the returned
+description matches your scenario before loading.
 
 ### Scope Boundary
 
@@ -412,7 +422,7 @@ gowitness single TARGET_URL
 directory listing enabled, `.git` or `.svn` directory exposed, phpinfo(),
 server-status/server-info.
 
-→ STOP. Invoke **web-discovery** via the Skill tool. Pass: target URL, tech stack,
+→ STOP. Route to **web-discovery** — call `get_skill("web-discovery")` and follow its instructions. Pass: target URL, tech stack,
 any interesting headers. Do not execute ffuf or web fuzzing commands inline.
 
 ### Kerberos — Port 88
@@ -428,7 +438,7 @@ impacket-GetNPUsers DOMAIN/ -usersfile users.txt -dc-ip TARGET_IP -no-pass -outp
 ```
 
 **Quick wins:** AS-REP roastable accounts, valid username enumeration.
-→ STOP. Invoke **ad-discovery** via the Skill tool. Pass: DC IP, domain name, any creds.
+→ STOP. Route to **ad-discovery** — call `get_skill("ad-discovery")` and follow its instructions. Pass: DC IP, domain name, any creds.
 Do not execute AD enumeration commands inline.
 
 ### RPC/MSRPC — Ports 111, 135
@@ -469,7 +479,7 @@ smbclient -N -L //TARGET_IP/
 writable shares (web root, SYSVOL), EternalBlue (MS17-010), SMBGhost
 (CVE-2020-0796), PrintNightmare.
 
-→ STOP. Invoke **ad-discovery** via the Skill tool. Pass: DC IP, domain name,
+→ STOP. Route to **ad-discovery** — call `get_skill("ad-discovery")` and follow its instructions. Pass: DC IP, domain name,
 any credentials or null session access. Do not execute AD commands inline.
 
 ### LDAP — Ports 389, 636, 3268
@@ -486,7 +496,7 @@ nmap -sV -p389,636,3268 --script ldap-rootdse,ldap-search TARGET_IP
 **Quick wins:** Anonymous bind with full directory read, password in description
 field, domain info disclosure via rootDSE.
 
-→ STOP. Invoke **ad-discovery** via the Skill tool. Pass: DC IP, domain name from
+→ STOP. Route to **ad-discovery** — call `get_skill("ad-discovery")` and follow its instructions. Pass: DC IP, domain name from
 rootDSE, any anonymous bind results. Do not execute LDAP enumeration inline.
 
 ### MSSQL — Port 1433
@@ -850,14 +860,14 @@ Based on recon findings, route to the appropriate technique or discovery skill.
 ### Web Services Found (HTTP/HTTPS)
 
 Ports 80, 443, 8080, 8443, 8000, 3000, 5000, or any HTTP service identified.
-→ STOP. Invoke **web-discovery** via the Skill tool. Pass: target URL,
+→ STOP. Route to **web-discovery** — call `get_skill("web-discovery")` and follow its instructions. Pass: target URL,
 technology stack, any interesting headers or responses noted during enumeration.
 Do not execute web discovery commands inline.
 
 ### Domain Controller Identified
 
 Ports 88 (Kerberos) + 389 (LDAP) + 445 (SMB) indicate an AD domain controller.
-→ STOP. Invoke **ad-discovery** via the Skill tool. Pass: DC IP, domain name
+→ STOP. Route to **ad-discovery** — call `get_skill("ad-discovery")` and follow its instructions. Pass: DC IP, domain name
 (from LDAP rootDSE or SMB OS discovery), any credentials found.
 Do not execute AD enumeration commands inline.
 
@@ -875,7 +885,7 @@ execution or sensitive data.
 ### SMB Shares Accessible
 
 Writable shares, SYSVOL access, or null session enumeration successful.
-→ If domain-joined: STOP. Invoke **ad-discovery** via the Skill tool. Pass: DC IP, domain, share access details.
+→ If domain-joined: STOP. Route to **ad-discovery** — call `get_skill("ad-discovery")` and follow its instructions. Pass: DC IP, domain, share access details.
 → Check for sensitive files (config files, credentials, scripts)
 
 ### Quick Wins Found
@@ -884,29 +894,29 @@ Writable shares, SYSVOL access, or null session enumeration successful.
 |---------|--------|
 | Anonymous FTP with write | Upload webshell if web root, or plant SUID binary |
 | Redis unauthenticated | Webshell write or SSH key injection |
-| NFS with no_root_squash | SUID binary plant → invoke **linux-file-path-abuse** via Skill tool |
+| NFS with no_root_squash | SUID binary plant → route to **linux-file-path-abuse** — call `get_skill("linux-file-path-abuse")` and follow its instructions |
 | SNMP default community | Extract users, processes, installed software |
 | IPMI cipher 0 | Dump hashes → crack → access BMC |
 | Default creds on any service | Use them, escalate |
-| MS08-067 (CVE-2008-4250) | STOP. Invoke **smb-exploitation** via Skill tool. Pass: target IP, OS, vuln confirmed |
-| EternalBlue (MS17-010) | STOP. Invoke **smb-exploitation** via Skill tool. Pass: target IP, OS, architecture, vuln confirmed |
-| SMBGhost (CVE-2020-0796) | STOP. Invoke **smb-exploitation** via Skill tool. Pass: target IP, OS build (must be v1903/v1909) |
-| MS09-050 (CVE-2009-3103) | STOP. Invoke **smb-exploitation** via Skill tool. Pass: target IP, OS (Vista/Server 2008 only) |
+| MS08-067 (CVE-2008-4250) | STOP. Route to **smb-exploitation** — call `get_skill("smb-exploitation")` and follow its instructions. Pass: target IP, OS, vuln confirmed |
+| EternalBlue (MS17-010) | STOP. Route to **smb-exploitation** — call `get_skill("smb-exploitation")` and follow its instructions. Pass: target IP, OS, architecture, vuln confirmed |
+| SMBGhost (CVE-2020-0796) | STOP. Route to **smb-exploitation** — call `get_skill("smb-exploitation")` and follow its instructions. Pass: target IP, OS build (must be v1903/v1909) |
+| MS09-050 (CVE-2009-3103) | STOP. Route to **smb-exploitation** — call `get_skill("smb-exploitation")` and follow its instructions. Pass: target IP, OS (Vista/Server 2008 only) |
 | BlueKeep (CVE-2019-0708) | Direct SYSTEM shell (unstable — no dedicated skill yet) |
 
 ### Internal Network from a Pivot
 
 If running from a compromised host with access to a new subnet:
-→ STOP. Invoke **pivoting-tunneling** via the Skill tool to set up access from attack machine.
-→ Then re-invoke **network-recon** via the Skill tool on the new range.
+→ STOP. Route to **pivoting-tunneling** — call `get_skill("pivoting-tunneling")` and follow its instructions to set up access from attack machine.
+→ Then route to **network-recon** again — call `get_skill("network-recon")` on the new range.
 
 ### Multiple Attack Surfaces
 
 In **guided** mode, present all findings ranked by exploitability:
 1. Known CVEs with public exploits (EternalBlue, BlueKeep, Log4Shell)
 2. Default/anonymous access (FTP, Redis, SNMP, NFS)
-3. Web applications (→ invoke **web-discovery** via Skill tool)
-4. Domain services (→ invoke **ad-discovery** via Skill tool)
+3. Web applications (→ route to **web-discovery** — call `get_skill("web-discovery")` and follow its instructions)
+4. Domain services (→ route to **ad-discovery** — call `get_skill("ad-discovery")` and follow its instructions)
 5. Database services with access
 6. IPMI/BMC access
 
@@ -968,7 +978,7 @@ done; wait
 exec 3<>/dev/tcp/TARGET_IP/PORT; echo "" >&3; cat <&3; exec 3>&-
 ```
 
-→ STOP. Invoke **pivoting-tunneling** via the Skill tool to bring proper tools
+→ STOP. Route to **pivoting-tunneling** — call `get_skill("pivoting-tunneling")` and follow its instructions to bring proper tools
 through to the pivot. Do not configure tunnels inline.
 
 ### Permission errors running nmap

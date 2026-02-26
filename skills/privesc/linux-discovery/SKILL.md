@@ -76,14 +76,23 @@ append bullet points under this same header.
 
 ## Skill Routing Is Mandatory
 
-When this skill says "→ STOP. Invoke **skill-name**" or "route to
-**skill-name**", you MUST invoke that skill using the Skill tool. Do NOT
-execute the technique inline — even if the attack is trivial or you already
-know the answer. Skills contain operator-specific methodology, client-scoped
-payloads, and edge-case handling that general knowledge does not.
+When this skill says "→ STOP. Route to **skill-name**" or "route to
+**skill-name**", you MUST load and follow that skill:
+
+1. Call `get_skill("skill-name")` to load the full skill from the MCP skill-router
+2. Read the returned SKILL.md content
+3. Follow its instructions end-to-end
+
+Do NOT execute the technique inline — even if the attack is trivial or you
+already know the answer. Skills contain operator-specific methodology,
+client-scoped payloads, and edge-case handling that general knowledge does not.
 
 This applies in both guided and autonomous modes. Autonomous mode means you
 make routing decisions without asking — it does not mean you skip skills.
+
+If you need a skill but don't know the exact name, use
+`search_skills("description of what you need")` to find it. Verify the returned
+description matches your scenario before loading.
 
 ### Scope Boundary
 
@@ -230,8 +239,7 @@ memory error. A "usage:" response means the build is patched regardless of versi
 | Binary without full path | PATH hijack | **linux-sudo-suid-capabilities** |
 | Editor/pager/interpreter | GTFOBins escape | **linux-sudo-suid-capabilities** |
 
-If `sudo -l` returns anything usable → STOP. Invoke **linux-sudo-suid-capabilities**
-via the Skill tool. Pass: hostname, current user, sudo -l output, sudo version,
+If `sudo -l` returns anything usable → STOP. Route to **linux-sudo-suid-capabilities** — call `get_skill("linux-sudo-suid-capabilities")` and follow its instructions. Pass: hostname, current user, sudo -l output, sudo version,
 current mode. Do not execute privilege escalation commands inline.
 
 **Doas (OpenBSD alternative):**
@@ -267,8 +275,7 @@ ps aux 2>/dev/null | grep polkit
 | polkit < 0.120 + pkexec has SUID bit | CVE-2021-4034 (PwnKit) | **linux-sudo-suid-capabilities** |
 | polkit < 0.117 + accountsservice + dbus-send | CVE-2021-3560 (D-Bus auth bypass) | **linux-sudo-suid-capabilities** |
 
-If either polkit CVE prerequisite is met → STOP. Invoke
-**linux-sudo-suid-capabilities** via the Skill tool. Pass: hostname, current
+If either polkit CVE prerequisite is met → STOP. Route to **linux-sudo-suid-capabilities** — call `get_skill("linux-sudo-suid-capabilities")` and follow its instructions. Pass: hostname, current
 user, polkit version, pkexec SUID status, accountsservice presence, current
 mode. Do not execute exploitation commands inline.
 
@@ -323,8 +330,7 @@ getcap -r / 2>/dev/null
 | `cap_net_raw` | Raw sockets (sniffing, spoofing) |
 | `cap_setfcap` | Set capabilities on other binaries (chain to cap_setuid) |
 
-Any SUID/capability finding → STOP. Invoke **linux-sudo-suid-capabilities** via
-the Skill tool. Pass: hostname, current user, SUID binaries or capabilities
+Any SUID/capability finding → STOP. Route to **linux-sudo-suid-capabilities** — call `get_skill("linux-sudo-suid-capabilities")` and follow its instructions. Pass: hostname, current user, SUID binaries or capabilities
 found, kernel version, current mode. Do not execute privilege escalation
 commands inline.
 
@@ -374,7 +380,7 @@ sort /tmp/.ps_monitor | uniq -c | sort -rn | head -30
 
 Watch for root-owned processes that execute writable scripts or use relative paths.
 
-Any finding here → STOP. Invoke **linux-cron-service-abuse** via the Skill tool.
+Any finding here → STOP. Route to **linux-cron-service-abuse** — call `get_skill("linux-cron-service-abuse")` and follow its instructions.
 Pass: hostname, current user, specific findings (writable scripts, wildcard
 commands, writable unit files), kernel version, current mode. Do not execute
 exploitation commands inline.
@@ -441,7 +447,7 @@ echo $PATH | tr ':' '\n' | while read dir; do
 done
 ```
 
-Any finding here → STOP. Invoke **linux-file-path-abuse** via the Skill tool.
+Any finding here → STOP. Route to **linux-file-path-abuse** — call `get_skill("linux-file-path-abuse")` and follow its instructions.
 Pass: hostname, current user, specific findings (writable files, group
 memberships, library paths), kernel version, current mode. Do not execute
 exploitation commands inline.
@@ -577,8 +583,7 @@ cat /proc/version
 perl linux-exploit-suggester-2.pl -k $(uname -r)
 ```
 
-Match kernel version against known exploits → STOP. Invoke
-**linux-kernel-exploits** via the Skill tool. Pass: hostname, kernel version,
+Match kernel version against known exploits → STOP. Route to **linux-kernel-exploits** — call `get_skill("linux-kernel-exploits")` and follow its instructions. Pass: hostname, kernel version,
 distribution, architecture, compiler availability, exploit-suggester output,
 current mode. Do not execute kernel exploits inline.
 
@@ -655,7 +660,7 @@ Based on enumeration findings, route to the appropriate technique skill:
 vulnerable to CVE-2021-3156 (VERIFIED with `sudoedit -s '\'`) or CVE-2019-14287,
 capabilities on binaries, polkit CVE-2021-4034 (pkexec SUID) or CVE-2021-3560
 (polkit < 0.117 + accountsservice + dbus-send)
-→ STOP. Invoke **linux-sudo-suid-capabilities** via the Skill tool. Pass:
+→ STOP. Route to **linux-sudo-suid-capabilities** — call `get_skill("linux-sudo-suid-capabilities")` and follow its instructions. Pass:
   hostname, current user, specific findings (sudo entries / SUID binaries /
   capabilities / polkit version and pkexec SUID status), kernel version,
   current mode. Do not execute privilege escalation commands inline.
@@ -664,7 +669,7 @@ capabilities on binaries, polkit CVE-2021-4034 (pkexec SUID) or CVE-2021-3560
 
 Writable cron scripts, wildcard injection in cron commands, writable systemd unit files,
 exploitable D-Bus services, writable Unix sockets
-→ STOP. Invoke **linux-cron-service-abuse** via the Skill tool. Pass:
+→ STOP. Route to **linux-cron-service-abuse** — call `get_skill("linux-cron-service-abuse")` and follow its instructions. Pass:
   hostname, current user, specific findings (writable cron scripts / wildcard
   commands / writable unit files / D-Bus services), kernel version, current
   mode. Do not execute exploitation commands inline.
@@ -674,7 +679,7 @@ exploitable D-Bus services, writable Unix sockets
 Writable /etc/passwd or /etc/shadow, NFS no_root_squash, writable library paths,
 docker/lxd group membership, writable PATH directories, Python path hijack, shared
 object injection, writable profile scripts
-→ STOP. Invoke **linux-file-path-abuse** via the Skill tool. Pass:
+→ STOP. Route to **linux-file-path-abuse** — call `get_skill("linux-file-path-abuse")` and follow its instructions. Pass:
   hostname, current user, specific findings (writable files / NFS exports /
   library paths / group memberships), kernel version, current mode. Do not
   execute exploitation commands inline.
@@ -683,7 +688,7 @@ object injection, writable profile scripts
 
 Kernel version matches known CVE (DirtyPipe, DirtyCow, GameOver(lay)), exploit-suggester
 returns hits, old unpatched kernel, compiler available on target
-→ STOP. Invoke **linux-kernel-exploits** via the Skill tool. Pass:
+→ STOP. Route to **linux-kernel-exploits** — call `get_skill("linux-kernel-exploits")` and follow its instructions. Pass:
   hostname, kernel version, distribution, architecture, compiler availability,
   exploit-suggester output, current mode. Do not execute kernel exploits inline.
 
