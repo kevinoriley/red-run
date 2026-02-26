@@ -6,7 +6,7 @@ A redteam runbook that turns Claude Code into a pentester.
 
 red-run is a redteam partner that knows the techniques, carries the payloads, and can execute when you allow it to.
 
-In **guided mode** (default), Claude walks you through each attack step, shows you the command it would run, explains what to look for in the output, and asks before executing. You stay in the driver's seat most of the time and can guide Claude through things when it starts to veer off course.
+In **guided mode** (default), Claude walks you through each attack step, shows you the command it would run, explains what to look for in the output, and asks before executing. You stay in the driver's seat (most of the time...) and can course-correct when Claude drifts.
 
 In **autonomous mode**, Claude runs commands directly, makes triage decisions at forks, and rarely pauses for your input. Autonomous mode is better suited for CTFs and lab environments where OPSEC doesn't matter and you can break things.
 
