@@ -15,6 +15,7 @@ tools:
 mcpServers:
   - skill-router
   - nmap-server
+  - shell-server
 model: sonnet
 ---
 
@@ -53,6 +54,25 @@ instead of the sudo handoff protocol described in the skill text.
 **When the skill text says "write a handoff script" or "present the sudo
 command to the user"**, use `nmap_scan` instead. The MCP server handles sudo
 transparently.
+
+## Reverse Shell via MCP
+
+You have access to the `shell-server` MCP tools for managing reverse shell
+sessions. Use these when a skill achieves RCE and needs an interactive shell.
+
+- Call `start_listener(port=<port>)` to start a TCP listener
+- Send a reverse shell payload through the current access method
+- Call `list_sessions()` to check for incoming connections
+- Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
+- Call `send_command(session_id=..., command=...)` for subsequent commands
+- Call `close_session(session_id=..., save_transcript=true)` when done
+
+**Prefer reverse shells over inline command execution** (webshell, injection
+parameter, xp_cmdshell). Interactive shells are more reliable, faster, and
+required for privilege escalation tools that spawn new shells.
+
+**When the skill text says "establish reverse shell"**, use the shell-server
+MCP tools instead of asking the user to set up a netcat listener.
 
 ## Scope Boundaries — What You Must NOT Do
 

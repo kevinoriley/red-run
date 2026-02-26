@@ -22,6 +22,16 @@
         "python",
         "server.py"
       ]
+    },
+    "shell-server": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "tools/shell-server",
+        "python",
+        "server.py"
+      ]
     }
   }
 }

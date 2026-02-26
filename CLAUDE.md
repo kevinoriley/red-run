@@ -12,10 +12,10 @@ The orchestrator spawns domain-specific subagents for each skill invocation:
 
 | Agent | Domain | MCP Servers | Skills |
 |-------|--------|-------------|--------|
-| `network-recon-agent` | Network | skill-router, nmap-server | network-recon, smb-exploitation, pivoting-tunneling |
-| `web-agent` | Web | skill-router | All web discovery + technique skills |
-| `ad-agent` | Active Directory | skill-router | All AD discovery + technique skills |
-| `privesc-agent` | Privilege Escalation | skill-router | Linux/Windows discovery + privesc + container escapes |
+| `network-recon-agent` | Network | skill-router, nmap-server, shell-server | network-recon, smb-exploitation, pivoting-tunneling |
+| `web-agent` | Web | skill-router, shell-server | All web discovery + technique skills |
+| `ad-agent` | Active Directory | skill-router, shell-server | All AD discovery + technique skills |
+| `privesc-agent` | Privilege Escalation | skill-router, shell-server | Linux/Windows discovery + privesc + container escapes |
 
 Each invocation: agent loads one skill via `get_skill()`, executes methodology, updates engagement files, returns findings. The orchestrator reads state.md after every return and makes the next routing decision. Subagents never load a second skill or route to other skills.
 
@@ -29,10 +29,13 @@ Agent source files live in `agents/` (version controlled), installed to `~/.clau
 |--------|----------|-------|---------|
 | skill-router | `tools/skill-router/` | `search_skills`, `get_skill`, `list_skills` | Semantic skill discovery and loading |
 | nmap-server | `tools/nmap-server/` | `nmap_scan`, `get_scan`, `list_scans` | Privileged nmap scanning (no sudo handoff) |
+| shell-server | `tools/shell-server/` | `start_listener`, `send_command`, `read_output`, `stabilize_shell`, `list_sessions`, `close_session` | TCP listener and reverse shell session manager |
 
 The skill-router is backed by ChromaDB + sentence-transformer embeddings (`all-MiniLM-L6-v2`). Skills are indexed from structured frontmatter fields (description, keywords, tools, opsec).
 
 The nmap-server wraps `sudo nmap` and returns parsed JSON. Requires passwordless sudo for nmap.
+
+The shell-server manages TCP listeners and reverse shell sessions. It solves the persistent shell problem — Claude Code's Bash tool runs each command as a separate process, so interactive shells and privilege escalation tools that spawn new shells have no way to connect back.
 
 ### Modes
 - **Guided** (default): Interactive. Every command that touches the target
@@ -139,6 +142,9 @@ red-run/
     nmap-server/          # MCP server (sudo nmap wrapper)
       server.py           # FastMCP server — nmap_scan, get_scan, list_scans
       pyproject.toml       # Python dependencies (mcp, python-libnmap)
+    shell-server/         # MCP server (TCP listener + shell manager)
+      server.py           # FastMCP server — start_listener, send_command, stabilize_shell, etc.
+      pyproject.toml       # Python dependencies (mcp)
 ```
 
 ## Skill File Format
@@ -203,5 +209,5 @@ The bwrap sandbox blocks network socket creation. Users must configure their glo
 ./uninstall.sh
 ```
 
-The installer puts the orchestrator in `~/.claude/skills/red-run-orchestrator/`, subagents in `~/.claude/agents/`, and sets up MCP servers (skill-router + nmap-server). Requires [uv](https://docs.astral.sh/uv/) and passwordless sudo for nmap.
+The installer puts the orchestrator in `~/.claude/skills/red-run-orchestrator/`, subagents in `~/.claude/agents/`, and sets up MCP servers (skill-router, nmap-server, shell-server). Requires [uv](https://docs.astral.sh/uv/) and passwordless sudo for nmap.
 

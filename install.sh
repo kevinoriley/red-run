@@ -22,6 +22,7 @@ AGENTS_DST="${HOME}/.claude/agents"
 PREFIX="red-run"
 MCP_SKILL_ROUTER="${REPO_DIR}/tools/skill-router"
 MCP_NMAP_SERVER="${REPO_DIR}/tools/nmap-server"
+MCP_SHELL_SERVER="${REPO_DIR}/tools/shell-server"
 
 # Only the orchestrator is installed as a native Claude Code skill.
 # Everything else is served on-demand via the MCP skill-router.
@@ -169,6 +170,10 @@ else
     echo ""
 fi
 
+# shell-server (TCP listener + reverse shell manager)
+echo "  [shell-server] Installing Python dependencies..."
+uv sync --directory "${MCP_SHELL_SERVER}" --quiet
+
 # --- Step 6: Verify project config ---
 config_warnings=0
 if [[ ! -f "${REPO_DIR}/.mcp.json" ]]; then
@@ -192,6 +197,7 @@ echo "Installed ${native_count} native skill(s) to ${SKILLS_DST}/ (${MODE} mode)
 echo "Installed ${agent_count} custom subagent(s) to ${AGENTS_DST}/"
 echo "63 technique/discovery skills served via MCP skill-router"
 echo "nmap MCP server ready (sudo nmap wrapper)"
+echo "shell MCP server ready (TCP listener + reverse shell manager)"
 if [[ "$config_warnings" -eq 0 ]]; then
     echo ""
     echo "Done! Start Claude Code from this repo directory to activate."

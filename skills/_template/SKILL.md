@@ -143,6 +143,27 @@ reach the target.
 **Inline source code** written via heredoc in this skill does not need this
 workflow — the operator can read the code directly.
 
+## Shell Access (when RCE is achieved)
+
+When this skill achieves command execution on a target, **prefer establishing a
+reverse shell via the MCP shell-server** over continuing to inject commands
+inline (webshell, command injection parameter, SQL xp_cmdshell, etc.).
+
+1. Call `start_listener(port=<port>)` to prepare a catcher
+2. Send a reverse shell payload through the current access method
+3. Call `list_sessions()` to verify the connection
+4. Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
+5. Use `send_command(session_id=..., command=...)` for subsequent commands
+
+**Why**: Interactive shells are more reliable, faster, and required for
+privilege escalation tools that spawn new shells (PwnKit, kernel exploits,
+sudo abuse). Webshell/injection-based command execution is fragile, slow,
+and loses output from interactive programs.
+
+**Exception**: If the target has no outbound connectivity (firewall blocks
+reverse connections), fall back to inline command execution and note the
+limitation in state.md.
+
 ## Prerequisites
 
 - <Required access level or position>

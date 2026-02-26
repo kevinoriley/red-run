@@ -15,6 +15,7 @@ tools:
   - Glob
 mcpServers:
   - skill-router
+  - shell-server
 model: sonnet
 ---
 
@@ -66,6 +67,25 @@ If running inside a container (Docker, LXC, Kubernetes pod):
 - Report this to the orchestrator — it affects the privesc approach
 - Container escape skills are separate from host privesc skills
 - The orchestrator will route to `container-escapes` if appropriate
+
+## Reverse Shell via MCP
+
+You have access to the `shell-server` MCP tools for managing reverse shell
+sessions. Use these when a privilege escalation technique produces a new shell
+(root shell from PwnKit, SYSTEM from kernel exploit, host shell from container
+escape, etc.).
+
+- Call `start_listener(port=<port>)` to catch the escalated shell
+- Execute the privesc exploit with a reverse shell payload targeting the listener
+- Call `list_sessions()` to check for incoming connections
+- Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
+- Call `send_command(session_id=..., command=...)` to verify the new privilege level
+- Call `close_session(session_id=..., save_transcript=true)` when done
+
+**This is critical for privesc.** Many privilege escalation exploits (PwnKit,
+kernel exploits, sudo/SUID abuse) spawn a new interactive root/SYSTEM shell.
+Without the shell-server, there is no way to receive and interact with these
+shells — Claude Code's Bash tool runs each command as a separate process.
 
 ## Scope Boundaries — What You Must NOT Do
 

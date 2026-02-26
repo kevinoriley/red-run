@@ -15,6 +15,7 @@ tools:
   - Glob
 mcpServers:
   - skill-router
+  - shell-server
 model: sonnet
 ---
 
@@ -58,6 +59,23 @@ state.md for existing ccache files or TGTs before requesting new ones.
 **Exception:** Some skills explicitly note that Kerberos auth doesn't apply
 (relay attacks, coercion, password spraying without creds). Follow the skill's
 guidance.
+
+## Reverse Shell via MCP
+
+You have access to the `shell-server` MCP tools for managing reverse shell
+sessions. Use these when a skill achieves code execution on a target (GPO
+abuse, SCCM exploitation, etc.) and needs an interactive shell.
+
+- Call `start_listener(port=<port>)` to start a TCP listener
+- Send a reverse shell payload through the current access method
+- Call `list_sessions()` to check for incoming connections
+- Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
+- Call `send_command(session_id=..., command=...)` for subsequent commands
+- Call `close_session(session_id=..., save_transcript=true)` when done
+
+**Prefer reverse shells over inline command execution** when the skill produces
+RCE. Interactive shells are more reliable and required for privilege escalation
+tools that spawn new shells.
 
 ## Scope Boundaries — What You Must NOT Do
 
