@@ -1,11 +1,14 @@
 ---
 name: orchestrator
 description: >
-  Master orchestrator for penetration testing engagements. Takes a target (IP,
-  hostname, URL, subnet), handles scoping, recon, attack surface mapping,
-  vulnerability chaining, and routing to discovery and technique skills.
-  Do NOT use for single-technique exploitation — route directly to the
-  relevant technique skill instead.
+  USE THIS SKILL when the user provides a target or list of targets (IPs,
+  hostnames, URLs, subnets) and asks to attack, pentest, hack, scan, assess,
+  or test them. Trigger phrases: "attack X", "pentest X", "hack X", "scan X",
+  "start testing X", "pop X", "CTF target X", "engage X", "these targets".
+  This is the entry point for all multi-phase penetration tests — handles
+  recon, attack surface mapping, vulnerability chaining, and routes to
+  technique skills for exploitation. Do NOT use when the user names a specific
+  single technique (e.g., "run kerberoasting against X").
 keywords:
   - pentest this target
   - start an engagement
