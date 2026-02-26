@@ -1,8 +1,8 @@
 # Skills Inventory
 
-65 skills across 6 categories. All skills are `SKILL.md` files under `skills/`.
+66 skills across 6 categories. All skills are `SKILL.md` files under `skills/`.
 
-## Web Application (32 skills)
+## Web Application (33 skills)
 
 | Skill | Technique | Lines |
 |-------|-----------|-------|
@@ -38,6 +38,7 @@
 | `2fa-bypass` | Response manipulation, direct navigation, OTP brute-force, backup codes, OAuth bypass, session attacks | 610 |
 | `race-condition` | Limit-overrun, HTTP/2 single-packet, last-byte sync, Turbo Intruder, TOCTOU, rate limit bypass | 742 |
 | `ajp-ghostcat` | AJP Ghostcat (CVE-2020-1938) file read, credential extraction, JSP inclusion RCE, AJP proxy bypass | 682 |
+| `tomcat-manager-deploy` | WAR deployment RCE via Tomcat manager-script/manager-gui API, msfvenom WAR generation, shell catching | 617 |
 
 ## Active Directory (16 skills)
 
