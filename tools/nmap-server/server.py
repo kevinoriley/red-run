@@ -29,6 +29,11 @@ from mcp.server.fastmcp import FastMCP
 
 NMAP_TIMEOUT = int(os.environ.get("NMAP_TIMEOUT", "600"))
 
+# Resolve engagement directory relative to the project root, not the server's
+# own directory.  uv run --directory changes cwd to tools/nmap-server/, so
+# bare Path("engagement/...") would land artifacts inside the tools tree.
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
 
 def _check_sudo_nmap() -> str | None:
     """Check if passwordless sudo nmap is available. Returns error message or None."""
@@ -110,7 +115,7 @@ def _save_evidence(xml_content: str, target: str, save_to: str | None) -> str | 
     if save_to:
         out_path = Path(save_to)
     else:
-        evidence_dir = Path("engagement/evidence")
+        evidence_dir = _PROJECT_ROOT / "engagement" / "evidence"
         if not evidence_dir.exists():
             return None
         safe_target = target.replace("/", "_").replace(" ", "_")

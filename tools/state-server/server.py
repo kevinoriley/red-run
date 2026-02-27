@@ -26,7 +26,11 @@ from mcp.server.fastmcp import FastMCP
 
 from schema import init_db
 
-DB_PATH = Path("engagement/state.db")
+# Resolve engagement directory relative to the project root, not the server's
+# own directory.  uv run --directory changes cwd to tools/state-server/, so
+# bare Path("engagement/...") would land artifacts inside the tools tree.
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+DB_PATH = _PROJECT_ROOT / "engagement" / "state.db"
 
 
 def _get_db() -> sqlite3.Connection:
