@@ -25,7 +25,7 @@ Autonomous mode pairs with `claude --dangerously-skip-permissions` (a.k.a. yolo 
 
 ## Architecture
 
-The `orchestrator` is a Claude Code skill that runs in the main conversation thread. It delegates skill execution to **custom domain subagents** — focused agents with MCP access that each handle one skill per invocation. This keeps context isolated (each agent starts fresh) while the orchestrator maintains the big picture via a SQLite state database.
+The `orchestrator` is a Claude Code skill intended to run with Opus 4.6 in extended thinking mode. It runs in the main conversation thread. It delegates skill execution to **custom domain subagents** — focused Sonnet agents with MCP access that each handle one skill per invocation. This keeps context isolated (each agent starts fresh) while the `orchestrator` maintains the big picture via a SQLite state database.
 
 **Subagents:**
 
@@ -39,7 +39,7 @@ The `orchestrator` is a Claude Code skill that runs in the main conversation thr
 | `linux-privesc-agent` | Linux privilege escalation | shell-server for catching escalated shells |
 | `windows-privesc-agent` | Windows privilege escalation | shell-server for catching escalated shells |
 
-Each invocation: agent loads one skill, follows the methodology, saves evidence, and returns findings. The orchestrator records state changes and routes to the next skill.
+Each invocation: agent loads one skill, follows the methodology, saves evidence, and returns findings. The `orchestrator` records state changes and routes to the next skill.
 
 **MCP servers:**
 - **skill-router** — semantic search + skill loading via ChromaDB + sentence-transformer embeddings
@@ -55,7 +55,7 @@ The **shell-server** MCP solves this. It manages TCP listeners and reverse shell
 
 ### Inter-skill routing
 
-The orchestrator makes every routing decision by spawning the appropriate domain subagent with a skill name and context. When an LFI reads Tomcat credentials, the orchestrator spawns `web-exploit-agent` with `tomcat-manager-deploy` to get a shell. When BloodHound reveals an ACL path, it spawns `ad-exploit-agent` with `acl-abuse`. Context (injection point, working payloads, target platform, mode) is passed in the agent's Task prompt.
+The `orchestrator` makes every routing decision by spawning the appropriate domain subagent with a skill name and context. When an LFI reads Tomcat credentials, the `orchestrator` spawns `web-exploit-agent` with `tomcat-manager-deploy` to get a shell. When BloodHound reveals an ACL path, it spawns `ad-exploit-agent` with `acl-abuse`. Context (injection point, working payloads, target platform, mode) is passed in the agent's Task prompt.
 
 ## Skills
 
@@ -71,14 +71,14 @@ The orchestrator makes every routing decision by spawning the appropriate domain
 
 ## Engagement logging
 
-red-run performs engagement logging for structured pentests and state tracking. The orchestrator creates the engagement directory on activation, and skills automatically log activity, findings, and evidence.
+red-run performs engagement logging for structured pentests and state tracking. The `orchestrator` creates the engagement directory on activation, and skills automatically log activity, findings, and evidence.
 
 ```
 engagement/
 ├── scope.md          # Target scope, credentials, rules of engagement
 ├── state.db          # SQLite engagement state (managed via MCP state-server)
-├── activity.md       # Chronological action log (orchestrator writes)
-├── findings.md       # Confirmed vulnerabilities (orchestrator writes)
+├── activity.md       # Chronological action log (`orchestrator` writes)
+├── findings.md       # Confirmed vulnerabilities (`orchestrator` writes)
 └── evidence/         # Saved output, responses, dumps (subagents write)
     └── logs/         # Subagent JSONL transcripts (captured automatically)
 ```
@@ -91,7 +91,7 @@ engagement/
 
 Large engagements generate more state than fits in a single conversation context. The **state-server MCP** solves this — a SQLite database that persists across sessions and context compactions, with structured queries for targets, credentials, access, vulnerabilities, pivot paths, and blocked items.
 
-The **orchestrator is the sole writer** of engagement state. Subagents call `get_state_summary()` (read-only) on activation and report findings in their return summary. The orchestrator parses these summaries and calls structured write tools (`add_target`, `add_credential`, `add_vuln`, etc.) to update state. This enforces that all routing decisions flow through the orchestrator.
+The `orchestrator` is the sole writer of engagement state. Subagents call `get_state_summary()` (read-only) on activation and report findings in their return summary. The `orchestrator` parses these summaries and calls structured write tools (`add_target`, `add_credential`, `add_vuln`, etc.) to update state. This enforces that all routing decisions flow through the `orchestrator`.
 
 | Table | Contents |
 |-------|----------|
@@ -142,9 +142,9 @@ The cycle is: **engage → retrospective → improve skills → engage again**. 
 
 The installer:
 1. Removes any existing red-run skills from `~/.claude/skills/` (legacy installs used per-skill native skills — these are now served via MCP)
-2. Installs the **orchestrator** as a native Claude Code skill (`~/.claude/skills/`)
+2. Installs `orchestrator` as a native Claude Code skill (`~/.claude/skills/`)
 3. Installs **custom subagents** to `~/.claude/agents/`
-4. Sets up **MCP servers** — skill-router (ChromaDB + embeddings), nmap-server, shell-server, state-server
+4. Sets up **MCP servers** — `skill-router` (ChromaDB + embeddings), `nmap-server`, `shell-server`, `state-server`
 5. Verifies project config (`.mcp.json`, settings, passwordless sudo nmap)
 
 The repo must stay in place — the MCP server reads skills from `skills/` at runtime.
