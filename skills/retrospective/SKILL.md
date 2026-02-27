@@ -38,18 +38,16 @@ If `engagement/activity.md` or `engagement/state.md` are missing, tell the user:
 
 ## Engagement Logging
 
-If `engagement/` exists (it should — that's a prerequisite), log this
-retrospective:
+Check for `./engagement/` directory. If absent, proceed without logging.
 
-1. **On-screen**: Print `[retrospective] Activated → engagement review`
-2. **activity.md**: Append:
-   ```
-   ### [YYYY-MM-DD HH:MM:SS] retrospective → engagement review
-   - Invoked (post-engagement analysis starting)
-   ```
+When an engagement directory exists:
+- Print `[retrospective] Activated → <target>` to the screen on activation.
+- **Evidence** → save significant output to `engagement/evidence/` with
+  descriptive filenames (e.g., `sqli-users-dump.txt`, `ssrf-aws-creds.json`).
 
-On completion, save the full report to `engagement/retrospective.md` and append
-a final entry to activity.md summarizing the actionable items found.
+Do NOT write to `engagement/activity.md`, `engagement/findings.md`, or
+engagement state. The orchestrator maintains these files. Report all findings
+in your return summary.
 
 ## Step 1: Gather Context
 
@@ -162,16 +160,28 @@ Evaluate four operational dimensions:
 ### Routing Efficiency
 - Were there unnecessary detours? (e.g., broad scanning when targeted testing
   would have found the same issue faster)
-- Were redundant scans run? (e.g., re-scanning ports already in state.md)
+- Were redundant scans run? (e.g., re-scanning ports already in the engagement state)
 - Were there missed shortcuts? (e.g., credentials found early but not tested
   against other services until late)
 - Did the orchestrator chain vulnerabilities effectively?
 
 ### State Management
-- Was `state.md` kept current? Were there stale reads?
-- Did skills write state before routing to the next skill?
-- Was the Blocked section used effectively?
-- Was the Pivot Map accurate and used for decision-making?
+
+Call `get_state_summary()` from the state-reader MCP server to read current
+engagement state. Use it to:
+- Skip re-testing targets, parameters, or vulns already confirmed
+- Leverage existing credentials or access for this technique
+- Understand what's been tried and failed (check Blocked section)
+
+**Do NOT write engagement state.** When your work is complete, report all
+findings clearly in your return summary. The orchestrator parses your summary
+and records state changes. Your return summary must include:
+- New targets/hosts discovered (with ports and services)
+- New credentials or tokens found
+- Access gained or changed (user, privilege level, method)
+- Vulnerabilities confirmed (with status and severity)
+- Pivot paths identified (what leads where)
+- Blocked items (what failed and why, whether retryable)
 
 ## Step 6: Critical Path Review
 
@@ -294,7 +304,7 @@ analyze the current session transcript.
 ### Activity log has no skill references
 Techniques may have been executed inline (without loading the corresponding
 skill) or the engagement predates the current skill library. Flag this
-as a routing gap and reconstruct the timeline from state.md and findings.md
+as a routing gap and reconstruct the timeline from the engagement state and findings.md
 instead.
 
 ### Multiple engagement directories

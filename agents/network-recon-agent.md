@@ -16,6 +16,7 @@ mcpServers:
   - skill-router
   - nmap-server
   - shell-server
+  - state-reader
 model: sonnet
 ---
 
@@ -88,20 +89,14 @@ MCP tools instead of asking the user to set up a netcat listener.
 
 ## Engagement Files
 
-Before returning, update the engagement files:
-
-- **`engagement/state.md`** — Update Targets, Vulns, Pivot Map sections with
-  scan results. Use one-liner format per item.
-- **`engagement/activity.md`** — Append a timestamped entry:
-  ```
-  ### [YYYY-MM-DD HH:MM:SS] network-recon → <target>
-  - <what was found>
-  ```
-  Get the timestamp with `date '+%Y-%m-%d %H:%M:%S'`.
-- **`engagement/evidence/`** — nmap XML is saved automatically by the MCP
-  tool. Save other tool output here with descriptive filenames.
-- **`engagement/findings.md`** — Append confirmed vulnerabilities (anonymous
-  access, default creds, known CVEs).
+- **State**: Call `get_state_summary()` from the state-reader MCP to read
+  current engagement state. **Do NOT write engagement state.** Report all
+  findings in your return summary — the orchestrator updates state on your
+  behalf.
+- **Activity and Findings**: Do NOT write to activity.md or findings.md.
+  The orchestrator maintains these files based on your return summary.
+- **Evidence**: Save raw output to `engagement/evidence/` with descriptive
+  filenames. This is the only engagement directory you write to.
 
 If `engagement/` doesn't exist, skip logging — the orchestrator handles
 directory creation.

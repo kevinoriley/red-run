@@ -36,42 +36,16 @@ If unclear, default to guided.
 
 ## Engagement Logging
 
-Check for `./engagement/` directory. If absent:
-- **Guided**: Ask if the user wants to initialize an engagement directory.
-- **Autonomous**: Create it automatically with `activity.md`, `findings.md`, and
-  `evidence/`.
+Check for `./engagement/` directory. If absent, proceed without logging.
 
-When an engagement directory exists, log as you work:
-- **Activity** → append to `engagement/activity.md` at milestones (test confirmed,
-  data extracted, finding discovered, pivot to another skill):
-  `### [YYYY-MM-DD HH:MM:SS] <skill-name> → <target>` with bullet points of actions and results.
-- **Findings** → append to `engagement/findings.md` when a vulnerability is confirmed:
-  `## N. Title [Severity]` with target, technique, impact, evidence path, repro command.
-- **Evidence** → save significant output to `engagement/evidence/` with descriptive
-  filenames (e.g., `sqli-users-dump.txt`, `ssrf-aws-creds.json`).
+When an engagement directory exists:
+- Print `[<skill-name>] Activated → <target>` to the screen on activation.
+- **Evidence** → save significant output to `engagement/evidence/` with
+  descriptive filenames (e.g., `sqli-users-dump.txt`, `ssrf-aws-creds.json`).
 
-If no engagement directory exists and the user declines to create one, proceed normally.
-
-### Invocation Log
-
-Immediately on activation — before reading state.md or doing any assessment —
-log invocation to both the screen and activity.md:
-
-1. **On-screen**: Print `[<skill-name>] Activated → <target>` so the operator
-   sees which skill is running.
-2. **activity.md**: Append:
-   ```
-   ### [YYYY-MM-DD HH:MM:SS] <skill-name> → <target>
-   - Invoked (assessment starting)
-   ```
-
-**Timestamps:** Replace `[YYYY-MM-DD HH:MM:SS]` with the actual current date
-and time. Run `date '+%Y-%m-%d %H:%M:%S'` to get it. Never write the literal
-placeholder `[YYYY-MM-DD HH:MM:SS]` — activity.md entries need real timestamps
-with date and second precision for timeline reconstruction.
-
-This entry must be written NOW, not deferred. Subsequent milestone entries
-append bullet points under this same header.
+Do NOT write to `engagement/activity.md`, `engagement/findings.md`, or
+engagement state. The orchestrator maintains these files. Report all findings
+in your return summary.
 
 ## Scope Boundary
 
@@ -80,13 +54,10 @@ through a routing instruction ("Route to **skill-name**") or by discovering
 findings outside your domain — **STOP**.
 
 Do not load or execute another skill. Do not continue past your scope boundary.
-Instead:
-
-1. Write `engagement/state.md` with current findings
-2. Return to the orchestrator with:
-   - What was found (vulns, credentials, access gained)
-   - Recommended next skill (the bold **skill-name** from routing instructions)
-   - Context to pass (injection point, target, working payloads, etc.)
+Instead, return to the orchestrator with:
+  - What was found (vulns, credentials, access gained)
+  - Recommended next skill (the bold **skill-name** from routing instructions)
+  - Context to pass (injection point, target, working payloads, etc.)
 
 The orchestrator decides what runs next. Your job is to execute this skill
 thoroughly and return clean findings.
@@ -98,26 +69,21 @@ The orchestrator will provide specific guidance or route to a different skill.
 
 ## State Management
 
-If `engagement/state.md` exists, read it before starting. Use it to:
+Call `get_state_summary()` from the state-reader MCP server to read current
+engagement state. Use it to:
 - Skip re-testing targets, parameters, or vulns already confirmed
 - Leverage existing credentials or access for this technique
 - Understand what's been tried and failed (check Blocked section)
 
-Write `engagement/state.md` at these checkpoints (not just at completion):
-1. **After confirming a vulnerability** — add to Vulns with `[found]`
-2. **After successful exploitation** — add credentials, access, pivot paths
-3. **Before routing to another skill** — the next skill reads state.md on activation
-
-At each checkpoint and on completion, update the relevant sections of
-`engagement/state.md`:
-- **Targets**: Add any new hosts, URLs, or services discovered
-- **Credentials**: Add any credentials, tokens, or keys recovered
-- **Access**: Add or update footholds (shells, sessions, DB access)
-- **Vulns**: Add confirmed vulns as one-liners; mark exploited ones `[done]`
-- **Pivot Map**: Add new attack paths discovered (X leads to Y)
-- **Blocked**: Record what was tried and why it failed
-
-Keep entries compact — one line per item. State.md is a snapshot, not a log.
+**Do NOT write engagement state.** When your work is complete, report all
+findings clearly in your return summary. The orchestrator parses your summary
+and records state changes. Your return summary must include:
+- New targets/hosts discovered (with ports and services)
+- New credentials or tokens found
+- Access gained or changed (user, privilege level, method)
+- Vulnerabilities confirmed (with status and severity)
+- Pivot paths identified (what leads where)
+- Blocked items (what failed and why, whether retryable)
 
 ## Exploit and Tool Transfer
 
@@ -187,7 +153,7 @@ and loses output from interactive programs.
 
 **Exception**: If the target has no outbound connectivity (firewall blocks
 reverse connections), fall back to inline command execution and note the
-limitation in state.md.
+limitation in your return summary.
 
 ## Prerequisites
 
@@ -225,10 +191,6 @@ command arg1 arg2
 ```
 
 ## Step N: Escalate or Pivot
-
-**Before routing**: Write `engagement/state.md` and append to
-`engagement/activity.md` with results so far. The next skill reads state.md
-on activation — stale state means duplicate work or missed context.
 
 After completing this technique:
 - <Outcome 1>: STOP. Return to orchestrator recommending **<other-skill-name>**. Pass: <context>.
@@ -268,14 +230,13 @@ Do not loop. Work through failures systematically:
 - What failed and why (error messages, empty responses, timeouts)
 - Assessment: **blocked** (permanent — config, patched, missing prereq) or
   **retry-later** (may work with different context, creds, or access)
-- Update `engagement/state.md` Blocked section before returning
 
 **Mode behavior:**
 - **Guided**: Tell the user you're stalled, present what was tried, and
   recommend the next best path.
-- **Autonomous**: Update state.md Blocked section, return findings to the
-  orchestrator. Do not retry the same technique — the orchestrator will
-  decide whether to revisit with new context or route elsewhere.
+- **Autonomous**: Return findings to the orchestrator. Do not retry the same
+  technique — the orchestrator will decide whether to revisit with new context
+  or route elsewhere.
 
 ## Troubleshooting
 

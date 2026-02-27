@@ -58,60 +58,34 @@ If unclear, default to guided.
 
 ## Engagement Logging
 
-Check for `./engagement/` directory. If absent:
-- **Guided**: Ask if the user wants to initialize an engagement directory.
-- **Autonomous**: Create it automatically.
+Check for `./engagement/` directory. If absent, proceed without logging.
 
 When an engagement directory exists:
-- **Activity** → `### [YYYY-MM-DD HH:MM:SS] adcs-persistence → <target>` with technique,
-  persistence method, certificate obtained/forged.
-- **Findings** → Log weak mapping configurations, CA key compromise, stolen
-  certificates.
-- **Evidence** → Save certificates to `engagement/evidence/adcs-*.pfx`,
-  CA backup to `engagement/evidence/adcs-ca-backup.pfx`.
+- Print `[adcs-persistence] Activated → <target>` to the screen on activation.
+- **Evidence** → save significant output to `engagement/evidence/` with
+  descriptive filenames (e.g., `sqli-users-dump.txt`, `ssrf-aws-creds.json`).
 
-### Invocation Log
-
-Immediately on activation — before reading state.md or doing any assessment —
-log invocation to both the screen and activity.md:
-
-1. **On-screen**: Print `[adcs-persistence] Activated → <target>` so the operator
-   sees which skill is running.
-2. **activity.md**: Append:
-   ```
-   ### [YYYY-MM-DD HH:MM:SS] adcs-persistence → <target>
-   - Invoked (assessment starting)
-   ```
-
-**Timestamps:** Replace `[YYYY-MM-DD HH:MM:SS]` with the actual current date
-and time. Run `date '+%Y-%m-%d %H:%M:%S'` to get it. Never write the literal
-placeholder `[YYYY-MM-DD HH:MM:SS]` — activity.md entries need real timestamps
-with date and second precision for timeline reconstruction.
-
-This entry must be written NOW, not deferred. Subsequent milestone entries
-append bullet points under this same header.
-
+Do NOT write to `engagement/activity.md`, `engagement/findings.md`, or
+engagement state. The orchestrator maintains these files. Report all findings
+in your return summary.
 
 ## State Management
 
-If `engagement/state.md` exists, read it before starting. Use it to:
-- Check for existing DA/CA access (required for some techniques)
-- Look for certificates already obtained from other ADCS skills
-- Check if GenericWrite on accounts is available (ESC9/10)
-- Review existing footholds and credential material
+Call `get_state_summary()` from the state-reader MCP server to read current
+engagement state. Use it to:
+- Skip re-testing targets, parameters, or vulns already confirmed
+- Leverage existing credentials or access for this technique
+- Understand what's been tried and failed (check Blocked section)
 
-Write `engagement/state.md` at these checkpoints (not just at completion):
-1. **After confirming a vulnerability** — add to Vulns with `[found]`
-2. **After successful exploitation** — add credentials, access, pivot paths
-3. **Before routing to another skill** — the next skill reads state.md on activation
-
-At each checkpoint and on completion, update the relevant sections of
-`engagement/state.md`:
-- **Credentials**: Add forged/stolen certificates, NT hashes from UnPAC
-- **Access**: Add persistent access mechanisms established
-- **Vulns**: `[found] ESC<N>` or `Golden Certificate` → `[done]`
-- **Pivot Map**: Persistence method → what it grants → duration
-- **Blocked**: Certificate mapping enforcement blocking exploitation
+**Do NOT write engagement state.** When your work is complete, report all
+findings clearly in your return summary. The orchestrator parses your summary
+and records state changes. Your return summary must include:
+- New targets/hosts discovered (with ports and services)
+- New credentials or tokens found
+- Access gained or changed (user, privilege level, method)
+- Vulnerabilities confirmed (with status and severity)
+- Pivot paths identified (what leads where)
+- Blocked items (what failed and why, whether retryable)
 
 ## Prerequisites
 
@@ -584,10 +558,6 @@ reg query "HKLM\SYSTEM\CurrentControlSet\Services\Kdc" \
 
 ## Step 10: Escalate or Pivot
 
-**Before routing**: Write `engagement/state.md` and append to
-`engagement/activity.md` with results so far. The next skill reads state.md
-on activation — stale state means duplicate work or missed context.
-
 After establishing persistence:
 
 - **Golden Certificate forged**: Can impersonate any user indefinitely — route
@@ -631,14 +601,13 @@ Do not loop. Work through failures systematically:
 - What failed and why (error messages, empty responses, timeouts)
 - Assessment: **blocked** (permanent — config, patched, missing prereq) or
   **retry-later** (may work with different context, creds, or access)
-- Update `engagement/state.md` Blocked section before returning
 
 **Mode behavior:**
 - **Guided**: Tell the user you're stalled, present what was tried, and
   recommend the next best path.
-- **Autonomous**: Update state.md Blocked section, return findings to the
-  orchestrator. Do not retry the same technique — the orchestrator will
-  decide whether to revisit with new context or route elsewhere.
+- **Autonomous**: Return findings to the orchestrator. Do not retry the same
+  technique — the orchestrator will decide whether to revisit with new context
+  or route elsewhere.
 
 ## Troubleshooting
 

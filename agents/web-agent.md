@@ -16,6 +16,7 @@ tools:
 mcpServers:
   - skill-router
   - shell-server
+  - state-reader
 model: sonnet
 ---
 
@@ -57,8 +58,8 @@ what to do. You have one task per invocation.
 - **Proxy awareness**: If Burp Suite or another proxy is configured in the
   environment, route traffic through it for evidence capture.
 - **Session management**: Maintain cookies and session tokens across requests
-  within the same test. Read auth context from state.md if the orchestrator
-  provides it.
+  within the same test. Read auth context from `get_state_summary()` via the
+  state-reader MCP if the orchestrator provides it.
 - **Evidence capture**: Save interesting HTTP requests/responses to
   `engagement/evidence/` with descriptive filenames (e.g.,
   `sqli-union-search-param.txt`, `xss-stored-comment-field.txt`).
@@ -83,20 +84,14 @@ required for privilege escalation tools that spawn new shells.
 
 ## Engagement Files
 
-Before returning, update the engagement files:
-
-- **`engagement/state.md`** — Update Vulns, Access, Credentials, Pivot Map
-  sections with findings. Use one-liner format per item.
-- **`engagement/activity.md`** — Append a timestamped entry:
-  ```
-  ### [YYYY-MM-DD HH:MM:SS] <skill-name> → <target>
-  - <what was found/exploited>
-  ```
-  Get the timestamp with `date '+%Y-%m-%d %H:%M:%S'`.
-- **`engagement/evidence/`** — Save HTTP requests, responses, payloads, and
-  tool output with descriptive filenames.
-- **`engagement/findings.md`** — Append confirmed vulnerabilities with
-  severity, target, technique, impact, and reproduction steps.
+- **State**: Call `get_state_summary()` from the state-reader MCP to read
+  current engagement state. **Do NOT write engagement state.** Report all
+  findings in your return summary — the orchestrator updates state on your
+  behalf.
+- **Activity and Findings**: Do NOT write to activity.md or findings.md.
+  The orchestrator maintains these files based on your return summary.
+- **Evidence**: Save raw output to `engagement/evidence/` with descriptive
+  filenames. This is the only engagement directory you write to.
 
 If `engagement/` doesn't exist, skip logging — the orchestrator handles
 directory creation.

@@ -50,9 +50,9 @@ through a domain subagent (preferred) or inline via `get_skill()` (fallback).
 1. Look up the skill in the **Skill-to-Agent Routing Table** (see Subagent
    Delegation section) to find the correct domain agent.
 2. Spawn the agent via the Task tool with the skill name, target info, mode,
-   and relevant context from state.md.
+   and relevant context from the state summary.
 3. Wait for the agent to return with findings.
-4. Re-read `engagement/state.md` and run decision logic.
+4. Parse the return summary and record findings using state-writer MCP tools.
 
 ### Fallback Path: Inline Execution
 
@@ -103,8 +103,10 @@ The orchestrator routes to skills — it does not run attack tools itself.
 The only commands the orchestrator may execute directly are:
 
 - `mkdir -p engagement/evidence` — engagement directory creation
-- File writes to `engagement/` — scope.md, state.md, activity.md, findings.md
-- MCP tool calls (`get_skill`, `search_skills`, `list_skills`) — skill routing
+- File writes to `engagement/scope.md`, `engagement/activity.md`, `engagement/findings.md`
+- State-writer MCP tools (`init_engagement`, `add_target`, `add_credential`, `add_access`, `add_vuln`, `add_pivot`, `add_blocked`, and their update variants) — engagement state
+- State-reader MCP tools (`get_state_summary`, `get_targets`, `get_credentials`, `get_access`, `get_vulns`, `get_pivot_map`, `get_blocked`) — state queries
+- Skill-router MCP tools (`get_skill`, `search_skills`, `list_skills`) — skill routing
 
 Everything else — nmap, netexec, ffuf, nuclei, httpx, sqlmap, curl, any tool
 that sends traffic to a target — MUST go through the appropriate skill.
@@ -127,10 +129,10 @@ every routing decision.
 
 | Agent | Domain | MCP Servers | Use For |
 |-------|--------|-------------|---------|
-| `network-recon-agent` | Network | skill-router, nmap-server, shell-server | network-recon, smb-exploitation, pivoting-tunneling |
-| `web-agent` | Web | skill-router, shell-server | All web discovery + technique skills |
-| `ad-agent` | Active Directory | skill-router, shell-server | All AD discovery + technique skills |
-| `privesc-agent` | Privilege Escalation | skill-router, shell-server | Linux/Windows discovery + technique skills, container escapes |
+| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, state-reader | network-recon, smb-exploitation, pivoting-tunneling |
+| `web-agent` | Web | skill-router, shell-server, state-reader | All web discovery + technique skills |
+| `ad-agent` | Active Directory | skill-router, shell-server, state-reader | All AD discovery + technique skills |
+| `privesc-agent` | Privilege Escalation | skill-router, shell-server, state-reader | Linux/Windows discovery + technique skills, container escapes |
 
 **How to delegate:**
 
@@ -147,14 +149,16 @@ Task(
 The agent will:
 1. Call `get_skill("network-recon")` to load the skill
 2. Follow the methodology, using MCP tools as needed (e.g., `nmap_scan`)
-3. Update engagement files (state.md, activity.md, findings.md, evidence/)
+3. Report findings and return — the orchestrator records state changes and decides what to invoke next
 4. Return a summary of findings and routing recommendations
 
 **After every subagent return:**
-1. Re-read `engagement/state.md` — the agent updated it
-2. Check for new credentials, access, vulns, or blocked items
-3. Run the Step 5 decision logic
-4. Spawn the next agent with the appropriate skill
+1. Parse the agent's return summary for new targets, creds, access, vulns, pivots, blocked items
+2. Call structured write tools to record findings (`add_target`, `add_credential`, `add_vuln`, etc.)
+3. Append to `engagement/activity.md` with routing decision and skill outcome
+4. Append to `engagement/findings.md` if vulnerabilities were confirmed
+5. Call `get_state_summary()` and run the Step 5 decision logic
+6. Spawn the next agent with the appropriate skill
 
 **Each invocation = one skill.** Discovery skills find things and return.
 The orchestrator decides which technique skill to invoke next. Subagents
@@ -207,18 +211,19 @@ The orchestrator runs a decision loop. Each iteration:
 
 ```
 while objectives_not_met:
-    read state.md
+    summary = get_state_summary()
     analyze: unexploited vulns, unchained access, untested creds, pivot map
     pick highest-value next action → select skill + domain agent
-    pre-routing checkpoint (write state.md, log to activity.md)
-    spawn agent with: skill name, target info, mode, context
+    append to activity.md (routing decision)
+    spawn agent with: skill name, target info, mode, context from summary
     agent returns: findings summary, routing recommendations
-    post-routing checkpoint (re-read state.md, check new state)
-    update activity.md with routing decision + outcome
+    parse return → call add_target/add_credential/add_vuln/etc.
+    append to activity.md (outcome)
+    append to findings.md (if vulns confirmed)
 ```
 
 Each iteration is one skill invocation. The orchestrator never runs two skills
-in parallel — sequential execution ensures state.md stays consistent.
+in parallel — sequential execution ensures state stays consistent.
 
 #### Built-in Task Sub-Agents (Warning)
 
@@ -238,7 +243,7 @@ skill (inline) instead of ad-hoc cracking in a built-in sub-agent.
 
 ### Pre-Routing Checkpoint
 
-Before every skill invocation, write `engagement/state.md` and append to
+Before every skill invocation, append to
 `engagement/activity.md` with current findings. Format:
 ```
 ### [YYYY-MM-DD HH:MM:SS] orchestrator → routing to <skill-name>
@@ -250,15 +255,24 @@ Before every skill invocation, write `engagement/state.md` and append to
 
 When a skill completes and returns control to the orchestrator:
 
-1. Re-read `engagement/state.md` — the skill should have updated it
-2. Check for new credentials, access, or vulns added by the skill
-3. Run the Step 5 decision logic (check unexploited vulns, unchained access,
-   untested creds, pivot map, blocked items, progress toward objectives)
-4. Route to the next skill based on updated state
+1. Parse the subagent's return summary for new findings
+2. Call structured write tools to record state changes:
+   - New hosts/ports → `add_target()` / `add_port()`
+   - New credentials → `add_credential()`
+   - Credential test results → `test_credential()`
+   - Access gained/changed → `add_access()` / `update_access()`
+   - Vulnerabilities confirmed → `add_vuln()` / `update_vuln()`
+   - Pivot paths identified → `add_pivot()`
+   - Failed techniques → `add_blocked()`
+3. Append to `engagement/activity.md` with skill outcome
+4. Append to `engagement/findings.md` if vulnerabilities were confirmed
+5. Call `get_state_summary()` for routing decision
+6. Run the Step 5 decision logic
+7. Route to the next skill based on updated state
 
 Skills should NOT chain directly into other skills' scope areas. If a discovery
-skill finds something outside its scope, it updates state.md and returns — the
-orchestrator decides what to invoke next.
+skill finds something outside its scope, it reports findings and returns — the
+orchestrator records state changes and decides what to invoke next.
 
 ## Mode
 
@@ -339,23 +353,10 @@ mkdir -p engagement/evidence
 - <goals>
 ```
 
-**engagement/state.md** — initialize empty state:
+**engagement/state.db** — initialize via state-writer MCP:
 
-```markdown
-# Engagement State
-
-## Targets
-
-## Credentials
-
-## Access
-
-## Vulns
-
-## Pivot Map
-
-## Blocked
-```
+Call `init_engagement(name="<engagement name>")` to create the SQLite state
+database. This replaces the old state.md file.
 
 **engagement/activity.md** — start the activity log:
 
@@ -395,8 +396,7 @@ Network-recon will:
    default creds, known CVEs)
 3. Perform OS fingerprinting
 4. Run vulnerability scanning (NSE scripts, nuclei)
-5. Update state.md with all discovered hosts, ports, and services
-6. Return routing recommendations for next steps
+5. Return routing recommendations for next steps
 
 Wait for the agent to return before proceeding to attack surface mapping.
 
@@ -430,8 +430,10 @@ Do not execute netexec or ldapsearch commands inline.
 
 ### Update State
 
-After each agent returns, re-read `engagement/state.md` (the agent updated it)
-and check for new findings before routing to the next skill.
+After each agent returns, parse the return summary and record findings using
+state-writer MCP tools (`add_target`, `add_port`, `add_credential`, `add_vuln`,
+etc.). Then call `get_state_summary()` to check for new findings before routing
+to the next skill.
 
 Log to `engagement/activity.md`:
 ```markdown
@@ -493,7 +495,7 @@ execute netexec or hydra commands inline.
 
 ## Step 5: Vulnerability Chaining
 
-This is the critical orchestrator function. Read `engagement/state.md` and
+This is the critical orchestrator function. Call `get_state_summary()` and
 analyze the Pivot Map to chain vulnerabilities for maximum impact.
 
 ### Chaining Strategy
@@ -538,7 +540,7 @@ Common chains that produce shell access on a host:
 > 4. Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
 >
 > If the target has no outbound connectivity, fall back to inline command
-> execution and note the limitation in state.md. If the subagent has
+> execution and note the limitation via `add_blocked()`. If the subagent has
 > shell-server MCP access, it can call these tools directly.
 >
 > **2. Route to the appropriate discovery skill.**
@@ -577,7 +579,7 @@ Common chains that produce shell access on a host:
 
 ### Decision Logic
 
-When reading state.md, the orchestrator should:
+When reading the state summary (via `get_state_summary()`), the orchestrator should:
 
 1. **Check for unexploited vulns** — spawn the appropriate agent with the
    technique skill (look up in Skill-to-Agent Routing Table)
@@ -624,7 +626,7 @@ reason:
    #!/usr/bin/env bash
    set -euo pipefail
    # Sync attackbox clock with domain controller
-   DC_IP="<DC_IP from state.md>"
+   DC_IP="<DC_IP from engagement state>"
    sudo ntpdate "$DC_IP" || sudo rdate -n "$DC_IP"
    echo "[+] Clock synced with $DC_IP"
    ```
@@ -657,7 +659,7 @@ Report at each milestone.
 When significant access is gained (shell, domain admin, database):
 
 1. **Collect evidence** — save proof to `engagement/evidence/`
-2. **Update state.md** — add new access, credentials, and vulns
+2. **Update state** — call state-writer MCP tools to record new access, credentials, and vulns
 3. **Check objectives** — have we met the engagement goals?
 4. **Continue or wrap up** — if objectives met, move to reporting. If not,
    continue chaining.
@@ -704,7 +706,7 @@ target B) and strategic prioritization.
 
 **Phase 1 — Recon all targets:**
 Invoke **network-recon** for each target (or once for the full scope). Build
-the complete attack surface map in state.md before choosing where to attack.
+the complete attack surface map in the engagement state before choosing where to attack.
 
 **Phase 2 — Triage and prioritize:**
 After recon, rank targets by exploitability:
@@ -715,10 +717,10 @@ After recon, rank targets by exploitability:
 
 **Phase 3 — Work the highest-value target:**
 Route through discovery → technique skills for the top-priority target. When
-you gain access or get blocked, update state.md and move to the next target.
+you gain access or get blocked, record state changes via state-writer MCP and move to the next target.
 
 **Phase 4 — Cross-pollinate:**
-After each target yields credentials or access, check state.md for
+After each target yields credentials or access, check the engagement state for
 opportunities on other targets:
 - New creds → test against all targets with matching services
 - New network access → check for internal-only services on other targets
@@ -742,20 +744,14 @@ exhausted or objectives are met.
 
 ### State Management for Multiple Targets
 
-State.md tracks all targets in one file. Use per-target one-liners:
+The engagement state database tracks all targets in structured tables. Use the
+state-reader MCP tools to query across targets:
 
-```markdown
-## Targets
-- 10.10.10.1 | Windows Server 2019 | DC | 53,88,135,389,445,636,3268,3389,5985
-- 10.10.10.5 | Ubuntu 22.04 | Web | 22,80,443
-
-## Access
-- 10.10.10.5 | www-data via reverse shell (port 4444) | from XXE → webshell → rev shell
-- 10.10.10.1 | no access yet
-
-## Credentials
-- admin:Password123 (found on 10.10.10.5, untested on 10.10.10.1)
-```
+- `get_state_summary()` — full overview of all targets, access, credentials,
+  vulns, and pivot paths in one view
+- `get_targets()` — list all discovered hosts with ports and services
+- `get_credentials(untested_only=true)` — find credentials that haven't been
+  tested against all services yet
 
 After each skill invocation, check ALL targets for newly actionable state —
 not just the target that was just worked on.
@@ -764,7 +760,7 @@ not just the target that was just worked on.
 
 When the engagement is complete (objectives met or testing window closed):
 
-1. Read `engagement/state.md` for the full picture
+1. Call `get_state_summary()` for the full picture
 2. Read `engagement/findings.md` for confirmed vulnerabilities
 3. Summarize the attack narrative — how each chain progressed
 4. Write up each finding in `engagement/findings.md` with severity, impact, evidence path, and reproduction steps.
@@ -828,7 +824,7 @@ and follow its instructions.
 
 ### Stuck — No Clear Next Step
 
-- Re-read `engagement/state.md` — look for unchained access or untested creds
+- Call `get_state_summary()` — look for unchained access or untested creds
 - Check Blocked section — has context changed?
 - Try broader recon: full port scan, UDP scan, subdomain enumeration
 - Check for default credentials on discovered services
