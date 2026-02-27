@@ -13,9 +13,12 @@ The orchestrator spawns domain-specific subagents for each skill invocation:
 | Agent | Domain | MCP Servers | Skills |
 |-------|--------|-------------|--------|
 | `network-recon-agent` | Network | skill-router, nmap-server, shell-server, state-reader | network-recon, smb-exploitation, pivoting-tunneling |
-| `web-agent` | Web | skill-router, shell-server, state-reader | All web discovery + technique skills |
-| `ad-agent` | Active Directory | skill-router, shell-server, state-reader | All AD discovery + technique skills |
-| `privesc-agent` | Privilege Escalation | skill-router, shell-server, state-reader | Linux/Windows discovery + privesc + container escapes |
+| `web-discovery-agent` | Web discovery | skill-router, shell-server, state-reader | web-discovery |
+| `web-exploit-agent` | Web exploitation | skill-router, shell-server, state-reader | All web technique skills |
+| `ad-discovery-agent` | AD discovery | skill-router, shell-server, state-reader | ad-discovery |
+| `ad-exploit-agent` | AD exploitation | skill-router, shell-server, state-reader | All AD technique skills |
+| `linux-privesc-agent` | Linux privesc | skill-router, shell-server, state-reader | Linux discovery + privesc + container escapes |
+| `windows-privesc-agent` | Windows privesc | skill-router, shell-server, state-reader | Windows discovery + privesc |
 
 Each invocation: agent loads one skill via `get_skill()`, executes methodology, saves evidence, and returns findings. The orchestrator parses the return summary, records state changes via the state-writer MCP, and makes the next routing decision. Subagents are read-only for state — they never write engagement state directly.
 
@@ -96,8 +99,9 @@ engagement/
 - A `SubagentStop` hook (`tools/hooks/save-agent-log.sh`) copies raw JSONL
   transcripts from domain subagents into `engagement/evidence/logs/`.
 - Filename format: `{ISO-timestamp}-{agent-type}.jsonl` (e.g.,
-  `20260227T143052Z-web-agent.jsonl`).
-- Only triggers for red-run domain agents (network-recon, web, ad, privesc) —
+  `20260227T143052Z-web-exploit-agent.jsonl`).
+- Only triggers for red-run domain agents (network-recon, web-discovery,
+  web-exploit, ad-discovery, ad-exploit, linux-privesc, windows-privesc) —
   not built-in subagents (Explore, Plan, general-purpose).
 - No engagement directory = hook exits silently. No logging, no errors.
 - The retrospective skill parses these logs for post-engagement analysis.
@@ -144,9 +148,12 @@ red-run/
   uninstall.sh            # Removes installed skills, agents, MCP data
   agents/                 # Custom subagent definitions (installed to ~/.claude/agents/)
     network-recon-agent.md
-    web-agent.md
-    ad-agent.md
-    privesc-agent.md
+    web-discovery-agent.md
+    web-exploit-agent.md
+    ad-discovery-agent.md
+    ad-exploit-agent.md
+    linux-privesc-agent.md
+    windows-privesc-agent.md
   skills/
     _template/SKILL.md    # Canonical template
     orchestrator/SKILL.md # Master orchestrator (native skill)

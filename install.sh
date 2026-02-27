@@ -140,6 +140,21 @@ for agent_file in "${AGENTS_DST}"/*.md; do
     fi
 done
 
+# Clean up old agents replaced by the discovery/exploit split
+OLD_AGENTS=("web-agent.md" "ad-agent.md" "privesc-agent.md")
+old_agent_count=0
+for old_agent in "${OLD_AGENTS[@]}"; do
+    old_dest="${AGENTS_DST}/${old_agent}"
+    if [[ -f "$old_dest" || -L "$old_dest" ]]; then
+        rm -f "$old_dest"
+        echo "  Removed old agent: ${old_agent}"
+        old_agent_count=$((old_agent_count + 1))
+    fi
+done
+if [[ "$old_agent_count" -gt 0 ]]; then
+    echo "  Cleaned up ${old_agent_count} old agent(s)"
+fi
+
 # --- Step 5: Set up MCP servers ---
 echo ""
 echo "Setting up MCP servers..."

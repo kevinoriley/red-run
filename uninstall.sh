@@ -47,6 +47,17 @@ for agent_file in "${AGENTS_SRC}"/*.md; do
         agent_count=$((agent_count + 1))
     fi
 done
+
+# Also clean up old agents from before the discovery/exploit split
+OLD_AGENTS=("web-agent.md" "ad-agent.md" "privesc-agent.md")
+for old_agent in "${OLD_AGENTS[@]}"; do
+    old_dest="${AGENTS_DST}/${old_agent}"
+    if [[ -f "$old_dest" || -L "$old_dest" ]]; then
+        rm -f "$old_dest"
+        echo "  Removed old agent: ${old_agent}"
+        agent_count=$((agent_count + 1))
+    fi
+done
 echo "  ${agent_count} agent(s) removed"
 
 # --- Step 3: Clean up MCP servers ---

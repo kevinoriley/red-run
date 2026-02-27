@@ -10,27 +10,12 @@ In **guided mode** (default), Claude walks you through each attack step, shows y
 
 In **autonomous mode**, Claude runs commands directly, makes triage decisions at forks, and rarely pauses for your input. Autonomous mode is better suited for CTFs and lab environments where OPSEC doesn't matter and you can break things.
 
-## How it works
-
-### Skill types
-
-- **Orchestrator** — the main loop. Takes a target, runs recon, maps the attack surface, chains vulnerabilities toward objectives, and delegates each skill to a domain subagent. Parses return summaries, records state via MCP, and decides what to do next.
-- **Discovery skills** — enumerate an attack surface and identify vulnerabilities. Return findings to the orchestrator for triage.
-- **Technique skills** — exploit a specific vulnerability class with embedded payloads and bypass techniques
-
-### Modes
-
-- **Guided** (default) — explain each step, ask before executing, present options at decision forks
-- **Autonomous** — execute end-to-end, make triage decisions, report at milestones
-
-Say "switch to autonomous" or "guide me through this" at any point.
-
 &nbsp;
 <div align="center"><br><b>⚠️⚠️⚠️⚠️ WARNING ⚠️⚠️⚠️⚠️</b></div>
 
 &nbsp;
 
-Autonomous mode pairs with `claude --dangerously-skip-permissions` (a.k.a. yolo mode). **We do not recommend this.** We do not endorse this. We are not responsible for what happens. You will watch Claude chain four skills, pop a shell, and pivot to a subnet you forgot was in scope. It is exhilarating and horrifying in equal measure. Use guided mode or avoid `--dangerously-skip-permissions` entirely. Remember that skills are really just suggestions. YOU are responsible for containing Claude responsibly on your systems. YOU are liable for any legal consequences under the CFAA or equivalent legislation in your jurisdiction.
+Autonomous mode pairs with `claude --dangerously-skip-permissions` (a.k.a. yolo mode). **We do not recommend this.** We do not endorse this. We are not responsible for what happens. Claude will chain four skills, pop a shell, and pivot to a subnet no one told you about. It is exhilarating and horrifying in equal measure. <!-- It's incredibly fun to watch. --> Use guided mode or avoid `--dangerously-skip-permissions` entirely. Remember that skills are really just suggestions. YOU are responsible for containing Claude responsibly on your systems. YOU are liable for any legal consequences under the CFAA or equivalent legislation in your jurisdiction.
 
 &nbsp;
 
@@ -38,40 +23,43 @@ Autonomous mode pairs with `claude --dangerously-skip-permissions` (a.k.a. yolo 
 
 &nbsp;
 
-### Architecture
+## Architecture
 
-The **orchestrator** is a native Claude Code skill that runs in the main conversation thread. It delegates skill execution to **custom domain subagents** — focused agents with MCP access that each handle one skill per invocation. This keeps context isolated (each agent starts fresh) while the orchestrator maintains the big picture via a SQLite state database.
+The `orchestrator` is a Claude Code skill intended to run with Opus 4.6 in extended thinking mode. It runs in the main conversation thread. It delegates skill execution to **custom domain subagents** — focused Sonnet agents with MCP access that each handle one skill per invocation. This keeps context isolated (each agent starts fresh) while the `orchestrator` maintains the big picture via a SQLite state database.
 
 **Subagents:**
 
 | Agent | Domain | Key capability |
 |-------|--------|----------------|
 | `network-recon-agent` | Network recon + exploitation | nmap MCP + shell-server |
-| `web-agent` | Web application security | shell-server for RCE → reverse shell |
-| `ad-agent` | Active Directory attacks | Kerberos-first auth + shell-server |
-| `privesc-agent` | Privilege escalation | shell-server for catching escalated shells |
+| `web-discovery-agent` | Web application discovery | Enumeration, tech fingerprinting, vuln identification |
+| `web-exploit-agent` | Web application exploitation | shell-server for RCE → reverse shell |
+| `ad-discovery-agent` | AD enumeration | BloodHound, LDAP, attack surface mapping |
+| `ad-exploit-agent` | AD exploitation | Kerberos-first auth + shell-server |
+| `linux-privesc-agent` | Linux privilege escalation | shell-server for catching escalated shells |
+| `windows-privesc-agent` | Windows privilege escalation | shell-server for catching escalated shells |
 
-Each invocation: agent loads one skill, follows the methodology, saves evidence, and returns findings. The orchestrator records state changes and routes to the next skill.
+Each invocation: agent loads one skill, follows the methodology, saves evidence, and returns findings. The `orchestrator` records state changes and routes to the next skill.
 
 **MCP servers:**
 - **skill-router** — semantic search + skill loading via ChromaDB + sentence-transformer embeddings
-- **nmap-server** — wraps `sudo nmap`, returns parsed JSON
+- **nmap-server** — wraps `sudo nmap`, returns parsed JSON (to do: Dockerize this)
 - **shell-server** — TCP listener + reverse shell session manager
-- **state-server** — SQLite engagement state (runs as read-only `state-reader` for subagents, read-write `state-writer` for orchestrator)
+- **state-server** — SQLite engagement state
 
 ### Reverse shells via MCP
 
-Claude Code's Bash tool runs each command as a separate process — there's no persistent shell session. This means interactive reverse shells, privilege escalation tools that spawn new shells (PwnKit, kernel exploits, sudo abuse), and anything requiring a connected session simply don't work through normal tool calls.
+Claude Code's Bash tool runs each command as a separate process — there's no persistent shell session. This often causes Claude to try various enumeration and privilege escalation steps directly through unstable and character-restrictive webshells, with less-than-stellar results, as you’d expect.
 
 The **shell-server** MCP solves this. It manages TCP listeners and reverse shell sessions as a long-lived server process. Subagents call `start_listener(port=4444)` to open a catcher, send a reverse shell payload through whatever RCE they've achieved, then interact with the shell via `send_command()`. Sessions persist across tool calls, support PTY upgrades for interactive programs, and save transcripts to `engagement/evidence/` on close.
 
 ### Inter-skill routing
 
-The orchestrator makes every routing decision. When an LFI reads Tomcat credentials, the orchestrator spawns the web agent with `tomcat-manager-deploy` to get a shell. When BloodHound reveals an ACL path, the orchestrator routes to `acl-abuse` via the AD agent. Context (injection point, working payloads, target platform, mode) is passed in the agent's Task prompt.
+The `orchestrator` makes every routing decision by spawning the appropriate domain subagent with a skill name and context. When an LFI reads Tomcat credentials, the `orchestrator` spawns `web-exploit-agent` with `tomcat-manager-deploy` to get a shell. When BloodHound reveals an ACL path, it spawns `ad-exploit-agent` with `acl-abuse`. Context (injection point, working payloads, target platform, mode) is passed in the agent's Task prompt.
 
 ## Skills
 
-66 skills across 6 categories — see **[SKILLS.md](SKILLS.md)** for the full inventory with technique details and line counts.
+66 skills across 6 categories — see **[SKILLS.md](SKILLS.md)** for the full inventory with technique details and line counts. These are baseline offensive security skill templates researched and created by Claude.
 
 | Category | Skills | Coverage |
 |----------|--------|----------|
@@ -83,14 +71,14 @@ The orchestrator makes every routing decision. When an LFI reads Tomcat credenti
 
 ## Engagement logging
 
-Skills carry out engagement logging for structured pentests and state tracking. The orchestrator creates the engagement directory on activation, and skills automatically log activity, findings, and evidence.
+red-run performs engagement logging for structured pentests and state tracking. The `orchestrator` creates the engagement directory on activation, and skills automatically log activity, findings, and evidence.
 
 ```
 engagement/
 ├── scope.md          # Target scope, credentials, rules of engagement
 ├── state.db          # SQLite engagement state (managed via MCP state-server)
-├── activity.md       # Chronological action log (orchestrator writes)
-├── findings.md       # Confirmed vulnerabilities (orchestrator writes)
+├── activity.md       # Chronological action log (`orchestrator` writes)
+├── findings.md       # Confirmed vulnerabilities (`orchestrator` writes)
 └── evidence/         # Saved output, responses, dumps (subagents write)
     └── logs/         # Subagent JSONL transcripts (captured automatically)
 ```
@@ -103,7 +91,7 @@ engagement/
 
 Large engagements generate more state than fits in a single conversation context. The **state-server MCP** solves this — a SQLite database that persists across sessions and context compactions, with structured queries for targets, credentials, access, vulnerabilities, pivot paths, and blocked items.
 
-The **orchestrator is the sole writer** of engagement state. Subagents call `get_state_summary()` (read-only) on activation and report findings in their return summary. The orchestrator parses these summaries and calls structured write tools (`add_target`, `add_credential`, `add_vuln`, etc.) to update state. This enforces that all routing decisions flow through the orchestrator.
+The `orchestrator` is the sole writer of engagement state. Subagents call `get_state_summary()` (read-only) on activation and report findings in their return summary. The `orchestrator` parses these summaries and calls structured write tools (`add_target`, `add_credential`, `add_vuln`, etc.) to update state. This enforces that all routing decisions flow through the `orchestrator`.
 
 | Table | Contents |
 |-------|----------|
@@ -154,9 +142,9 @@ The cycle is: **engage → retrospective → improve skills → engage again**. 
 
 The installer:
 1. Removes any existing red-run skills from `~/.claude/skills/` (legacy installs used per-skill native skills — these are now served via MCP)
-2. Installs the **orchestrator** as a native Claude Code skill (`~/.claude/skills/`)
+2. Installs `orchestrator` as a native Claude Code skill (`~/.claude/skills/`)
 3. Installs **custom subagents** to `~/.claude/agents/`
-4. Sets up **MCP servers** — skill-router (ChromaDB + embeddings), nmap-server, shell-server, state-server
+4. Sets up **MCP servers** — `skill-router` (ChromaDB + embeddings), `nmap-server`, `shell-server`, `state-server`
 5. Verifies project config (`.mcp.json`, settings, passwordless sudo nmap)
 
 The repo must stay in place — the MCP server reads skills from `skills/` at runtime.
