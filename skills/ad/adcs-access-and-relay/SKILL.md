@@ -99,10 +99,14 @@ and records state changes. Your return summary must include:
 **Kerberos-first workflow** (ESC4/5/7 only):
 
 ```bash
-getTGT.py DOMAIN/user@DC.DOMAIN.LOCAL -hashes :NTHASH
-export KRB5CCNAME=user.ccache
+cd $TMPDIR && getTGT.py DOMAIN/user -hashes :NTHASH -dc-ip DC_IP
+export KRB5CCNAME=$TMPDIR/user.ccache
 # All Certipy/Impacket commands use -k -no-pass
 ```
+
+**Tool output directory**: `getTGT.py`, `certipy req`, and `certipy auth` write
+output files to CWD with no output-path flag. Always prefix with
+`cd $TMPDIR &&`. Use `mv` (not `cp`) when saving evidence.
 
 ## Privileged Commands
 

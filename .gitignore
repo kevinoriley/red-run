@@ -40,7 +40,8 @@ tools/nmap-server/uv.lock
 .ripgreprc
 HEAD
 config
-hooks
+# Git internal directories (bare repo artifacts)
+/hooks
 objects
 refs
 

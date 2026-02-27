@@ -82,6 +82,7 @@ engagement/
 ├── activity.md       # Chronological action log (append-only, orchestrator writes)
 ├── findings.md       # Confirmed vulnerabilities (orchestrator writes)
 └── evidence/         # Saved output, responses, dumps (subagents write)
+    └── logs/         # Subagent JSONL transcripts (captured by SubagentStop hook)
 ```
 
 **Behavior:**
@@ -90,6 +91,16 @@ engagement/
 - Findings numbered sequentially. Light summaries — use `pentest-findings` skill for formal report-quality writeups.
 - Evidence saved with descriptive filenames to `engagement/evidence/`.
 - No engagement directory = no logging. Skills degrade gracefully.
+
+**Subagent transcript capture:**
+- A `SubagentStop` hook (`tools/hooks/save-agent-log.sh`) copies raw JSONL
+  transcripts from domain subagents into `engagement/evidence/logs/`.
+- Filename format: `{ISO-timestamp}-{agent-type}.jsonl` (e.g.,
+  `20260227T143052Z-web-agent.jsonl`).
+- Only triggers for red-run domain agents (network-recon, web, ad, privesc) —
+  not built-in subagents (Explore, Plan, general-purpose).
+- No engagement directory = hook exits silently. No logging, no errors.
+- The retrospective skill parses these logs for post-engagement analysis.
 
 **Orchestrator responsibility:**
 - Creates engagement directory, initializes `scope.md`, and calls `init_engagement()` to create `state.db`
@@ -158,6 +169,8 @@ red-run/
       server.py           # FastMCP server — runs as state-reader (read) or state-writer (read+write)
       schema.py           # SQLite schema creation and migration
       pyproject.toml       # Python dependencies (mcp)
+    hooks/                # Claude Code hooks
+      save-agent-log.sh   # SubagentStop hook — copies JSONL transcripts to engagement/evidence/logs/
 ```
 
 ## Skill File Format

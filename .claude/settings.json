@@ -1,3 +1,16 @@
 {
-  "enableAllProjectMcpServers": true
+  "enableAllProjectMcpServers": true,
+  "hooks": {
+    "SubagentStop": [
+      {
+        "matcher": "(network-recon|web|ad|privesc)-agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/save-agent-log.sh"
+          }
+        ]
+      }
+    ]
+  }
 }

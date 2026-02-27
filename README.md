@@ -92,10 +92,12 @@ engagement/
 ├── activity.md       # Chronological action log (orchestrator writes)
 ├── findings.md       # Confirmed vulnerabilities (orchestrator writes)
 └── evidence/         # Saved output, responses, dumps (subagents write)
+    └── logs/         # Subagent JSONL transcripts (captured automatically)
 ```
 
 - Activity logged at milestones (test confirmed, data extracted, finding discovered)
 - Findings numbered with severity, target, technique, impact, and reproduction steps
+- Subagent JSONL transcripts automatically captured via a `SubagentStop` hook — every tool call, decision, and error from each domain agent is preserved for retrospective analysis
 
 ### State management
 
@@ -116,7 +118,7 @@ The **orchestrator is the sole writer** of engagement state. Subagents call `get
 
 The skills in this repo are a starting point. The `retrospective` skill is what makes them yours.
 
-After an engagement, run a retrospective. Claude reads the engagement directory — `activity.md`, `state.db`, `findings.md` — and analyzes what happened. It reviews every skill routing decision, identifies gaps in payloads and methodology, flags techniques that were done by hand instead of through a skill, and produces a prioritized list of improvements: skill updates, new skills to build, routing fixes.
+After an engagement, run a retrospective. Claude reads the engagement directory — `activity.md`, `state.db`, `findings.md`, and the subagent JSONL transcripts in `evidence/logs/` — and analyzes what happened. It reviews every skill routing decision, identifies gaps in payloads and methodology, flags techniques that were done by hand instead of through a skill, and produces a prioritized list of improvements: skill updates, new skills to build, routing fixes.
 
 The actionable items are specific. Not "improve the SQL injection skill" but "`sql-injection-blind` only carried MySQL `SLEEP()` payloads — add MSSQL `WAITFOR DELAY` and PostgreSQL `pg_sleep()` for time-based detection." You discuss the findings with Claude, decide what to change, and update the skills right there in the same session.
 

