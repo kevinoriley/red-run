@@ -869,3 +869,22 @@ web app with known vuln > database with creds > default service access).
 When routing, pass along: target IP, open ports, identified services and versions,
 OS, any credentials or access found, current mode.
 
+## Troubleshooting
+
+### Nmap scan runs slowly or hangs
+- Use `-T4` for speed. Drop to `-T3` if getting rate-limited or missing ports.
+- On large subnets, start with `--top-ports 1000` before doing `-p-`.
+- If host seems down but you know it's up, add `-Pn` to skip host discovery.
+
+### UDP scan takes too long
+- UDP scans are inherently slow. Limit to key ports: `-sU -p 53,67,69,123,161,162,500,623,1434,5353`.
+- Combine with TCP: `-sS -sU --top-ports 100`.
+
+### Service version detection returns "tcpwrapped"
+- Target is accepting TCP connections but dropping them before service negotiation.
+- Try connecting manually: `nc -nv TARGET_IP PORT` to see if there's a banner.
+- May indicate a firewall or IPS is interfering.
+
+### Nmap XML parsing fails
+- Ensure scan completed (check for `</nmaprun>` closing tag).
+- If scan was interrupted, partial XML is unusable — re-run with `-oA` to get all formats.
