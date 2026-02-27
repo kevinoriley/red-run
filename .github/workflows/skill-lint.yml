@@ -1,0 +1,16 @@
+name: Skill Lint
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - name: Install dependencies
+        run: cd tools/skill-router && uv sync
+      - name: Run skill lint tests
+        run: cd tools/skill-router && uv run pytest tests/test_skills.py tests/test_agents.py -v
