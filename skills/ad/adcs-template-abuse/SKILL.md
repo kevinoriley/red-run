@@ -525,6 +525,17 @@ NTAuth`.
 Template requires manager approval. Check if you have ManageCA/ManageCertificates
 permissions to approve it yourself — route to **adcs-access-and-relay** (ESC7).
 
+### KRB_AP_ERR_SKEW (Clock Skew)
+
+Kerberos requires clocks within 5 minutes of the DC. This is a **Clock Skew
+Interrupt** — stop immediately and return to the orchestrator. Do not retry or
+fall back to NTLM. The fix requires root:
+```bash
+sudo ntpdate DC_IP
+# or
+sudo rdate -n DC_IP
+```
+
 ### OPSEC comparison
 
 | ESC | OPSEC | Detection Surface |

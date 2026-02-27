@@ -553,11 +553,16 @@ Do not loop. Work through failures systematically:
 - **Recovery**: Lockout duration is typically 30 minutes. Wait and resume
   with fewer attempts per round
 
-### KRB_AP_ERR_SKEW (kerbrute)
+### KRB_AP_ERR_SKEW (Clock Skew — kerbrute path only)
 
-Clock out of sync. Fix with (requires root — present to user for manual execution):
+Kerberos requires clocks within 5 minutes of the DC. This applies to the
+kerbrute-based spraying path, not NTLM-based spraying. This is a **Clock Skew
+Interrupt** — stop immediately and return to the orchestrator. Do not retry or
+fall back to NTLM. The fix requires root:
 ```bash
-sudo ntpdate DC01.DOMAIN.LOCAL
+sudo ntpdate DC_IP
+# or
+sudo rdate -n DC_IP
 ```
 
 ### Kerberos Pre-Auth vs NTLM Detection

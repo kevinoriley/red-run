@@ -561,6 +561,17 @@ CA may require restart for new officer permissions to take effect. Use
 Firewall blocking SMB from DC to attacker. Verify port 445 reachability. Try
 alternative coercion (WebDAV for HTTP coercion, or use a host the DC can reach).
 
+### KRB_AP_ERR_SKEW (Clock Skew)
+
+Kerberos requires clocks within 5 minutes of the DC. This is a **Clock Skew
+Interrupt** — stop immediately and return to the orchestrator. Do not retry or
+fall back to NTLM. The fix requires root:
+```bash
+sudo ntpdate DC_IP
+# or
+sudo rdate -n DC_IP
+```
+
 ### OPSEC comparison
 
 | ESC | OPSEC | Detection Surface |

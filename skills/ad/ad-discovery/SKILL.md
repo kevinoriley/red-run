@@ -582,8 +582,9 @@ When routing to a technique skill, pass along:
 
 ### Kerberos Errors
 
-- **KRB_AP_ERR_SKEW**: Clock out of sync. Fix with `sudo ntpdate DC_IP` or
-  `sudo rdate -n DC_IP` (requires root — present to user for manual execution)
+- **KRB_AP_ERR_SKEW**: Clock out of sync (> 5 minutes from DC). This is a
+  **Clock Skew Interrupt** — stop immediately and return to the orchestrator.
+  Do not retry or fall back to NTLM. Fix requires root: `sudo ntpdate DC_IP`
 - **KDC cannot find the name**: Use FQDN hostnames, not IP addresses. Ensure
   DNS resolves to the DC or add entries to `/etc/hosts`
 

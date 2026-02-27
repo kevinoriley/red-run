@@ -617,6 +617,17 @@ Do not loop. Work through failures systematically:
 - Check if the password was set after MS14-025 patch (post-2014 GPPs
   should not contain cpassword)
 
+### KRB_AP_ERR_SKEW (Clock Skew)
+
+Kerberos requires clocks within 5 minutes of the DC. This is a **Clock Skew
+Interrupt** — stop immediately and return to the orchestrator. Do not retry or
+fall back to NTLM. The fix requires root:
+```bash
+sudo ntpdate DC_IP
+# or
+sudo rdate -n DC_IP
+```
+
 ### OPSEC Comparison
 
 | Technique | OPSEC | Detection Events | Notes |

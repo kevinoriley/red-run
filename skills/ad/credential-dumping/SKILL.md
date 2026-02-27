@@ -631,7 +631,9 @@ Do not loop. Work through failures systematically:
 
 - Target may require SMB3, add `-smb2support` or check Impacket version
 - Try `-use-vss` flag for VSS-based extraction instead of DRSUAPI
-- Clock skew: `sudo ntpdate DC_IP` (requires root — present to user for manual execution)
+- Clock skew (`KRB_AP_ERR_SKEW`): **Clock Skew Interrupt** — stop immediately
+  and return to the orchestrator. Do not retry or fall back to NTLM. Fix
+  requires root: `sudo ntpdate DC_IP`
 
 ### LAPS Attribute Empty
 
