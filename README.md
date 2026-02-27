@@ -25,7 +25,7 @@ Autonomous mode pairs with `claude --dangerously-skip-permissions` (a.k.a. yolo 
 
 ## Architecture
 
-The **orchestrator** is a native Claude Code skill that runs in the main conversation thread. It delegates skill execution to **custom domain subagents** — focused agents with MCP access that each handle one skill per invocation. This keeps context isolated (each agent starts fresh) while the orchestrator maintains the big picture via a SQLite state database.
+The `orchestrator` is a Claude Code skill that runs in the main conversation thread. It delegates skill execution to **custom domain subagents** — focused agents with MCP access that each handle one skill per invocation. This keeps context isolated (each agent starts fresh) while the orchestrator maintains the big picture via a SQLite state database.
 
 **Subagents:**
 
@@ -43,13 +43,13 @@ Each invocation: agent loads one skill, follows the methodology, saves evidence,
 
 **MCP servers:**
 - **skill-router** — semantic search + skill loading via ChromaDB + sentence-transformer embeddings
-- **nmap-server** — wraps `sudo nmap`, returns parsed JSON
+- **nmap-server** — wraps `sudo nmap`, returns parsed JSON (to do: Dockerize this)
 - **shell-server** — TCP listener + reverse shell session manager
-- **state-server** — SQLite engagement state (runs as read-only `state-reader` for subagents, read-write `state-writer` for orchestrator)
+- **state-server** — SQLite engagement state
 
 ### Reverse shells via MCP
 
-Claude Code's Bash tool runs each command as a separate process — there's no persistent shell session. This means interactive reverse shells, privilege escalation tools that spawn new shells (PwnKit, kernel exploits, sudo abuse), and anything requiring a connected session simply don't work through normal tool calls.
+Claude Code's Bash tool runs each command as a separate process — there's no persistent shell session. This often causes Claude to try various enumeration and privilege escalation steps directly through unstable and character-restrictive webshells, with less-than-stellar results, as you’d expect.
 
 The **shell-server** MCP solves this. It manages TCP listeners and reverse shell sessions as a long-lived server process. Subagents call `start_listener(port=4444)` to open a catcher, send a reverse shell payload through whatever RCE they've achieved, then interact with the shell via `send_command()`. Sessions persist across tool calls, support PTY upgrades for interactive programs, and save transcripts to `engagement/evidence/` on close.
 
@@ -59,7 +59,7 @@ The orchestrator makes every routing decision. When an LFI reads Tomcat credenti
 
 ## Skills
 
-66 skills across 6 categories — see **[SKILLS.md](SKILLS.md)** for the full inventory with technique details and line counts.
+66 skills across 6 categories — see **[SKILLS.md](SKILLS.md)** for the full inventory with technique details and line counts. These are baseline offensive security Skill templates resarched and created by Claude.
 
 | Category | Skills | Coverage |
 |----------|--------|----------|
@@ -71,7 +71,7 @@ The orchestrator makes every routing decision. When an LFI reads Tomcat credenti
 
 ## Engagement logging
 
-Skills carry out engagement logging for structured pentests and state tracking. The orchestrator creates the engagement directory on activation, and skills automatically log activity, findings, and evidence.
+red-run performs engagement logging for structured pentests and state tracking. The orchestrator creates the engagement directory on activation, and skills automatically log activity, findings, and evidence.
 
 ```
 engagement/
