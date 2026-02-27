@@ -128,8 +128,6 @@ This is where red-run starts to work differently for you than for anyone else. A
 
 The cycle is: **engage → retrospective → improve skills → engage again**. Each pass through the loop makes the library more effective for the specific types of targets, environments, and toolchains you work with. The skills become a living record of your methodology — refined by real engagements, not hypothetical coverage.
 
-**Coming soon:** automated tests that run after skill creation or modification — verifying frontmatter structure, checking that discovery skills route to the new skill, confirming the MCP index includes it with correct embeddings, and catching stale references or template placeholders left behind.
-
 ## Installation
 
 ### Prerequisites
