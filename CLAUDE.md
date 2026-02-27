@@ -12,12 +12,12 @@ The orchestrator spawns domain-specific subagents for each skill invocation:
 
 | Agent | Domain | MCP Servers | Skills |
 |-------|--------|-------------|--------|
-| `network-recon-agent` | Network | skill-router, nmap-server, shell-server | network-recon, smb-exploitation, pivoting-tunneling |
-| `web-agent` | Web | skill-router, shell-server | All web discovery + technique skills |
-| `ad-agent` | Active Directory | skill-router, shell-server | All AD discovery + technique skills |
-| `privesc-agent` | Privilege Escalation | skill-router, shell-server | Linux/Windows discovery + privesc + container escapes |
+| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, state-reader | network-recon, smb-exploitation, pivoting-tunneling |
+| `web-agent` | Web | skill-router, shell-server, state-reader | All web discovery + technique skills |
+| `ad-agent` | Active Directory | skill-router, shell-server, state-reader | All AD discovery + technique skills |
+| `privesc-agent` | Privilege Escalation | skill-router, shell-server, state-reader | Linux/Windows discovery + privesc + container escapes |
 
-Each invocation: agent loads one skill via `get_skill()`, executes methodology, updates engagement files, returns findings. The orchestrator reads state.md after every return and makes the next routing decision. Subagents never load a second skill or route to other skills.
+Each invocation: agent loads one skill via `get_skill()`, executes methodology, saves evidence, and returns findings. The orchestrator parses the return summary, records state changes via the state-writer MCP, and makes the next routing decision. Subagents are read-only for state — they never write engagement state directly.
 
 **Inline fallback**: If subagents aren't installed, the orchestrator loads skills inline via `get_skill()` in the main thread.
 
@@ -30,6 +30,10 @@ Agent source files live in `agents/` (version controlled), installed to `~/.clau
 | skill-router | `tools/skill-router/` | `search_skills`, `get_skill`, `list_skills` | Semantic skill discovery and loading |
 | nmap-server | `tools/nmap-server/` | `nmap_scan`, `get_scan`, `list_scans` | Privileged nmap scanning (no sudo handoff) |
 | shell-server | `tools/shell-server/` | `start_listener`, `send_command`, `read_output`, `stabilize_shell`, `list_sessions`, `close_session` | TCP listener and reverse shell session manager |
+| state-reader | `tools/state-server/` | `get_state_summary`, `get_targets`, `get_credentials`, `get_access`, `get_vulns`, `get_pivot_map`, `get_blocked` | Read-only engagement state queries (subagents) |
+| state-writer | `tools/state-server/` | All read tools + `init_engagement`, `close_engagement`, `add_target`, `add_port`, `add_credential`, `add_access`, `add_vuln`, `add_pivot`, `add_blocked`, and update variants | Full engagement state management (orchestrator only) |
+
+The state-reader and state-writer are two instances of the same server (`tools/state-server/server.py`) running in different modes (`--mode read` vs `--mode write`). Both open the same `engagement/state.db`. SQLite WAL mode handles concurrent readers safely. Since only the orchestrator writes (via state-writer), write conflicts are impossible. Subagents physically cannot see write tools because their MCP instance doesn't register them.
 
 The skill-router is backed by ChromaDB + sentence-transformer embeddings (`all-MiniLM-L6-v2`). Skills are indexed from structured frontmatter fields (description, keywords, tools, opsec).
 
@@ -74,10 +78,10 @@ Skills support optional engagement logging for structured pentests.
 ```
 engagement/
 ├── scope.md          # Target scope, credentials, rules of engagement
-├── state.md          # Compact machine-readable engagement state (snapshot)
-├── activity.md       # Chronological action log (append-only)
-├── findings.md       # Confirmed vulnerabilities (working tracker)
-└── evidence/         # Saved output, responses, dumps
+├── state.db          # SQLite engagement state (managed via MCP state-server)
+├── activity.md       # Chronological action log (append-only, orchestrator writes)
+├── findings.md       # Confirmed vulnerabilities (orchestrator writes)
+└── evidence/         # Saved output, responses, dumps (subagents write)
 ```
 
 **Behavior:**
@@ -88,33 +92,38 @@ engagement/
 - No engagement directory = no logging. Skills degrade gracefully.
 
 **Orchestrator responsibility:**
-- Creates engagement directory and initializes `scope.md` and `state.md` from user input
-- Maintains `activity.md` across skill transitions
-- Reads `state.md` to decide next actions and which skill to invoke
-- Analyzes `state.md` to chain vulnerabilities toward maximum impact
+- Creates engagement directory, initializes `scope.md`, and calls `init_engagement()` to create `state.db`
+- Is the **sole writer** of all engagement state (SQLite), `activity.md`, and `findings.md`
+- Parses subagent return summaries and records findings via state-writer MCP tools
+- Calls `get_state_summary()` to decide next actions and which skill to invoke
+- Analyzes state to chain vulnerabilities toward maximum impact
 - Produces engagement summary when complete
+
+**Subagent responsibility:**
+- Call `get_state_summary()` from the state-reader MCP to read current state
+- Save raw evidence to `engagement/evidence/` (the only directory subagents write to)
+- Report all findings clearly in their return summary — the orchestrator records state changes
 
 ### State Management
 
-`engagement/state.md` is a compact, machine-readable snapshot of current engagement state. It is **not** a log — it's the current truth.
+Engagement state lives in `engagement/state.db`, a SQLite database managed by the state-server MCP. The **orchestrator is the sole writer** — subagents are read-only.
 
-**Sections:**
+**Tables:**
 
-| Section | Contents | Updated By |
-|---------|----------|------------|
-| **Targets** | Hosts, IPs, URLs, ports, tech stack (one-liner each) | Discovery skills |
-| **Credentials** | Username/password/hash/token pairs, where they work | Any skill that finds creds |
-| **Access** | Current footholds: shells, sessions, tokens, DB access | Exploitation skills |
-| **Vulns** | One-liner per confirmed vuln with status: `[found]`, `[active]`, `[done]` | Technique skills |
-| **Pivot Map** | What leads where — vuln X gives access Y, creds Z work on host W | Any skill |
-| **Blocked** | What was tried and why it failed — prevents re-testing | Any skill |
+| Table | Contents | Key Queries |
+|-------|----------|-------------|
+| **targets** + **ports** | Hosts, IPs, OS, ports, services (normalized 1:many) | `get_targets()`, "all targets with port 445" |
+| **credentials** + **credential_access** | Username/secret pairs + where each has been tested | `get_credentials(untested_only=True)` |
+| **access** | Current footholds: shells, sessions, tokens, DB access | `get_access(active_only=True)` |
+| **vulns** | Confirmed vulns with status: `found`, `active`, `done` | `get_vulns(status="found")` |
+| **pivot_map** | What leads where — vuln X gives access Y, creds Z work on host W | `get_pivot_map()` |
+| **blocked** | What was tried and why it failed — prevents re-testing | `get_blocked()` |
 
 **Rules:**
-- Keep state.md under ~200 lines so skills can read it without burning context
-- One line per item — compact over complete
-- Current state, not history — remove revoked creds, mark exploited vulns `[done]`
-- Every skill reads state.md on activation, writes back on completion
-- Orchestrator uses state.md + Pivot Map to chain vulns toward impact
+- `get_state_summary()` produces a compact markdown summary (~200 lines) for subagent consumption
+- Subagents call `get_state_summary()` on activation, report findings in their return summary
+- The orchestrator parses return summaries and calls structured write tools (`add_target`, `add_credential`, `add_vuln`, etc.)
+- Orchestrator uses state summary + pivot map to chain vulns toward impact
 
 ## Directory Layout
 
@@ -144,6 +153,10 @@ red-run/
       pyproject.toml       # Python dependencies (mcp, python-libnmap)
     shell-server/         # MCP server (TCP listener + shell manager)
       server.py           # FastMCP server — start_listener, send_command, stabilize_shell, etc.
+      pyproject.toml       # Python dependencies (mcp)
+    state-server/         # MCP server (SQLite engagement state)
+      server.py           # FastMCP server — runs as state-reader (read) or state-writer (read+write)
+      schema.py           # SQLite schema creation and migration
       pyproject.toml       # Python dependencies (mcp)
 ```
 
@@ -175,8 +188,8 @@ The MCP indexer builds embedding documents from these structured fields. `descri
 
 1. **Preamble**: "You are helping a penetration tester with..."
 2. **Mode**: Check for guided vs autonomous
-3. **Engagement Logging**: Check for engagement dir, log invocation immediately, log activity/findings/evidence at milestones
-4. **State Management**: Read state.md on activation, write at checkpoints (vuln confirmed, exploitation, pre-routing)
+3. **Engagement Logging**: Check for engagement dir, log evidence to `engagement/evidence/`
+4. **State Management**: Read via `get_state_summary()` on activation, report findings in return summary (orchestrator writes state)
 5. **Exploit and Tool Transfer**: Attackbox-first workflow for external tools/exploits
 6. **Prerequisites**: Access, tools, conditions
 7. **Steps**: Assess → Confirm → Exploit → Escalate/Pivot
@@ -209,5 +222,5 @@ The bwrap sandbox blocks network socket creation. Users must configure their glo
 ./uninstall.sh
 ```
 
-The installer puts the orchestrator in `~/.claude/skills/red-run-orchestrator/`, subagents in `~/.claude/agents/`, and sets up MCP servers (skill-router, nmap-server, shell-server). Requires [uv](https://docs.astral.sh/uv/) and passwordless sudo for nmap.
+The installer puts the orchestrator in `~/.claude/skills/red-run-orchestrator/`, subagents in `~/.claude/agents/`, and sets up MCP servers (skill-router, nmap-server, shell-server, state-server). Requires [uv](https://docs.astral.sh/uv/) and passwordless sudo for nmap.
 

@@ -16,6 +16,7 @@ tools:
 mcpServers:
   - skill-router
   - shell-server
+  - state-reader
 model: sonnet
 ---
 
@@ -53,7 +54,8 @@ skills assume interactive shell access.
 
 ## OS Detection
 
-Read `engagement/state.md` for the target OS. If not specified:
+Call `get_state_summary()` from the state-reader MCP for the target OS. If not
+specified:
 - Check for Linux: `uname -a`, `cat /etc/os-release`
 - Check for Windows: `systeminfo`, `ver`
 - Check for container: `/.dockerenv`, `/run/.containerenv`, `cat /proc/1/cgroup`
@@ -101,22 +103,14 @@ shells — Claude Code's Bash tool runs each command as a separate process.
 
 ## Engagement Files
 
-Before returning, update the engagement files:
-
-- **`engagement/state.md`** — Update Access (new privilege level), Credentials
-  (found creds/hashes/keys), Vulns (privesc vectors found), Pivot Map (new
-  access enables what). Use one-liner format per item.
-- **`engagement/activity.md`** — Append a timestamped entry:
-  ```
-  ### [YYYY-MM-DD HH:MM:SS] <skill-name> → <target>
-  - <what was found/exploited>
-  ```
-  Get the timestamp with `date '+%Y-%m-%d %H:%M:%S'`.
-- **`engagement/evidence/`** — Save linpeas/winpeas output, screenshots of
-  escalated access, credential files, and tool output with descriptive
-  filenames.
-- **`engagement/findings.md`** — Append confirmed vulnerabilities with
-  severity, target, technique, impact, and reproduction steps.
+- **State**: Call `get_state_summary()` from the state-reader MCP to read
+  current engagement state. **Do NOT write engagement state.** Report all
+  findings in your return summary — the orchestrator updates state on your
+  behalf.
+- **Activity and Findings**: Do NOT write to activity.md or findings.md.
+  The orchestrator maintains these files based on your return summary.
+- **Evidence**: Save raw output to `engagement/evidence/` with descriptive
+  filenames. This is the only engagement directory you write to.
 
 If `engagement/` doesn't exist, skip logging — the orchestrator handles
 directory creation.

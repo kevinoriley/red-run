@@ -16,6 +16,7 @@ tools:
 mcpServers:
   - skill-router
   - shell-server
+  - state-reader
 model: sonnet
 ---
 
@@ -52,9 +53,10 @@ signatures).
    - Certipy: `-k`
    - bloodyAD: `-k`
 
-Read credentials and domain context from `engagement/state.md`. If the
-orchestrator provides credentials in the Task prompt, use those. Always check
-state.md for existing ccache files or TGTs before requesting new ones.
+Read credentials and domain context from `get_state_summary()` via the
+state-reader MCP. If the orchestrator provides credentials in the Task prompt,
+use those. Always check the engagement state (via `get_state_summary()`) for
+existing ccache files or TGTs before requesting new ones.
 
 **Exception:** Some skills explicitly note that Kerberos auth doesn't apply
 (relay attacks, coercion, password spraying without creds). Follow the skill's
@@ -68,7 +70,7 @@ or `Kerberos SessionError: KRB_AP_ERR_SKEW`:
 **STOP IMMEDIATELY.** Do not retry. Do not fall back to NTLM. Do not continue
 with the skill methodology.
 
-1. Update `engagement/state.md` Blocked section:
+1. Report in your return summary:
    `Clock skew: KRB_AP_ERR_SKEW — requires sudo ntpdate <DC_IP>`
 2. Return to the orchestrator with:
    - Error: `KRB_AP_ERR_SKEW` (clock skew > 5 minutes)
@@ -110,22 +112,14 @@ tools that spawn new shells.
 
 ## Engagement Files
 
-Before returning, update the engagement files:
-
-- **`engagement/state.md`** — Update Credentials, Access, Vulns, Pivot Map
-  sections. Especially important: new credentials, Kerberos tickets, domain
-  trusts, ACL paths. Use one-liner format per item.
-- **`engagement/activity.md`** — Append a timestamped entry:
-  ```
-  ### [YYYY-MM-DD HH:MM:SS] <skill-name> → <target>
-  - <what was found/exploited>
-  ```
-  Get the timestamp with `date '+%Y-%m-%d %H:%M:%S'`.
-- **`engagement/evidence/`** — Save BloodHound output, Kerberos tickets,
-  credential dumps, ADCS certificates, and tool output with descriptive
-  filenames.
-- **`engagement/findings.md`** — Append confirmed vulnerabilities with
-  severity, target, technique, impact, and reproduction steps.
+- **State**: Call `get_state_summary()` from the state-reader MCP to read
+  current engagement state. **Do NOT write engagement state.** Report all
+  findings in your return summary — the orchestrator updates state on your
+  behalf.
+- **Activity and Findings**: Do NOT write to activity.md or findings.md.
+  The orchestrator maintains these files based on your return summary.
+- **Evidence**: Save raw output to `engagement/evidence/` with descriptive
+  filenames. This is the only engagement directory you write to.
 
 If `engagement/` doesn't exist, skip logging — the orchestrator handles
 directory creation.

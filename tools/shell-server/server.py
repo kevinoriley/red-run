@@ -33,6 +33,11 @@ from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
+# Resolve engagement directory relative to the project root, not the server's
+# own directory.  uv run --directory changes cwd to tools/shell-server/, so
+# bare Path("engagement/...") would land artifacts inside the tools tree.
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
 # Defaults
 DEFAULT_LISTEN_HOST = "0.0.0.0"
 DEFAULT_LISTEN_TIMEOUT = 300  # 5 minutes
@@ -595,7 +600,7 @@ def create_server() -> FastMCP:
             transcript_path = None
 
             if save_transcript and session.transcript:
-                evidence_dir = Path("engagement/evidence")
+                evidence_dir = _PROJECT_ROOT / "engagement" / "evidence"
                 if evidence_dir.exists():
                     safe_label = re.sub(r"[^a-zA-Z0-9_-]", "_", session.label)
                     filename = f"shell-{session_id}-{safe_label}.log"

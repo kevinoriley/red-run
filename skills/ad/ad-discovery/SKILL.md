@@ -52,38 +52,16 @@ If unclear, default to guided.
 
 ## Engagement Logging
 
-Check for `./engagement/` directory. If absent:
-- **Guided**: Ask if the user wants to initialize an engagement directory.
-- **Autonomous**: Create it automatically with `scope.md`, `state.md`,
-  `activity.md`, `findings.md`, and `evidence/`.
+Check for `./engagement/` directory. If absent, proceed without logging.
 
-When an engagement directory exists, log as you work:
-- **Activity** -> append to `engagement/activity.md` at milestones:
-  `### [YYYY-MM-DD HH:MM:SS] ad-discovery -> <domain>` with enumeration results.
-- **Evidence** -> save BloodHound JSON, enumeration output, and scan results
-  to `engagement/evidence/` (e.g., `ad-enum-bloodhound.zip`, `ad-enum-spns.txt`,
-  `ad-enum-shares.txt`).
+When an engagement directory exists:
+- Print `[ad-discovery] Activated → <target>` to the screen on activation.
+- **Evidence** → save significant output to `engagement/evidence/` with
+  descriptive filenames (e.g., `sqli-users-dump.txt`, `ssrf-aws-creds.json`).
 
-### Invocation Log
-
-Immediately on activation — before reading state.md or doing any assessment —
-log invocation to both the screen and activity.md:
-
-1. **On-screen**: Print `[ad-discovery] Activated → <target>` so the operator
-   sees which skill is running.
-2. **activity.md**: Append:
-   ```
-   ### [YYYY-MM-DD HH:MM:SS] ad-discovery → <target>
-   - Invoked (assessment starting)
-   ```
-
-**Timestamps:** Replace `[YYYY-MM-DD HH:MM:SS]` with the actual current date
-and time. Run `date '+%Y-%m-%d %H:%M:%S'` to get it. Never write the literal
-placeholder `[YYYY-MM-DD HH:MM:SS]` — activity.md entries need real timestamps
-with date and second precision for timeline reconstruction.
-
-This entry must be written NOW, not deferred. Subsequent milestone entries
-append bullet points under this same header.
+Do NOT write to `engagement/activity.md`, `engagement/findings.md`, or
+engagement state. The orchestrator maintains these files. Report all findings
+in your return summary.
 
 ## Scope Boundary
 
@@ -93,13 +71,10 @@ the boundary of this scope — whether through a routing instruction ("Route to
 **skill-name**") or by discovering findings outside your domain — **STOP**.
 
 Do not load or execute another skill. Do not continue past your scope boundary.
-Instead:
-
-1. Write `engagement/state.md` with current findings
-2. Return to the orchestrator with:
-   - What was found (vulns, credentials, access gained)
-   - Recommended next skill (the bold **skill-name** from routing instructions)
-   - Context to pass (injection point, target, working payloads, etc.)
+Instead, return to the orchestrator with:
+  - What was found (vulns, credentials, access gained)
+  - Recommended next skill (the bold **skill-name** from routing instructions)
+  - Context to pass (injection point, target, working payloads, etc.)
 
 The orchestrator decides what runs next. Your job is to execute this skill
 thoroughly and return clean findings.
@@ -125,23 +100,21 @@ and present routing recommendations. Do not continue past enumeration.
 
 ## State Management
 
-If `engagement/state.md` exists, read it before starting. Use it to:
-- Skip re-enumeration of already-mapped targets and services
-- Leverage existing credentials for authenticated enumeration
-- Check what techniques have already been tried (Blocked section)
+Call `get_state_summary()` from the state-reader MCP server to read current
+engagement state. Use it to:
+- Skip re-testing targets, parameters, or vulns already confirmed
+- Leverage existing credentials or access for this technique
+- Understand what's been tried and failed (check Blocked section)
 
-Write `engagement/state.md` at these checkpoints (not just at completion):
-1. **After confirming a vulnerability** — add to Vulns with `[found]`
-2. **After successful exploitation** — add credentials, access, pivot paths
-3. **Before routing to another skill** — the next skill reads state.md on activation
-
-At each checkpoint and on completion, update the relevant sections of
-`engagement/state.md`:
-- **Targets**: DCs, member servers, workstations, services discovered
-- **Credentials**: Any creds found in descriptions, shares, or SYSVOL
-- **Vulns**: Attack surface findings (SPNs, delegation, weak ACLs, ADCS)
-- **Pivot Map**: Enumeration findings mapped to technique skills
-- **Blocked**: Enumeration that failed and why
+**Do NOT write engagement state.** When your work is complete, report all
+findings clearly in your return summary. The orchestrator parses your summary
+and records state changes. Your return summary must include:
+- New targets/hosts discovered (with ports and services)
+- New credentials or tokens found
+- Access gained or changed (user, privilege level, method)
+- Vulnerabilities confirmed (with status and severity)
+- Pivot paths identified (what leads where)
+- Blocked items (what failed and why, whether retryable)
 
 ## Prerequisites
 
@@ -204,7 +177,7 @@ nxc ldap DC01.DOMAIN.LOCAL --port 636
 **Findings:**
 - SMB signing disabled on non-DCs -> note for **auth-coercion-relay**
 - LDAP signing not required -> note for **auth-coercion-relay** (relay to LDAP)
-- Domain name, DC hostnames, OS versions -> record in state.md
+- Domain name, DC hostnames, OS versions -> record in the engagement state
 
 ## Step 2: Unauthenticated Enumeration
 
@@ -551,10 +524,6 @@ When multiple attack paths exist, prioritize by OPSEC and reliability:
 7. **Credential dumping** — requires existing admin access
 
 ## Step 6: Escalate or Pivot
-
-**Before routing**: Write `engagement/state.md` and append to
-`engagement/activity.md` with results so far. The next skill reads state.md
-on activation — stale state means duplicate work or missed context.
 
 After mapping the attack surface:
 - **Multiple paths identified**: In guided mode, present the top 3 paths ranked

@@ -7,7 +7,7 @@ set -euo pipefail
 # - All red-run native skills from ~/.claude/skills/
 # - Custom subagents from ~/.claude/agents/
 # - ChromaDB index (tools/skill-router/.chromadb/)
-# - Python venvs (tools/skill-router/.venv/, tools/nmap-server/.venv/, tools/shell-server/.venv/)
+# - Python venvs (tools/skill-router/.venv/, tools/nmap-server/.venv/, tools/shell-server/.venv/, tools/state-server/.venv/)
 #
 # Does NOT remove .mcp.json or .claude/settings.json (project config).
 
@@ -19,6 +19,7 @@ PREFIX="red-run"
 MCP_SKILL_ROUTER="${REPO_DIR}/tools/skill-router"
 MCP_NMAP_SERVER="${REPO_DIR}/tools/nmap-server"
 MCP_SHELL_SERVER="${REPO_DIR}/tools/shell-server"
+MCP_STATE_SERVER="${REPO_DIR}/tools/state-server"
 
 # --- Step 1: Remove native skills ---
 echo "Removing native skills..."
@@ -76,6 +77,13 @@ fi
 if [[ -d "${MCP_SHELL_SERVER}/.venv" ]]; then
     rm -rf "${MCP_SHELL_SERVER}/.venv"
     echo "  Removed shell-server venv"
+    mcp_cleaned=$((mcp_cleaned + 1))
+fi
+
+# state-server
+if [[ -d "${MCP_STATE_SERVER}/.venv" ]]; then
+    rm -rf "${MCP_STATE_SERVER}/.venv"
+    echo "  Removed state-server venv"
     mcp_cleaned=$((mcp_cleaned + 1))
 fi
 

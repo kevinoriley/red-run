@@ -59,59 +59,34 @@ If unclear, default to guided.
 
 ## Engagement Logging
 
-Check for `./engagement/` directory. If absent:
-- **Guided**: Ask if the user wants to initialize an engagement directory.
-- **Autonomous**: Create it automatically.
+Check for `./engagement/` directory. If absent, proceed without logging.
 
 When an engagement directory exists:
-- **Activity** -> `### [YYYY-MM-DD HH:MM:SS] ad-persistence -> <target DC>` with
-  persistence type, target, and verification status.
-- **Findings** -> Log persistence mechanisms planted with cleanup steps.
-- **Evidence** -> Save to `engagement/evidence/` (e.g.,
-  `persistence-golden-cert.pfx`, `persistence-dcshadow-verify.txt`,
-  `persistence-adfs-dkm-key.bin`).
+- Print `[ad-persistence] Activated → <target>` to the screen on activation.
+- **Evidence** → save significant output to `engagement/evidence/` with
+  descriptive filenames (e.g., `sqli-users-dump.txt`, `ssrf-aws-creds.json`).
 
-### Invocation Log
-
-Immediately on activation — before reading state.md or doing any assessment —
-log invocation to both the screen and activity.md:
-
-1. **On-screen**: Print `[ad-persistence] Activated → <target>` so the operator
-   sees which skill is running.
-2. **activity.md**: Append:
-   ```
-   ### [YYYY-MM-DD HH:MM:SS] ad-persistence → <target>
-   - Invoked (assessment starting)
-   ```
-
-**Timestamps:** Replace `[YYYY-MM-DD HH:MM:SS]` with the actual current date
-and time. Run `date '+%Y-%m-%d %H:%M:%S'` to get it. Never write the literal
-placeholder `[YYYY-MM-DD HH:MM:SS]` — activity.md entries need real timestamps
-with date and second precision for timeline reconstruction.
-
-This entry must be written NOW, not deferred. Subsequent milestone entries
-append bullet points under this same header.
-
+Do NOT write to `engagement/activity.md`, `engagement/findings.md`, or
+engagement state. The orchestrator maintains these files. Report all findings
+in your return summary.
 
 ## State Management
 
-If `engagement/state.md` exists, read it before starting. Use it to:
-- Verify DA-level access exists (required for most techniques)
-- Check what credentials/access are available
-- Avoid planting redundant persistence
+Call `get_state_summary()` from the state-reader MCP server to read current
+engagement state. Use it to:
+- Skip re-testing targets, parameters, or vulns already confirmed
+- Leverage existing credentials or access for this technique
+- Understand what's been tried and failed (check Blocked section)
 
-Write `engagement/state.md` at these checkpoints (not just at completion):
-1. **After confirming a vulnerability** — add to Vulns with `[found]`
-2. **After successful exploitation** — add credentials, access, pivot paths
-3. **Before routing to another skill** — the next skill reads state.md on activation
-
-At each checkpoint and on completion, update the relevant sections of
-`engagement/state.md`:
-- **Credentials**: Add persistence credentials (golden cert PFX, SAML
-  signing key, skeleton key password)
-- **Access**: Add persistent access methods
-- **Vulns**: `[active] DCShadow persistence on DC01`
-- **Pivot Map**: `ad-persistence golden cert -> any user authentication`
+**Do NOT write engagement state.** When your work is complete, report all
+findings clearly in your return summary. The orchestrator parses your summary
+and records state changes. Your return summary must include:
+- New targets/hosts discovered (with ports and services)
+- New credentials or tokens found
+- Access gained or changed (user, privilege level, method)
+- Vulnerabilities confirmed (with status and severity)
+- Pivot paths identified (what leads where)
+- Blocked items (what failed and why, whether retryable)
 
 ## Prerequisites
 
@@ -548,10 +523,6 @@ access as the impersonated user.
 
 ## Step 9: Escalate or Pivot
 
-**Before routing**: Write `engagement/state.md` and append to
-`engagement/activity.md` with results so far. The next skill reads state.md
-on activation — stale state means duplicate work or missed context.
-
 After establishing persistence:
 - **Multiple DCs**: Deploy persistence on at least 2 DCs for redundancy
 - **Cross-forest persistence**: Route to **trust-attacks** to persist
@@ -597,14 +568,13 @@ Do not loop. Work through failures systematically:
 - What failed and why (error messages, empty responses, timeouts)
 - Assessment: **blocked** (permanent — config, patched, missing prereq) or
   **retry-later** (may work with different context, creds, or access)
-- Update `engagement/state.md` Blocked section before returning
 
 **Mode behavior:**
 - **Guided**: Tell the user you're stalled, present what was tried, and
   recommend the next best path.
-- **Autonomous**: Update state.md Blocked section, return findings to the
-  orchestrator. Do not retry the same technique — the orchestrator will
-  decide whether to revisit with new context or route elsewhere.
+- **Autonomous**: Return findings to the orchestrator. Do not retry the same
+  technique — the orchestrator will decide whether to revisit with new context
+  or route elsewhere.
 
 ## Troubleshooting
 

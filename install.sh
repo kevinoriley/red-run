@@ -4,8 +4,9 @@ set -euo pipefail
 # install.sh — Install red-run skill library
 #
 # Installs the orchestrator as a native Claude Code skill, custom subagents,
-# and sets up MCP servers (skill-router + nmap-server) for on-demand skill
-# loading and privileged scanning.
+# and sets up MCP servers (skill-router, nmap-server, shell-server,
+# state-server) for on-demand skill loading, privileged scanning, reverse
+# shell management, and SQLite engagement state.
 #
 # Default: creates symlinks (edits in repo reflect immediately)
 # --copy:  copies files (for machines without persistent repo access)
@@ -23,6 +24,7 @@ PREFIX="red-run"
 MCP_SKILL_ROUTER="${REPO_DIR}/tools/skill-router"
 MCP_NMAP_SERVER="${REPO_DIR}/tools/nmap-server"
 MCP_SHELL_SERVER="${REPO_DIR}/tools/shell-server"
+MCP_STATE_SERVER="${REPO_DIR}/tools/state-server"
 
 # Only the orchestrator is installed as a native Claude Code skill.
 # Everything else is served on-demand via the MCP skill-router.
@@ -174,6 +176,10 @@ fi
 echo "  [shell-server] Installing Python dependencies..."
 uv sync --directory "${MCP_SHELL_SERVER}" --quiet
 
+# state-server (SQLite engagement state)
+echo "  [state-server] Installing Python dependencies..."
+uv sync --directory "${MCP_STATE_SERVER}" --quiet
+
 # --- Step 6: Verify project config ---
 config_warnings=0
 if [[ ! -f "${REPO_DIR}/.mcp.json" ]]; then
@@ -198,6 +204,7 @@ echo "Installed ${agent_count} custom subagent(s) to ${AGENTS_DST}/"
 echo "63 technique/discovery skills served via MCP skill-router"
 echo "nmap MCP server ready (sudo nmap wrapper)"
 echo "shell MCP server ready (TCP listener + reverse shell manager)"
+echo "state MCP server ready (SQLite engagement state)"
 if [[ "$config_warnings" -eq 0 ]]; then
     echo ""
     echo "Done! Start Claude Code from this repo directory to activate."

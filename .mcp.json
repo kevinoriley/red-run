@@ -32,6 +32,23 @@
         "python",
         "server.py"
       ]
+    },
+    "state-reader": {
+      "command": "uv",
+      "args": ["run", "--directory", "tools/state-server", "python", "server.py", "--mode", "read"]
+    },
+    "state-writer": {
+      "command": "uv",
+      "args": ["run", "--directory", "tools/state-server", "python", "server.py", "--mode", "write"]
+    },
+    "burp": {
+      "command": "java",
+      "args": [
+        "-jar",
+        "tools/burp-proxy/mcp-proxy.jar",
+        "--sse-url",
+        "http://127.0.0.1:9876"
+      ]
     }
   }
 }
