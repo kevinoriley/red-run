@@ -54,12 +54,55 @@ in your return summary.
 Read all engagement files:
 
 1. `engagement/scope.md` — targets, objectives, rules of engagement
-2. `engagement/state.md` — final engagement state snapshot
+2. `engagement/state.db` — final engagement state (call `get_state_summary()`)
 3. `engagement/activity.md` — chronological activity log
 4. `engagement/findings.md` — confirmed vulnerabilities
 
 If any file is missing (other than the required two), note it but continue with
 what's available.
+
+### Subagent Execution Logs
+
+Check for `engagement/evidence/logs/*.jsonl`. These are raw JSONL transcripts
+captured from subagent executions by the SubagentStop hook. They contain every
+tool call, tool result, assistant reasoning step, MCP call, and error — ground
+truth that `activity.md` summaries cannot provide.
+
+If JSONL logs are found, spawn a **general-purpose Task subagent** to parse them:
+
+```
+Task(
+    subagent_type="general-purpose",
+    prompt="Parse the subagent JSONL logs in engagement/evidence/logs/. For each
+    .jsonl file, read it and extract a structured timeline:
+    - Tool calls: tool name + input (truncate large inputs to 200 chars)
+    - Tool results: status + truncated output (first 200 chars)
+    - Assistant reasoning: key decision points and rationale
+    - MCP calls: server + method + key params
+    - Errors: any failures, retries, or exceptions
+    - Target artifacts: flag commands that may have created artifacts on the
+      target (file writes, user creation, registry changes, scheduled tasks,
+      services installed, firewall rules modified)
+
+    Return a markdown summary with one section per log file. Section header
+    format: '## {filename} ({agent-type})'. Include a 'Target Artifacts' subsection
+    listing any commands that may need cleanup.",
+    description="Parse subagent JSONL logs"
+)
+```
+
+Incorporate the parsed log data into subsequent analysis steps. The logs provide:
+- **Routing analysis** (Step 2): exact skills loaded, whether `get_skill()` was
+  called, inline vs routed execution
+- **Knowledge gap analysis** (Step 3): failed payloads, retries, manual
+  workarounds visible in the command sequence
+- **Operational review** (Step 5): exact commands run, timing, error recovery
+  decisions, artifact creation on target
+
+If no JSONL logs are found, continue with engagement files only and note that
+subagent execution traces are unavailable.
+
+### Engagement Summary
 
 Summarize the engagement for the user:
 - **Target(s)** and objective(s)
