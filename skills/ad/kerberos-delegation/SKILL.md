@@ -557,11 +557,15 @@ For classic constrained delegation, S4U2Self must return a Forwardable ticket
 (requires `TrustedToAuthForDelegation` flag). For RBCD, non-Forwardable tickets
 work — the target computer validates RBCD differently.
 
-### KRB_AP_ERR_SKEW
+### KRB_AP_ERR_SKEW (Clock Skew)
 
-Clock skew > 5 minutes. Sync time (requires root — present to user for manual execution):
+Kerberos requires clocks within 5 minutes of the DC. This is a **Clock Skew
+Interrupt** — stop immediately and return to the orchestrator. Do not retry or
+fall back to NTLM. The fix requires root:
 ```bash
 sudo ntpdate DC_IP
+# or
+sudo rdate -n DC_IP
 ```
 
 ### RBCD: "Insufficient access rights" When Setting Attribute

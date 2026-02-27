@@ -506,8 +506,9 @@ Do not loop. Work through failures systematically:
 
 ### Cross-Forest Access Denied
 
-- **Clock skew**: Ensure time sync between forests: `sudo ntpdate TARGET_DC`
-  (requires root — present to user for manual execution).
+- **Clock skew** (`KRB_AP_ERR_SKEW`): **Clock Skew Interrupt** — stop
+  immediately and return to the orchestrator. Do not retry or fall back to
+  NTLM. Fix requires root: `sudo ntpdate TARGET_DC`
 - **DNS resolution**: Target DC must be resolvable. Add `/etc/hosts` entries
   or configure DNS forwarding.
 - **Service ticket refused**: Verify the service exists and the trust account

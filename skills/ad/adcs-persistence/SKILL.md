@@ -665,6 +665,17 @@ for obtaining intermediate account access.
 Mimikatz patches CAPI/CNG to bypass non-exportable flag:
 `mimikatz.exe "crypto::capi"` (current user) or `"crypto::cng"` (LSASS).
 
+### KRB_AP_ERR_SKEW (Clock Skew)
+
+Kerberos requires clocks within 5 minutes of the DC. This is a **Clock Skew
+Interrupt** — stop immediately and return to the orchestrator. Do not retry or
+fall back to NTLM. The fix requires root:
+```bash
+sudo ntpdate DC_IP
+# or
+sudo rdate -n DC_IP
+```
+
 ### OPSEC comparison
 
 | Technique | OPSEC | Detection Surface |

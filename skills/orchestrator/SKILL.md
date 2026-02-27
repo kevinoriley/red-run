@@ -614,6 +614,36 @@ When reading state.md, the orchestrator should:
    d. If no search result is relevant, proceed with general methodology and
       note the coverage gap in `engagement/activity.md`.
 
+### Clock Skew Recovery
+
+When an AD skill returns with `KRB_AP_ERR_SKEW` or clock skew as the failure
+reason:
+
+1. Write a temporary script to the working directory:
+   ```bash
+   #!/usr/bin/env bash
+   set -euo pipefail
+   # Sync attackbox clock with domain controller
+   DC_IP="<DC_IP from state.md>"
+   sudo ntpdate "$DC_IP" || sudo rdate -n "$DC_IP"
+   echo "[+] Clock synced with $DC_IP"
+   ```
+   Save as `temp_clock-sync.sh` and `chmod +x temp_clock-sync.sh`.
+2. Present to the user:
+   > Clock skew detected — Kerberos authentication requires clocks within 5
+   > minutes of the DC. Run `sudo ./temp_clock-sync.sh` to sync, then confirm.
+3. In **autonomous mode**: Write the script and tell the user to run it. Wait
+   for confirmation before retrying. This is one of the few cases where
+   autonomous mode must pause for operator intervention (sudo requirement).
+4. After user confirms clock is synced, retry the **same skill invocation**
+   with identical parameters (same agent, same skill, same target context).
+5. Clean up: `rm temp_clock-sync.sh` after successful retry.
+6. Log to `engagement/activity.md`:
+   ```
+   ### [YYYY-MM-DD HH:MM:SS] orchestrator → clock-skew recovery
+   - KRB_AP_ERR_SKEW detected during <skill-name>
+   - Clock synced via ntpdate, retrying skill
+   ```
 **In guided mode**: Present the chain analysis and recommend next steps.
 Show the reasoning: "We have SQLi on the web app. We could extract credentials
 and test them against SMB, or we could try to get command execution via

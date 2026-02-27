@@ -672,6 +672,20 @@ Default `ms-DS-MachineAccountQuota` is 10. If set to 0:
 - Use `--delegate-access` instead (modifies existing object)
 - Or relay to AD CS for certificate-based escalation
 
+### KRB_AP_ERR_SKEW (Clock Skew)
+
+Kerberos requires clocks within 5 minutes of the DC. This applies to the
+initial LDAP enumeration phase (authenticated coercion endpoint discovery), not
+to the relay attack itself (which uses NTLM). This is a **Clock Skew
+Interrupt** — stop immediately and return to the orchestrator. Do not retry or
+fall back to NTLM for the Kerberos-authenticated operations. The fix requires
+root:
+```bash
+sudo ntpdate DC_IP
+# or
+sudo rdate -n DC_IP
+```
+
 ### OPSEC Comparison
 
 | Technique | Network Artifacts | Detection Events | Risk |

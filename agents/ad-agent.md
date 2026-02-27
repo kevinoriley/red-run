@@ -60,6 +60,25 @@ state.md for existing ccache files or TGTs before requesting new ones.
 (relay attacks, coercion, password spraying without creds). Follow the skill's
 guidance.
 
+## Clock Skew Interrupt
+
+If **any** Kerberos operation returns `KRB_AP_ERR_SKEW`, `Clock skew too great`,
+or `Kerberos SessionError: KRB_AP_ERR_SKEW`:
+
+**STOP IMMEDIATELY.** Do not retry. Do not fall back to NTLM. Do not continue
+with the skill methodology.
+
+1. Update `engagement/state.md` Blocked section:
+   `Clock skew: KRB_AP_ERR_SKEW — requires sudo ntpdate <DC_IP>`
+2. Return to the orchestrator with:
+   - Error: `KRB_AP_ERR_SKEW` (clock skew > 5 minutes)
+   - Fix: `sudo ntpdate <DC_IP>` (requires root — cannot execute from subagent)
+   - Assessment: **retry-later** (skill will work after clock sync)
+   - Include any findings gathered before the error
+
+This is not a stall — it is a known prerequisite failure requiring operator
+intervention. Do not spend rounds trying alternatives or workarounds.
+
 ## Reverse Shell via MCP
 
 You have access to the `shell-server` MCP tools for managing reverse shell
