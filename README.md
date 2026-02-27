@@ -14,7 +14,7 @@ In **autonomous mode**, Claude runs commands directly, makes triage decisions at
 
 ### Skill types
 
-- **Orchestrator** — the main loop. Takes a target, runs recon, maps the attack surface, chains vulnerabilities toward objectives, and delegates each skill to a domain subagent. Reads `state.md` after every return and decides what to do next.
+- **Orchestrator** — the main loop. Takes a target, runs recon, maps the attack surface, chains vulnerabilities toward objectives, and delegates each skill to a domain subagent. Parses return summaries, records state via MCP, and decides what to do next.
 - **Discovery skills** — enumerate an attack surface and identify vulnerabilities. Return findings to the orchestrator for triage.
 - **Technique skills** — exploit a specific vulnerability class with embedded payloads and bypass techniques
 
@@ -40,7 +40,7 @@ Autonomous mode pairs with `claude --dangerously-skip-permissions` (a.k.a. yolo 
 
 ### Architecture
 
-The **orchestrator** is a native Claude Code skill that runs in the main conversation thread. It delegates skill execution to **custom domain subagents** — focused agents with MCP access that each handle one skill per invocation. This keeps context isolated (each agent starts fresh) while the orchestrator maintains the big picture via `state.md`.
+The **orchestrator** is a native Claude Code skill that runs in the main conversation thread. It delegates skill execution to **custom domain subagents** — focused agents with MCP access that each handle one skill per invocation. This keeps context isolated (each agent starts fresh) while the orchestrator maintains the big picture via a SQLite state database.
 
 **Subagents:**
 
@@ -51,12 +51,13 @@ The **orchestrator** is a native Claude Code skill that runs in the main convers
 | `ad-agent` | Active Directory attacks | Kerberos-first auth + shell-server |
 | `privesc-agent` | Privilege escalation | shell-server for catching escalated shells |
 
-Each invocation: agent loads one skill, follows the methodology, updates engagement files, returns findings. The orchestrator reads state and routes to the next skill.
+Each invocation: agent loads one skill, follows the methodology, saves evidence, and returns findings. The orchestrator records state changes and routes to the next skill.
 
 **MCP servers:**
 - **skill-router** — semantic search + skill loading via ChromaDB + sentence-transformer embeddings
 - **nmap-server** — wraps `sudo nmap`, returns parsed JSON
 - **shell-server** — TCP listener + reverse shell session manager
+- **state-server** — SQLite engagement state (runs as read-only `state-reader` for subagents, read-write `state-writer` for orchestrator)
 
 ### Reverse shells via MCP
 
@@ -87,10 +88,10 @@ Skills carry out engagement logging for structured pentests and state tracking. 
 ```
 engagement/
 ├── scope.md          # Target scope, credentials, rules of engagement
-├── state.md          # Compact machine-readable engagement state (snapshot)
-├── activity.md       # Chronological action log (append-only)
-├── findings.md       # Confirmed vulnerabilities (working tracker)
-└── evidence/         # Saved output, responses, dumps
+├── state.db          # SQLite engagement state (managed via MCP state-server)
+├── activity.md       # Chronological action log (orchestrator writes)
+├── findings.md       # Confirmed vulnerabilities (orchestrator writes)
+└── evidence/         # Saved output, responses, dumps (subagents write)
 ```
 
 - Activity logged at milestones (test confirmed, data extracted, finding discovered)
@@ -98,24 +99,24 @@ engagement/
 
 ### State management
 
-Large engagements generate more state than fits in a single conversation context. `state.md` solves this — a compact, machine-readable snapshot of the current engagement that persists across sessions and context compactions.
+Large engagements generate more state than fits in a single conversation context. The **state-server MCP** solves this — a SQLite database that persists across sessions and context compactions, with structured queries for targets, credentials, access, vulnerabilities, pivot paths, and blocked items.
 
-| Section | Contents |
-|---------|----------|
-| Targets | Hosts, IPs, URLs, ports, tech stack |
-| Credentials | Username/password/hash/token pairs, where they work |
-| Access | Current footholds — shells, sessions, tokens, DB access |
-| Vulns | One-liner per confirmed vuln: `[found]`, `[active]`, `[done]` |
-| Pivot Map | What leads where — vuln X gives access Y, creds Z work on host W |
-| Blocked | What was tried and why it failed |
+The **orchestrator is the sole writer** of engagement state. Subagents call `get_state_summary()` (read-only) on activation and report findings in their return summary. The orchestrator parses these summaries and calls structured write tools (`add_target`, `add_credential`, `add_vuln`, etc.) to update state. This enforces that all routing decisions flow through the orchestrator.
 
-Every skill reads `state.md` on activation and writes back on completion. The orchestrator uses `state.md` + Pivot Map to chain vulnerabilities toward maximum impact. Kept under ~200 lines — one-liner per item, current state not history.
+| Table | Contents |
+|-------|----------|
+| targets + ports | Hosts, IPs, OS, ports, services (normalized) |
+| credentials | Username/password/hash/token pairs, where tested |
+| access | Current footholds — shells, sessions, tokens, DB access |
+| vulns | Confirmed vulns with status: `found`, `active`, `done` |
+| pivot_map | What leads where — vuln X gives access Y, creds Z work on host W |
+| blocked | What was tried and why it failed |
 
 ## The retrospective loop
 
 The skills in this repo are a starting point. The `retrospective` skill is what makes them yours.
 
-After an engagement, run a retrospective. Claude reads the engagement directory — `activity.md`, `state.md`, `findings.md` — and analyzes what happened. It reviews every skill routing decision, identifies gaps in payloads and methodology, flags techniques that were done by hand instead of through a skill, and produces a prioritized list of improvements: skill updates, new skills to build, routing fixes.
+After an engagement, run a retrospective. Claude reads the engagement directory — `activity.md`, `state.db`, `findings.md` — and analyzes what happened. It reviews every skill routing decision, identifies gaps in payloads and methodology, flags techniques that were done by hand instead of through a skill, and produces a prioritized list of improvements: skill updates, new skills to build, routing fixes.
 
 The actionable items are specific. Not "improve the SQL injection skill" but "`sql-injection-blind` only carried MySQL `SLEEP()` payloads — add MSSQL `WAITFOR DELAY` and PostgreSQL `pg_sleep()` for time-based detection." You discuss the findings with Claude, decide what to change, and update the skills right there in the same session.
 
@@ -153,7 +154,7 @@ The installer:
 1. Removes any existing red-run skills from `~/.claude/skills/` (legacy installs used per-skill native skills — these are now served via MCP)
 2. Installs the **orchestrator** as a native Claude Code skill (`~/.claude/skills/`)
 3. Installs **custom subagents** to `~/.claude/agents/`
-4. Sets up **MCP servers** — skill-router (ChromaDB + embeddings), nmap-server, shell-server
+4. Sets up **MCP servers** — skill-router (ChromaDB + embeddings), nmap-server, shell-server, state-server
 5. Verifies project config (`.mcp.json`, settings, passwordless sudo nmap)
 
 The repo must stay in place — the MCP server reads skills from `skills/` at runtime.
