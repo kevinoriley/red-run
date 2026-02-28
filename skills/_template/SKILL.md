@@ -299,6 +299,37 @@ a different msfvenom flag or trivial modification. That is not progress.**
 The orchestrator will route to **av-edr-evasion** to build a bypass payload,
 then re-invoke this skill with the AV-safe artifact.
 
+## DNS Resolution Failure
+
+If a tool fails because a hostname cannot be resolved — **do not retry,
+do not fall back to IP-only, do not attempt to modify /etc/hosts.**
+
+### Recognition Signals
+
+- `Could not resolve host`, `Name or service not known`
+- `NXDOMAIN`, `Server can't find <hostname>`
+- Kerberos errors with hostname resolution context
+- Tool hangs on DNS lookup then times out
+- `getaddrinfo failed`, `nodename nor servname provided`
+
+### What to Do
+
+1. **Stop immediately** — do not retry the same tool
+2. **Note which hostname(s) failed** and what tool was being used
+3. **Return to orchestrator** with DNS resolution context:
+
+**Return format for DNS failure:**
+```
+### DNS Resolution Failure
+- Hostname: <what couldn't be resolved> (e.g., "megabank.local")
+- Tool: <what failed> (e.g., "nxc ldap megabank.local")
+- Error: <exact error message>
+- Target IP: <IP that hostname should resolve to, if known>
+```
+
+The orchestrator will pause the engagement and request the operator to
+update /etc/hosts, then re-invoke this skill.
+
 ## Troubleshooting
 
 ### <Common Problem>

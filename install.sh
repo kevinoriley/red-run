@@ -37,32 +37,7 @@ fi
 
 mkdir -p "${SKILLS_DST}" "${AGENTS_DST}"
 
-# --- Step 1: Clean up old native installs ---
-# Previous versions installed all 62+ skills natively. The MCP architecture
-# only needs the orchestrator natively — remove the rest.
-old_count=0
-for dir in "${SKILLS_DST}/${PREFIX}-"*/; do
-    [[ -d "$dir" ]] || continue
-    skill_basename="$(basename "$dir")"
-    skill_name="${skill_basename#"${PREFIX}"-}"
-
-    is_native=0
-    for ns in "${NATIVE_SKILLS[@]}"; do
-        [[ "$skill_name" == "$ns" ]] && is_native=1 && break
-    done
-
-    if [[ "$is_native" -eq 0 ]]; then
-        rm -rf "$dir"
-        echo "  Removed old native: ${skill_basename}"
-        old_count=$((old_count + 1))
-    fi
-done
-if [[ "$old_count" -gt 0 ]]; then
-    echo "Cleaned up ${old_count} old native skill(s)"
-    echo ""
-fi
-
-# --- Step 2: Install native skills ---
+# --- Step 1: Install native skills ---
 echo "Installing native skills..."
 native_count=0
 for skill_name in "${NATIVE_SKILLS[@]}"; do
@@ -101,7 +76,7 @@ for skill_name in "${NATIVE_SKILLS[@]}"; do
     native_count=$((native_count + 1))
 done
 
-# --- Step 3: Validate native installs ---
+# --- Step 2: Validate native installs ---
 for skill_name in "${NATIVE_SKILLS[@]}"; do
     installed="${SKILLS_DST}/${PREFIX}-${skill_name}/SKILL.md"
     if [[ ! -r "$installed" ]]; then
@@ -111,7 +86,7 @@ for skill_name in "${NATIVE_SKILLS[@]}"; do
     fi
 done
 
-# --- Step 4: Install custom subagents ---
+# --- Step 3: Install custom subagents ---
 echo ""
 echo "Installing custom subagents..."
 agent_count=0
@@ -140,22 +115,7 @@ for agent_file in "${AGENTS_DST}"/*.md; do
     fi
 done
 
-# Clean up old agents replaced by the discovery/exploit split
-OLD_AGENTS=("web-agent.md" "ad-agent.md" "privesc-agent.md")
-old_agent_count=0
-for old_agent in "${OLD_AGENTS[@]}"; do
-    old_dest="${AGENTS_DST}/${old_agent}"
-    if [[ -f "$old_dest" || -L "$old_dest" ]]; then
-        rm -f "$old_dest"
-        echo "  Removed old agent: ${old_agent}"
-        old_agent_count=$((old_agent_count + 1))
-    fi
-done
-if [[ "$old_agent_count" -gt 0 ]]; then
-    echo "  Cleaned up ${old_agent_count} old agent(s)"
-fi
-
-# --- Step 5: Set up MCP servers ---
+# --- Step 4: Set up MCP servers ---
 echo ""
 echo "Setting up MCP servers..."
 
@@ -196,7 +156,7 @@ uv sync --directory "${MCP_SHELL_SERVER}" --quiet
 echo "  [state-server] Installing Python dependencies..."
 uv sync --directory "${MCP_STATE_SERVER}" --quiet
 
-# --- Step 6: Verify project config ---
+# --- Step 5: Verify project config ---
 config_warnings=0
 if [[ ! -f "${REPO_DIR}/.mcp.json" ]]; then
     echo ""

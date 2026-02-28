@@ -12,11 +12,12 @@ The orchestrator spawns domain-specific subagents for each skill invocation:
 
 | Agent | Domain | MCP Servers | Skills |
 |-------|--------|-------------|--------|
-| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, state-reader | network-recon, smb-exploitation, pivoting-tunneling |
+| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, state-reader | network-recon, smb-exploitation, pivoting-tunneling (haiku) |
 | `web-discovery-agent` | Web discovery | skill-router, shell-server, state-reader | web-discovery |
 | `web-exploit-agent` | Web exploitation | skill-router, shell-server, state-reader | All web technique skills |
 | `ad-discovery-agent` | AD discovery | skill-router, shell-server, state-reader | ad-discovery |
 | `ad-exploit-agent` | AD exploitation | skill-router, shell-server, state-reader | All AD technique skills |
+| `password-spray-agent` | Credential spraying | skill-router, shell-server, state-reader | password-spraying (haiku) |
 | `linux-privesc-agent` | Linux privesc | skill-router, shell-server, state-reader | Linux discovery + privesc + container escapes |
 | `windows-privesc-agent` | Windows privesc | skill-router, shell-server, state-reader | Windows discovery + privesc |
 | `evasion-agent` | AV/EDR evasion | skill-router, shell-server, state-reader | av-edr-evasion |
@@ -102,8 +103,8 @@ engagement/
 - Filename format: `{ISO-timestamp}-{agent-type}.jsonl` (e.g.,
   `20260227T143052Z-web-exploit-agent.jsonl`).
 - Only triggers for red-run domain agents (network-recon, web-discovery,
-  web-exploit, ad-discovery, ad-exploit, linux-privesc, windows-privesc) —
-  not built-in subagents (Explore, Plan, general-purpose).
+  web-exploit, ad-discovery, ad-exploit, password-spray, linux-privesc,
+  windows-privesc) — not built-in subagents (Explore, Plan, general-purpose).
 - No engagement directory = hook exits silently. No logging, no errors.
 - The retrospective skill parses these logs for post-engagement analysis.
 
@@ -153,6 +154,7 @@ red-run/
     web-exploit-agent.md
     ad-discovery-agent.md
     ad-exploit-agent.md
+    password-spray-agent.md
     linux-privesc-agent.md
     windows-privesc-agent.md
     evasion-agent.md
@@ -161,6 +163,7 @@ red-run/
     orchestrator/SKILL.md # Master orchestrator (native skill)
     web/                  # Web application attacks
     ad/                   # Active Directory
+    credential/           # Credential attacks (password spraying)
     privesc/              # Privilege escalation
     network/              # Recon, protocols, pivoting
     evasion/              # AV/EDR bypass

@@ -56,8 +56,11 @@ through a domain subagent (preferred) or inline via `get_skill()` (fallback).
 
 ### Fallback Path: Inline Execution
 
-If custom subagents are not installed (agent files missing from
-`~/.claude/agents/`), fall back to inline execution:
+If custom subagents are not installed, **STOP**. Do not continue without custom subagents.
+Refer the operator to the README.md for installation instructions, and offer to assist.
+
+For explicitly requested inline execution tasks, load the relevant skill first to 
+review the methodologies and tooling within:
 
 1. Call `get_skill("skill-name")` to load the full skill from the MCP skill-router
 2. Read the returned SKILL.md content
@@ -65,15 +68,15 @@ If custom subagents are not installed (agent files missing from
 
 ### Core Principle
 
-Do NOT execute techniques inline — even if the attack path seems obvious or you
-already know the technique. Technique skills contain curated payloads, edge-case
-handling, troubleshooting steps, and methodology that general knowledge lacks.
-Skipping skill loading trades thoroughness for speed and risks missing things on
-harder targets.
+Do NOT execute techniques without attempting to load a relevant skill first — even 
+if the attack path seems obvious or you already know the technique. Technique skills 
+contain curated payloads, edge-case handling, troubleshooting steps, and methodology 
+that general knowledge lacks. Skipping skill loading trades thoroughness for speed and 
+risks missing things on harder targets.
 
 This applies in both guided and autonomous modes. Autonomous mode means you
-make triage and routing decisions without asking — it does not mean you bypass
-the skill library.
+make triage and routing decisions without asking — it DOES NOT mean you bypass
+the skill library and associated routing decisions.
 
 ### Finding Skills
 
@@ -107,6 +110,8 @@ The only commands the orchestrator may execute directly are:
 - State-writer MCP tools (`init_engagement`, `add_target`, `add_credential`, `add_access`, `add_vuln`, `add_pivot`, `add_blocked`, and their update variants) — engagement state
 - State-reader MCP tools (`get_state_summary`, `get_targets`, `get_credentials`, `get_access`, `get_vulns`, `get_pivot_map`, `get_blocked`) — state queries
 - Skill-router MCP tools (`get_skill`, `search_skills`, `list_skills`) — skill routing
+- `getent hosts <hostname>` — hostname resolution verification (local-only, no network traffic)
+- `ldapsearch -x -H ldap://TARGET -b "DC=..." -s base lockoutThreshold lockOutObservationWindow lockoutDuration minPwdLength pwdProperties` — lockout policy query (safety-critical pre-spray check, single base-scope read, not enumeration)
 
 Everything else — nmap, netexec, ffuf, nuclei, httpx, sqlmap, curl, any tool
 that sends traffic to a target — MUST go through the appropriate skill.
@@ -129,11 +134,12 @@ every routing decision.
 
 | Agent | Domain | MCP Servers | Use For |
 |-------|--------|-------------|---------|
-| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, state-reader | network-recon, smb-exploitation, pivoting-tunneling |
+| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, state-reader | network-recon, smb-exploitation, pivoting-tunneling (haiku) |
 | `web-discovery-agent` | Web discovery | skill-router, shell-server, state-reader | web-discovery |
 | `web-exploit-agent` | Web exploitation | skill-router, shell-server, state-reader | All web technique skills |
 | `ad-discovery-agent` | AD discovery | skill-router, shell-server, state-reader | ad-discovery |
 | `ad-exploit-agent` | AD exploitation | skill-router, shell-server, state-reader | All AD technique skills |
+| `password-spray-agent` | Credential spraying | skill-router, shell-server, state-reader | password-spraying (haiku) |
 | `linux-privesc-agent` | Linux privesc | skill-router, shell-server, state-reader | Linux discovery + technique skills, container escapes |
 | `windows-privesc-agent` | Windows privesc | skill-router, shell-server, state-reader | Windows discovery + technique skills |
 | `evasion-agent` | AV/EDR evasion | skill-router, shell-server, state-reader | AV bypass payload generation |
@@ -198,7 +204,8 @@ Use this table to pick the right agent for each skill:
 | ad-discovery | ad-discovery-agent | AD enumeration + attack surface mapping |
 | kerberos-roasting, kerberos-delegation, kerberos-ticket-forging | ad-exploit-agent | Kerberos attacks |
 | adcs-template-abuse, adcs-access-and-relay, adcs-persistence | ad-exploit-agent | ADCS abuse |
-| acl-abuse, credential-dumping, pass-the-hash, password-spraying | ad-exploit-agent | AD |
+| acl-abuse, credential-dumping, pass-the-hash | ad-exploit-agent | AD |
+| password-spraying | password-spray-agent | Service-agnostic credential spraying (haiku) |
 | gpo-abuse, trust-attacks, ad-persistence, auth-coercion-relay, sccm-exploitation | ad-exploit-agent | AD |
 | linux-discovery | linux-privesc-agent | Linux host enum |
 | linux-sudo-suid-capabilities, linux-cron-service-abuse, linux-file-path-abuse, linux-kernel-exploits | linux-privesc-agent | Linux privesc |
@@ -271,9 +278,15 @@ When a skill completes and returns control to the orchestrator:
    - Failed techniques → `add_blocked()`
 3. Append to `engagement/activity.md` with skill outcome
 4. Append to `engagement/findings.md` if vulnerabilities were confirmed
-5. Call `get_state_summary()` for routing decision
-6. Run the Step 5 decision logic
-7. Route to the next skill based on updated state
+5. **Check for new usernames** — if the skill returned usernames not
+   previously in state, trigger the **Usernames Found** hard stop before
+   continuing. This applies to ANY skill that discovers users: network-recon
+   (RPC/LDAP null session), web-discovery (user enumeration), ad-discovery
+   (BloodHound/LDAP), SQLi (user table dump), credential-dumping (SAM/LSASS),
+   or any other source.
+6. Call `get_state_summary()` for routing decision
+7. Run the Step 5 decision logic
+8. Route to the next skill based on updated state
 
 Skills should NOT chain directly into other skills' scope areas. If a discovery
 skill finds something outside its scope, it reports findings and returns — the
@@ -382,21 +395,62 @@ Do not run scanning or enumeration tools directly from the orchestrator.
 
 ### Network Recon (if IP/subnet in scope)
 
-STOP. Spawn **network-recon-agent** with skill `network-recon`:
+**Hard stop — scan selection (ALL modes, including autonomous).**
 
-```
-Task(
-    subagent_type="network-recon-agent",
-    prompt="Load skill 'network-recon'. Target: <IP/range>. Mode: <mode>. Credentials: <creds or 'none'>.",
-    description="Network recon on <target>"
-)
-```
+Before spawning the network-recon agent, present the operator with scan
+options via `AskUserQuestion`. This hard stop applies in BOTH guided AND
+autonomous modes — the operator always chooses the scan type.
+
+**Question — Scan type** (single-select):
+- Header: "Scan type"
+- Options:
+  - Quick scan (Recommended) — top 1000 ports + service detection (`-sV -sC --top-ports 1000 -T4`)
+  - Full scan — all 65535 ports + service detection + OS fingerprint (`-A -p- -T4`)
+  - Import existing results — provide a path to nmap XML output (skip scanning)
+  - Custom scan — describe the scan you'd like (ports, timing, scripts)
+
+**After operator responds:**
+
+- **Quick scan** or **Full scan**: Spawn **network-recon-agent** with the
+  selected scan type passed in the prompt:
+
+  ```
+  Task(
+      subagent_type="network-recon-agent",
+      prompt="Load skill 'network-recon'. Target: <IP/range>. Mode: <mode>. Credentials: <creds or 'none'>. Scan type: <quick|full>.",
+      description="Network recon on <target>"
+  )
+  ```
+
+- **Import existing results**: Ask for the file path (the "Other" text input
+  captures this). Read the XML file, parse it for hosts/ports/services, and
+  record findings directly via state-writer MCP tools (`add_target`,
+  `add_port`). Skip spawning network-recon-agent entirely. Log to
+  `engagement/activity.md`:
+  ```
+  ### [YYYY-MM-DD HH:MM:SS] orchestrator → imported scan results
+  - Source: <path to XML>
+  - Hosts found: N
+  - Open ports: <summary>
+  ```
+
+- **Custom scan**: The operator's text input describes the scan. Pass it
+  to network-recon-agent in the prompt so the agent can construct the
+  appropriate nmap options:
+
+  ```
+  Task(
+      subagent_type="network-recon-agent",
+      prompt="Load skill 'network-recon'. Target: <IP/range>. Mode: <mode>. Credentials: <creds or 'none'>. Custom scan request: <operator's description>.",
+      description="Network recon on <target>"
+  )
+  ```
 
 Do not execute nmap, masscan, or netexec commands inline. The agent has nmap
 MCP access and will handle scanning directly.
 
 Network-recon will:
-1. Run host discovery (for subnets) and full port scanning
+1. Run host discovery (for subnets) and port scanning per the selected type
 2. Enumerate services on each open port with quick-win checks (anonymous access,
    default creds, known CVEs)
 3. Perform OS fingerprinting
@@ -449,6 +503,33 @@ Log to `engagement/activity.md`:
 - Domain environment: yes/no
 ```
 
+### Hostname Resolution Check
+
+After recording targets from network-recon, check whether discovered domain
+names and hostnames resolve on the attackbox:
+
+1. Collect all hostnames from the recon results: domain name (e.g.,
+   `megabank.local`), DC FQDNs (e.g., `DC01.megabank.local`), any other
+   hostnames discovered via LDAP or SMB.
+2. For each hostname, run `getent hosts <hostname>`.
+3. If ANY hostname does not resolve, trigger the **Hosts File Update**
+   hard stop (see Decision Logic) before routing to any further skills.
+
+This check happens BEFORE web-discovery, AD-discovery, or any technique
+skill. Many tools (Kerberos, LDAP, ffuf vhost scanning) fail silently or
+with confusing errors when hostnames don't resolve — catching this early
+prevents wasted agent invocations.
+
+### Post-Web-Discovery Resolution Check
+
+After web-discovery returns, if vhosts were found (e.g., `dev.target.htb`,
+`admin.target.htb`), check whether each discovered hostname resolves:
+
+1. Collect vhost names from the web-discovery return summary.
+2. For each vhost, run `getent hosts <hostname>`.
+3. If ANY vhost does not resolve, trigger the **Hosts File Update** hard
+   stop before routing to web technique skills.
+
 ## Step 3: Attack Surface Mapping
 
 Based on recon results, categorize the attack surface:
@@ -462,7 +543,7 @@ Based on recon results, categorize the attack surface:
 | Mail | SMTP (25/587), IMAP (143/993) | Credential attacks, phishing |
 | SMB vulnerability | SMB (445) + confirmed CVE (MS08-067, MS17-010, SMBGhost, MS09-050) | network-recon-agent → `smb-exploitation` |
 | File shares | SMB (445), NFS (2049) | Enumeration, sensitive files |
-| Remote access | SSH (22), RDP (3389), WinRM (5985/5986) | ad-exploit-agent → `password-spraying` |
+| Remote access | SSH (22), RDP (3389), WinRM (5985/5986) | password-spray-agent → `password-spraying` |
 | Custom services | Non-standard ports | Manual investigation |
 
 **In guided mode**: Present the attack surface map and ask which paths to
@@ -494,9 +575,11 @@ or bloodhound commands inline.
 
 For services with authentication (SSH, RDP, SMB, web login):
 
-STOP. Spawn **ad-exploit-agent** with skill `password-spraying`. Pass: target
-IP, service type(s), any known usernames and passwords, current mode. Do not
-execute netexec or hydra commands inline.
+When usernames have been discovered, the **Usernames Found** hard stop
+(see Decision Logic below) handles spray decisions and intensity selection.
+Do not spawn a spray agent directly from here — the hard stop will trigger
+when usernames are recorded in state and present the operator with spray
+options before spawning `password-spray-agent`.
 
 ## Step 5: Vulnerability Chaining
 
@@ -716,6 +799,222 @@ When a technique agent returns with an "AV/EDR Blocked" section in its summary:
    - AV blocked <skill-name> on <target>: <detection details>
    - Routed to evasion-agent → <outcome>
    ```
+
+### Hosts File Update
+
+When a subagent returns with domain names, DC FQDNs, vhosts, or DNS resolution
+failures, the orchestrator must ensure all discovered hostnames resolve on the
+attackbox before routing to any further skills.
+
+**When to trigger:**
+- After network-recon returns with a domain name or DC FQDN
+- After web-discovery returns with vhost names
+- After ANY skill returns reporting DNS resolution failure
+- After recording any new hostname in state via `add_target()`
+
+**Resolution check** (the orchestrator MAY run this directly):
+```bash
+getent hosts megabank.local
+```
+If exit code is non-zero, the hostname does not resolve.
+
+**Hard stop procedure:**
+
+1. Collect all unresolvable hostnames + their target IPs from engagement state
+2. Write `temp_hosts-update.sh` with idempotent entries:
+   ```bash
+   #!/usr/bin/env bash
+   set -euo pipefail
+   # Add target hostnames to /etc/hosts
+   # Generated by red-run orchestrator
+
+   TARGET_IP="10.10.10.5"
+
+   # Entries to add (only if not already present)
+   entries=(
+       "$TARGET_IP  megabank.local"
+       "$TARGET_IP  resolute.megabank.local"
+   )
+
+   for entry in "${entries[@]}"; do
+       hostname=$(echo "$entry" | awk '{print $2}')
+       if ! getent hosts "$hostname" > /dev/null 2>&1; then
+           echo "$entry" | sudo tee -a /etc/hosts
+           echo "[+] Added: $entry"
+       else
+           echo "[=] Already resolves: $hostname"
+       fi
+   done
+   ```
+   Save as `temp_hosts-update.sh` and `chmod +x temp_hosts-update.sh`.
+3. Present the hard stop message:
+   ```
+   [orchestrator] HARD STOP — hosts file update required
+
+   The following hostnames were discovered but do not resolve on this machine:
+     - megabank.local → 10.129.96.155
+     - resolute.megabank.local → 10.129.96.155
+
+   AD and Kerberos tools will fail without these entries.
+
+   Run: sudo ./temp_hosts-update.sh
+
+   Confirm when done — no further engagement actions will be taken until
+   the hosts file is updated.
+   ```
+4. **DO NOT** spawn any subagent, route to any skill, or continue the
+   engagement loop while waiting for confirmation.
+5. After operator confirms, verify each hostname resolves:
+   ```bash
+   getent hosts megabank.local
+   ```
+6. Clean up: `rm temp_hosts-update.sh`
+7. Log to `engagement/activity.md`:
+   ```
+   ### [YYYY-MM-DD HH:MM:SS] orchestrator → hosts-file-update
+   - Hostnames added: megabank.local, resolute.megabank.local → 10.129.96.155
+   - Operator confirmed, resuming engagement
+   ```
+8. Resume the engagement loop from where it was paused
+
+**In autonomous mode**: Same behavior — this is a hard stop in ALL modes.
+Write the script, present it, wait. This is one of the few cases where
+autonomous mode must pause for operator intervention (sudo requirement).
+
+### Usernames Found
+
+When ANY skill returns with discovered usernames — network-recon via RPC/LDAP
+null sessions, web-discovery via user enumeration, ad-discovery via
+BloodHound/LDAP — the orchestrator MUST trigger this hard stop before
+proceeding with credential attacks.
+
+**Hard stop in BOTH guided AND autonomous modes** — never auto-spray.
+Password spraying is high-OPSEC and risks account lockouts. The operator
+must choose the intensity.
+
+**When to trigger:**
+- After recording new usernames in engagement state (from any skill)
+- Only if authentication services are available (SMB, SSH, WinRM, LDAP,
+  HTTP login, etc.)
+- **Re-triggers when additional usernames are discovered later** — if a
+  subsequent skill (ad-discovery, web-discovery, credential-dumping, SQLi
+  user dump, etc.) returns NEW usernames not previously sprayed, trigger
+  this hard stop again for the new users. Check which usernames already
+  have credential test results in state vs. which are untested.
+- Skip only if ALL discovered usernames have already been sprayed at the
+  operator's chosen tier (check credential_access table via state)
+
+**Hard stop procedure:**
+
+1. Collect discovered usernames from engagement state
+2. Identify available authentication services from the targets/ports tables
+3. **Enumerate account lockout policy** before presenting spray options.
+
+   a. **Check recon results first** — network-recon or ad-discovery may have
+      already returned password policy / lockout info. Check the target's
+      notes in engagement state and any evidence files for policy details
+      (lockout threshold, observation window, lockout duration, min password
+      length, complexity requirements).
+
+   b. **If policy is known from recon**, display it in the hard stop message
+      (see template below). Key fields: lockout threshold (0 = no lockout),
+      observation window (minutes), lockout duration (minutes).
+
+   c. **If policy is NOT known from recon**, query LDAP directly (this is on
+      the allowed commands list as a safety-critical pre-spray check):
+      ```bash
+      ldapsearch -x -H ldap://TARGET -b "DC=DOMAIN,DC=LOCAL" -s base \
+        '(objectClass=*)' lockoutThreshold lockOutObservationWindow \
+        lockoutDuration minPwdLength pwdProperties
+      ```
+      Parse the output:
+      - `lockoutThreshold: 0` = no lockout
+      - Duration/window: divide abs(value) by 600,000,000 for minutes
+        (e.g., `-18000000000` = 30 minutes)
+
+   d. **If LDAP also fails** (anonymous bind not available), display
+      "Lockout policy: unknown" in the hard stop message and note that the
+      password-spray agent will enumerate it as its first step. If the agent
+      discovers a dangerously low threshold (<=3), it will abort and report.
+
+4. Present the hard stop with lockout context. Use `AskUserQuestion` with
+   **two questions** — spray intensity and target services:
+
+   Print the context block first (usernames, lockout policy), then call
+   `AskUserQuestion` with both questions:
+
+   **Context block** (print before the question):
+   ```
+   [orchestrator] HARD STOP — usernames discovered
+
+   Found N usernames:
+     - user1, user2, user3, ...
+
+   Account lockout policy:
+     - Lockout threshold: <N attempts or "0 (no lockout)" or "unknown">
+     - Observation window: <N minutes or "unknown">
+     - Lockout duration:   <N minutes or "unknown">
+     - Min password length: <N or "unknown">
+     - Complexity required: <yes/no or "unknown">
+   ```
+
+   **Question 1 — Spray intensity** (single-select):
+   - Header: "Spray tier"
+   - Options:
+     - Light spray (Recommended) — username-as-password + common defaults (~30 passwords)
+     - Medium spray — Light + SecLists 10k common passwords
+     - Heavy spray — Medium + SecLists 100k passwords (NCSC)
+     - Skip spraying — don't spray, continue engagement
+
+   **Question 2 — Target services** (multi-select):
+   - Header: "Services"
+   - Build options dynamically from discovered ports on the target. Only
+     include services that support password authentication. Common mappings:
+     - SMB (445) → "SMB (445)"
+     - WinRM (5985/5986) → "WinRM (5985)"
+     - SSH (22) → "SSH (22)"
+     - LDAP (389/636) → "LDAP (389)"
+     - RDP (3389) → "RDP (3389)"
+     - HTTP login (80/443) → "HTTP (80/443)" (only if login form discovered)
+     - MSSQL (1433) → "MSSQL (1433)"
+     - FTP (21) → "FTP (21)"
+   - The "Other" option (always present in AskUserQuestion) lets the
+     operator type custom services or a wordlist path
+
+   If the operator selects "Skip spraying" for intensity, ignore the
+   services selection.
+
+5. After operator responds:
+   - If **Skip**: Log to `activity.md` and continue engagement loop
+   - Otherwise: Spawn **password-spray-agent** with the selected tier and
+     **only the selected services**:
+
+```
+Agent(
+    subagent_type="password-spray-agent",
+    model="haiku",
+    prompt="Load skill 'password-spraying'. Spray tier: <light/medium/heavy/custom>.
+Target: <IP>. Services: <only operator-selected services, e.g. 'SMB 445, WinRM 5985'>.
+Domain: <domain or 'N/A'>. Hostname: <hostname>.
+Usernames: <list or path to file>.
+Lockout policy: <threshold/window/duration if known, or 'unknown — enumerate first'>.
+Mode: <guided/autonomous>.
+Custom wordlist: <path if custom, omit otherwise>.",
+    description="Password spray on <target>"
+)
+```
+
+6. Parse the agent's return summary — record valid credentials via
+   `add_credential()`, test results via `test_credential()`, and any
+   access gained via `add_access()`
+7. Log to `engagement/activity.md`:
+   ```
+   ### [YYYY-MM-DD HH:MM:SS] orchestrator → password-spraying
+   - Spray tier: <tier>, N usernames, M passwords per user
+   - Valid credentials found: <count>
+   - Access gained: <summary or 'none'>
+   ```
+8. Resume the engagement loop — run Step 5 decision logic with new state
 
 **In guided mode**: Present the chain analysis and recommend next steps.
 Show the reasoning: "We have SQLi on the web app. We could extract credentials

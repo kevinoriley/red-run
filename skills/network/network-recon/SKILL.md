@@ -114,6 +114,10 @@ and records state changes. Your return summary must include:
 - Vulnerabilities confirmed (with status and severity)
 - Pivot paths identified (what leads where)
 - Blocked items (what failed and why, whether retryable)
+- **Account lockout policy** (if enumerable via null session or guest access):
+  lockout threshold, observation window, lockout duration, min password length,
+  complexity requirements. The orchestrator needs this before routing to
+  password-spraying. Include even if threshold is 0 (no lockout).
 
 ## Prerequisites
 
@@ -224,17 +228,29 @@ or proceed with all.
 
 ## Step 2: Port Scanning
 
-**Default full scan (recommended starting point):**
+Check the orchestrator's prompt for a `Scan type:` directive. This tells you
+what the operator chose:
 
-```bash
-# Full TCP scan with service detection, OS fingerprinting, default scripts, verbose
-sudo nmap -A -p- -T4 -oA scan_HOSTNAME -vvv TARGET_IP
-```
+- **`quick`** — top 1000 ports + service detection:
+  ```bash
+  sudo nmap -sV -sC --top-ports 1000 -T4 -oA scan_HOSTNAME -vvv TARGET_IP
+  ```
 
-This is the go-to scan for most engagements. `-A` enables OS detection, version
-detection, script scanning, and traceroute. `-p-` scans all 65535 ports. `-T4`
-is aggressive timing suitable for most networks. `-oA` saves in all formats
-(`.nmap`, `.gnmap`, `.xml`).
+- **`full`** (or no directive) — all 65535 ports, full enumeration:
+  ```bash
+  sudo nmap -A -p- -T4 -oA scan_HOSTNAME -vvv TARGET_IP
+  ```
+
+- **`Custom scan request: ...`** — the operator described a custom scan.
+  Translate their description into appropriate nmap options. Preserve `-oA`
+  for output and add `-vvv` for verbose results.
+
+If no scan type is specified, default to **full scan**.
+
+The full scan is the go-to for most engagements. `-A` enables OS detection,
+version detection, script scanning, and traceroute. `-p-` scans all 65535
+ports. `-T4` is aggressive timing suitable for most networks. `-oA` saves in
+all formats (`.nmap`, `.gnmap`, `.xml`).
 
 **Parse scan results:**
 
@@ -347,7 +363,7 @@ nmap -sV -p88 --script krb5-enum-users TARGET_IP
 kerbrute userenum -d DOMAIN --dc TARGET_IP /usr/share/seclists/Usernames/xato-net-10-million-usernames.txt
 
 # AS-REP Roasting (no creds needed)
-impacket-GetNPUsers DOMAIN/ -usersfile users.txt -dc-ip TARGET_IP -no-pass -outputfile asrep_hashes.txt
+GetNPUsers.py DOMAIN/ -usersfile users.txt -dc-ip TARGET_IP -no-pass -outputfile asrep_hashes.txt
 ```
 
 **Quick wins:** AS-REP roastable accounts, valid username enumeration.
@@ -364,7 +380,7 @@ showmount -e TARGET_IP  # NFS shares
 # Windows RPC
 rpcclient -U "" -N TARGET_IP
 rpcclient -U "" -N TARGET_IP -c "enumdomusers;enumdomgroups;getdompwinfo"
-impacket-rpcdump TARGET_IP | grep -E "Protocol|Provider"
+rpcdump.py TARGET_IP | grep -E "Protocol|Provider"
 ```
 
 **Quick wins:** Null session user enumeration, NFS shares with no_root_squash,
@@ -380,6 +396,8 @@ enum4linux-ng -A TARGET_IP
 netexec smb TARGET_IP --shares
 netexec smb TARGET_IP -u '' -p '' --shares          # Null session
 netexec smb TARGET_IP -u 'guest' -p '' --shares     # Guest access
+netexec smb TARGET_IP -u '' -p '' --pass-pol        # Password policy (null session)
+netexec smb TARGET_IP -u 'guest' -p '' --pass-pol   # Password policy (guest)
 
 # NSE scripts
 nmap -sV -p445 --script smb-enum-shares,smb-enum-users,smb-os-discovery,smb-vuln* TARGET_IP
@@ -391,6 +409,12 @@ smbclient -N -L //TARGET_IP/
 **Quick wins:** Null session (user enum, share listing), guest access to shares,
 writable shares (web root, SYSVOL), EternalBlue (MS17-010), SMBGhost
 (CVE-2020-0796), PrintNightmare.
+
+**Password/lockout policy:** If null session or guest `--pass-pol` succeeds,
+record the full policy in your return summary. The orchestrator needs this
+before routing to password-spraying. Key values: lockout threshold (0 = no
+lockout — critical for spray decisions), observation window, lockout duration,
+min password length, complexity requirements.
 
 → STOP. Return to orchestrator recommending **ad-discovery**. Pass: DC IP,
 domain name, any credentials or null session access. Do not execute AD commands
@@ -420,7 +444,7 @@ enumeration inline.
 nmap -sV -p1433 --script ms-sql-info,ms-sql-config,ms-sql-empty-password,ms-sql-ntlm-info TARGET_IP
 
 # Auth check
-impacket-mssqlclient sa:password@TARGET_IP
+mssqlclient.py sa:password@TARGET_IP
 netexec mssql TARGET_IP -u sa -p '' --local-auth  # Empty password check
 
 # NTLM info leak
