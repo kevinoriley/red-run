@@ -96,8 +96,19 @@ and records state changes. Your return summary must include:
 **Kerberos-first workflow**:
 
 ```bash
-getTGT.py DOMAIN/user@DC.DOMAIN.LOCAL -hashes :NTHASH
-export KRB5CCNAME=user.ccache
+cd $TMPDIR && getTGT.py DOMAIN/user -hashes :NTHASH -dc-ip DC_IP
+export KRB5CCNAME=$TMPDIR/user.ccache
+```
+
+**Tool output directory**: `getTGT.py`, `certipy req`, `certipy auth`, and
+`certipy shadow` all write output files to CWD with no output-path flag.
+Always prefix these commands with `cd $TMPDIR &&` to keep files out of the
+working directory. `getTGT.py` does NOT support `-out` — CWD is the only
+control. When saving evidence, use `mv` (not `cp`) to avoid stray duplicates:
+
+```bash
+mv $TMPDIR/administrator.pfx engagement/evidence/administrator-esc9.pfx
+mv $TMPDIR/administrator.ccache engagement/evidence/administrator-esc9.ccache
 ```
 
 ## Overview: Technique Selection

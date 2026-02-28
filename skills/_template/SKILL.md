@@ -161,6 +161,29 @@ limitation in your return summary.
 - <Required tools (with install note)>
 - <Conditions that must be true>
 
+### Tool output directory
+
+Several tools write output files to CWD with no output-path flag
+(`getTGT.py` → `<user>.ccache`, `certipy req` → `<user>.pfx`,
+`certipy auth` → `<user>.ccache`, `bloodyAD add shadowCredentials` →
+`<user>_*.pfx`). To avoid scattering files in the working directory:
+
+```bash
+# Always prefix CWD-writing commands with cd $TMPDIR
+cd $TMPDIR && getTGT.py DOMAIN/user -hashes :NTHASH
+export KRB5CCNAME=$TMPDIR/user.ccache
+
+cd $TMPDIR && certipy req -k -no-pass -dc-ip DC_IP -ca 'CA' -template Tpl
+cd $TMPDIR && certipy auth -pfx $TMPDIR/user.pfx -dc-ip DC_IP
+
+# Save evidence with mv (not cp) to avoid stray duplicates
+mv $TMPDIR/user.pfx engagement/evidence/user.pfx
+mv $TMPDIR/user.ccache engagement/evidence/user.ccache
+```
+
+**Note**: `getTGT.py` does NOT support `-out`. It always writes
+`<user>.ccache` to CWD. The `cd $TMPDIR &&` prefix is the only control.
+
 ## Step 1: Assess
 
 If not already provided by the orchestrator or conversation context, determine:
