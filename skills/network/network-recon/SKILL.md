@@ -99,6 +99,9 @@ and records state changes. Your return summary must include:
 - Vulnerabilities confirmed (with status and severity)
 - Pivot paths identified (what leads where)
 - Blocked items (what failed and why, whether retryable)
+- **SMB share access table** (if SMB ports open): mandatory per-share results
+  table from Step 4 of the SMB section. Every discovered share must have a row
+  with tested access status. Never report a share as denied without testing it.
 - **Account lockout policy** (if enumerable via null session or guest access):
   lockout threshold, observation window, lockout duration, min password length,
   complexity requirements. The orchestrator needs this before routing to
@@ -407,16 +410,51 @@ netexec smb TARGET_IP -u 'guest' -p '' --pass-pol
 nmap -sV -p445 --script smb-enum-shares,smb-enum-users,smb-os-discovery,smb-vuln* TARGET_IP
 ```
 
-**Step 4 — Enumerate accessible shares.** For every share discovered in Step 1
-(from ANY tool), list contents and check for sensitive files:
+**Step 4 — Enumerate EVERY discovered share (mandatory, no exceptions).**
+
+This step is NOT optional. The agent MUST test every share individually with
+`smbclient`. Access denied on one share tells you NOTHING about other shares —
+Windows ACLs are per-share. Skipping a share is a methodology failure.
+
+For EVERY share discovered in Step 1 (from ANY tool), run:
+
+```bash
+smbclient //TARGET_IP/SHARENAME -N -c 'ls' 2>&1
+```
+
+If `ls` succeeds (shows files/directories), the share is readable. Follow up:
 
 ```bash
 # Recursive listing of accessible share
 smbclient //TARGET_IP/SHARENAME -N -c 'recurse ON; prompt OFF; ls'
 
-# Download interesting files
+# Download interesting files (configs, scripts, credentials, backups)
 smbclient //TARGET_IP/SHARENAME -N -c 'recurse ON; prompt OFF; mget *'
 ```
+
+**Per-share results table (mandatory in return summary).** You MUST include
+this table in your return summary. Every share from Step 1 must have a row.
+No share may be listed as "not tested" or "needs testing" — test it or explain
+why the test command failed.
+
+```
+| Share | Access | Method | Contents/Notes |
+|-------|--------|--------|----------------|
+| ADMIN$ | DENIED | smbclient -N | NT_STATUS_ACCESS_DENIED |
+| C$ | DENIED | smbclient -N | NT_STATUS_ACCESS_DENIED |
+| Development | READ | smbclient -N | Automation/ directory found |
+| IPC$ | LIMITED | smbclient -N | IPC only, no file listing |
+| NETLOGON | READ | smbclient -N | Empty or standard scripts |
+| SYSVOL | READ | smbclient -N | Policies, scripts |
+```
+
+**Rules:**
+- "Access" must be one of: `READ`, `WRITE`, `DENIED`, `LIMITED`, `ERROR`
+- "Method" must show the actual command used (e.g., `smbclient -N`, `netexec guest`)
+- Never report a share as DENIED unless you received `NT_STATUS_ACCESS_DENIED`
+  (or similar error) from testing THAT SPECIFIC share
+- Never infer access status from other shares — test each one individually
+- If `smbclient` hangs or times out on a share, report as `ERROR` with details
 
 **Step 5 — Fallback: probe common share names directly.** Only if ALL listing
 tools in Step 1 failed. Some Windows configurations block null-session share
