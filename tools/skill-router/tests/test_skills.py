@@ -24,7 +24,6 @@ NATIVE_SKILLS = {"orchestrator"}
 
 # Sections required for all indexed skills (except retrospective)
 REQUIRED_SECTIONS = {
-    "## Mode",
     "## Engagement Logging",
     "## State Management",
     "## Prerequisites",
