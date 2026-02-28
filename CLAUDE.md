@@ -148,10 +148,28 @@ Engagement state lives in `engagement/state.db`, a SQLite database managed by th
 - The orchestrator parses return summaries and calls structured write tools (`add_target`, `add_credential`, `add_vuln`, etc.)
 - Orchestrator uses state summary + pivot map to chain vulns toward impact
 
+## Documentation Rules
+
+Each part of the repo has exactly one documentation file. Keep them in sync
+when making changes.
+
+| Component | Documentation | Rule |
+|-----------|--------------|------|
+| Repo root | `README.md` | Update when architecture, installation, or user-facing behavior changes |
+| MCP servers (`tools/*/`) | `README.md` per server | **Required.** Update when tools, parameters, behavior, or prerequisites change |
+| Skills (`skills/*/`) | `SKILL.md` | Self-contained — no separate README |
+| Agents (`agents/`) | `<agent-name>.md` | Self-contained — no separate README |
+| Hooks (`tools/hooks/`) | Inline comments | No README needed |
+
+**When modifying a tool server:** If you change tools, parameters, behavior, or
+dependencies in a `tools/*/` server, update its `README.md` in the same commit.
+
 ## Directory Layout
 
 ```
 red-run/
+  README.md               # User-facing project documentation
+  CLAUDE.md               # Development instructions (this file)
   install.sh              # Installs orchestrator, agents, MCP servers
   uninstall.sh            # Removes installed skills, agents, MCP data
   agents/                 # Custom subagent definitions (installed to ~/.claude/agents/)
@@ -175,21 +193,26 @@ red-run/
     evasion/              # AV/EDR bypass
   tools/
     skill-router/         # MCP server (ChromaDB + embeddings)
+      README.md            # Server documentation
       server.py           # FastMCP server — search_skills, get_skill, list_skills
       indexer.py           # Indexes SKILL.md frontmatter into ChromaDB
       pyproject.toml       # Python dependencies (chromadb, sentence-transformers)
     nmap-server/          # MCP server (Dockerized nmap)
+      README.md            # Server documentation
       server.py           # FastMCP server — nmap_scan, get_scan, list_scans
       validate.py          # Input validation (flag blocklist, target sanitization)
       Dockerfile           # Alpine + nmap image (built by install.sh)
       pyproject.toml       # Python dependencies (mcp, python-libnmap)
     shell-server/         # MCP server (TCP listener + shell manager)
+      README.md            # Server documentation
       server.py           # FastMCP server — start_listener, send_command, stabilize_shell, etc.
       pyproject.toml       # Python dependencies (mcp)
     browser-server/       # MCP server (headless Chromium)
+      README.md            # Server documentation
       server.py           # FastMCP server — browser_open, browser_fill, browser_click, etc.
       pyproject.toml       # Python dependencies (mcp, playwright, markdownify)
     state-server/         # MCP server (SQLite engagement state)
+      README.md            # Server documentation
       server.py           # FastMCP server — runs as state-reader (read) or state-writer (read+write)
       schema.py           # SQLite schema creation and migration
       pyproject.toml       # Python dependencies (mcp)
