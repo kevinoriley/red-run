@@ -863,60 +863,103 @@ must choose the intensity.
 
 1. Collect discovered usernames from engagement state
 2. Identify available authentication services from the targets/ports tables
-3. Present the hard stop:
+3. **Enumerate account lockout policy** before presenting spray options.
+   The orchestrator cannot run network tools directly, so lockout policy
+   must come from prior recon or be enumerated by the spray agent:
 
-```
-[orchestrator] HARD STOP — usernames discovered
+   a. **Check recon results first** — network-recon or ad-discovery may have
+      already returned password policy / lockout info. Check the target's
+      notes in engagement state and any evidence files for policy details
+      (lockout threshold, observation window, lockout duration, min password
+      length, complexity requirements).
 
-Found N usernames:
-  - user1, user2, user3, ...
+   b. **If policy is known from recon**, display it in the hard stop message
+      (see template below). Key fields: lockout threshold (0 = no lockout),
+      observation window (minutes), lockout duration (minutes).
 
-Authentication services available:
-  - SMB (445) on 10.10.10.5
-  - WinRM (5985) on 10.10.10.5
-  - SSH (22) on 10.10.10.5
-  - LDAP (389) on 10.10.10.5
+   c. **If policy is NOT known**, display "Lockout policy: unknown" in the
+      hard stop message and note that the password-spray agent will enumerate
+      it as its first step before spraying. If the agent discovers a
+      dangerously low threshold (<=3), it will abort and report back.
 
-Password spray options:
-  1. Light spray — username-as-password + common defaults (~30 passwords)
-  2. Medium spray — Light + SecLists 10k common passwords
-  3. Heavy spray — Medium + SecLists 100k passwords (NCSC)
-  4. Custom wordlist — provide a path
-  5. Skip — don't spray
+4. Present the hard stop with lockout context. Use `AskUserQuestion` with
+   **two questions** — spray intensity and target services:
 
-Select spray intensity:
-```
+   Print the context block first (usernames, lockout policy), then call
+   `AskUserQuestion` with both questions:
 
-4. After operator selects (or in autonomous mode, after presenting and
-   getting confirmation):
+   **Context block** (print before the question):
+   ```
+   [orchestrator] HARD STOP — usernames discovered
+
+   Found N usernames:
+     - user1, user2, user3, ...
+
+   Account lockout policy:
+     - Lockout threshold: <N attempts or "0 (no lockout)" or "unknown">
+     - Observation window: <N minutes or "unknown">
+     - Lockout duration:   <N minutes or "unknown">
+     - Min password length: <N or "unknown">
+     - Complexity required: <yes/no or "unknown">
+   ```
+
+   **Question 1 — Spray intensity** (single-select):
+   - Header: "Spray tier"
+   - Options:
+     - Light spray (Recommended) — username-as-password + common defaults (~30 passwords)
+     - Medium spray — Light + SecLists 10k common passwords
+     - Heavy spray — Medium + SecLists 100k passwords (NCSC)
+     - Skip spraying — don't spray, continue engagement
+
+   **Question 2 — Target services** (multi-select):
+   - Header: "Services"
+   - Build options dynamically from discovered ports on the target. Only
+     include services that support password authentication. Common mappings:
+     - SMB (445) → "SMB (445)"
+     - WinRM (5985/5986) → "WinRM (5985)"
+     - SSH (22) → "SSH (22)"
+     - LDAP (389/636) → "LDAP (389)"
+     - RDP (3389) → "RDP (3389)"
+     - HTTP login (80/443) → "HTTP (80/443)" (only if login form discovered)
+     - MSSQL (1433) → "MSSQL (1433)"
+     - FTP (21) → "FTP (21)"
+   - The "Other" option (always present in AskUserQuestion) lets the
+     operator type custom services or a wordlist path
+
+   If the operator selects "Skip spraying" for intensity, ignore the
+   services selection.
+
+5. After operator responds:
    - If **Skip**: Log to `activity.md` and continue engagement loop
-   - Otherwise: Spawn **password-spray-agent** with skill `password-spraying`:
+   - Otherwise: Spawn **password-spray-agent** with the selected tier and
+     **only the selected services**:
 
 ```
 Agent(
     subagent_type="password-spray-agent",
     model="haiku",
     prompt="Load skill 'password-spraying'. Spray tier: <light/medium/heavy/custom>.
-Target: <IP>. Services: <SMB 445, SSH 22, etc.>.
+Target: <IP>. Services: <only operator-selected services, e.g. 'SMB 445, WinRM 5985'>.
 Domain: <domain or 'N/A'>. Hostname: <hostname>.
 Usernames: <list or path to file>.
+Lockout policy: <threshold/window/duration if known, or 'unknown — enumerate first'>.
 Mode: <guided/autonomous>.
 Custom wordlist: <path if custom, omit otherwise>.",
     description="Password spray on <target>"
 )
 ```
 
-5. Parse the agent's return summary — record valid credentials via
+6. Parse the agent's return summary — record valid credentials via
    `add_credential()`, test results via `test_credential()`, and any
    access gained via `add_access()`
-6. Log to `engagement/activity.md`:
+7. Log to `engagement/activity.md`:
    ```
    ### [YYYY-MM-DD HH:MM:SS] orchestrator → password-spraying
    - Spray tier: <tier>, N usernames, M passwords per user
    - Valid credentials found: <count>
    - Access gained: <summary or 'none'>
    ```
-7. Resume the engagement loop — run Step 5 decision logic with new state
+8. Resume the engagement loop — run Step 5 decision logic with new state
 
 **In guided mode**: Present the chain analysis and recommend next steps.
 Show the reasoning: "We have SQLi on the web app. We could extract credentials

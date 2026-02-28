@@ -114,6 +114,10 @@ and records state changes. Your return summary must include:
 - Vulnerabilities confirmed (with status and severity)
 - Pivot paths identified (what leads where)
 - Blocked items (what failed and why, whether retryable)
+- **Account lockout policy** (if enumerable via null session or guest access):
+  lockout threshold, observation window, lockout duration, min password length,
+  complexity requirements. The orchestrator needs this before routing to
+  password-spraying. Include even if threshold is 0 (no lockout).
 
 ## Prerequisites
 
@@ -380,6 +384,8 @@ enum4linux-ng -A TARGET_IP
 netexec smb TARGET_IP --shares
 netexec smb TARGET_IP -u '' -p '' --shares          # Null session
 netexec smb TARGET_IP -u 'guest' -p '' --shares     # Guest access
+netexec smb TARGET_IP -u '' -p '' --pass-pol        # Password policy (null session)
+netexec smb TARGET_IP -u 'guest' -p '' --pass-pol   # Password policy (guest)
 
 # NSE scripts
 nmap -sV -p445 --script smb-enum-shares,smb-enum-users,smb-os-discovery,smb-vuln* TARGET_IP
@@ -391,6 +397,12 @@ smbclient -N -L //TARGET_IP/
 **Quick wins:** Null session (user enum, share listing), guest access to shares,
 writable shares (web root, SYSVOL), EternalBlue (MS17-010), SMBGhost
 (CVE-2020-0796), PrintNightmare.
+
+**Password/lockout policy:** If null session or guest `--pass-pol` succeeds,
+record the full policy in your return summary. The orchestrator needs this
+before routing to password-spraying. Key values: lockout threshold (0 = no
+lockout — critical for spray decisions), observation window, lockout duration,
+min password length, complexity requirements.
 
 → STOP. Return to orchestrator recommending **ad-discovery**. Pass: DC IP,
 domain name, any credentials or null session access. Do not execute AD commands
