@@ -1,9 +1,10 @@
 # shell MCP Server
 
-MCP server managing TCP listeners and reverse shell sessions for red-run
-subagents. Solves the persistent shell problem — Claude Code's Bash tool runs
-each command as a separate process, so interactive reverse shells and privilege
-escalation tools that spawn new shells have no way to connect back.
+MCP server managing TCP listeners, reverse shell sessions, and local interactive
+processes for red-run subagents. Solves the persistent shell problem — Claude
+Code's Bash tool runs each command as a separate process, so interactive shells,
+privilege escalation tools, and credential-based access tools (evil-winrm,
+psexec.py, ssh, msfconsole) have no way to maintain state between calls.
 
 ## Prerequisites
 
@@ -25,7 +26,7 @@ The server runs as an MCP server, started automatically by Claude Code via
 uv run --directory tools/shell-server python server.py
 ```
 
-### Typical workflow
+### Reverse shell workflow
 
 1. Agent calls `start_listener(port=4444)` to open a TCP listener
 2. Agent sends a reverse shell payload through whatever RCE it has achieved
@@ -34,11 +35,21 @@ uv run --directory tools/shell-server python server.py
 5. Agent uses `send_command(session_id=..., command="id")` to interact
 6. Agent calls `close_session(session_id=...)` when done — transcript saved
 
+### Local interactive process workflow
+
+1. Agent calls `start_process(command="evil-winrm -i 10.10.10.5 -u admin -p pass")` to spawn a local tool in a persistent PTY
+2. Agent uses `send_command(session_id=..., command="whoami")` to interact — same as a reverse shell session
+3. Agent calls `close_session(session_id=...)` when done — transcript saved
+
+Works with any interactive CLI tool: `evil-winrm`, `psexec.py`, `ssh`,
+`msfconsole`, `smbclient`, `mysql`, `impacket-wmiexec`, etc.
+
 ## Tools
 
 | Tool | Parameters | Description |
 |------|-----------|-------------|
 | `start_listener` | `port` (required), `host` (default `0.0.0.0`), `timeout` (default 300s), `label` (optional) | Start TCP listener, wait for reverse shell |
+| `start_process` | `command` (required), `label` (optional), `timeout` (default 30s) | Spawn a local interactive process in a persistent PTY |
 | `send_command` | `session_id` (required), `command` (required), `timeout` (default 10s), `expect` (optional regex) | Send command and return output |
 | `read_output` | `session_id` (required), `timeout` (default 2s) | Read buffered output without sending a command |
 | `stabilize_shell` | `session_id` (required), `method` (default `auto`) | Upgrade raw shell to PTY (python3/python2/script) |
