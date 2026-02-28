@@ -261,6 +261,44 @@ Do not loop. Work through failures systematically:
   technique — the orchestrator will decide whether to revisit with new context
   or route elsewhere.
 
+## AV/EDR Detection
+
+If a payload or tool is caught by antivirus or EDR — **do not retry with
+a different msfvenom flag or trivial modification. That is not progress.**
+
+### Recognition Signals
+
+- **File vanishes**: Payload written to disk but gone seconds later (quarantined)
+- **Access denied on execution**: File exists but OS blocks execution
+- **Immediate process termination**: Process starts then dies within 1-2 seconds
+- **Defender notification**: "Windows Defender Antivirus has found threats"
+- **Error messages**: "Operation did not complete successfully because the file
+  contains a virus or potentially unwanted software"
+- **CrowdStrike/EDR kill**: Process killed with no output, or
+  "This program has been blocked by your administrator"
+
+### What to Do
+
+1. **Stop immediately** — do not retry the same payload type
+2. **Note what was caught**: payload type (DLL/EXE/script), generation method
+   (msfvenom, pre-compiled tool, custom), and exact error/behavior
+3. **Return to orchestrator** with structured AV-blocked context:
+
+**Return format for AV-blocked exit:**
+```
+### AV/EDR Blocked
+- Payload: <what was attempted> (e.g., "msfvenom x64 DLL reverse shell")
+- Detection: <what happened> (e.g., "file quarantined within 2 seconds of write")
+- AV product: <if known> (e.g., "Windows Defender", "CrowdStrike")
+- Technique: <what exploit needs the payload> (e.g., "DnsAdmins DLL injection")
+- Payload requirements: <what the exploit needs> (e.g., "x64 DLL with DllMain entry point")
+- Target OS: <version>
+- Current access: <user and method>
+```
+
+The orchestrator will route to **av-edr-evasion** to build a bypass payload,
+then re-invoke this skill with the AV-safe artifact.
+
 ## Troubleshooting
 
 ### <Common Problem>

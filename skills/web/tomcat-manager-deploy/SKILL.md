@@ -522,6 +522,46 @@ Do not loop. Work through failures systematically:
 - `manager-script` API calls appear in access logs with basic auth
 - Consider using an innocuous context path (`/docs`, `/examples`) to blend in
 
+## AV/EDR Detection
+
+If a WAR/JSP payload is caught by antivirus or endpoint protection — **do not
+retry with a different msfvenom encoder or trivially modified webshell. That
+is not progress.**
+
+### Recognition Signals (Tomcat WAR Deployment)
+
+- **WAR deploys but JSP returns 404**: WAR uploaded successfully and context
+  path exists, but the JSP shell file is missing — AV caught the webshell
+  component inside the WAR
+- **JSP returns 403 or 500 after successful deploy**: The JSP file exists but
+  the server blocks execution — endpoint protection intercepting web shell
+  patterns
+- **Reverse shell payload in JSP blocked**: WAR deploys, JSP is accessible,
+  but the reverse shell command doesn't execute — AMSI or behavioral detection
+  blocking the shell invocation
+- **WAR auto-removed**: WAR file disappears from the webapps directory shortly
+  after deployment — file-level AV quarantine
+
+### What to Do
+
+1. **Stop immediately** — do not retry with a different msfvenom WAR
+2. **Note what was caught**: WAR type (msfvenom, manual JSP), exact behavior
+3. **Return to orchestrator** with structured AV-blocked context:
+
+```
+### AV/EDR Blocked
+- Payload: <what was attempted> (e.g., "msfvenom JSP reverse shell WAR")
+- Detection: <what happened> (e.g., "JSP returns 404 after deploy — webshell removed")
+- AV product: <if known> (e.g., "Windows Defender on Tomcat host")
+- Technique: Tomcat Manager WAR deployment
+- Payload requirements: WAR with JSP that executes OS commands
+- Target OS: <version>
+- Current access: <Tomcat manager credentials, manager-script role>
+```
+
+The orchestrator will route to **av-edr-evasion** to build a bypass payload,
+then re-invoke this skill with the AV-safe artifact.
+
 ## Troubleshooting
 
 ### 401 Unauthorized on Manager

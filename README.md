@@ -38,6 +38,7 @@ The `orchestrator` is a Claude Code skill intended to run with Opus 4.6 in exten
 | `ad-exploit-agent` | AD exploitation | Kerberos-first auth + shell-server |
 | `linux-privesc-agent` | Linux privilege escalation | shell-server for catching escalated shells |
 | `windows-privesc-agent` | Windows privilege escalation | shell-server for catching escalated shells |
+| `evasion-agent` | AV/EDR evasion | Custom payload compilation, AMSI bypass |
 
 Each invocation: agent loads one skill, follows the methodology, saves evidence, and returns findings. The `orchestrator` records state changes and routes to the next skill.
 
@@ -64,7 +65,7 @@ The `orchestrator` makes every routing decision by spawning the appropriate doma
 
 ## Skills
 
-66 skills across 6 categories — see **[SKILLS.md](SKILLS.md)** for the full inventory with technique details and line counts. These are baseline offensive security skill templates researched and created by Claude.
+67 skills across 7 categories — see **[SKILLS.md](SKILLS.md)** for the full inventory with technique details and line counts. These are baseline offensive security skill templates researched and created by Claude.
 
 | Category | Skills | Coverage |
 |----------|--------|----------|
@@ -72,6 +73,7 @@ The `orchestrator` makes every routing decision by spawning the appropriate doma
 | Active Directory | 16 | Kerberos, ADCS, ACLs, GPO, trust, persistence, lateral movement |
 | Privilege Escalation | 11 | Windows + Linux enumeration and technique skills |
 | Infrastructure | 4 | Network recon, pivoting, container escapes, SMB exploitation |
+| Evasion | 1 | AV/EDR bypass, custom payloads, AMSI bypass |
 | Utility | 2 | Orchestrator + retrospective |
 
 ## Engagement logging
