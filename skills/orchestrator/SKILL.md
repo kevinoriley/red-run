@@ -113,12 +113,27 @@ The only commands the orchestrator may execute directly are:
 - `getent hosts <hostname>` — hostname resolution verification (local-only, no network traffic)
 - `ldapsearch -x -H ldap://TARGET -b "DC=..." -s base lockoutThreshold lockOutObservationWindow lockoutDuration minPwdLength pwdProperties` — lockout policy query (safety-critical pre-spray check, single base-scope read, not enumeration)
 
-Everything else — nmap, netexec, ffuf, nuclei, httpx, sqlmap, curl, any tool
-that sends traffic to a target — MUST go through the appropriate skill.
+Everything else — nmap, netexec, ffuf, nuclei, httpx, sqlmap, curl, nc, evil-winrm,
+any tool that sends traffic to a target — MUST go through the appropriate skill
+via a domain subagent.
 
 **No pre-scan triage.** Do not run httpx, curl, or any "quick look" at the
 target before network-recon completes. The orchestrator's job is to set up the
 engagement directory, route to network-recon, and wait.
+
+**No inline credential testing.** Do not run `netexec smb`, `netexec winrm`,
+`evil-winrm`, or any authentication tool to validate discovered credentials.
+Delegate to **password-spray-agent** with the specific creds and services.
+
+**No inline shell establishment.** Do not call `start_process` for evil-winrm,
+ssh, or psexec.py from the orchestrator. When credentials are validated and
+shell access is needed, spawn the appropriate discovery agent (ad-discovery,
+linux-discovery, windows-discovery) with the credential context — the agent
+establishes its own session via shell-server MCP.
+
+**No inline browser interaction.** Do not use browser-server MCP tools from the
+orchestrator. Web application interaction (navigating, form filling, exploiting)
+goes through **web-exploit-agent** or **web-discovery-agent**.
 
 **If you are unsure whether a command is on the allowed list, it is not.
 Route to a skill.**
@@ -689,10 +704,20 @@ When reading the state summary (via `get_state_summary()`), the orchestrator sho
 1. **Check for unexploited vulns** — spawn the appropriate agent with the
    technique skill (look up in Skill-to-Agent Routing Table)
 2. **Check for shell access without root/SYSTEM** — if the Access section shows
-   a non-root shell on Linux or non-SYSTEM/non-admin shell on Windows, spawn
-   **linux-privesc-agent** with `linux-discovery` or **windows-privesc-agent**
-   with `windows-discovery`. Do not enumerate privilege escalation vectors
+   a non-root shell on Linux or non-SYSTEM/non-admin shell on Windows, route to
+   the appropriate discovery agent. Do not enumerate privilege escalation vectors
    inline.
+
+   **DC detection heuristic**: If the target has ports 88 (Kerberos) + 389/636
+   (LDAP) + 3268/3269 (Global Catalog), it is a Domain Controller. **Always
+   route to ad-discovery-agent with `ad-discovery`**, never windows-privesc-agent
+   with `windows-discovery`. On a DC, privilege escalation is an AD problem
+   (ADCS abuse, delegation, ACLs, credential dumping), not a local Windows
+   problem (services, DLL hijacking, tokens). `windows-discovery` wastes an
+   agent invocation and misses the AD attack surface entirely.
+
+   For non-DC Windows hosts: spawn **windows-privesc-agent** with `windows-discovery`.
+   For Linux hosts: spawn **linux-privesc-agent** with `linux-discovery`.
 3. **Check for unchained access** — can existing access reach new targets?
 4. **Check credentials** — have all found credentials been tested against all
    services?
@@ -838,15 +863,31 @@ If exit code is non-zero, the hostname does not resolve.
 
    for entry in "${entries[@]}"; do
        hostname=$(echo "$entry" | awk '{print $2}')
-       if ! getent hosts "$hostname" > /dev/null 2>&1; then
+       # Check /etc/hosts directly — getent can return false positives from DNS/mDNS
+       if grep -qP "\\b${hostname}\\b" /etc/hosts 2>/dev/null; then
+           echo "[=] Already in /etc/hosts: $hostname"
+       else
            echo "$entry" | sudo tee -a /etc/hosts
            echo "[+] Added: $entry"
+       fi
+   done
+
+   # Verify all entries resolve correctly
+   echo ""
+   echo "Verification:"
+   for entry in "${entries[@]}"; do
+       hostname=$(echo "$entry" | awk '{print $2}')
+       if getent hosts "$hostname" > /dev/null 2>&1; then
+           echo "[OK] $hostname -> $(getent hosts "$hostname" | awk '{print $1}')"
        else
-           echo "[=] Already resolves: $hostname"
+           echo "[FAIL] $hostname does not resolve — check /etc/hosts manually"
+           exit 1
        fi
    done
    ```
    Save as `temp_hosts-update.sh` and `chmod +x temp_hosts-update.sh`.
+   **Important**: This script must be run with `bash`, not `sh` (bash arrays
+   are not POSIX). Tell the operator: `sudo bash ./temp_hosts-update.sh`
 3. Present the hard stop message:
    ```
    [orchestrator] HARD STOP — hosts file update required

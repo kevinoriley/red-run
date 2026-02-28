@@ -159,6 +159,44 @@ limitation in your return summary.
 - <Required tools (with install note)>
 - <Conditions that must be true>
 
+### Special characters in credentials
+
+Bash history expansion treats `!` as a special character (`!event`), even
+inside double quotes. Passwords containing `!`, `$`, backticks, or other
+shell metacharacters will be silently mangled when passed as command arguments.
+
+**Canonical workaround** — write to file, read from file:
+
+```bash
+# 1. Use the Write tool (not echo/printf) to create a password file
+#    The Write tool bypasses shell interpretation entirely
+Write("/tmp/claude-1000/cred.txt", "lDaP_1n_th3_cle4r!")
+
+# 2. Read into a variable
+PASS=$(cat /tmp/claude-1000/cred.txt)
+
+# 3. Use the variable in commands (double-quote it)
+certipy req -username user@domain -password "$PASS" -dc-ip 10.10.10.5
+```
+
+Do NOT attempt to escape `!` with `\!`, single quotes, `set +H`, or `printf`.
+These are unreliable in the Claude Code Bash tool context. The Write-to-file
+pattern is the only reliable approach.
+
+### Impacket binary naming
+
+Impacket tools have inconsistent binary names across installations. Some
+systems use `getTGT.py`, `addcomputer.py`, `secretsdump.py`; others use
+`impacket-getTGT`, `impacket-addcomputer`, `impacket-secretsdump` (pip/pipx
+installed). Before using an Impacket tool, find the correct binary:
+
+```bash
+# Example: find addcomputer
+which addcomputer.py 2>/dev/null || which impacket-addcomputer 2>/dev/null
+```
+
+Use whichever binary exists. If neither is found, check `/usr/share/doc/python3-impacket/examples/` (Debian) or `~/.local/bin/` (pipx).
+
 ### Tool output directory
 
 Several tools write output files to CWD with no output-path flag

