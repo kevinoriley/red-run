@@ -56,8 +56,11 @@ through a domain subagent (preferred) or inline via `get_skill()` (fallback).
 
 ### Fallback Path: Inline Execution
 
-If custom subagents are not installed (agent files missing from
-`~/.claude/agents/`), fall back to inline execution:
+If custom subagents are not installed, **STOP**. Do not continue without custom subagents.
+Refer the operator to the README.md for installation instructions, and offer to assist.
+
+For explicitly requested inline execution tasks, load the relevant skill first to 
+review the methodologies and tooling within:
 
 1. Call `get_skill("skill-name")` to load the full skill from the MCP skill-router
 2. Read the returned SKILL.md content
@@ -65,15 +68,15 @@ If custom subagents are not installed (agent files missing from
 
 ### Core Principle
 
-Do NOT execute techniques inline — even if the attack path seems obvious or you
-already know the technique. Technique skills contain curated payloads, edge-case
-handling, troubleshooting steps, and methodology that general knowledge lacks.
-Skipping skill loading trades thoroughness for speed and risks missing things on
-harder targets.
+Do NOT execute techniques without attempting to load a relevant skill first — even 
+if the attack path seems obvious or you already know the technique. Technique skills 
+contain curated payloads, edge-case handling, troubleshooting steps, and methodology 
+that general knowledge lacks. Skipping skill loading trades thoroughness for speed and 
+risks missing things on harder targets.
 
 This applies in both guided and autonomous modes. Autonomous mode means you
-make triage and routing decisions without asking — it does not mean you bypass
-the skill library.
+make triage and routing decisions without asking — it DOES NOT mean you bypass
+the skill library and associated routing decisions.
 
 ### Finding Skills
 
@@ -108,6 +111,7 @@ The only commands the orchestrator may execute directly are:
 - State-reader MCP tools (`get_state_summary`, `get_targets`, `get_credentials`, `get_access`, `get_vulns`, `get_pivot_map`, `get_blocked`) — state queries
 - Skill-router MCP tools (`get_skill`, `search_skills`, `list_skills`) — skill routing
 - `getent hosts <hostname>` — hostname resolution verification (local-only, no network traffic)
+- `ldapsearch -x -H ldap://TARGET -b "DC=..." -s base lockoutThreshold lockOutObservationWindow lockoutDuration minPwdLength pwdProperties` — lockout policy query (safety-critical pre-spray check, single base-scope read, not enumeration)
 
 Everything else — nmap, netexec, ffuf, nuclei, httpx, sqlmap, curl, any tool
 that sends traffic to a target — MUST go through the appropriate skill.
@@ -864,8 +868,6 @@ must choose the intensity.
 1. Collect discovered usernames from engagement state
 2. Identify available authentication services from the targets/ports tables
 3. **Enumerate account lockout policy** before presenting spray options.
-   The orchestrator cannot run network tools directly, so lockout policy
-   must come from prior recon or be enumerated by the spray agent:
 
    a. **Check recon results first** — network-recon or ad-discovery may have
       already returned password policy / lockout info. Check the target's
@@ -877,10 +879,22 @@ must choose the intensity.
       (see template below). Key fields: lockout threshold (0 = no lockout),
       observation window (minutes), lockout duration (minutes).
 
-   c. **If policy is NOT known**, display "Lockout policy: unknown" in the
-      hard stop message and note that the password-spray agent will enumerate
-      it as its first step before spraying. If the agent discovers a
-      dangerously low threshold (<=3), it will abort and report back.
+   c. **If policy is NOT known from recon**, query LDAP directly (this is on
+      the allowed commands list as a safety-critical pre-spray check):
+      ```bash
+      ldapsearch -x -H ldap://TARGET -b "DC=DOMAIN,DC=LOCAL" -s base \
+        '(objectClass=*)' lockoutThreshold lockOutObservationWindow \
+        lockoutDuration minPwdLength pwdProperties
+      ```
+      Parse the output:
+      - `lockoutThreshold: 0` = no lockout
+      - Duration/window: divide abs(value) by 600,000,000 for minutes
+        (e.g., `-18000000000` = 30 minutes)
+
+   d. **If LDAP also fails** (anonymous bind not available), display
+      "Lockout policy: unknown" in the hard stop message and note that the
+      password-spray agent will enumerate it as its first step. If the agent
+      discovers a dangerously low threshold (<=3), it will abort and report.
 
 4. Present the hard stop with lockout context. Use `AskUserQuestion` with
    **two questions** — spray intensity and target services:

