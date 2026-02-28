@@ -31,18 +31,6 @@ application. Your job is to find hidden content, discover parameters, test for
 injection points, and route to the correct exploitation skill based on observed
 responses. All testing is under explicit written authorization.
 
-## Mode
-
-Check if the user or orchestrator has set a mode:
-- **Guided** (default): Before executing any command that sends traffic to a
-  target, present it and wait for user approval. Explain each phase. Ask before
-  running scans. Present findings. Show decision tree logic when routing.
-- **Autonomous**: Run all discovery phases sequentially. Auto-triage findings by
-  severity. Route to exploitation skills for confirmed injection points. Report
-  discovery summary at each phase boundary.
-
-If unclear, default to guided.
-
 ## Engagement Logging
 
 Check for `./engagement/` directory. If absent, proceed without logging.

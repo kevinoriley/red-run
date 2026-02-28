@@ -6,9 +6,9 @@ A redteam runbook that turns Claude Code into a pentester.
 
 red-run is a redteam partner that knows the techniques, carries the payloads, and can execute when you allow it to.
 
-In **guided mode** (default), Claude walks you through each attack step, shows you the command it would run, explains what to look for in the output, and asks before executing. You stay in the driver's seat (most of the time...) and can course-correct when Claude drifts.
+In **guided mode** (default), the orchestrator pauses at routing decisions — it presents the attack surface, available paths, and lets you choose which skill to invoke next. Once a skill is routed to an agent, the agent runs end-to-end. Individual commands within the agent go through Claude Code's normal permission prompts, so you still approve each command that touches the target.
 
-In **autonomous mode**, Claude runs commands directly, makes triage decisions at forks, and rarely pauses for your input. Autonomous mode is better suited for CTFs and lab environments where OPSEC doesn't matter and you can break things.
+In **autonomous mode**, the orchestrator routes to skills automatically and makes triage decisions without asking. Combine with `--dangerously-skip-permissions` for fully unattended execution. Better suited for CTFs and lab environments where OPSEC doesn't matter and you can break things.
 
 &nbsp;
 <div align="center"><br><b>⚠️⚠️⚠️⚠️ WARNING ⚠️⚠️⚠️⚠️</b></div>
@@ -46,6 +46,7 @@ Each invocation: agent loads one skill, follows the methodology, saves evidence,
 - **skill-router** — semantic search + skill loading via ChromaDB + sentence-transformer embeddings
 - **nmap-server** — runs nmap inside a Docker container, returns parsed JSON with input validation
 - **shell-server** — TCP listener, reverse shell, and local interactive process manager
+- **browser-server** — headless Chromium via Playwright for web interaction (CSRF tokens, JS-rendered forms, session management)
 - **state-server** — SQLite engagement state
 
 ### Persistent sessions via MCP
@@ -133,6 +134,7 @@ The cycle is: **engage → retrospective → improve skills → engage again**. 
 - Linux VM with your pentesting tools installed
 - [uv](https://docs.astral.sh/uv/) — Python package manager (for MCP servers)
 - [Docker](https://docs.docker.com/engine/install/) — the nmap MCP server runs scans inside a container (the install script builds the image)
+- [Playwright](https://playwright.dev/) system dependencies — the browser MCP server uses headless Chromium (the install script runs `playwright install chromium` automatically)
 
 ### Install
 
@@ -150,7 +152,7 @@ The cycle is: **engage → retrospective → improve skills → engage again**. 
 The installer:
 1. Installs `orchestrator` as a native Claude Code skill (`~/.claude/skills/`)
 2. Installs **custom subagents** to `~/.claude/agents/`
-3. Sets up **MCP servers** — `skill-router` (ChromaDB + embeddings), `nmap-server`, `shell-server`, `state-server`
+3. Sets up **MCP servers** — `skill-router` (ChromaDB + embeddings), `nmap-server`, `shell-server`, `browser-server` (Chromium), `state-server`
 4. Verifies project config (`.mcp.json`, settings, Docker for nmap)
 
 The repo must stay in place — the MCP server reads skills from `skills/` at runtime.

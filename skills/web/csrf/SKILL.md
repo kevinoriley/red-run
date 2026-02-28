@@ -32,22 +32,6 @@ originated from the application itself. The goal is to demonstrate that an
 attacker can trick a victim's browser into making authenticated requests to
 the target. All testing is under explicit written authorization.
 
-## Mode
-
-Check if the user or orchestrator has set a mode:
-- **Guided** (default): Before executing any command that sends traffic to a
-  target, present the command with a one-line explanation of what it does and
-  why. Wait for explicit user approval before executing. Never batch multiple
-  target-touching commands without approval — present them one at a time (or as
-  a small logical group if they achieve a single objective, e.g., "enumerate SMB
-  shares"). Local-only operations (file writes, output parsing, engagement
-  logging, hash cracking) do not require approval. At decision forks, present
-  options and let the user choose.
-- **Autonomous**: Test all bypass techniques systematically. Build working PoC
-  for confirmed vulnerabilities. Report at milestones.
-
-If unclear, default to guided.
-
 ## Engagement Logging
 
 Check for `./engagement/` directory. If absent, proceed without logging.
@@ -78,6 +62,21 @@ and records state changes. Your return summary must include:
 - Vulnerabilities confirmed (with status and severity)
 - Pivot paths identified (what leads where)
 - Blocked items (what failed and why, whether retryable)
+
+## Web Interaction
+
+CSRF testing benefits from browser tools because **browser-enforced protections
+(SameSite cookies, CORS) only apply in a real browser context** — curl bypasses
+them, which can produce false positives.
+
+- **`browser_evaluate`** to test SameSite cookie behavior (check if cookies
+  are sent on cross-origin requests in a real browser)
+- **`browser_open`** to load PoC HTML pages that submit cross-origin requests
+  — confirms real exploitability with browser-enforced protections active
+- **`browser_cookies`** to inspect SameSite attributes and cookie flags
+- **`browser_screenshot`** for evidence of successful CSRF exploitation
+- **curl** for initial request analysis, token extraction, and testing
+  server-side defenses (Referer/Origin checks, token validation)
 
 ## Prerequisites
 

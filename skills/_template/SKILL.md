@@ -18,22 +18,6 @@ opsec: <low|medium|high>
 You are helping a penetration tester with <technique description>. All testing
 is under explicit written authorization.
 
-## Mode
-
-Check if the user or orchestrator has set a mode:
-- **Guided** (default): Before executing any command that sends traffic to a
-  target, present the command with a one-line explanation of what it does and
-  why. Wait for explicit user approval before executing. Never batch multiple
-  target-touching commands without approval — present them one at a time (or as
-  a small logical group if they achieve a single objective, e.g., "enumerate SMB
-  shares"). Local-only operations (file writes, output parsing, engagement
-  logging, hash cracking) do not require approval. At decision forks, present
-  options and let the user choose.
-- **Autonomous**: Execute end-to-end. Make triage decisions at forks. Report
-  findings at milestones. Only pause for destructive or high-OPSEC actions.
-
-If unclear, default to guided.
-
 ## Engagement Logging
 
 Check for `./engagement/` directory. If absent, proceed without logging.
@@ -107,6 +91,20 @@ reach the target.
 **Inline source code** written via heredoc in this skill does not need this
 workflow — the operator can read the code directly.
 
+## Web Interaction
+
+When interacting with web applications, use the browser MCP tools as the
+default for navigating sites, filling forms, and managing sessions. Browser
+tools handle CSRF tokens, session cookies, JavaScript-rendered content, and
+multi-step flows that curl cannot.
+
+- **Browser tools** (default) — navigate pages, fill forms, manage sessions,
+  take screenshots for evidence, execute JavaScript for DOM inspection
+- **curl** (fallback) — crafted payloads needing precise header/body control,
+  injection testing where exact request structure matters
+- **Injection-focused skills** may use curl directly for payload delivery when
+  the browser adds unwanted encoding or headers
+
 ## File Exfiltration
 
 When retrieving files from a compromised target (loot, backups, configs,
@@ -160,6 +158,44 @@ limitation in your return summary.
 - <Required access level or position>
 - <Required tools (with install note)>
 - <Conditions that must be true>
+
+### Special characters in credentials
+
+Bash history expansion treats `!` as a special character (`!event`), even
+inside double quotes. Passwords containing `!`, `$`, backticks, or other
+shell metacharacters will be silently mangled when passed as command arguments.
+
+**Canonical workaround** — write to file, read from file:
+
+```bash
+# 1. Use the Write tool (not echo/printf) to create a password file
+#    The Write tool bypasses shell interpretation entirely
+Write("/tmp/claude-1000/cred.txt", "lDaP_1n_th3_cle4r!")
+
+# 2. Read into a variable
+PASS=$(cat /tmp/claude-1000/cred.txt)
+
+# 3. Use the variable in commands (double-quote it)
+certipy req -username user@domain -password "$PASS" -dc-ip 10.10.10.5
+```
+
+Do NOT attempt to escape `!` with `\!`, single quotes, `set +H`, or `printf`.
+These are unreliable in the Claude Code Bash tool context. The Write-to-file
+pattern is the only reliable approach.
+
+### Impacket binary naming
+
+Impacket tools have inconsistent binary names across installations. Some
+systems use `getTGT.py`, `addcomputer.py`, `secretsdump.py`; others use
+`impacket-getTGT`, `impacket-addcomputer`, `impacket-secretsdump` (pip/pipx
+installed). Before using an Impacket tool, find the correct binary:
+
+```bash
+# Example: find addcomputer
+which addcomputer.py 2>/dev/null || which impacket-addcomputer 2>/dev/null
+```
+
+Use whichever binary exists. If neither is found, check `/usr/share/doc/python3-impacket/examples/` (Debian) or `~/.local/bin/` (pipx).
 
 ### Tool output directory
 
@@ -253,13 +289,6 @@ Do not loop. Work through failures systematically:
 - What failed and why (error messages, empty responses, timeouts)
 - Assessment: **blocked** (permanent — config, patched, missing prereq) or
   **retry-later** (may work with different context, creds, or access)
-
-**Mode behavior:**
-- **Guided**: Tell the user you're stalled, present what was tried, and
-  recommend the next best path.
-- **Autonomous**: Return findings to the orchestrator. Do not retry the same
-  technique — the orchestrator will decide whether to revisit with new context
-  or route elsewhere.
 
 ## AV/EDR Detection
 

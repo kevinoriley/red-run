@@ -25,23 +25,6 @@ target application echoes user input in the HTTP response without proper
 sanitization. Your job is to achieve JavaScript execution in the victim's
 browser. All testing is under explicit written authorization.
 
-## Mode
-
-Check if the user or orchestrator has set a mode:
-- **Guided** (default): Before executing any command that sends traffic to a
-  target, present the command with a one-line explanation of what it does and
-  why. Wait for explicit user approval before executing. Never batch multiple
-  target-touching commands without approval — present them one at a time (or as
-  a small logical group if they achieve a single objective, e.g., "enumerate SMB
-  shares"). Local-only operations (file writes, output parsing, engagement
-  logging, hash cracking) do not require approval. At decision forks, present
-  options and let the user choose.
-- **Autonomous**: Execute end-to-end. Auto-detect reflection context, test payloads
-  progressively (simple → encoded → WAF bypass → CSP bypass), demonstrate impact.
-  Report at milestones.
-
-If unclear, default to guided.
-
 ## Engagement Logging
 
 Check for `./engagement/` directory. If absent, proceed without logging.
@@ -72,6 +55,15 @@ and records state changes. Your return summary must include:
 - Vulnerabilities confirmed (with status and severity)
 - Pivot paths identified (what leads where)
 - Blocked items (what failed and why, whether retryable)
+
+## Web Interaction
+
+- **curl** for payload testing — use curl to inject XSS payloads with precise
+  control over URL parameters, headers, and encoding
+- **`browser_open`** to navigate to reflected endpoint and verify rendering
+- **`browser_evaluate`** to check if payload executed (e.g.,
+  `document.querySelector('img#xss-test')` to verify DOM changes from payload)
+- **`browser_screenshot`** for evidence of successful XSS execution
 
 ## Prerequisites
 

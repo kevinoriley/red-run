@@ -33,21 +33,6 @@ opsec: medium
 You are helping a penetration tester perform network reconnaissance and service
 enumeration. All testing is under explicit written authorization.
 
-## Mode
-
-Check if the user or orchestrator has set a mode:
-- **Guided** (default): Before executing any command that sends traffic to a
-  target, present the command with a one-line explanation of what it does and
-  why. Wait for explicit user approval before executing. Never batch multiple
-  target-touching commands without approval. Explain scan types and trade-offs.
-  Present findings after each phase. Ask which services to dig into.
-- **Autonomous**: Run full recon pipeline, enumerate all services, present complete
-  attack surface with routing recommendations. Only pause for aggressive/noisy scans.
-  **Autonomous does NOT mean "run other tools while waiting for nmap."** The nmap
-  handoff is a hard stop — see "Nmap Is the Gate" below.
-
-If unclear, default to guided.
-
 ## Engagement Logging
 
 Check for `./engagement/` directory. If absent, proceed without logging.
@@ -114,6 +99,9 @@ and records state changes. Your return summary must include:
 - Vulnerabilities confirmed (with status and severity)
 - Pivot paths identified (what leads where)
 - Blocked items (what failed and why, whether retryable)
+- **SMB share access table** (if SMB ports open): mandatory per-share results
+  table from Step 4 of the SMB section. Every discovered share must have a row
+  with tested access status. Never report a share as denied without testing it.
 - **Account lockout policy** (if enumerable via null session or guest access):
   lockout threshold, observation window, lockout duration, min password length,
   complexity requirements. The orchestrator needs this before routing to
@@ -388,22 +376,95 @@ MSRPC endpoint map revealing services.
 
 ### SMB — Ports 139, 445
 
+**Run ALL of the following tools in sequence — not just one.** SMB tools use
+different RPC calls and authentication methods under the hood. A failure or
+partial result from one tool does NOT mean the others will also fail. NetExec
+might return `STATUS_USER_SESSION_DELETED` while `smbclient -L` succeeds, or
+vice versa. You must try every tool before concluding that SMB enumeration
+has failed.
+
+**Step 1 — Share listing (run ALL, regardless of earlier results):**
+
 ```bash
-# Comprehensive SMB enumeration
-enum4linux-ng -A TARGET_IP
-
-# NetExec (replaces crackmapexec)
-netexec smb TARGET_IP --shares
-netexec smb TARGET_IP -u '' -p '' --shares          # Null session
-netexec smb TARGET_IP -u 'guest' -p '' --shares     # Guest access
-netexec smb TARGET_IP -u '' -p '' --pass-pol        # Password policy (null session)
-netexec smb TARGET_IP -u 'guest' -p '' --pass-pol   # Password policy (guest)
-
-# NSE scripts
-nmap -sV -p445 --script smb-enum-shares,smb-enum-users,smb-os-discovery,smb-vuln* TARGET_IP
-
-# smbclient
+# Tool 1: smbclient null session share listing
 smbclient -N -L //TARGET_IP/
+
+# Tool 2: NetExec null session + guest
+netexec smb TARGET_IP -u '' -p '' --shares
+netexec smb TARGET_IP -u 'guest' -p '' --shares
+
+# Tool 3: enum4linux-ng comprehensive enumeration
+enum4linux-ng -A TARGET_IP
+```
+
+**Step 2 — Password/lockout policy (run with both null and guest):**
+
+```bash
+netexec smb TARGET_IP -u '' -p '' --pass-pol
+netexec smb TARGET_IP -u 'guest' -p '' --pass-pol
+```
+
+**Step 3 — User and vuln enumeration via NSE:**
+
+```bash
+nmap -sV -p445 --script smb-enum-shares,smb-enum-users,smb-os-discovery,smb-vuln* TARGET_IP
+```
+
+**Step 4 — Enumerate EVERY discovered share (mandatory, no exceptions).**
+
+This step is NOT optional. The agent MUST test every share individually with
+`smbclient`. Access denied on one share tells you NOTHING about other shares —
+Windows ACLs are per-share. Skipping a share is a methodology failure.
+
+For EVERY share discovered in Step 1 (from ANY tool), run:
+
+```bash
+smbclient //TARGET_IP/SHARENAME -N -c 'ls' 2>&1
+```
+
+If `ls` succeeds (shows files/directories), the share is readable. Follow up:
+
+```bash
+# Recursive listing of accessible share
+smbclient //TARGET_IP/SHARENAME -N -c 'recurse ON; prompt OFF; ls'
+
+# Download interesting files (configs, scripts, credentials, backups)
+smbclient //TARGET_IP/SHARENAME -N -c 'recurse ON; prompt OFF; mget *'
+```
+
+**Per-share results table (mandatory in return summary).** You MUST include
+this table in your return summary. Every share from Step 1 must have a row.
+No share may be listed as "not tested" or "needs testing" — test it or explain
+why the test command failed.
+
+```
+| Share | Access | Method | Contents/Notes |
+|-------|--------|--------|----------------|
+| ADMIN$ | DENIED | smbclient -N | NT_STATUS_ACCESS_DENIED |
+| C$ | DENIED | smbclient -N | NT_STATUS_ACCESS_DENIED |
+| Development | READ | smbclient -N | Automation/ directory found |
+| IPC$ | LIMITED | smbclient -N | IPC only, no file listing |
+| NETLOGON | READ | smbclient -N | Empty or standard scripts |
+| SYSVOL | READ | smbclient -N | Policies, scripts |
+```
+
+**Rules:**
+- "Access" must be one of: `READ`, `WRITE`, `DENIED`, `LIMITED`, `ERROR`
+- "Method" must show the actual command used (e.g., `smbclient -N`, `netexec guest`)
+- Never report a share as DENIED unless you received `NT_STATUS_ACCESS_DENIED`
+  (or similar error) from testing THAT SPECIFIC share
+- Never infer access status from other shares — test each one individually
+- If `smbclient` hangs or times out on a share, report as `ERROR` with details
+
+**Step 5 — Fallback: probe common share names directly.** Only if ALL listing
+tools in Step 1 failed. Some Windows configurations block null-session share
+*listing* but allow null-session *access* to individual shares:
+
+```bash
+for share in ADMIN$ C$ IPC$ SYSVOL NETLOGON Development Users Backups Public Data IT HR Finance Software Shared Docs; do
+    echo "--- $share ---"
+    smbclient //TARGET_IP/"$share" -N -c 'ls' 2>&1 | head -20
+done
 ```
 
 **Quick wins:** Null session (user enum, share listing), guest access to shares,

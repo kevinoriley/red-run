@@ -30,22 +30,6 @@ The target application passes user-controlled input to NoSQL database queries
 authentication, extract data, or achieve code execution. All testing is under
 explicit written authorization.
 
-## Mode
-
-Check if the user or orchestrator has set a mode:
-- **Guided** (default): Before executing any command that sends traffic to a
-  target, present the command with a one-line explanation of what it does and
-  why. Wait for explicit user approval before executing. Never batch multiple
-  target-touching commands without approval — present them one at a time (or as
-  a small logical group if they achieve a single objective, e.g., "enumerate SMB
-  shares"). Local-only operations (file writes, output parsing, engagement
-  logging, hash cracking) do not require approval. At decision forks, present
-  options and let the user choose.
-- **Autonomous**: Execute end-to-end. Auto-detect injection format, test
-  operators systematically, extract data. Report at milestones.
-
-If unclear, default to guided.
-
 ## Engagement Logging
 
 Check for `./engagement/` directory. If absent, proceed without logging.

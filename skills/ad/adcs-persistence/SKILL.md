@@ -44,18 +44,6 @@ testing is under explicit written authorization.
 (pure Kerberos) by default. Post-exploitation operations use ccache-based
 Kerberos to avoid NTLM detection (Event 4776, CrowdStrike Identity Module).
 
-## Mode
-
-Check if the user or orchestrator has set a mode:
-- **Guided** (default): Before executing any command that sends traffic to a
-  target, present it and wait for user approval. Explain persistence mechanisms
-  and OPSEC trade-offs. Ask which persistence method to use. Warn before CA key
-  extraction.
-- **Autonomous**: Execute the highest-value persistence method available.
-  Pause before CA key extraction (irreversible OPSEC impact).
-
-If unclear, default to guided.
-
 ## Engagement Logging
 
 Check for `./engagement/` directory. If absent, proceed without logging.

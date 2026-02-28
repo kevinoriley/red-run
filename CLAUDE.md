@@ -13,8 +13,8 @@ The orchestrator spawns domain-specific subagents for each skill invocation:
 | Agent | Domain | MCP Servers | Skills |
 |-------|--------|-------------|--------|
 | `network-recon-agent` | Network | skill-router, nmap-server, shell-server, state-reader | network-recon, smb-exploitation, pivoting-tunneling (haiku) |
-| `web-discovery-agent` | Web discovery | skill-router, shell-server, state-reader | web-discovery |
-| `web-exploit-agent` | Web exploitation | skill-router, shell-server, state-reader | All web technique skills |
+| `web-discovery-agent` | Web discovery | skill-router, shell-server, browser-server, state-reader | web-discovery |
+| `web-exploit-agent` | Web exploitation | skill-router, shell-server, browser-server, state-reader | All web technique skills |
 | `ad-discovery-agent` | AD discovery | skill-router, shell-server, state-reader | ad-discovery |
 | `ad-exploit-agent` | AD exploitation | skill-router, shell-server, state-reader | All AD technique skills |
 | `password-spray-agent` | Credential spraying | skill-router, shell-server, state-reader | password-spraying (haiku) |
@@ -37,6 +37,7 @@ Agent source files live in `agents/` (version controlled), installed to `~/.clau
 | shell-server | `tools/shell-server/` | `start_listener`, `start_process`, `send_command`, `read_output`, `stabilize_shell`, `list_sessions`, `close_session` | TCP listener, reverse shell, and local interactive process manager |
 | state-reader | `tools/state-server/` | `get_state_summary`, `get_targets`, `get_credentials`, `get_access`, `get_vulns`, `get_pivot_map`, `get_blocked` | Read-only engagement state queries (subagents) |
 | state-writer | `tools/state-server/` | All read tools + `init_engagement`, `close_engagement`, `add_target`, `add_port`, `add_credential`, `add_access`, `add_vuln`, `add_pivot`, `add_blocked`, and update variants | Full engagement state management (orchestrator only) |
+| browser-server | `tools/browser-server/` | `browser_open`, `browser_navigate`, `browser_get_page`, `browser_click`, `browser_fill`, `browser_select`, `browser_screenshot`, `browser_cookies`, `browser_evaluate`, `close_browser`, `list_browser_sessions` | Headless browser automation (web agents) |
 
 The state-reader and state-writer are two instances of the same server (`tools/state-server/server.py`) running in different modes (`--mode read` vs `--mode write`). Both open the same `engagement/state.db`. SQLite WAL mode handles concurrent readers safely. Since only the orchestrator writes (via state-writer), write conflicts are impossible. Subagents physically cannot see write tools because their MCP instance doesn't register them.
 
@@ -46,16 +47,21 @@ The nmap-server runs nmap inside a Docker container (`--network=host`, minimal c
 
 The shell-server manages TCP listeners, reverse shell sessions, and local interactive processes. It solves the persistent shell problem — Claude Code's Bash tool runs each command as a separate process, so interactive shells, privilege escalation tools, and credential-based access tools (evil-winrm, psexec.py, ssh, msfconsole) have no way to maintain state between calls.
 
-### Modes
-- **Guided** (default): Interactive. Every command that touches the target
-  requires explicit user approval before execution. Present what you want to
-  run and why, then wait. Local-only operations (file writes, parsing, hash
-  cracking) don't need approval. Present options at decision forks.
-- **Autonomous**: No guardrails. Execute recon through exploitation, make
-  triage decisions, route to skills automatically. Report at milestones. Only
-  pause for destructive or high-OPSEC actions.
+The browser-server provides headless Chromium automation via Playwright. It solves the web interaction problem — curl can't handle CSRF tokens, session rotation, JavaScript-rendered forms, or multi-step authentication flows. Each session maintains its own cookie jar and localStorage. Web agents use browser tools as the default for navigating sites and curl as fallback for precise payload control.
 
-Mode is set by the user or the orchestrator and propagated via conversation context.
+### Modes
+
+Mode is an **orchestrator-only concept**. Skills and agents do not check or
+enforce mode — the orchestrator is the only component that uses it.
+
+- **Guided** (default): The orchestrator pauses at routing decisions — presents
+  the attack surface, chain analysis, and available paths, then lets the user
+  choose which skill to invoke next. Once a skill is routed to an agent, the
+  agent runs end-to-end. Individual commands within the agent go through Claude
+  Code's normal permission prompts.
+- **Autonomous**: The orchestrator routes to skills automatically, makes triage
+  decisions at forks, and reports at phase boundaries. Combine with
+  `--dangerously-skip-permissions` for fully unattended execution.
 
 > **On autonomous mode:** Autonomous mode pairs with `claude --dangerously-skip-permissions` (a.k.a. yolo mode). We do not recommend this. We do not endorse this. We are not responsible for what happens. You will watch Claude chain four skills, pop a shell, and pivot to a subnet you forgot was in scope. It is exhilarating and horrifying in equal measure. Use guided mode or avoid `--dangerously-skip-permissions` for the sake of us all.
 
@@ -142,10 +148,28 @@ Engagement state lives in `engagement/state.db`, a SQLite database managed by th
 - The orchestrator parses return summaries and calls structured write tools (`add_target`, `add_credential`, `add_vuln`, etc.)
 - Orchestrator uses state summary + pivot map to chain vulns toward impact
 
+## Documentation Rules
+
+Each part of the repo has exactly one documentation file. Keep them in sync
+when making changes.
+
+| Component | Documentation | Rule |
+|-----------|--------------|------|
+| Repo root | `README.md` | Update when architecture, installation, or user-facing behavior changes |
+| MCP servers (`tools/*/`) | `README.md` per server | **Required.** Update when tools, parameters, behavior, or prerequisites change |
+| Skills (`skills/*/`) | `SKILL.md` | Self-contained — no separate README |
+| Agents (`agents/`) | `<agent-name>.md` | Self-contained — no separate README |
+| Hooks (`tools/hooks/`) | Inline comments | No README needed |
+
+**When modifying a tool server:** If you change tools, parameters, behavior, or
+dependencies in a `tools/*/` server, update its `README.md` in the same commit.
+
 ## Directory Layout
 
 ```
 red-run/
+  README.md               # User-facing project documentation
+  CLAUDE.md               # Development instructions (this file)
   install.sh              # Installs orchestrator, agents, MCP servers
   uninstall.sh            # Removes installed skills, agents, MCP data
   agents/                 # Custom subagent definitions (installed to ~/.claude/agents/)
@@ -169,18 +193,26 @@ red-run/
     evasion/              # AV/EDR bypass
   tools/
     skill-router/         # MCP server (ChromaDB + embeddings)
+      README.md            # Server documentation
       server.py           # FastMCP server — search_skills, get_skill, list_skills
       indexer.py           # Indexes SKILL.md frontmatter into ChromaDB
       pyproject.toml       # Python dependencies (chromadb, sentence-transformers)
     nmap-server/          # MCP server (Dockerized nmap)
+      README.md            # Server documentation
       server.py           # FastMCP server — nmap_scan, get_scan, list_scans
       validate.py          # Input validation (flag blocklist, target sanitization)
       Dockerfile           # Alpine + nmap image (built by install.sh)
       pyproject.toml       # Python dependencies (mcp, python-libnmap)
     shell-server/         # MCP server (TCP listener + shell manager)
+      README.md            # Server documentation
       server.py           # FastMCP server — start_listener, send_command, stabilize_shell, etc.
       pyproject.toml       # Python dependencies (mcp)
+    browser-server/       # MCP server (headless Chromium)
+      README.md            # Server documentation
+      server.py           # FastMCP server — browser_open, browser_fill, browser_click, etc.
+      pyproject.toml       # Python dependencies (mcp, playwright, markdownify)
     state-server/         # MCP server (SQLite engagement state)
+      README.md            # Server documentation
       server.py           # FastMCP server — runs as state-reader (read) or state-writer (read+write)
       schema.py           # SQLite schema creation and migration
       pyproject.toml       # Python dependencies (mcp)
@@ -215,10 +247,10 @@ The MCP indexer builds embedding documents from these structured fields. `descri
 ### Body structure
 
 1. **Preamble**: "You are helping a penetration tester with..."
-2. **Mode**: Check for guided vs autonomous
-3. **Engagement Logging**: Check for engagement dir, log evidence to `engagement/evidence/`
-4. **State Management**: Read via `get_state_summary()` on activation, report findings in return summary (orchestrator writes state)
-5. **Exploit and Tool Transfer**: Attackbox-first workflow for external tools/exploits
+2. **Engagement Logging**: Check for engagement dir, log evidence to `engagement/evidence/`
+3. **State Management**: Read via `get_state_summary()` on activation, report findings in return summary (orchestrator writes state)
+4. **Exploit and Tool Transfer**: Attackbox-first workflow for external tools/exploits
+5. **Web Interaction**: Browser tools vs curl guidance (web skills)
 6. **Prerequisites**: Access, tools, conditions
 7. **Steps**: Assess → Confirm → Exploit → Escalate/Pivot
 8. **Troubleshooting**: Common failures and fixes
@@ -250,5 +282,5 @@ The bwrap sandbox blocks network socket creation. Users must configure their glo
 ./uninstall.sh
 ```
 
-The installer puts the orchestrator in `~/.claude/skills/red-run-orchestrator/`, subagents in `~/.claude/agents/`, and sets up MCP servers (skill-router, nmap-server, shell-server, state-server). Requires [uv](https://docs.astral.sh/uv/) and Docker for nmap.
+The installer puts the orchestrator in `~/.claude/skills/red-run-orchestrator/`, subagents in `~/.claude/agents/`, and sets up MCP servers (skill-router, nmap-server, shell-server, browser-server, state-server). Requires [uv](https://docs.astral.sh/uv/), Docker for nmap, and Playwright for browser automation (Chromium installed automatically).
 
