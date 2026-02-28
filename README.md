@@ -55,7 +55,7 @@ The **shell-server** MCP solves this. It manages TCP listeners and reverse shell
 
 ### Inter-skill routing
 
-The orchestrator makes every routing decision. When an LFI reads Tomcat credentials, the orchestrator spawns the web agent with `tomcat-manager-deploy` to get a shell. When BloodHound reveals an ACL path, the orchestrator routes to `acl-abuse` via the AD agent. Context (injection point, working payloads, target platform, mode) is passed in the agent's Task prompt.
+The orchestrator makes every routing decision by spawning the appropriate domain subagent with a skill name and context. When an LFI reads Tomcat credentials, the orchestrator spawns `web-exploit-agent` with `tomcat-manager-deploy` to get a shell. When BloodHound reveals an ACL path, it spawns `ad-exploit-agent` with `acl-abuse`. Context (injection point, working payloads, target platform, mode) is passed in the agent's Task prompt.
 
 ## Skills
 
