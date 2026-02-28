@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - name: Install lint dependencies
+        run: cd tools/skill-router && uv sync --only-group lint
+      - name: Run skill and agent lint
+        run: cd tools/skill-router && uv run --only-group lint pytest tests/test_skills.py tests/test_agents.py -v
+
+  test-tools:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        tool: [nmap-server, shell-server, browser-server, state-server]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - name: Install dependencies
+        run: cd tools/${{ matrix.tool }} && uv sync --group dev
+      - name: Run tests
+        run: cd tools/${{ matrix.tool }} && uv run pytest tests/ -v

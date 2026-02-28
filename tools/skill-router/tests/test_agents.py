@@ -19,6 +19,7 @@ AGENTS_DIR = REPO_ROOT / "agents"
 MCP_CONFIG = REPO_ROOT / ".mcp.json"
 
 REQUIRED_FIELDS = {"name", "description", "tools", "mcpServers"}
+VALID_MODELS = {"haiku", "sonnet", "opus"}
 VALID_TOOLS = {
     "Read",
     "Write",
@@ -118,6 +119,13 @@ class TestAgentFrontmatter:
             f"{agent_file.name}: must include skill-router in mcpServers"
         )
 
+    def test_model_is_valid(self, agent_file: Path, agent_frontmatter: dict):
+        model = agent_frontmatter.get("model")
+        if model is not None:
+            assert model in VALID_MODELS, (
+                f"{agent_file.name}: model '{model}' not in {VALID_MODELS}"
+            )
+
 
 class TestAgentBody:
     def test_has_role_section(self, agent_file: Path):
@@ -173,3 +181,15 @@ class TestAgentBody:
                     f"{agent_file.name}:{i}: references list_skills() — "
                     f"agents should only load the skill the orchestrator specifies"
                 )
+
+    def test_has_operational_notes(self, agent_file: Path):
+        content = agent_file.read_text()
+        assert "## Operational Notes" in content, (
+            f"{agent_file.name}: missing '## Operational Notes' section"
+        )
+
+    def test_scope_single_skill_boundary(self, agent_file: Path):
+        content = agent_file.read_text()
+        assert "Do not load a second skill" in content, (
+            f"{agent_file.name}: missing 'Do not load a second skill' boundary"
+        )
