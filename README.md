@@ -47,9 +47,12 @@ The **orchestrator** is a native Claude Code skill that runs in the main convers
 | Agent | Domain | Key capability |
 |-------|--------|----------------|
 | `network-recon-agent` | Network recon + exploitation | nmap MCP + shell-server |
-| `web-agent` | Web application security | shell-server for RCE → reverse shell |
-| `ad-agent` | Active Directory attacks | Kerberos-first auth + shell-server |
-| `privesc-agent` | Privilege escalation | shell-server for catching escalated shells |
+| `web-discovery-agent` | Web application discovery | Enumeration, tech fingerprinting, vuln identification |
+| `web-exploit-agent` | Web application exploitation | shell-server for RCE → reverse shell |
+| `ad-discovery-agent` | AD enumeration | BloodHound, LDAP, attack surface mapping |
+| `ad-exploit-agent` | AD exploitation | Kerberos-first auth + shell-server |
+| `linux-privesc-agent` | Linux privilege escalation | shell-server for catching escalated shells |
+| `windows-privesc-agent` | Windows privilege escalation | shell-server for catching escalated shells |
 
 Each invocation: agent loads one skill, follows the methodology, saves evidence, and returns findings. The orchestrator records state changes and routes to the next skill.
 

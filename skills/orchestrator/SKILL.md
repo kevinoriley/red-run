@@ -130,9 +130,12 @@ every routing decision.
 | Agent | Domain | MCP Servers | Use For |
 |-------|--------|-------------|---------|
 | `network-recon-agent` | Network | skill-router, nmap-server, shell-server, state-reader | network-recon, smb-exploitation, pivoting-tunneling |
-| `web-agent` | Web | skill-router, shell-server, state-reader | All web discovery + technique skills |
-| `ad-agent` | Active Directory | skill-router, shell-server, state-reader | All AD discovery + technique skills |
-| `privesc-agent` | Privilege Escalation | skill-router, shell-server, state-reader | Linux/Windows discovery + technique skills, container escapes |
+| `web-discovery-agent` | Web discovery | skill-router, shell-server, state-reader | web-discovery |
+| `web-exploit-agent` | Web exploitation | skill-router, shell-server, state-reader | All web technique skills |
+| `ad-discovery-agent` | AD discovery | skill-router, shell-server, state-reader | ad-discovery |
+| `ad-exploit-agent` | AD exploitation | skill-router, shell-server, state-reader | All AD technique skills |
+| `linux-privesc-agent` | Linux privesc | skill-router, shell-server, state-reader | Linux discovery + technique skills, container escapes |
+| `windows-privesc-agent` | Windows privesc | skill-router, shell-server, state-reader | Windows discovery + technique skills |
 
 **How to delegate:**
 
@@ -179,29 +182,29 @@ Use this table to pick the right agent for each skill:
 | network-recon | network-recon-agent | Needs nmap MCP |
 | smb-exploitation | network-recon-agent | Network-level exploitation |
 | pivoting-tunneling | network-recon-agent | Network-level tools |
-| web-discovery | web-agent | Web tools + conventions |
-| sql-injection-union, sql-injection-blind, sql-injection-error, sql-injection-stacked | web-agent | Web |
-| xss-reflected, xss-stored, xss-dom | web-agent | Web |
-| ssti-identification, ssti-jinja2, ssti-dotnet | web-agent | Web |
-| command-injection, python-code-injection | web-agent | Web |
-| ajp-ghostcat | web-agent | Web (Tomcat AJP exploitation) |
-| tomcat-manager-deploy | web-agent | Web (Tomcat Manager WAR deployment) |
-| ssrf, lfi, file-upload, xxe | web-agent | Web |
-| deserialization-java, deserialization-dotnet, deserialization-php | web-agent | Web |
-| jwt-attacks, request-smuggling, nosql-injection, ldap-injection | web-agent | Web |
-| idor, cors-misconfiguration, csrf | web-agent | Web |
-| oauth-attacks, password-reset-poisoning, 2fa-bypass, race-conditions | web-agent | Web |
-| ad-discovery | ad-agent | Kerberos-first workflow |
-| kerberoasting, as-rep-roasting, delegation-abuse | ad-agent | AD |
-| adcs-esc1, adcs-esc4, adcs-esc8 | ad-agent | AD |
-| acl-abuse, credential-dumping, pass-the-hash, password-spraying | ad-agent | AD |
-| gpo-abuse, trust-attacks, ad-persistence, auth-coercion-relay, sccm-exploitation | ad-agent | AD |
-| linux-discovery | privesc-agent | Shell access + host enum |
-| linux-sudo-suid-capabilities, linux-cron-service-abuse, linux-file-path-abuse, linux-kernel-exploits | privesc-agent | Linux privesc |
-| windows-discovery | privesc-agent | Shell access + host enum |
-| windows-token-impersonation, windows-service-dll-abuse, windows-uac-bypass | privesc-agent | Windows privesc |
-| windows-credential-harvesting, windows-kernel-exploits | privesc-agent | Windows privesc |
-| container-escapes | privesc-agent | Container context |
+| web-discovery | web-discovery-agent | Web enumeration + attack surface mapping |
+| sql-injection-union, sql-injection-blind, sql-injection-error, sql-injection-stacked | web-exploit-agent | Web |
+| xss-reflected, xss-stored, xss-dom | web-exploit-agent | Web |
+| ssti-twig, ssti-jinja2, ssti-freemarker | web-exploit-agent | Web |
+| command-injection, python-code-injection | web-exploit-agent | Web |
+| ajp-ghostcat | web-exploit-agent | Web (Tomcat AJP exploitation) |
+| tomcat-manager-deploy | web-exploit-agent | Web (Tomcat Manager WAR deployment) |
+| ssrf, lfi, file-upload-bypass, xxe | web-exploit-agent | Web |
+| deserialization-java, deserialization-dotnet, deserialization-php | web-exploit-agent | Web |
+| jwt-attacks, request-smuggling, nosql-injection, ldap-injection | web-exploit-agent | Web |
+| idor, cors-misconfiguration, csrf | web-exploit-agent | Web |
+| oauth-attacks, password-reset-poisoning, 2fa-bypass, race-condition | web-exploit-agent | Web |
+| ad-discovery | ad-discovery-agent | AD enumeration + attack surface mapping |
+| kerberos-roasting, kerberos-delegation, kerberos-ticket-forging | ad-exploit-agent | Kerberos attacks |
+| adcs-template-abuse, adcs-access-and-relay, adcs-persistence | ad-exploit-agent | ADCS abuse |
+| acl-abuse, credential-dumping, pass-the-hash, password-spraying | ad-exploit-agent | AD |
+| gpo-abuse, trust-attacks, ad-persistence, auth-coercion-relay, sccm-exploitation | ad-exploit-agent | AD |
+| linux-discovery | linux-privesc-agent | Linux host enum |
+| linux-sudo-suid-capabilities, linux-cron-service-abuse, linux-file-path-abuse, linux-kernel-exploits | linux-privesc-agent | Linux privesc |
+| container-escapes | linux-privesc-agent | Container context (Linux) |
+| windows-discovery | windows-privesc-agent | Windows host enum |
+| windows-token-impersonation, windows-service-dll-abuse, windows-uac-bypass | windows-privesc-agent | Windows privesc |
+| windows-credential-harvesting, windows-kernel-exploits | windows-privesc-agent | Windows privesc |
 | credential-cracking | _(inline — no agent needed)_ | Local-only, no target interaction |
 | retrospective | _(inline — no agent needed)_ | Post-engagement, no target interaction |
 
@@ -402,11 +405,11 @@ Wait for the agent to return before proceeding to attack surface mapping.
 
 ### Web Discovery (if HTTP/HTTPS found)
 
-STOP. Spawn **web-agent** with skill `web-discovery`:
+STOP. Spawn **web-discovery-agent** with skill `web-discovery`:
 
 ```
 Task(
-    subagent_type="web-agent",
+    subagent_type="web-discovery-agent",
     prompt="Load skill 'web-discovery'. Target: <URL>. Tech stack: <from recon>. Mode: <mode>.",
     description="Web discovery on <target>"
 )
@@ -416,11 +419,11 @@ Do not execute ffuf, httpx, or nuclei commands inline.
 
 ### Host Enumeration (if domain environment suspected)
 
-STOP. Spawn **ad-agent** with skill `ad-discovery`:
+STOP. Spawn **ad-discovery-agent** with skill `ad-discovery`:
 
 ```
 Task(
-    subagent_type="ad-agent",
+    subagent_type="ad-discovery-agent",
     prompt="Load skill 'ad-discovery'. DC: <IP>. Domain: <name>. Credentials: <creds>. Mode: <mode>.",
     description="AD discovery on <domain>"
 )
@@ -450,14 +453,14 @@ Based on recon results, categorize the attack surface:
 
 | Surface | Indicators | Agent → Skill |
 |---------|-----------|---------------|
-| Web application | HTTP/HTTPS, login forms, APIs | web-agent → `web-discovery` |
-| Active Directory | LDAP (389/636), Kerberos (88), SMB domain | ad-agent → `ad-discovery` |
-| Containers / K8s | Docker API (2375), K8s API (6443/8443), kubelet (10250), etcd (2379), or inside a container | privesc-agent → `container-escapes` |
+| Web application | HTTP/HTTPS, login forms, APIs | web-discovery-agent → `web-discovery` |
+| Active Directory | LDAP (389/636), Kerberos (88), SMB domain | ad-discovery-agent → `ad-discovery` |
+| Containers / K8s | Docker API (2375), K8s API (6443/8443), kubelet (10250), etcd (2379), or inside a container | linux-privesc-agent → `container-escapes` |
 | Database | MySQL (3306), MSSQL (1433), PostgreSQL (5432) | Direct DB testing |
 | Mail | SMTP (25/587), IMAP (143/993) | Credential attacks, phishing |
 | SMB vulnerability | SMB (445) + confirmed CVE (MS08-067, MS17-010, SMBGhost, MS09-050) | network-recon-agent → `smb-exploitation` |
 | File shares | SMB (445), NFS (2049) | Enumeration, sensitive files |
-| Remote access | SSH (22), RDP (3389), WinRM (5985) | ad-agent → `password-spraying` |
+| Remote access | SSH (22), RDP (3389), WinRM (5985) | ad-exploit-agent → `password-spraying` |
 | Custom services | Non-standard ports | Manual investigation |
 
 **In guided mode**: Present the attack surface map and ask which paths to
@@ -475,22 +478,22 @@ Route to discovery skills based on attack surface. Pass along:
 
 ### Web Applications
 
-STOP. Spawn **web-agent** with skill `web-discovery`. Pass: target URL,
-technology stack, current mode, any credentials. Do not execute ffuf, httpx,
-or nuclei commands inline.
+STOP. Spawn **web-discovery-agent** with skill `web-discovery`. Pass: target
+URL, technology stack, current mode, any credentials. Do not execute ffuf,
+httpx, or nuclei commands inline.
 
 ### Active Directory
 
-STOP. Spawn **ad-agent** with skill `ad-discovery`. Pass: DC IP, domain name,
-any credentials, current mode. Do not execute netexec, ldapsearch, or
-bloodhound commands inline.
+STOP. Spawn **ad-discovery-agent** with skill `ad-discovery`. Pass: DC IP,
+domain name, any credentials, current mode. Do not execute netexec, ldapsearch,
+or bloodhound commands inline.
 
 ### Credential Attacks
 
 For services with authentication (SSH, RDP, SMB, web login):
 
-STOP. Spawn **ad-agent** with skill `password-spraying`. Pass: target IP,
-service type(s), any known usernames and passwords, current mode. Do not
+STOP. Spawn **ad-exploit-agent** with skill `password-spraying`. Pass: target
+IP, service type(s), any known usernames and passwords, current mode. Do not
 execute netexec or hydra commands inline.
 
 ## Step 5: Vulnerability Chaining
@@ -504,7 +507,7 @@ Think through these chains systematically:
 
 **Direct Access (no credentials needed):**
 - SMB vulnerability confirmed → network-recon-agent(`smb-exploitation`) → SYSTEM shell
-- SMB exploitation → SYSTEM → ad-agent(`credential-dumping`) → lateral movement
+- SMB exploitation → SYSTEM → ad-exploit-agent(`credential-dumping`) → lateral movement
 
 **Information → Access:**
 - LFI reads config → credentials → database/service access
@@ -547,8 +550,8 @@ Common chains that produce shell access on a host:
 > Do NOT run `sudo -l`, `find -perm -4000`, `whoami /priv`, `net user`, or any
 > host enumeration commands inline. Spawn:
 >
-> - Linux target → STOP. Spawn **privesc-agent** with skill `linux-discovery`.
-> - Windows target → STOP. Spawn **privesc-agent** with skill `windows-discovery`.
+> - Linux target → STOP. Spawn **linux-privesc-agent** with skill `linux-discovery`.
+> - Windows target → STOP. Spawn **windows-privesc-agent** with skill `windows-discovery`.
 >
 > Pass: target hostname/IP, current user, access method (specify: interactive
 > reverse shell on port X, SSH session, WinRM, etc.), current mode, any
@@ -565,17 +568,17 @@ Common chains that produce shell access on a host:
 
 **Lateral Movement:**
 - Credentials from one host → test against all others in scope
-- Service account → ad-agent(`kerberoasting`) → more credentials
+- Service account → ad-exploit-agent(`kerberos-roasting`) → more credentials
 - Machine keys from IIS → ViewState RCE on other IIS sites
 - Database link → linked server → second database
 - Host access on new subnet → network-recon-agent(`pivoting-tunneling`) → then network-recon-agent(`network-recon`) on internal network
 
 **Privilege Escalation:**
-- Local admin → ad-agent(`credential-dumping`) → domain user
-- Domain user → ad-agent(`kerberoasting`)/ad-agent(`as-rep-roasting`) → service accounts
-- Service account → ad-agent(`delegation-abuse`) → domain admin
-- ADCS misconfiguration → ad-agent(`adcs-esc1`/`adcs-esc4`/`adcs-esc8`) → domain admin
-- Containerized shell → privesc-agent(`container-escapes`) → host access → privesc-agent(`linux-discovery`/`windows-discovery`)
+- Local admin → ad-exploit-agent(`credential-dumping`) → domain user
+- Domain user → ad-exploit-agent(`kerberos-roasting`) → service accounts
+- Service account → ad-exploit-agent(`kerberos-delegation`) → domain admin
+- ADCS misconfiguration → ad-exploit-agent(`adcs-template-abuse`/`adcs-access-and-relay`) → domain admin
+- Containerized shell → linux-privesc-agent(`container-escapes`) → host access → linux-privesc-agent(`linux-discovery`)/windows-privesc-agent(`windows-discovery`)
 
 ### Decision Logic
 
@@ -585,8 +588,9 @@ When reading the state summary (via `get_state_summary()`), the orchestrator sho
    technique skill (look up in Skill-to-Agent Routing Table)
 2. **Check for shell access without root/SYSTEM** — if the Access section shows
    a non-root shell on Linux or non-SYSTEM/non-admin shell on Windows, spawn
-   **privesc-agent** with `linux-discovery` or `windows-discovery`. Do not
-   enumerate privilege escalation vectors inline.
+   **linux-privesc-agent** with `linux-discovery` or **windows-privesc-agent**
+   with `windows-discovery`. Do not enumerate privilege escalation vectors
+   inline.
 3. **Check for unchained access** — can existing access reach new targets?
 4. **Check credentials** — have all found credentials been tested against all
    services?
