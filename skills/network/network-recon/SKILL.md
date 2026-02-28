@@ -373,22 +373,60 @@ MSRPC endpoint map revealing services.
 
 ### SMB — Ports 139, 445
 
+**Run ALL of the following tools in sequence — not just one.** SMB tools use
+different RPC calls and authentication methods under the hood. A failure or
+partial result from one tool does NOT mean the others will also fail. NetExec
+might return `STATUS_USER_SESSION_DELETED` while `smbclient -L` succeeds, or
+vice versa. You must try every tool before concluding that SMB enumeration
+has failed.
+
+**Step 1 — Share listing (run ALL, regardless of earlier results):**
+
 ```bash
-# Comprehensive SMB enumeration
-enum4linux-ng -A TARGET_IP
-
-# NetExec (replaces crackmapexec)
-netexec smb TARGET_IP --shares
-netexec smb TARGET_IP -u '' -p '' --shares          # Null session
-netexec smb TARGET_IP -u 'guest' -p '' --shares     # Guest access
-netexec smb TARGET_IP -u '' -p '' --pass-pol        # Password policy (null session)
-netexec smb TARGET_IP -u 'guest' -p '' --pass-pol   # Password policy (guest)
-
-# NSE scripts
-nmap -sV -p445 --script smb-enum-shares,smb-enum-users,smb-os-discovery,smb-vuln* TARGET_IP
-
-# smbclient
+# Tool 1: smbclient null session share listing
 smbclient -N -L //TARGET_IP/
+
+# Tool 2: NetExec null session + guest
+netexec smb TARGET_IP -u '' -p '' --shares
+netexec smb TARGET_IP -u 'guest' -p '' --shares
+
+# Tool 3: enum4linux-ng comprehensive enumeration
+enum4linux-ng -A TARGET_IP
+```
+
+**Step 2 — Password/lockout policy (run with both null and guest):**
+
+```bash
+netexec smb TARGET_IP -u '' -p '' --pass-pol
+netexec smb TARGET_IP -u 'guest' -p '' --pass-pol
+```
+
+**Step 3 — User and vuln enumeration via NSE:**
+
+```bash
+nmap -sV -p445 --script smb-enum-shares,smb-enum-users,smb-os-discovery,smb-vuln* TARGET_IP
+```
+
+**Step 4 — Enumerate accessible shares.** For every share discovered in Step 1
+(from ANY tool), list contents and check for sensitive files:
+
+```bash
+# Recursive listing of accessible share
+smbclient //TARGET_IP/SHARENAME -N -c 'recurse ON; prompt OFF; ls'
+
+# Download interesting files
+smbclient //TARGET_IP/SHARENAME -N -c 'recurse ON; prompt OFF; mget *'
+```
+
+**Step 5 — Fallback: probe common share names directly.** Only if ALL listing
+tools in Step 1 failed. Some Windows configurations block null-session share
+*listing* but allow null-session *access* to individual shares:
+
+```bash
+for share in ADMIN$ C$ IPC$ SYSVOL NETLOGON Development Users Backups Public Data IT HR Finance Software Shared Docs; do
+    echo "--- $share ---"
+    smbclient //TARGET_IP/"$share" -N -c 'ls' 2>&1 | head -20
+done
 ```
 
 **Quick wins:** Null session (user enum, share listing), guest access to shares,
