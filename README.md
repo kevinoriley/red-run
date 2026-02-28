@@ -59,7 +59,7 @@ The orchestrator makes every routing decision. When an LFI reads Tomcat credenti
 
 ## Skills
 
-66 skills across 6 categories — see **[SKILLS.md](SKILLS.md)** for the full inventory with technique details and line counts. These are baseline offensive security Skill templates resarched and created by Claude.
+66 skills across 6 categories — see **[SKILLS.md](SKILLS.md)** for the full inventory with technique details and line counts. These are baseline offensive security skill templates researched and created by Claude.
 
 | Category | Skills | Coverage |
 |----------|--------|----------|
