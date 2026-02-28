@@ -44,14 +44,19 @@ Each invocation: agent loads one skill, follows the methodology, saves evidence,
 **MCP servers:**
 - **skill-router** — semantic search + skill loading via ChromaDB + sentence-transformer embeddings
 - **nmap-server** — runs nmap inside a Docker container, returns parsed JSON with input validation
-- **shell-server** — TCP listener + reverse shell session manager
+- **shell-server** — TCP listener, reverse shell, and local interactive process manager
 - **state-server** — SQLite engagement state
 
-### Reverse shells via MCP
+### Persistent sessions via MCP
 
-Claude Code's Bash tool runs each command as a separate process — there's no persistent shell session. This often causes Claude to try various enumeration and privilege escalation steps directly through unstable and character-restrictive webshells, with less-than-stellar results, as you’d expect.
+Claude Code’s Bash tool runs each command as a separate process — there’s no persistent shell session. This means interactive tools (evil-winrm, ssh, psexec.py) lose state between calls, and reverse shells from RCE have nowhere to connect back.
 
-The **shell-server** MCP solves this. It manages TCP listeners and reverse shell sessions as a long-lived server process. Subagents call `start_listener(port=4444)` to open a catcher, send a reverse shell payload through whatever RCE they've achieved, then interact with the shell via `send_command()`. Sessions persist across tool calls, support PTY upgrades for interactive programs, and save transcripts to `engagement/evidence/` on close.
+The **shell-server** MCP solves this with two session types:
+
+- **`start_listener`** — catches inbound reverse shells. Subagents open a catcher, send a reverse shell payload through whatever RCE they’ve achieved, then interact via `send_command()`.
+- **`start_process`** — spawns local interactive tools in a persistent PTY. When you have credentials and a service port open, subagents call `start_process(command="evil-winrm -i TARGET -u admin -p pass")` and drive the session through `send_command()`. Evil-winrm’s built-in `upload`/`download` commands also make it the preferred file transfer method for Windows targets.
+
+Both session types persist across tool calls, support prompt detection, and save transcripts to `engagement/evidence/` on close.
 
 ### Inter-skill routing
 
