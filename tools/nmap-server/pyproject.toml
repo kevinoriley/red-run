@@ -1,7 +1,7 @@
 [project]
 name = "red-run-nmap-server"
 version = "0.1.0"
-description = "MCP server wrapping sudo nmap for Claude Code subagents"
+description = "MCP server running nmap in Docker for Claude Code subagents"
 requires-python = ">=3.10"
 dependencies = [
     "mcp[cli]>=1.4.1",

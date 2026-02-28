@@ -84,6 +84,13 @@ if [[ -d "${MCP_NMAP_SERVER}/.venv" ]]; then
     mcp_cleaned=$((mcp_cleaned + 1))
 fi
 
+# nmap Docker image
+if command -v docker &>/dev/null && docker image inspect red-run-nmap:latest &>/dev/null 2>&1; then
+    docker rmi red-run-nmap:latest &>/dev/null
+    echo "  Removed Docker image: red-run-nmap:latest"
+    mcp_cleaned=$((mcp_cleaned + 1))
+fi
+
 # shell-server
 if [[ -d "${MCP_SHELL_SERVER}/.venv" ]]; then
     rm -rf "${MCP_SHELL_SERVER}/.venv"

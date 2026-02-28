@@ -1,7 +1,7 @@
 """Tests for the nmap MCP server.
 
 Tests XML parsing, scan storage, and tool schema validation. Does NOT require
-nmap or sudo — uses mock nmap XML output.
+nmap, sudo, or Docker — uses mock nmap XML output.
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import server as server_mod
 from server import _parse_nmap_xml, _save_evidence, create_server
 
 # --- Fixtures ---
@@ -125,14 +126,17 @@ class TestParseNmapXml:
 
 
 class TestSaveEvidence:
-    def test_saves_to_custom_path(self, tmp_path):
-        out_file = tmp_path / "custom.xml"
-        result = _save_evidence("<xml/>", "10.10.10.5", str(out_file))
-        assert result == str(out_file)
-        assert out_file.read_text() == "<xml/>"
+    def test_saves_to_valid_evidence_path(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(server_mod, "_PROJECT_ROOT", tmp_path)
+        evidence_dir = tmp_path / "engagement" / "evidence"
+        evidence_dir.mkdir(parents=True)
+        result = _save_evidence("<xml/>", "10.10.10.5", "engagement/evidence/custom.xml")
+        assert result is not None
+        assert result == str(evidence_dir / "custom.xml")
+        assert (evidence_dir / "custom.xml").read_text() == "<xml/>"
 
     def test_saves_to_engagement_evidence(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(server_mod, "_PROJECT_ROOT", tmp_path)
         evidence_dir = tmp_path / "engagement" / "evidence"
         evidence_dir.mkdir(parents=True)
         result = _save_evidence("<xml/>", "10.10.10.5", None)
@@ -140,17 +144,34 @@ class TestSaveEvidence:
         assert "nmap-10.10.10.5.xml" in result
 
     def test_returns_none_when_no_engagement_dir(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(server_mod, "_PROJECT_ROOT", tmp_path)
         result = _save_evidence("<xml/>", "10.10.10.5", None)
         assert result is None
 
     def test_sanitizes_target_in_filename(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(server_mod, "_PROJECT_ROOT", tmp_path)
         evidence_dir = tmp_path / "engagement" / "evidence"
         evidence_dir.mkdir(parents=True)
         result = _save_evidence("<xml/>", "10.10.10.0/24", None)
         assert result is not None
         assert "/" not in Path(result).name or "10.10.10.0_24" in result
+
+    def test_sanitizes_dotdot_in_target(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(server_mod, "_PROJECT_ROOT", tmp_path)
+        evidence_dir = tmp_path / "engagement" / "evidence"
+        evidence_dir.mkdir(parents=True)
+        result = _save_evidence("<xml/>", "../../etc/passwd", None)
+        assert result is not None
+        filename = Path(result).name
+        assert ".." not in filename
+        # File should be inside evidence dir, not escaped
+        assert str(evidence_dir) in result
+
+    def test_rejects_path_outside_evidence(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(server_mod, "_PROJECT_ROOT", tmp_path)
+        (tmp_path / "engagement" / "evidence").mkdir(parents=True)
+        result = _save_evidence("<xml/>", "10.10.10.5", "/etc/passwd")
+        assert result is None
 
 
 # --- Server Creation Tests ---

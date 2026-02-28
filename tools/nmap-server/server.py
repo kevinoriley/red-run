@@ -1,23 +1,25 @@
-"""MCP server wrapping sudo nmap for red-run subagents.
+"""MCP server running nmap inside Docker for red-run subagents.
 
 Provides three tools:
-- nmap_scan: Run a sudo nmap scan with parsed results
+- nmap_scan: Run nmap in a Docker container with parsed results
 - get_scan: Retrieve results of a previous scan
 - list_scans: List all scans run this session
 
-Eliminates the sudo handoff bottleneck — subagents call nmap_scan directly
-and get structured JSON back instead of waiting for manual user execution.
+Nmap runs inside a minimal Alpine container (--network=host) with only
+NET_RAW and NET_ADMIN capabilities. All inputs are validated before
+reaching subprocess. No volume mounts — XML output goes to stdout.
 
 Usage:
     uv run python server.py
 
-Requires: passwordless sudo for nmap (see README.md for sudoers config).
+Requires: Docker with the red-run-nmap image built (see Dockerfile).
 """
 
 from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import uuid
@@ -27,7 +29,16 @@ from pathlib import Path
 from libnmap.parser import NmapParser
 from mcp.server.fastmcp import FastMCP
 
+from validate import (
+    ValidationError,
+    sanitize_target_for_filename,
+    validate_options,
+    validate_save_to,
+    validate_target,
+)
+
 NMAP_TIMEOUT = int(os.environ.get("NMAP_TIMEOUT", "600"))
+DOCKER_IMAGE = os.environ.get("NMAP_DOCKER_IMAGE", "red-run-nmap:latest")
 
 # Resolve engagement directory relative to the project root, not the server's
 # own directory.  uv run --directory changes cwd to tools/nmap-server/, so
@@ -35,25 +46,42 @@ NMAP_TIMEOUT = int(os.environ.get("NMAP_TIMEOUT", "600"))
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
-def _check_sudo_nmap() -> str | None:
-    """Check if passwordless sudo nmap is available. Returns error message or None."""
+def _check_docker_nmap() -> str | None:
+    """Check if Docker and the nmap image are available. Returns error message or None."""
+    docker_path = shutil.which("docker")
+    if not docker_path:
+        return "docker not found. Install Docker to use the nmap MCP server."
+
     try:
         result = subprocess.run(
-            ["sudo", "-n", "nmap", "--version"],
+            ["docker", "info"],
             capture_output=True,
             text=True,
             timeout=10,
         )
         if result.returncode != 0:
             return (
-                "sudo nmap failed. Configure passwordless sudo for nmap.\n"
-                "Add to /etc/sudoers.d/nmap:\n"
-                "  <username> ALL=(root) NOPASSWD: /usr/bin/nmap"
+                "Docker daemon not running. Start Docker first.\n"
+                f"stderr: {result.stderr.strip()}"
             )
-    except FileNotFoundError:
-        return "nmap not found. Install nmap first."
     except subprocess.TimeoutExpired:
-        return "sudo nmap timed out — passwordless sudo may not be configured."
+        return "docker info timed out — Docker daemon may be unresponsive."
+
+    try:
+        result = subprocess.run(
+            ["docker", "image", "inspect", DOCKER_IMAGE],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode != 0:
+            return (
+                f"Docker image '{DOCKER_IMAGE}' not found. "
+                f"Build it with: docker build -t {DOCKER_IMAGE} tools/nmap-server/"
+            )
+    except subprocess.TimeoutExpired:
+        return "docker image inspect timed out."
+
     return None
 
 
@@ -113,12 +141,15 @@ def _parse_nmap_xml(xml_content: str) -> dict:
 def _save_evidence(xml_content: str, target: str, save_to: str | None) -> str | None:
     """Save raw XML to engagement/evidence/ or custom path. Returns path or None."""
     if save_to:
-        out_path = Path(save_to)
+        try:
+            out_path = validate_save_to(save_to, _PROJECT_ROOT)
+        except ValidationError:
+            return None
     else:
         evidence_dir = _PROJECT_ROOT / "engagement" / "evidence"
         if not evidence_dir.exists():
             return None
-        safe_target = target.replace("/", "_").replace(" ", "_")
+        safe_target = sanitize_target_for_filename(target)
         out_path = evidence_dir / f"nmap-{safe_target}.xml"
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -141,10 +172,10 @@ def create_server() -> FastMCP:
     # In-memory scan storage for the session
     scans: dict[str, dict] = {}
 
-    # Check sudo nmap availability at startup
-    sudo_error = _check_sudo_nmap()
-    if sudo_error:
-        print(f"WARNING: {sudo_error}", file=sys.stderr)
+    # Check Docker availability at startup
+    docker_error = _check_docker_nmap()
+    if docker_error:
+        print(f"WARNING: {docker_error}", file=sys.stderr)
 
     @mcp.tool()
     def nmap_scan(
@@ -169,12 +200,32 @@ def create_server() -> FastMCP:
                      engagement/evidence/nmap-<target>.xml when the engagement
                      directory exists.
         """
-        if sudo_error:
-            return f"ERROR: {sudo_error}"
+        if docker_error:
+            return f"ERROR: {docker_error}"
 
-        # Build command — always use -oX - for XML to stdout
-        cmd = ["sudo", "nmap"]
-        cmd.extend(options.split())
+        # Validate all inputs before building the command
+        try:
+            validate_target(target)
+            option_args = validate_options(options)
+        except ValidationError as e:
+            return f"ERROR: {e}"
+
+        if save_to:
+            try:
+                validate_save_to(save_to, _PROJECT_ROOT)
+            except ValidationError as e:
+                return f"ERROR: {e}"
+
+        # Build Docker command
+        cmd = [
+            "docker", "run", "--rm",
+            "--network=host",
+            "--cap-drop=ALL",
+            "--cap-add=NET_RAW",
+            "--cap-add=NET_ADMIN",
+            DOCKER_IMAGE,
+        ]
+        cmd.extend(option_args)
         cmd.extend(["-oX", "-", target])
 
         scan_id = str(uuid.uuid4())[:8]

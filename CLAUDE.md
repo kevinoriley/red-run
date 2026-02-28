@@ -31,7 +31,7 @@ Agent source files live in `agents/` (version controlled), installed to `~/.clau
 | Server | Location | Tools | Purpose |
 |--------|----------|-------|---------|
 | skill-router | `tools/skill-router/` | `search_skills`, `get_skill`, `list_skills` | Semantic skill discovery and loading |
-| nmap-server | `tools/nmap-server/` | `nmap_scan`, `get_scan`, `list_scans` | Privileged nmap scanning (no sudo handoff) |
+| nmap-server | `tools/nmap-server/` | `nmap_scan`, `get_scan`, `list_scans` | Dockerized nmap scanning with input validation |
 | shell-server | `tools/shell-server/` | `start_listener`, `send_command`, `read_output`, `stabilize_shell`, `list_sessions`, `close_session` | TCP listener and reverse shell session manager |
 | state-reader | `tools/state-server/` | `get_state_summary`, `get_targets`, `get_credentials`, `get_access`, `get_vulns`, `get_pivot_map`, `get_blocked` | Read-only engagement state queries (subagents) |
 | state-writer | `tools/state-server/` | All read tools + `init_engagement`, `close_engagement`, `add_target`, `add_port`, `add_credential`, `add_access`, `add_vuln`, `add_pivot`, `add_blocked`, and update variants | Full engagement state management (orchestrator only) |
@@ -40,7 +40,7 @@ The state-reader and state-writer are two instances of the same server (`tools/s
 
 The skill-router is backed by ChromaDB + sentence-transformer embeddings (`all-MiniLM-L6-v2`). Skills are indexed from structured frontmatter fields (description, keywords, tools, opsec).
 
-The nmap-server wraps `sudo nmap` and returns parsed JSON. Requires passwordless sudo for nmap.
+The nmap-server runs nmap inside a Docker container (`--network=host`, minimal capabilities) and returns parsed JSON. All inputs are validated before reaching subprocess. Requires Docker.
 
 The shell-server manages TCP listeners and reverse shell sessions. It solves the persistent shell problem — Claude Code's Bash tool runs each command as a separate process, so interactive shells and privilege escalation tools that spawn new shells have no way to connect back.
 
@@ -166,8 +166,10 @@ red-run/
       server.py           # FastMCP server — search_skills, get_skill, list_skills
       indexer.py           # Indexes SKILL.md frontmatter into ChromaDB
       pyproject.toml       # Python dependencies (chromadb, sentence-transformers)
-    nmap-server/          # MCP server (sudo nmap wrapper)
+    nmap-server/          # MCP server (Dockerized nmap)
       server.py           # FastMCP server — nmap_scan, get_scan, list_scans
+      validate.py          # Input validation (flag blocklist, target sanitization)
+      Dockerfile           # Alpine + nmap image (built by install.sh)
       pyproject.toml       # Python dependencies (mcp, python-libnmap)
     shell-server/         # MCP server (TCP listener + shell manager)
       server.py           # FastMCP server — start_listener, send_command, stabilize_shell, etc.
@@ -242,5 +244,5 @@ The bwrap sandbox blocks network socket creation. Users must configure their glo
 ./uninstall.sh
 ```
 
-The installer puts the orchestrator in `~/.claude/skills/red-run-orchestrator/`, subagents in `~/.claude/agents/`, and sets up MCP servers (skill-router, nmap-server, shell-server, state-server). Requires [uv](https://docs.astral.sh/uv/) and passwordless sudo for nmap.
+The installer puts the orchestrator in `~/.claude/skills/red-run-orchestrator/`, subagents in `~/.claude/agents/`, and sets up MCP servers (skill-router, nmap-server, shell-server, state-server). Requires [uv](https://docs.astral.sh/uv/) and Docker for nmap.
 
