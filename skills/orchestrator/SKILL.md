@@ -395,21 +395,62 @@ Do not run scanning or enumeration tools directly from the orchestrator.
 
 ### Network Recon (if IP/subnet in scope)
 
-STOP. Spawn **network-recon-agent** with skill `network-recon`:
+**Hard stop — scan selection (ALL modes, including autonomous).**
 
-```
-Task(
-    subagent_type="network-recon-agent",
-    prompt="Load skill 'network-recon'. Target: <IP/range>. Mode: <mode>. Credentials: <creds or 'none'>.",
-    description="Network recon on <target>"
-)
-```
+Before spawning the network-recon agent, present the operator with scan
+options via `AskUserQuestion`. This hard stop applies in BOTH guided AND
+autonomous modes — the operator always chooses the scan type.
+
+**Question — Scan type** (single-select):
+- Header: "Scan type"
+- Options:
+  - Quick scan (Recommended) — top 1000 ports + service detection (`-sV -sC --top-ports 1000 -T4`)
+  - Full scan — all 65535 ports + service detection + OS fingerprint (`-A -p- -T4`)
+  - Import existing results — provide a path to nmap XML output (skip scanning)
+  - Custom scan — describe the scan you'd like (ports, timing, scripts)
+
+**After operator responds:**
+
+- **Quick scan** or **Full scan**: Spawn **network-recon-agent** with the
+  selected scan type passed in the prompt:
+
+  ```
+  Task(
+      subagent_type="network-recon-agent",
+      prompt="Load skill 'network-recon'. Target: <IP/range>. Mode: <mode>. Credentials: <creds or 'none'>. Scan type: <quick|full>.",
+      description="Network recon on <target>"
+  )
+  ```
+
+- **Import existing results**: Ask for the file path (the "Other" text input
+  captures this). Read the XML file, parse it for hosts/ports/services, and
+  record findings directly via state-writer MCP tools (`add_target`,
+  `add_port`). Skip spawning network-recon-agent entirely. Log to
+  `engagement/activity.md`:
+  ```
+  ### [YYYY-MM-DD HH:MM:SS] orchestrator → imported scan results
+  - Source: <path to XML>
+  - Hosts found: N
+  - Open ports: <summary>
+  ```
+
+- **Custom scan**: The operator's text input describes the scan. Pass it
+  to network-recon-agent in the prompt so the agent can construct the
+  appropriate nmap options:
+
+  ```
+  Task(
+      subagent_type="network-recon-agent",
+      prompt="Load skill 'network-recon'. Target: <IP/range>. Mode: <mode>. Credentials: <creds or 'none'>. Custom scan request: <operator's description>.",
+      description="Network recon on <target>"
+  )
+  ```
 
 Do not execute nmap, masscan, or netexec commands inline. The agent has nmap
 MCP access and will handle scanning directly.
 
 Network-recon will:
-1. Run host discovery (for subnets) and full port scanning
+1. Run host discovery (for subnets) and port scanning per the selected type
 2. Enumerate services on each open port with quick-win checks (anonymous access,
    default creds, known CVEs)
 3. Perform OS fingerprinting

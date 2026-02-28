@@ -228,17 +228,29 @@ or proceed with all.
 
 ## Step 2: Port Scanning
 
-**Default full scan (recommended starting point):**
+Check the orchestrator's prompt for a `Scan type:` directive. This tells you
+what the operator chose:
 
-```bash
-# Full TCP scan with service detection, OS fingerprinting, default scripts, verbose
-sudo nmap -A -p- -T4 -oA scan_HOSTNAME -vvv TARGET_IP
-```
+- **`quick`** — top 1000 ports + service detection:
+  ```bash
+  sudo nmap -sV -sC --top-ports 1000 -T4 -oA scan_HOSTNAME -vvv TARGET_IP
+  ```
 
-This is the go-to scan for most engagements. `-A` enables OS detection, version
-detection, script scanning, and traceroute. `-p-` scans all 65535 ports. `-T4`
-is aggressive timing suitable for most networks. `-oA` saves in all formats
-(`.nmap`, `.gnmap`, `.xml`).
+- **`full`** (or no directive) — all 65535 ports, full enumeration:
+  ```bash
+  sudo nmap -A -p- -T4 -oA scan_HOSTNAME -vvv TARGET_IP
+  ```
+
+- **`Custom scan request: ...`** — the operator described a custom scan.
+  Translate their description into appropriate nmap options. Preserve `-oA`
+  for output and add `-vvv` for verbose results.
+
+If no scan type is specified, default to **full scan**.
+
+The full scan is the go-to for most engagements. `-A` enables OS detection,
+version detection, script scanning, and traceroute. `-p-` scans all 65535
+ports. `-T4` is aggressive timing suitable for most networks. `-oA` saves in
+all formats (`.nmap`, `.gnmap`, `.xml`).
 
 **Parse scan results:**
 
