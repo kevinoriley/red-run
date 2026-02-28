@@ -75,6 +75,26 @@ required for privilege escalation tools that spawn new shells.
 **When the skill text says "establish reverse shell"**, use the shell-server
 MCP tools instead of asking the user to set up a netcat listener.
 
+## Interactive Processes via MCP
+
+Use `start_process` to spawn local interactive tools in a persistent PTY.
+This is for tools that need session persistence — credential-based access
+tools, exploit frameworks, and tools that maintain state between commands.
+
+- `start_process(command="<tool>", label="<label>")` — spawn the process
+- `send_command(session_id=..., command=...)` — interact with it
+- `read_output(session_id=...)` — check for async output
+- `close_session(session_id=..., save_transcript=true)` — clean up
+
+**When to use which:**
+
+| Scenario | Tool |
+|----------|------|
+| Target sends reverse shell callback | `start_listener` |
+| Have credentials + service port open | `start_process` |
+| Exploit framework (msfconsole) | `start_process` |
+| Single non-interactive command | Bash |
+
 ## Scope Boundaries — What You Must NOT Do
 
 - **Do not load a second skill.** When the loaded skill says "Route to

