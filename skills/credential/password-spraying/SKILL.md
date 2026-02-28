@@ -250,18 +250,11 @@ context-specific passwords that no generic wordlist would contain.
 
 ### usernames.txt
 
+Write the usernames from the orchestrator prompt, one per line:
+
 ```bash
-# Write usernames from orchestrator prompt
 cat > engagement/evidence/usernames.txt << 'USERS'
-Administrator
-mhope
-SABatchJobs
-svc-ata
-svc-bexec
-svc-netapp
-dgalanos
-roleary
-smorgan
+<usernames from orchestrator prompt, one per line>
 USERS
 ```
 
