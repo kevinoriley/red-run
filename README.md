@@ -148,11 +148,10 @@ The cycle is: **engage → retrospective → improve skills → engage again**. 
 ```
 
 The installer:
-1. Removes any existing red-run skills from `~/.claude/skills/` (legacy installs used per-skill native skills — these are now served via MCP)
-2. Installs `orchestrator` as a native Claude Code skill (`~/.claude/skills/`)
-3. Installs **custom subagents** to `~/.claude/agents/`
-4. Sets up **MCP servers** — `skill-router` (ChromaDB + embeddings), `nmap-server`, `shell-server`, `state-server`
-5. Verifies project config (`.mcp.json`, settings, Docker for nmap)
+1. Installs `orchestrator` as a native Claude Code skill (`~/.claude/skills/`)
+2. Installs **custom subagents** to `~/.claude/agents/`
+3. Sets up **MCP servers** — `skill-router` (ChromaDB + embeddings), `nmap-server`, `shell-server`, `state-server`
+4. Verifies project config (`.mcp.json`, settings, Docker for nmap)
 
 The repo must stay in place — the MCP server reads skills from `skills/` at runtime.
 
