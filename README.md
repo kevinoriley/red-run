@@ -10,21 +10,6 @@ In **guided mode** (default), Claude walks you through each attack step, shows y
 
 In **autonomous mode**, Claude runs commands directly, makes triage decisions at forks, and rarely pauses for your input. Autonomous mode is better suited for CTFs and lab environments where OPSEC doesn't matter and you can break things.
 
-## How it works
-
-### Skill types
-
-- **Orchestrator** — the main loop. Takes a target, runs recon, maps the attack surface, chains vulnerabilities toward objectives, and delegates each skill to a domain subagent. Parses return summaries, records state via MCP, and decides what to do next.
-- **Discovery skills** — enumerate an attack surface and identify vulnerabilities. Return findings to the orchestrator for triage.
-- **Technique skills** — exploit a specific vulnerability class with embedded payloads and bypass techniques
-
-### Modes
-
-- **Guided** (default) — explain each step, ask before executing, present options at decision forks
-- **Autonomous** — execute end-to-end, make triage decisions, report at milestones
-
-Say "switch to autonomous" or "guide me through this" at any point.
-
 &nbsp;
 <div align="center"><br><b>⚠️⚠️⚠️⚠️ WARNING ⚠️⚠️⚠️⚠️</b></div>
 
@@ -38,7 +23,7 @@ Autonomous mode pairs with `claude --dangerously-skip-permissions` (a.k.a. yolo 
 
 &nbsp;
 
-### Architecture
+## Architecture
 
 The **orchestrator** is a native Claude Code skill that runs in the main conversation thread. It delegates skill execution to **custom domain subagents** — focused agents with MCP access that each handle one skill per invocation. This keeps context isolated (each agent starts fresh) while the orchestrator maintains the big picture via a SQLite state database.
 
