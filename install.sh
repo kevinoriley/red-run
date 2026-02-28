@@ -25,6 +25,7 @@ MCP_SKILL_ROUTER="${REPO_DIR}/tools/skill-router"
 MCP_NMAP_SERVER="${REPO_DIR}/tools/nmap-server"
 MCP_SHELL_SERVER="${REPO_DIR}/tools/shell-server"
 MCP_STATE_SERVER="${REPO_DIR}/tools/state-server"
+MCP_BROWSER_SERVER="${REPO_DIR}/tools/browser-server"
 
 # Only the orchestrator is installed as a native Claude Code skill.
 # Everything else is served on-demand via the MCP skill-router.
@@ -156,6 +157,12 @@ uv sync --directory "${MCP_SHELL_SERVER}" --quiet
 echo "  [state-server] Installing Python dependencies..."
 uv sync --directory "${MCP_STATE_SERVER}" --quiet
 
+# browser-server (headless browser automation)
+echo "  [browser-server] Installing Python dependencies..."
+uv sync --directory "${MCP_BROWSER_SERVER}" --quiet
+echo "  [browser-server] Installing Chromium..."
+uv run --directory "${MCP_BROWSER_SERVER}" playwright install chromium
+
 # --- Step 5: Verify project config ---
 config_warnings=0
 if [[ ! -f "${REPO_DIR}/.mcp.json" ]]; then
@@ -181,6 +188,7 @@ echo "63 technique/discovery skills served via MCP skill-router"
 echo "nmap MCP server ready (Dockerized nmap)"
 echo "shell MCP server ready (TCP listener + reverse shell manager)"
 echo "state MCP server ready (SQLite engagement state)"
+echo "browser MCP server ready (headless Chromium)"
 if [[ "$config_warnings" -eq 0 ]]; then
     echo ""
     echo "Done! Start Claude Code from this repo directory to activate."

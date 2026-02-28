@@ -295,17 +295,17 @@ orchestrator records state changes and decides what to invoke next.
 ## Mode
 
 Check if the user has set a mode:
-- **Guided** (default): Before executing any command that sends traffic to a
-  target, present it with a one-line explanation and wait for user approval.
-  Present attack surface maps, chain analysis, and routing decisions — let the
-  user choose which paths to pursue. Confirm before invoking each technique
-  skill. Never execute multiple target-touching commands without approval
-  between them.
-- **Autonomous**: Execute recon through exploitation. Make triage decisions.
-  Route to technique skills automatically. Report at phase boundaries and
-  when significant access is gained.
+- **Guided** (default): Pause at routing decisions — present the attack surface
+  map, chain analysis, and available paths, then let the user choose which
+  skill to invoke next. Once a skill is routed to an agent, the agent runs
+  end-to-end. Individual commands within the agent go through Claude Code's
+  normal permission prompts (unless `--dangerously-skip-permissions` is active).
+- **Autonomous**: Route to skills automatically. Make triage decisions at forks.
+  Report at phase boundaries and when significant access is gained. Combine
+  with `--dangerously-skip-permissions` for fully unattended execution.
 
-If unclear, default to guided.
+Skills and agents do not need mode awareness — the orchestrator is the only
+component that checks mode. If unclear, default to guided.
 
 ## Invocation Log
 

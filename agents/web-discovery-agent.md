@@ -16,6 +16,7 @@ tools:
 mcpServers:
   - skill-router
   - shell-server
+  - browser-server
   - state-reader
 model: sonnet
 ---
@@ -66,6 +67,34 @@ what to do. You have one task per invocation.
 - **Evidence capture**: Save interesting HTTP requests/responses to
   `engagement/evidence/` with descriptive filenames (e.g.,
   `web-discovery-tech-stack.txt`, `web-discovery-endpoints.txt`).
+
+## Browser Interaction via MCP
+
+You have access to the `browser-server` MCP tools for headless browser
+automation. Use browser tools as the **default** for navigating web
+applications — they handle CSRF tokens, session cookies, JavaScript-rendered
+content, and multi-step form flows that curl cannot.
+
+**When to use which:**
+
+| Scenario | Tool |
+|----------|------|
+| Navigate site, explore pages, read content | `browser_open` / `browser_navigate` |
+| Fill forms, submit login, interact with UI | `browser_fill` / `browser_click` |
+| CSRF token extraction, session state | `browser_cookies` / `browser_evaluate` |
+| JavaScript-rendered content, SPAs | `browser_get_page` / `browser_evaluate` |
+| Evidence screenshots | `browser_screenshot` |
+| Raw HTTP requests, specific headers | curl (Bash) |
+| Injection payloads needing precise control | curl (Bash) |
+| Directory/parameter fuzzing | ffuf (Bash) |
+
+**Typical workflow:**
+1. `browser_open` to explore the application and understand structure
+2. Browser tools for form interaction, authentication, and session management
+3. curl for targeted payloads requiring precise header/body control
+4. ffuf for fuzzing and enumeration
+
+Always `close_browser` when done with a session.
 
 ## Reverse Shell via MCP
 

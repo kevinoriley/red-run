@@ -18,22 +18,6 @@ opsec: <low|medium|high>
 You are helping a penetration tester with <technique description>. All testing
 is under explicit written authorization.
 
-## Mode
-
-Check if the user or orchestrator has set a mode:
-- **Guided** (default): Before executing any command that sends traffic to a
-  target, present the command with a one-line explanation of what it does and
-  why. Wait for explicit user approval before executing. Never batch multiple
-  target-touching commands without approval — present them one at a time (or as
-  a small logical group if they achieve a single objective, e.g., "enumerate SMB
-  shares"). Local-only operations (file writes, output parsing, engagement
-  logging, hash cracking) do not require approval. At decision forks, present
-  options and let the user choose.
-- **Autonomous**: Execute end-to-end. Make triage decisions at forks. Report
-  findings at milestones. Only pause for destructive or high-OPSEC actions.
-
-If unclear, default to guided.
-
 ## Engagement Logging
 
 Check for `./engagement/` directory. If absent, proceed without logging.
@@ -106,6 +90,20 @@ reach the target.
 
 **Inline source code** written via heredoc in this skill does not need this
 workflow — the operator can read the code directly.
+
+## Web Interaction
+
+When interacting with web applications, use the browser MCP tools as the
+default for navigating sites, filling forms, and managing sessions. Browser
+tools handle CSRF tokens, session cookies, JavaScript-rendered content, and
+multi-step flows that curl cannot.
+
+- **Browser tools** (default) — navigate pages, fill forms, manage sessions,
+  take screenshots for evidence, execute JavaScript for DOM inspection
+- **curl** (fallback) — crafted payloads needing precise header/body control,
+  injection testing where exact request structure matters
+- **Injection-focused skills** may use curl directly for payload delivery when
+  the browser adds unwanted encoding or headers
 
 ## File Exfiltration
 
@@ -253,13 +251,6 @@ Do not loop. Work through failures systematically:
 - What failed and why (error messages, empty responses, timeouts)
 - Assessment: **blocked** (permanent — config, patched, missing prereq) or
   **retry-later** (may work with different context, creds, or access)
-
-**Mode behavior:**
-- **Guided**: Tell the user you're stalled, present what was tried, and
-  recommend the next best path.
-- **Autonomous**: Return findings to the orchestrator. Do not retry the same
-  technique — the orchestrator will decide whether to revisit with new context
-  or route elsewhere.
 
 ## AV/EDR Detection
 

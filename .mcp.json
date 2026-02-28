@@ -33,6 +33,16 @@
         "server.py"
       ]
     },
+    "browser-server": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "tools/browser-server",
+        "python",
+        "server.py"
+      ]
+    },
     "state-reader": {
       "command": "uv",
       "args": ["run", "--directory", "tools/state-server", "python", "server.py", "--mode", "read"]

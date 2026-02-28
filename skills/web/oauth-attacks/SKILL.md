@@ -37,22 +37,6 @@ is to steal authorization codes or tokens, bypass authentication, escalate
 privileges, or achieve account takeover. All testing is under explicit written
 authorization.
 
-## Mode
-
-Check if the user or orchestrator has set a mode:
-- **Guided** (default): Before executing any command that sends traffic to a
-  target, present the command with a one-line explanation of what it does and
-  why. Wait for explicit user approval before executing. Never batch multiple
-  target-touching commands without approval — present them one at a time (or as
-  a small logical group if they achieve a single objective, e.g., "enumerate SMB
-  shares"). Local-only operations (file writes, output parsing, engagement
-  logging, hash cracking) do not require approval. At decision forks, present
-  options and let the user choose.
-- **Autonomous**: Map all OAuth endpoints, test all bypass techniques,
-  chain vulnerabilities for maximum impact. Report at milestones.
-
-If unclear, default to guided.
-
 ## Engagement Logging
 
 Check for `./engagement/` directory. If absent, proceed without logging.
@@ -83,6 +67,21 @@ and records state changes. Your return summary must include:
 - Vulnerabilities confirmed (with status and severity)
 - Pivot paths identified (what leads where)
 - Blocked items (what failed and why, whether retryable)
+
+## Web Interaction
+
+OAuth flows are multi-step browser interactions — **browser tools are the
+natural fit** for testing these flows end-to-end.
+
+- **`browser_open`** for authorization endpoints — initiates the OAuth flow
+- **`browser_fill`** / **`browser_click`** for consent screens, login prompts,
+  and permission dialogs
+- **`browser_cookies`** to extract tokens from redirect chains and inspect
+  session state after OAuth completion
+- **`browser_evaluate`** to inspect URL fragments for implicit grant tokens
+  (e.g., `window.location.hash`), extract authorization codes from redirects
+- **curl** for direct token endpoint requests, testing `redirect_uri`
+  manipulation, and code/token exchange
 
 ## Prerequisites
 

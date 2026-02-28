@@ -29,23 +29,6 @@ data flows from a source (URL, cookie, postMessage, storage) to a dangerous sink
 payload never appears in the HTTP response from the server. All testing is under
 explicit written authorization.
 
-## Mode
-
-Check if the user or orchestrator has set a mode:
-- **Guided** (default): Before executing any command that sends traffic to a
-  target, present the command with a one-line explanation of what it does and
-  why. Wait for explicit user approval before executing. Never batch multiple
-  target-touching commands without approval — present them one at a time (or as
-  a small logical group if they achieve a single objective, e.g., "enumerate SMB
-  shares"). Local-only operations (file writes, output parsing, engagement
-  logging, hash cracking) do not require approval. At decision forks, present
-  options and let the user choose.
-- **Autonomous**: Execute end-to-end. Analyze page JavaScript for source-sink
-  flows, test identified sinks with appropriate payloads, demonstrate impact.
-  Report at milestones.
-
-If unclear, default to guided.
-
 ## Engagement Logging
 
 Check for `./engagement/` directory. If absent, proceed without logging.
@@ -76,6 +59,23 @@ and records state changes. Your return summary must include:
 - Vulnerabilities confirmed (with status and severity)
 - Pivot paths identified (what leads where)
 - Blocked items (what failed and why, whether retryable)
+
+## Web Interaction
+
+DOM XSS exists entirely in client-side JavaScript — **browser tools are
+essential** for this skill. The vulnerability cannot be detected or exploited
+without JavaScript execution.
+
+- **`browser_open`** to load the target page with JavaScript execution
+- **`browser_evaluate`** for source-to-sink tracing — inspect DOM state, trace
+  data flow through JavaScript variables, check what sinks are reachable
+  (e.g., `document.querySelectorAll('[innerHTML]')`,
+  `document.querySelectorAll('script')`)
+- **`browser_navigate`** with crafted URL fragments (`#payload`) to test
+  hash-based sources
+- **`browser_screenshot`** for evidence of DOM manipulation
+- **curl is insufficient** for DOM XSS — it doesn't execute JavaScript, so it
+  cannot trigger source-to-sink flows
 
 ## Prerequisites
 

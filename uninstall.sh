@@ -20,6 +20,7 @@ MCP_SKILL_ROUTER="${REPO_DIR}/tools/skill-router"
 MCP_NMAP_SERVER="${REPO_DIR}/tools/nmap-server"
 MCP_SHELL_SERVER="${REPO_DIR}/tools/shell-server"
 MCP_STATE_SERVER="${REPO_DIR}/tools/state-server"
+MCP_BROWSER_SERVER="${REPO_DIR}/tools/browser-server"
 
 # --- Step 1: Remove native skills ---
 echo "Removing native skills..."
@@ -102,6 +103,13 @@ fi
 if [[ -d "${MCP_STATE_SERVER}/.venv" ]]; then
     rm -rf "${MCP_STATE_SERVER}/.venv"
     echo "  Removed state-server venv"
+    mcp_cleaned=$((mcp_cleaned + 1))
+fi
+
+# browser-server
+if [[ -d "${MCP_BROWSER_SERVER}/.venv" ]]; then
+    rm -rf "${MCP_BROWSER_SERVER}/.venv"
+    echo "  Removed browser-server venv"
     mcp_cleaned=$((mcp_cleaned + 1))
 fi
 

@@ -36,17 +36,6 @@ authorization.
 Use `-k -no-pass` (Impacket) or `--use-kcache` (NetExec) for all operations
 with forged tickets.
 
-## Mode
-
-Check if the user or orchestrator has set a mode:
-- **Guided** (default): Before executing any command that sends traffic to a
-  target, present it and wait for user approval. Explain each ticket type and
-  OPSEC trade-offs. Help choose the right ticket type. Ask before injecting.
-- **Autonomous**: Assess available key material, forge the most OPSEC-safe
-  ticket type, inject, and verify access. Report at milestones.
-
-If unclear, default to guided.
-
 ## Engagement Logging
 
 Check for `./engagement/` directory. If absent, proceed without logging.

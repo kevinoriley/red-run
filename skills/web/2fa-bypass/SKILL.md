@@ -34,22 +34,6 @@ backup code) after password authentication. The goal is to access accounts
 without providing a valid second factor. All testing is under explicit written
 authorization.
 
-## Mode
-
-Check if the user or orchestrator has set a mode:
-- **Guided** (default): Before executing any command that sends traffic to a
-  target, present the command with a one-line explanation of what it does and
-  why. Wait for explicit user approval before executing. Never batch multiple
-  target-touching commands without approval — present them one at a time (or as
-  a small logical group if they achieve a single objective, e.g., "enumerate SMB
-  shares"). Local-only operations (file writes, output parsing, engagement
-  logging, hash cracking) do not require approval. At decision forks, present
-  options and let the user choose.
-- **Autonomous**: Test all bypass techniques systematically. Exploit confirmed
-  bypasses for account access. Report at milestones.
-
-If unclear, default to guided.
-
 ## Engagement Logging
 
 Check for `./engagement/` directory. If absent, proceed without logging.
@@ -80,6 +64,21 @@ and records state changes. Your return summary must include:
 - Vulnerabilities confirmed (with status and severity)
 - Pivot paths identified (what leads where)
 - Blocked items (what failed and why, whether retryable)
+
+## Web Interaction
+
+2FA bypass testing involves multi-step form progression — **browser tools
+handle the login → 2FA flow naturally**.
+
+- **`browser_fill`** / **`browser_click`** for login form → 2FA code entry
+  progression (username/password first, then 2FA code field)
+- **`browser_cookies`** for session state inspection between authentication
+  stages (pre-2FA vs post-2FA cookies)
+- **`browser_evaluate`** to inspect client-side validation logic (e.g.,
+  `document.querySelector('form').onsubmit` to check for client-side OTP
+  validation that can be bypassed)
+- **curl** for response manipulation, direct navigation bypass attempts, and
+  brute-force scripting
 
 ## Prerequisites
 

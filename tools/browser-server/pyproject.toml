@@ -1,0 +1,18 @@
+[project]
+name = "red-run-browser-server"
+version = "0.1.0"
+description = "MCP server providing headless browser automation for Claude Code subagents"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp[cli]>=1.4.1",
+    "playwright>=1.49.0",
+    "markdownify>=0.14.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]

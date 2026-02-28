@@ -46,18 +46,6 @@ written authorization.
 ccache. Use `-k -no-pass` (Impacket), `--use-kcache` (NetExec), `-k` (bloodyAD,
 Certipy) throughout. Shadow credentials + PKINIT is natively Kerberos.
 
-## Mode
-
-Check if the user or orchestrator has set a mode:
-- **Guided** (default): Before executing any command that sends traffic to a
-  target, present it and wait for user approval. Explain each ACL right and
-  what it enables. Present exploitation options ranked by OPSEC. Ask before
-  modifying AD objects.
-- **Autonomous**: Enumerate ACLs, identify the highest-impact path, exploit it.
-  Clean up modified attributes. Pause before password resets (destructive).
-
-If unclear, default to guided.
-
 ## Engagement Logging
 
 Check for `./engagement/` directory. If absent, proceed without logging.
