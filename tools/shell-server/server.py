@@ -1,7 +1,8 @@
-"""MCP server managing TCP listeners and reverse shell sessions.
+"""MCP server managing TCP listeners, reverse shell sessions, and local processes.
 
-Provides six tools:
+Provides seven tools:
 - start_listener: Start TCP listener, wait for reverse shell connection
+- start_process: Spawn a local interactive process in a PTY
 - send_command: Send command to session, return output
 - read_output: Read buffered output without sending a command
 - stabilize_shell: Upgrade raw shell to interactive PTY
@@ -9,9 +10,10 @@ Provides six tools:
 - close_session: Close session/listener, optionally save transcript
 
 Solves the persistent shell problem — Claude Code's Bash tool runs each command
-as a separate process, so interactive reverse shells and privesc tools that
-spawn new shells (PwnKit, kernel exploits) have no way to connect back. This
-server manages long-lived TCP sessions that persist across tool calls.
+as a separate process, so interactive reverse shells, privesc tools, and
+credential-based access tools (evil-winrm, psexec.py, ssh) have no way to
+maintain state between calls. This server manages long-lived sessions (both
+remote TCP and local PTY) that persist across tool calls.
 
 Usage:
     uv run python server.py
@@ -20,10 +22,17 @@ Usage:
 from __future__ import annotations
 
 import atexit
+import fcntl
 import json
+import os
+import pty
 import re
 import select
+import signal
 import socket
+import struct
+import subprocess
+import termios
 import threading
 import time
 import uuid
@@ -68,10 +77,14 @@ class Listener:
 @dataclass
 class Session:
     session_id: str
-    conn: socket.socket
+    conn: socket.socket | None
     remote_addr: tuple[str, int]
     port: int
     label: str
+    session_type: str = "remote"  # "remote" | "local"
+    master_fd: int | None = None  # PTY master fd (local only)
+    process: subprocess.Popen | None = None  # subprocess handle (local only)
+    command: str = ""  # original command (local only)
     pty: bool = False
     prompt_pattern: str = ""
     status: str = "connected"  # "connected" | "stabilized" | "closed"
@@ -84,25 +97,31 @@ class Session:
         self.transcript.append((ts, direction, data))
 
     def send(self, data: str) -> None:
-        self.conn.sendall(data.encode())
+        if self.session_type == "local":
+            os.write(self.master_fd, data.encode())
+        else:
+            self.conn.sendall(data.encode())
         self.log("send", data)
 
     def recv(self, timeout: float = DEFAULT_READ_TIMEOUT) -> str:
-        """Read available data from socket with timeout."""
+        """Read available data from socket or PTY with timeout."""
         chunks: list[str] = []
         deadline = time.monotonic() + timeout
+        fd = self.master_fd if self.session_type == "local" else self.conn
         while True:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 break
-            ready, _, _ = select.select([self.conn], [], [], min(remaining, 0.5))
+            ready, _, _ = select.select([fd], [], [], min(remaining, 0.5))
             if not ready:
-                # If we already have data and nothing more is coming, return it
                 if chunks:
                     break
                 continue
             try:
-                chunk = self.conn.recv(RECV_SIZE)
+                if self.session_type == "local":
+                    chunk = os.read(self.master_fd, RECV_SIZE)
+                else:
+                    chunk = self.conn.recv(RECV_SIZE)
             except (ConnectionError, OSError):
                 break
             if not chunk:
@@ -116,7 +135,7 @@ class Session:
         return result
 
     def drain(self, timeout: float = 0.5) -> str:
-        """Drain any pending output from the socket."""
+        """Drain any pending output from the socket or PTY."""
         return self.recv(timeout=timeout)
 
 
@@ -149,8 +168,10 @@ def create_server() -> FastMCP:
     mcp = FastMCP(
         "red-run-shell-server",
         instructions=(
-            "Manages TCP listeners and reverse shell sessions for red-run "
-            "subagents. Use start_listener to catch reverse shells, "
+            "Manages TCP listeners, reverse shell sessions, and local "
+            "interactive processes for red-run subagents. Use start_listener "
+            "to catch reverse shells, start_process to spawn local "
+            "interactive tools (evil-winrm, msfconsole, ssh, psexec.py), "
             "send_command to execute commands in sessions, stabilize_shell "
             "to upgrade to PTY, and close_session to clean up."
         ),
@@ -160,10 +181,21 @@ def create_server() -> FastMCP:
     sessions: dict[str, Session] = {}
 
     def _cleanup() -> None:
-        """Close all sockets on exit."""
+        """Close all sockets and processes on exit."""
         for session in sessions.values():
             try:
-                session.conn.close()
+                if session.session_type == "local" and session.process:
+                    try:
+                        os.killpg(os.getpgid(session.process.pid), signal.SIGTERM)
+                        session.process.wait(timeout=5)
+                    except (ProcessLookupError, ChildProcessError):
+                        pass
+                    except subprocess.TimeoutExpired:
+                        os.killpg(os.getpgid(session.process.pid), signal.SIGKILL)
+                    if session.master_fd is not None:
+                        os.close(session.master_fd)
+                elif session.conn:
+                    session.conn.close()
             except Exception:
                 pass
         for listener in listeners.values():
@@ -301,6 +333,110 @@ def create_server() -> FastMCP:
         }, indent=2)
 
     @mcp.tool()
+    def start_process(
+        command: str,
+        label: str = "",
+        timeout: int = 30,
+    ) -> str:
+        """Spawn a local interactive process in a PTY.
+
+        Starts a local command (e.g., msfconsole, evil-winrm, ssh,
+        psexec.py) in a persistent PTY session. Interact with it using
+        send_command and read_output, just like a reverse shell session.
+
+        Args:
+            command: Command to run (e.g., "msfconsole -q",
+                     "evil-winrm -i 10.10.10.5 -u admin -p pass",
+                     "ssh user@target").
+            label: Optional label for this session (e.g., "msfconsole",
+                   "evil-winrm-dc01"). Used in transcript filenames.
+            timeout: Seconds to wait for the process to start and produce
+                     initial output (default 30).
+        """
+        session_id = str(uuid.uuid4())[:8]
+        effective_label = label or command.split()[0].split("/")[-1]
+
+        try:
+            master_fd, slave_fd = pty.openpty()
+
+            # Set terminal size on master
+            fcntl.ioctl(
+                master_fd,
+                termios.TIOCSWINSZ,
+                struct.pack("HHHH", 50, 200, 0, 0),
+            )
+
+            proc = subprocess.Popen(
+                command,
+                shell=True,
+                stdin=slave_fd,
+                stdout=slave_fd,
+                stderr=slave_fd,
+                preexec_fn=os.setsid,
+                close_fds=True,
+            )
+
+            # Parent only uses master — close slave
+            os.close(slave_fd)
+
+        except Exception as e:
+            return f"ERROR: Failed to start process — {e}"
+
+        # Wait for initial output
+        time.sleep(2.0)
+
+        # Check if process exited immediately
+        if proc.poll() is not None:
+            # Read any output before returning error
+            try:
+                ready, _, _ = select.select([master_fd], [], [], 1.0)
+                output = ""
+                if ready:
+                    output = os.read(master_fd, RECV_SIZE).decode(errors="replace")
+                os.close(master_fd)
+            except Exception:
+                output = ""
+            return (
+                f"ERROR: Process exited immediately with code "
+                f"{proc.returncode}.\nOutput: {output}"
+            )
+
+        session = Session(
+            session_id=session_id,
+            conn=None,
+            remote_addr=("local", proc.pid),
+            port=0,
+            label=effective_label,
+            session_type="local",
+            master_fd=master_fd,
+            process=proc,
+            command=command,
+            pty=True,
+        )
+
+        # Drain initial output (banner, MOTD, etc.)
+        session.drain(timeout=2.0)
+
+        # Detect prompt
+        prompt = _detect_prompt(session)
+        session.prompt_pattern = prompt
+
+        sessions[session_id] = session
+
+        return json.dumps({
+            "session_id": session_id,
+            "status": "connected",
+            "pid": proc.pid,
+            "command": command,
+            "label": effective_label,
+            "prompt_pattern": prompt,
+            "message": (
+                f"Process started (PID {proc.pid}). Use send_command() to "
+                f"interact and close_session() to terminate."
+            ),
+        }, indent=2)
+
+    @mcp.tool()
     def send_command(
         session_id: str,
         command: str,
@@ -313,7 +449,8 @@ def create_server() -> FastMCP:
         detected, the expect pattern is matched, or timeout is reached.
 
         Args:
-            session_id: Session ID from start_listener or list_sessions.
+            session_id: Session ID from start_listener, start_process, or
+                        list_sessions.
             command: Shell command to execute (e.g., "id", "cat /etc/passwd").
             timeout: Seconds to wait for command output (default 10).
             expect: Optional regex pattern — stop reading when this matches
@@ -327,6 +464,12 @@ def create_server() -> FastMCP:
         session = sessions[session_id]
         if session.status == "closed":
             return f"ERROR: Session '{session_id}' is closed."
+
+        if session.session_type == "local" and session.process.poll() is not None:
+            session.status = "closed"
+            return (
+                f"ERROR: Process exited with code {session.process.returncode}."
+            )
 
         with session._lock:
             # Drain any leftover output
@@ -370,11 +513,6 @@ def create_server() -> FastMCP:
                 break
 
         result = "".join(chunks)
-
-        # Strip the echoed command from the first line
-        lines = result.split("\n")
-        if lines and lines[0].strip().endswith(session_id if False else ""):
-            lines = lines[1:]
 
         return result.strip()
 
@@ -496,7 +634,7 @@ def create_server() -> FastMCP:
                 session.drain(timeout=0.5)
                 session.send(f"{cmd}\n")
                 time.sleep(1.5)
-                output = session.drain(timeout=2.0)
+                session.drain(timeout=2.0)
 
                 # Check if we got a new prompt (indicates PTY spawned)
                 session.send(f"{PROBE_COMMAND}\n")
@@ -562,16 +700,25 @@ def create_server() -> FastMCP:
             })
 
         for sid, session in sessions.items():
-            result["sessions"].append({
+            if session.session_type == "local":
+                addr = f"local (PID {session.remote_addr[1]})"
+            else:
+                addr = f"{session.remote_addr[0]}:{session.remote_addr[1]}"
+            entry = {
                 "session_id": sid,
-                "remote_addr": f"{session.remote_addr[0]}:{session.remote_addr[1]}",
-                "port": session.port,
+                "session_type": session.session_type,
+                "remote_addr": addr,
                 "label": session.label,
                 "status": session.status,
                 "pty": session.pty,
                 "connected_at": session.connected_at.isoformat(),
                 "transcript_lines": len(session.transcript),
-            })
+            }
+            if session.session_type == "local":
+                entry["command"] = session.command
+            else:
+                entry["port"] = session.port
+            result["sessions"].append(entry)
 
         if not result["listeners"] and not result["sessions"]:
             return "No listeners or sessions. Use start_listener() to begin."
@@ -608,7 +755,23 @@ def create_server() -> FastMCP:
                     _save_transcript(session, transcript_path)
 
             try:
-                session.conn.close()
+                if session.session_type == "local" and session.process:
+                    try:
+                        pgid = os.getpgid(session.process.pid)
+                        os.killpg(pgid, signal.SIGTERM)
+                        session.process.wait(timeout=5)
+                    except (ProcessLookupError, ChildProcessError):
+                        pass
+                    except subprocess.TimeoutExpired:
+                        try:
+                            os.killpg(pgid, signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
+                    if session.master_fd is not None:
+                        os.close(session.master_fd)
+                        session.master_fd = None
+                elif session.conn:
+                    session.conn.close()
             except Exception:
                 pass
             session.status = "closed"
@@ -642,8 +805,12 @@ def create_server() -> FastMCP:
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w") as f:
             f.write(f"# Shell Transcript — {session.label}\n")
-            f.write(f"# Remote: {session.remote_addr[0]}:{session.remote_addr[1]}\n")
-            f.write(f"# Port: {session.port}\n")
+            if session.session_type == "local":
+                f.write(f"# Process: PID {session.remote_addr[1]}\n")
+                f.write(f"# Command: {session.command}\n")
+            else:
+                f.write(f"# Remote: {session.remote_addr[0]}:{session.remote_addr[1]}\n")
+                f.write(f"# Port: {session.port}\n")
             f.write(f"# Connected: {session.connected_at.isoformat()}\n")
             f.write(f"# PTY: {session.pty}\n")
             f.write(f"# Lines: {len(session.transcript)}\n\n")

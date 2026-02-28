@@ -460,7 +460,7 @@ Based on recon results, categorize the attack surface:
 | Mail | SMTP (25/587), IMAP (143/993) | Credential attacks, phishing |
 | SMB vulnerability | SMB (445) + confirmed CVE (MS08-067, MS17-010, SMBGhost, MS09-050) | network-recon-agent → `smb-exploitation` |
 | File shares | SMB (445), NFS (2049) | Enumeration, sensitive files |
-| Remote access | SSH (22), RDP (3389), WinRM (5985) | ad-exploit-agent → `password-spraying` |
+| Remote access | SSH (22), RDP (3389), WinRM (5985/5986) | ad-exploit-agent → `password-spraying` |
 | Custom services | Non-standard ports | Manual investigation |
 
 **In guided mode**: Present the attack surface map and ask which paths to
@@ -545,6 +545,23 @@ Common chains that produce shell access on a host:
 > If the target has no outbound connectivity, fall back to inline command
 > execution and note the limitation via `add_blocked()`. If the subagent has
 > shell-server MCP access, it can call these tools directly.
+>
+> **1b. Credential-based access — use `start_process`.**
+> When the chain produces credentials rather than a callback, and the
+> relevant service port is open (check engagement state):
+> 1. WinRM (5985/5986): `start_process(command="evil-winrm -i TARGET -u user -p pass")`
+> 2. SMB (445): `start_process(command="psexec.py DOMAIN/user:pass@TARGET")`
+> 3. WMI (135): `start_process(command="wmiexec.py DOMAIN/user:pass@TARGET")`
+> 4. SSH (22): `start_process(command="ssh user@TARGET")`
+> 5. Verify: `send_command(session_id=..., command="whoami")`
+> 6. Route to discovery as with reverse shells
+>
+> **Decision:** Have credentials + service port open? → `start_process`.
+> Need callback from RCE? → `start_listener`.
+>
+> **File transfer via evil-winrm:** When WinRM is available (5985/5986 open),
+> prefer evil-winrm for transferring tools and scripts to Windows targets.
+> Its `upload`/`download` commands are more reliable than SMB file transfer.
 >
 > **2. Route to the appropriate discovery skill.**
 > Do NOT run `sudo -l`, `find -perm -4000`, `whoami /priv`, `net user`, or any

@@ -32,7 +32,7 @@ Agent source files live in `agents/` (version controlled), installed to `~/.clau
 |--------|----------|-------|---------|
 | skill-router | `tools/skill-router/` | `search_skills`, `get_skill`, `list_skills` | Semantic skill discovery and loading |
 | nmap-server | `tools/nmap-server/` | `nmap_scan`, `get_scan`, `list_scans` | Dockerized nmap scanning with input validation |
-| shell-server | `tools/shell-server/` | `start_listener`, `send_command`, `read_output`, `stabilize_shell`, `list_sessions`, `close_session` | TCP listener and reverse shell session manager |
+| shell-server | `tools/shell-server/` | `start_listener`, `start_process`, `send_command`, `read_output`, `stabilize_shell`, `list_sessions`, `close_session` | TCP listener, reverse shell, and local interactive process manager |
 | state-reader | `tools/state-server/` | `get_state_summary`, `get_targets`, `get_credentials`, `get_access`, `get_vulns`, `get_pivot_map`, `get_blocked` | Read-only engagement state queries (subagents) |
 | state-writer | `tools/state-server/` | All read tools + `init_engagement`, `close_engagement`, `add_target`, `add_port`, `add_credential`, `add_access`, `add_vuln`, `add_pivot`, `add_blocked`, and update variants | Full engagement state management (orchestrator only) |
 
@@ -42,7 +42,7 @@ The skill-router is backed by ChromaDB + sentence-transformer embeddings (`all-M
 
 The nmap-server runs nmap inside a Docker container (`--network=host`, minimal capabilities) and returns parsed JSON. All inputs are validated before reaching subprocess. Requires Docker.
 
-The shell-server manages TCP listeners and reverse shell sessions. It solves the persistent shell problem — Claude Code's Bash tool runs each command as a separate process, so interactive shells and privilege escalation tools that spawn new shells have no way to connect back.
+The shell-server manages TCP listeners, reverse shell sessions, and local interactive processes. It solves the persistent shell problem — Claude Code's Bash tool runs each command as a separate process, so interactive shells, privilege escalation tools, and credential-based access tools (evil-winrm, psexec.py, ssh, msfconsole) have no way to maintain state between calls.
 
 ### Modes
 - **Guided** (default): Interactive. Every command that touches the target

@@ -84,6 +84,26 @@ catch a shell via shell-server rather than continuing to inject commands through
 the web vulnerability. Interactive shells are more reliable, faster, and
 required for privilege escalation tools that spawn new shells.
 
+## Interactive Processes via MCP
+
+Use `start_process` to spawn local interactive tools in a persistent PTY.
+This is for tools that need session persistence — credential-based access
+tools, exploit frameworks, and tools that maintain state between commands.
+
+- `start_process(command="<tool>", label="<label>")` — spawn the process
+- `send_command(session_id=..., command=...)` — interact with it
+- `read_output(session_id=...)` — check for async output
+- `close_session(session_id=..., save_transcript=true)` — clean up
+
+**When to use which:**
+
+| Scenario | Tool |
+|----------|------|
+| Target sends reverse shell callback | `start_listener` |
+| Have credentials + service port open | `start_process` |
+| Exploit framework (msfconsole) | `start_process` |
+| Single non-interactive command | Bash |
+
 ## Engagement Files
 
 - **State**: Call `get_state_summary()` from the state-reader MCP to read
