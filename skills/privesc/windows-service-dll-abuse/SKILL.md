@@ -568,6 +568,47 @@ Do not loop. Work through failures systematically:
   technique — the orchestrator will decide whether to revisit with new context
   or route elsewhere.
 
+## AV/EDR Detection
+
+If a payload is caught by antivirus or EDR — **do not retry with a different
+msfvenom flag or trivial modification. That is not progress.**
+
+### Recognition Signals (Service/DLL Abuse)
+
+- **DLL disappears after drop**: Wrote DLL to writable directory but it's gone
+  seconds later — AV quarantined it
+- **Service starts but payload doesn't execute**: `sc start` returns
+  successfully, service is running, but no shell callback and no user created
+- **`sc start` returns error 1066 or 1067**: Service binary was caught and
+  neutralized — the service process terminated abnormally
+- **Process starts then dies immediately**: The service spawns the process but
+  AV/EDR kills it within 1-2 seconds
+- **"Operation did not complete successfully because the file contains a virus"**:
+  Explicit AV detection on the payload file
+- **DLL written via evil-winrm upload but gone on verification**: Real-time
+  protection quarantined during or after transfer
+
+### What to Do
+
+1. **Stop immediately** — do not retry the same payload type
+2. **Note what was caught**: DLL or EXE, generation method (msfvenom, custom),
+   exact error or behavior
+3. **Return to orchestrator** with structured AV-blocked context:
+
+```
+### AV/EDR Blocked
+- Payload: <what was attempted> (e.g., "msfvenom x64 DLL reverse shell")
+- Detection: <what happened> (e.g., "DLL quarantined within 2 seconds of write")
+- AV product: <if known> (e.g., "Windows Defender")
+- Technique: <what service/DLL exploit needs> (e.g., "DLL hijack for FakeService")
+- Payload requirements: <what the exploit needs> (e.g., "x64 DLL with DllMain entry point")
+- Target OS: <version>
+- Current access: <user and method>
+```
+
+The orchestrator will route to **av-edr-evasion** to build a bypass payload,
+then re-invoke this skill with the AV-safe artifact.
+
 ## Troubleshooting
 
 ### "Access denied" when modifying service

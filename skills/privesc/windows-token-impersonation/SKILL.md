@@ -520,6 +520,45 @@ Do not loop. Work through failures systematically:
   technique — the orchestrator will decide whether to revisit with new context
   or route elsewhere.
 
+## AV/EDR Detection
+
+If a payload or tool binary is caught by antivirus or EDR — **do not retry
+with a different binary name or trivial modification. That is not progress.**
+
+### Recognition Signals (Token Impersonation)
+
+- **Potato binary blocked on execution**: File exists but "Access denied" or
+  "This program has been blocked by your administrator" on execution
+- **"Not a valid Win32 application"** when the binary IS valid: AV mangled the
+  PE headers during quarantine or on-access scan
+- **Binary deleted on transfer**: Uploaded Potato/exploit binary but it's gone
+  moments later — real-time protection quarantined it
+- **Process dies immediately after start**: Potato starts but is killed within
+  1-2 seconds with no output — behavioral detection
+- **PrintSpoofer/GodPotato exit silently**: Tool returns no output and no error
+  — EDR intercepted the token manipulation
+
+### What to Do
+
+1. **Stop immediately** — do not retry with the same binary or a different
+   Potato variant (they share signatures)
+2. **Note what was caught**: which binary, which Potato variant, exact error
+3. **Return to orchestrator** with structured AV-blocked context:
+
+```
+### AV/EDR Blocked
+- Payload: <what was attempted> (e.g., "GodPotato.exe for SeImpersonate abuse")
+- Detection: <what happened> (e.g., "binary deleted on transfer")
+- AV product: <if known> (e.g., "CrowdStrike Falcon")
+- Technique: <what token exploit needs> (e.g., "SeImpersonate → SYSTEM")
+- Payload requirements: <what is needed> (e.g., "EXE that executes command as SYSTEM")
+- Target OS: <version>
+- Current access: <user and method>
+```
+
+The orchestrator will route to **av-edr-evasion** to build a bypass payload,
+then re-invoke this skill with the AV-safe artifact.
+
 ## Troubleshooting
 
 ### Potato says "authresult 0" but no shell spawns

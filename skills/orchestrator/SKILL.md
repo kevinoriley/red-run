@@ -136,6 +136,7 @@ every routing decision.
 | `ad-exploit-agent` | AD exploitation | skill-router, shell-server, state-reader | All AD technique skills |
 | `linux-privesc-agent` | Linux privesc | skill-router, shell-server, state-reader | Linux discovery + technique skills, container escapes |
 | `windows-privesc-agent` | Windows privesc | skill-router, shell-server, state-reader | Windows discovery + technique skills |
+| `evasion-agent` | AV/EDR evasion | skill-router, shell-server, state-reader | AV bypass payload generation |
 
 **How to delegate:**
 
@@ -205,6 +206,7 @@ Use this table to pick the right agent for each skill:
 | windows-discovery | windows-privesc-agent | Windows host enum |
 | windows-token-impersonation, windows-service-dll-abuse, windows-uac-bypass | windows-privesc-agent | Windows privesc |
 | windows-credential-harvesting, windows-kernel-exploits | windows-privesc-agent | Windows privesc |
+| av-edr-evasion | evasion-agent | AV/EDR bypass payload generation |
 | credential-cracking | _(inline — no agent needed)_ | Local-only, no target interaction |
 | retrospective | _(inline — no agent needed)_ | Post-engagement, no target interaction |
 
@@ -667,6 +669,54 @@ reason:
    - KRB_AP_ERR_SKEW detected during <skill-name>
    - Clock synced via ntpdate, retrying skill
    ```
+
+### AV Evasion Recovery
+
+When a technique agent returns with an "AV/EDR Blocked" section in its summary:
+
+1. Record the blocked technique via `add_blocked()`:
+   - technique: the original skill name
+   - reason: "Payload caught by AV/EDR: \<details from agent return\>"
+   - host: target host
+   - retry: "with_context" (retryable after evasion)
+
+2. Spawn **evasion-agent** with skill `av-edr-evasion`:
+   ```
+   Task(
+       subagent_type="evasion-agent",
+       prompt="Load skill 'av-edr-evasion'. Context: <paste AV-blocked section
+       from agent return>. Build an AV-safe payload that meets the requirements.
+       Target: <IP>. Mode: <mode>.",
+       description="AV evasion for <technique> on <target>"
+   )
+   ```
+
+3. When evasion-agent returns with bypass artifact:
+   - Record the bypass method in `engagement/activity.md`
+   - Re-invoke the **original agent** with the **same skill** plus evasion context:
+     ```
+     Task(
+         subagent_type="<original-agent>",
+         prompt="Load skill '<original-skill>'. Target: <IP>. Mode: <mode>.
+         IMPORTANT: Your previous payload was caught by AV. Use this AV-safe
+         payload instead: <artifact path>. Method: <bypass method>.
+         Runtime prerequisites: <if any, e.g., AMSI bypass command>.
+         Do NOT generate a new payload — use the provided one.",
+         description="Retry <technique> with AV-safe payload on <target>"
+     )
+     ```
+
+4. If the evasion agent itself fails (no bypass found), record as permanently
+   blocked via `add_blocked()` with retry: "no" and move to the next attack
+   vector.
+
+5. Log to `engagement/activity.md`:
+   ```
+   ### [YYYY-MM-DD HH:MM:SS] orchestrator → av-evasion recovery
+   - AV blocked <skill-name> on <target>: <detection details>
+   - Routed to evasion-agent → <outcome>
+   ```
+
 **In guided mode**: Present the chain analysis and recommend next steps.
 Show the reasoning: "We have SQLi on the web app. We could extract credentials
 and test them against SMB, or we could try to get command execution via

@@ -1,6 +1,6 @@
 # Skills Inventory
 
-66 skills across 6 categories. All skills are `SKILL.md` files under `skills/`.
+67 skills across 7 categories. All skills are `SKILL.md` files under `skills/`.
 
 ## Web Application (33 skills)
 
@@ -94,6 +94,12 @@ All AD skills follow a **Kerberos-first authentication** convention — commands
 |-------|---------|-------|
 | `orchestrator` | Takes a target, runs recon, routes to discovery skills, chains vulnerabilities via state management | 788 |
 | `retrospective` | Post-engagement lessons-learned analysis, skill routing gaps, actionable improvements | 304 |
+
+## Evasion (1 skill)
+
+| Skill | Technique | Lines |
+|-------|-----------|-------|
+| `av-edr-evasion` | Custom payload compilation (mingw/Go), AMSI bypass, ETW patching, LOLBin execution, AV-safe payload delivery | 705 |
 
 ## Planned
 

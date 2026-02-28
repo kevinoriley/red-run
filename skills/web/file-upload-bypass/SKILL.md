@@ -536,6 +536,44 @@ Do not loop. Work through failures systematically:
 - Use innocuous filenames for initial testing (`test.jpg`, not `shell.php`)
 - Race condition exploits generate high request volume — may trigger rate limiting
 
+## AV/EDR Detection
+
+If an uploaded payload is caught by antivirus or endpoint protection — **do not
+retry with the same webshell or a trivially renamed file. That is not progress.**
+
+### Recognition Signals (File Upload)
+
+- **Uploaded file disappears**: File upload succeeds (200 response, file path
+  returned) but file is gone when accessed — AV quarantined the webshell
+- **Webshell returns 403 or 500**: File exists on disk but execution is blocked
+  — endpoint protection detecting web shell patterns in the file content
+- **Upload succeeds but shell commands fail**: Webshell renders but command
+  execution returns empty or errors — AMSI blocking script execution on the
+  server side
+- **File content is modified after upload**: File exists but content has been
+  stripped or altered — AV sanitized the malicious portions
+
+### What to Do
+
+1. **Stop immediately** — do not retry the same webshell type
+2. **Note what was caught**: webshell type (PHP/JSP/ASPX), upload method, exact
+   behavior
+3. **Return to orchestrator** with structured AV-blocked context:
+
+```
+### AV/EDR Blocked
+- Payload: <what was attempted> (e.g., "PHP system() webshell via image upload")
+- Detection: <what happened> (e.g., "uploaded file quarantined within seconds")
+- AV product: <if known> (e.g., "Windows Defender on IIS host")
+- Technique: File upload webshell
+- Payload requirements: <what is needed> (e.g., "PHP file with command execution")
+- Target OS: <version>
+- Current access: <upload method and auth context>
+```
+
+The orchestrator will route to **av-edr-evasion** to build a bypass payload,
+then re-invoke this skill with the AV-safe artifact.
+
 ## Troubleshooting
 
 ### All Extensions Rejected
