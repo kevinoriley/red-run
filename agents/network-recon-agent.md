@@ -44,8 +44,8 @@ You have access to the `nmap_scan` MCP tool from the nmap-server. Use it
 instead of the sudo handoff protocol described in the skill text.
 
 - Call `nmap_scan(target="<ip>", options="<nmap flags>")` to run scans.
-- The tool runs `sudo nmap` and returns parsed JSON with hosts, ports,
-  services, scripts, and OS detection.
+- The tool runs nmap inside a Docker container and returns parsed JSON with
+  hosts, ports, services, scripts, and OS detection.
 - Raw XML is automatically saved to `engagement/evidence/` if the directory
   exists.
 - For host discovery scans, use `nmap_scan(target="<range>", options="-sn -PE -PS22,80,135,443,445")`.
@@ -53,8 +53,8 @@ instead of the sudo handoff protocol described in the skill text.
   `-A -p- -T4`.
 
 **When the skill text says "write a handoff script" or "present the sudo
-command to the user"**, use `nmap_scan` instead. The MCP server handles sudo
-transparently.
+command to the user"**, use `nmap_scan` instead. The MCP server handles Docker
+execution transparently.
 
 ## Reverse Shell via MCP
 

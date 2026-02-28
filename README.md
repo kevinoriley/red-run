@@ -43,7 +43,7 @@ Each invocation: agent loads one skill, follows the methodology, saves evidence,
 
 **MCP servers:**
 - **skill-router** — semantic search + skill loading via ChromaDB + sentence-transformer embeddings
-- **nmap-server** — wraps `sudo nmap`, returns parsed JSON (to do: Dockerize this)
+- **nmap-server** — runs nmap inside a Docker container, returns parsed JSON with input validation
 - **shell-server** — TCP listener + reverse shell session manager
 - **state-server** — SQLite engagement state
 
@@ -125,7 +125,7 @@ The cycle is: **engage → retrospective → improve skills → engage again**. 
 
 - Linux VM with your pentesting tools installed
 - [uv](https://docs.astral.sh/uv/) — Python package manager (for MCP servers)
-- Passwordless `sudo nmap` — the install script checks for this and advises how to configure it if missing
+- [Docker](https://docs.docker.com/engine/install/) — the nmap MCP server runs scans inside a container (the install script builds the image)
 
 ### Install
 
@@ -145,7 +145,7 @@ The installer:
 2. Installs `orchestrator` as a native Claude Code skill (`~/.claude/skills/`)
 3. Installs **custom subagents** to `~/.claude/agents/`
 4. Sets up **MCP servers** — `skill-router` (ChromaDB + embeddings), `nmap-server`, `shell-server`, `state-server`
-5. Verifies project config (`.mcp.json`, settings, passwordless sudo nmap)
+5. Verifies project config (`.mcp.json`, settings, Docker for nmap)
 
 The repo must stay in place — the MCP server reads skills from `skills/` at runtime.
 

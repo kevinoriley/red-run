@@ -176,14 +176,15 @@ uv run --directory "${MCP_SKILL_ROUTER}" python indexer.py
 echo "  [nmap-server] Installing Python dependencies..."
 uv sync --directory "${MCP_NMAP_SERVER}" --quiet
 
-# Check sudo nmap availability
-if sudo -n nmap --version &>/dev/null 2>&1; then
-    echo "  [nmap-server] sudo nmap: OK"
+# Build Docker image for nmap
+if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
+    echo "  [nmap-server] Building Docker image..."
+    docker build -t red-run-nmap:latest "${MCP_NMAP_SERVER}" --quiet
+    echo "  [nmap-server] Docker image: OK"
 else
     echo ""
-    echo "  WARNING: passwordless sudo for nmap not configured."
-    echo "  The nmap MCP server requires it. Add to /etc/sudoers.d/nmap:"
-    echo "    $USER ALL=(root) NOPASSWD: /usr/bin/nmap"
+    echo "  WARNING: Docker required for nmap MCP server but not available."
+    echo "  Install Docker and ensure the daemon is running, then re-run install.sh."
     echo ""
 fi
 
@@ -217,7 +218,7 @@ echo ""
 echo "Installed ${native_count} native skill(s) to ${SKILLS_DST}/ (${MODE} mode)"
 echo "Installed ${agent_count} custom subagent(s) to ${AGENTS_DST}/"
 echo "63 technique/discovery skills served via MCP skill-router"
-echo "nmap MCP server ready (sudo nmap wrapper)"
+echo "nmap MCP server ready (Dockerized nmap)"
 echo "shell MCP server ready (TCP listener + reverse shell manager)"
 echo "state MCP server ready (SQLite engagement state)"
 if [[ "$config_warnings" -eq 0 ]]; then
