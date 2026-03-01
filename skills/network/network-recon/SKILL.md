@@ -75,13 +75,34 @@ You MUST NOT:
   **ad-discovery**
 - Perform privilege escalation enumeration or exploitation — route to
   **linux-discovery** or **windows-discovery**
-- Extract or use credentials from captured traffic or files — update state.md
+- Extract or use credentials from captured traffic or files — report in your return summary
   and return to the orchestrator
-- Establish SSH/WinRM/shell sessions for post-exploitation — update state.md
-  with credentials and return to the orchestrator
+- Establish SSH/WinRM/shell sessions for post-exploitation — report credentials
+  in your return summary and return to the orchestrator
 
-When you find credentials, access, or confirmed vulns: update state.md, log to
-activity.md, and present routing recommendations. Do not continue past recon.
+When you find credentials, access, or confirmed vulns: report them in your
+return summary and present routing recommendations. Do not continue past recon.
+
+## What This Skill Does NOT Do
+
+This skill performs **read-only network reconnaissance**. Every technique here
+should be the equivalent of nmap with `--script safe` — observing, not acting.
+
+- **Request Kerberos tickets** (TGS or AS-REP) — route to **kerberos-roasting**
+- **Test credentials against services** (WinRM, RDP, SSH login attempts) — route
+  to **password-spraying**
+- **Dump credentials from hosts** (SAM, LSASS, secretsdump, `--sam`) — route to
+  **credential-dumping**
+- **Brute force passwords** (hydra, medusa, ncrack) — route to
+  **password-spraying**
+- **Exploit confirmed vulnerabilities** — route to the appropriate technique skill
+
+**Acceptable in recon scope:**
+- Validating orchestrator-provided credentials work against SMB (confirms creds
+  are usable, not testing new creds)
+- `kerbrute userenum` (user enumeration only — does NOT request tickets)
+- `smb-vuln*` NSE scripts (vulnerability detection, not exploitation)
+- Anonymous/guest access checks (null session, guest share listing)
 
 ## State Management
 
@@ -265,13 +286,11 @@ nmap -sV -p21 --script ftp-anon,ftp-bounce,ftp-syst TARGET_IP
 # Manual anonymous check
 ftp TARGET_IP
 # login: anonymous / anonymous@
-
-# Brute force (if warranted)
-hydra -L users.txt -P passwords.txt ftp://TARGET_IP -t 4
 ```
 
 **Quick wins:** Anonymous login with write access, writable web root, config files
 with credentials, ProFTPD `mod_copy` (CVE-2019-12815), vsftpd 2.3.4 backdoor.
+FTP brute force → route to **password-spraying**.
 
 ### SSH — Port 22
 
@@ -348,16 +367,14 @@ inline.
 ```bash
 nmap -sV -p88 --script krb5-enum-users TARGET_IP
 
-# Enumerate valid usernames
+# Enumerate valid usernames (enumeration only — does NOT request tickets)
 kerbrute userenum -d DOMAIN --dc TARGET_IP /usr/share/seclists/Usernames/xato-net-10-million-usernames.txt
-
-# AS-REP Roasting (no creds needed)
-GetNPUsers.py DOMAIN/ -usersfile users.txt -dc-ip TARGET_IP -no-pass -outputfile asrep_hashes.txt
 ```
 
-**Quick wins:** AS-REP roastable accounts, valid username enumeration.
+**Quick wins:** Valid username enumeration via Kerberos pre-auth responses.
 → STOP. Return to orchestrator recommending **ad-discovery**. Pass: DC IP,
 domain name, any creds. Do not execute AD enumeration commands inline.
+Do not request Kerberos tickets (AS-REP or TGS) — that is **kerberos-roasting**.
 
 ### RPC/MSRPC — Ports 111, 135
 
@@ -602,14 +619,12 @@ psql -h TARGET_IP -U postgres -d postgres
 ### WinRM — Ports 5985, 5986
 
 ```bash
-netexec winrm TARGET_IP -u USER -p PASSWORD
-
 # Check if WinRM is available
 nmap -sV -p5985,5986 TARGET_IP
 ```
 
-**Quick wins:** Valid domain creds = remote PowerShell. Check with any discovered
-credentials.
+**Quick wins:** WinRM enables remote PowerShell with valid domain credentials.
+Credential testing against WinRM → route to **password-spraying**.
 
 ### Redis — Port 6379
 
@@ -865,7 +880,7 @@ xmlstarlet sel -t -m "//host[ports/port/state/@state='open']" \
 grep "Ports:" scan_HOSTNAME.gnmap | sed 's/Ports: //' | tr ',' '\n'
 ```
 
-**Update state.md with scan results (format per-host one-liner):**
+**Report scan results in return summary (format per-host one-liner):**
 
 ```
 ## Targets

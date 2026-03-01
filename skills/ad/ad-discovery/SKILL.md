@@ -116,6 +116,7 @@ to Kerberos authentication for all subsequent enumeration:
 
 ```bash
 # Get a TGT (password, hash, or AES key)
+# Use getTGT.py or impacket-getTGT — both are the same tool (see Troubleshooting)
 getTGT.py DOMAIN/user:'Password123'@dc.domain.local
 # or with NTLM hash
 getTGT.py DOMAIN/user@dc.domain.local -hashes :NTHASH
@@ -254,15 +255,22 @@ SOAPHound.exe -c c:\temp\cache.txt --certdump -o c:\temp\bh-output
 ### ADCS Certificate Data
 
 ```bash
-# Certipy — certificate template enumeration for BloodHound
-certipy find 'DOMAIN/user:Password123@DC01.DOMAIN.LOCAL' -bloodhound
+# Certipy — full certificate template enumeration
+certipy find 'DOMAIN/user:Password123@DC01.DOMAIN.LOCAL'
 
 # Find vulnerable templates only
 certipy find 'DOMAIN/user:Password123@DC01.DOMAIN.LOCAL' -vulnerable -hide-admins
 
 # With Kerberos
-certipy find 'DOMAIN/user@DC01.DOMAIN.LOCAL' -k -bloodhound
+certipy find 'DOMAIN/user@DC01.DOMAIN.LOCAL' -k
 ```
+
+**Certipy version notes:**
+- Certipy v5.0+ removed the `-bloodhound` flag. Run `certipy find` without it
+  — v5 outputs JSON by default. Import the JSON into BloodHound CE manually.
+- If `-vulnerable` returns 0 results, re-run without it to get the full
+  template list. Some ESC variants (ESC9-15) require manual analysis of the
+  full output rather than certipy's built-in vulnerability checks.
 
 ### BloodHound Analysis Priorities
 
@@ -547,7 +555,7 @@ When routing to a technique skill, pass along:
 - **LDAP connection refused**: Try port 636 (LDAPS) with `--ssl` flag
 - **Access denied**: Verify credentials; any domain user can run BloodHound
 - **Timeout**: Use `--CollectionMethod DCOnly` for stealthier, faster collection
-- **Missing ADCS data**: Use `certipy find -bloodhound` separately and merge
+- **Missing ADCS data**: Run `certipy find` separately and import JSON into BH CE
 
 ### Kerberos Errors
 
@@ -563,6 +571,37 @@ When routing to a technique skill, pass along:
   NTLMv2. Try `--smb2` flag
 - **Connection timed out**: Host may be down or firewalled. Try different
   protocols (LDAP, WinRM, RDP)
+
+### bloodyAD LDAP Filter Errors
+
+LDAP filters with `!` (NOT operator) can fail due to bash history expansion.
+Always use single quotes around filters, not double quotes:
+
+```bash
+# CORRECT — single quotes prevent ! expansion
+bloodyAD ... get search --filter '(!(userAccountControl:1.2.840.113556.1.4.803:=2))'
+
+# WRONG — double quotes cause bash to interpret ! as history expansion
+bloodyAD ... get search --filter "(!(userAccountControl...))"
+```
+
+If filters still fail, simplify by removing the NOT clause and filtering the
+output with `grep -v` instead.
+
+### Impacket Tool Naming
+
+Impacket tools may be installed under different names depending on the system:
+
+| Packaged (pip/apt) | Script name | Both work |
+|--------------------|-------------|-----------|
+| `impacket-getTGT` | `getTGT.py` | Same tool |
+| `impacket-GetUserSPNs` | `GetUserSPNs.py` | Same tool |
+| `impacket-GetNPUsers` | `GetNPUsers.py` | Same tool |
+| `impacket-secretsdump` | `secretsdump.py` | Same tool |
+
+If one form is not found, try the other. The `.py` form is more common on
+manually-installed Impacket; the `impacket-` prefix form comes from pip/apt
+package installations.
 
 ### No Credentials Available
 

