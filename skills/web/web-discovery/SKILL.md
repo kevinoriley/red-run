@@ -16,10 +16,13 @@ keywords:
   - start web testing
   - web app pentest
   - hunt for bugs
+  - wordpress
+  - wpscan
 tools:
   - ffuf
   - arjun
   - paramspider
+  - wpscan
   - burpsuite
 opsec: low
 ---
@@ -107,7 +110,7 @@ and records state changes. Your return summary must include:
 - Target URL or scope defined
 - Proxy configured (Burp Suite or similar)
 - Wordlists available (SecLists: `apt install seclists` or `/usr/share/seclists/`)
-- Tools: `ffuf`, `arjun` (`pip install arjun`), `paramspider` (`pip install paramspider`)
+- Tools: `ffuf`, `arjun` (`pip install arjun`), `paramspider` (`pip install paramspider`), `wpscan` (`gem install wpscan`)
 
 ## Step 1: Content Discovery
 
@@ -144,6 +147,45 @@ ffuf -c -w /usr/share/seclists/Discovery/Web-Content/api/api-endpoints.txt \
 ffuf -c -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt \
   -u https://TARGET -H "Host: FUZZ.TARGET" -mc all -fs <default-response-size>
 ```
+
+## Step 1b: CMS Detection
+
+When content discovery reveals a CMS (WordPress, Drupal, Joomla), run the
+appropriate scanner before proceeding to parameter testing. CMS-specific scanners
+find plugin/theme vulns, misconfigurations, and exposed endpoints that generic
+fuzzing will miss.
+
+**WordPress indicators:** `/wp-content/`, `/wp-admin/`, `/wp-login.php`,
+`wp-json` API, `<meta name="generator" content="WordPress`.
+
+```bash
+# Full WordPress enumeration — plugins, themes, users, config backups
+wpscan --url https://TARGET/ -e ap,at,u --api-token $WPSCAN_API_TOKEN
+
+# Without API token (still finds outdated versions and exposed files)
+wpscan --url https://TARGET/ -e ap,at,u
+
+# Aggressive plugin detection (slower, catches less common plugins)
+wpscan --url https://TARGET/ -e ap --plugins-detection aggressive
+
+# Password brute-force against discovered users
+wpscan --url https://TARGET/ -U users.txt -P /usr/share/wordlists/rockyou.txt
+```
+
+**What to do with findings:**
+- Vulnerable plugin/theme with known exploit → route through Step 4 by
+  vulnerability type (SQLi, LFI, RCE, file upload, etc.)
+- `wp-config.php` backup found → extract DB credentials, report in return
+  summary
+- XML-RPC enabled (`/xmlrpc.php` returns 405) → route to credential brute-force
+  via `system.multicall` amplification
+- User enumeration successful → report usernames for password spraying
+- WordPress admin access gained → route to **file-upload-bypass** (theme editor
+  allows PHP upload) or **command-injection** (plugin installer)
+
+**Drupal/Joomla:** No dedicated scanner in the standard toolkit. Use `nuclei`
+with CMS-specific templates and continue with standard parameter/injection
+testing.
 
 ## Step 2: Parameter Discovery
 

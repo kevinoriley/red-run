@@ -23,6 +23,7 @@ tools:
   - httpx
   - NetExec
   - enum4linux-ng
+  - MANSPIDER
   - snmpwalk
   - onesixtyone
 opsec: medium
@@ -177,7 +178,7 @@ network traffic.
 
 **Non-privileged commands** that CAN be executed directly by Claude for
 **post-scan** service enumeration (only AFTER nmap results are parsed):
-- `httpx`, `netexec`, `nuclei`, `whatweb`, `gobuster`, `ffuf`
+- `httpx`, `netexec`, `nuclei`, `whatweb`, `ffuf`
 - `ldapsearch`, `smbclient`, `rpcclient`, `snmpwalk`
 
 **Autonomous mode:** Batch all pending privileged commands so the user can run
@@ -466,6 +467,30 @@ for share in ADMIN$ C$ IPC$ SYSVOL NETLOGON Development Users Backups Public Dat
     smbclient //TARGET_IP/"$share" -N -c 'ls' 2>&1 | head -20
 done
 ```
+
+**Step 6 — Content search with MANSPIDER.** After identifying accessible shares,
+search file contents for credentials, configs, and sensitive data. MANSPIDER
+crawls SMB shares and greps file contents (including Office docs, PDFs, and
+archives) without downloading everything.
+
+```bash
+# Search all shares on target for passwords and credentials
+manspider TARGET_IP -c password passwd cred secret
+manspider TARGET_IP -c connectionstring server= uid= pwd=
+
+# Search with regex for common credential patterns
+manspider TARGET_IP -e '(password|passwd|pwd)\s*[=:]\s*\S+'
+manspider TARGET_IP -e '(api[_-]?key|token)\s*[=:]\s*\S+'
+
+# Limit to specific file types (configs, scripts, office docs)
+manspider TARGET_IP -e 'password' -f xml conf config ini txt ps1 bat vbs
+
+# With credentials (if available from earlier enumeration)
+manspider TARGET_IP -u 'user' -p 'Password123' -d DOMAIN -c password secret
+```
+
+Only run MANSPIDER after the share access table is complete — it needs at least
+one readable share to be useful. If all shares returned DENIED, skip this step.
 
 **Quick wins:** Null session (user enum, share listing), guest access to shares,
 writable shares (web root, SYSVOL), EternalBlue (MS17-010), SMBGhost
