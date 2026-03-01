@@ -1,7 +1,7 @@
 # shell MCP Server
 
 MCP server managing TCP listeners, reverse shell sessions, and local interactive
-processes for red-run subagents. Solves the persistent shell problem — Claude
+processes for red-run agents. Solves the persistent shell problem — Claude
 Code's Bash tool runs each command as a separate process, so interactive shells,
 privilege escalation tools, and credential-based access tools (evil-winrm,
 psexec.py, ssh, msfconsole) have no way to maintain state between calls.

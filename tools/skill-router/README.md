@@ -1,7 +1,7 @@
 # skill-router MCP Server
 
 MCP server providing semantic skill discovery and retrieval for red-run
-subagents. Skills are indexed from structured YAML frontmatter into ChromaDB
+agents. Skills are indexed from structured YAML frontmatter into ChromaDB
 with sentence-transformer embeddings, enabling natural language search across
 the entire skill library.
 

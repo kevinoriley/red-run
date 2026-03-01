@@ -20,9 +20,7 @@ __pycache__/
 
 # MCP servers
 tools/skill-router/.chromadb/
-tools/skill-router/tools/
-tools/skill-router/uv.lock
-tools/nmap-server/uv.lock
+tools/*/uv.lock
 
 # Claude Code local state
 .claude/agents
@@ -49,9 +47,3 @@ refs
 loot/
 evidence/
 engagement/
-
-# Local planning files
-task_plan.md
-progress.md
-findings.md
-archive/

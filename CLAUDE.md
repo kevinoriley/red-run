@@ -72,7 +72,7 @@ enforce mode — the orchestrator is the only component that uses it.
 
 ### Inter-Skill Routing
 
-The orchestrator makes every routing decision. When a skill says "Route to **skill-name**", the orchestrator looks up the correct domain agent in the Skill-to-Agent Routing Table and spawns it with that skill. Context (injection point, target technology, mode, working payloads) is passed in the Task prompt.
+The orchestrator makes every routing decision. When a skill says "Route to **skill-name**", the orchestrator looks up the correct agent in the Skill-to-Agent Routing Table and spawns it with that skill. Context (injection point, target technology, mode, working payloads) is passed in the Task prompt.
 
 **Mandatory skill loading**: When a skill says "Route to **skill-name**", that skill MUST be loaded via `get_skill()` — either by a subagent or inline. Never execute a technique without loading the matching skill. Skills contain methodology, edge cases, payloads, and troubleshooting that general knowledge does not. This applies in both guided and autonomous modes.
 
@@ -108,7 +108,7 @@ engagement/
   transcripts from domain subagents into `engagement/evidence/logs/`.
 - Filename format: `{ISO-timestamp}-{agent-type}.jsonl` (e.g.,
   `20260227T143052Z-web-exploit-agent.jsonl`).
-- Only triggers for red-run domain agents (network-recon, web-discovery,
+- Only triggers for red-run agents (network-recon, web-discovery,
   web-exploit, ad-discovery, ad-exploit, password-spray, linux-privesc,
   windows-privesc) — not built-in subagents (Explore, Plan, general-purpose).
 - No engagement directory = hook exits silently. No logging, no errors.

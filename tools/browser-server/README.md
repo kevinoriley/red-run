@@ -1,6 +1,6 @@
 # browser MCP Server
 
-MCP server providing headless browser automation for red-run subagents. Solves
+MCP server providing headless browser automation for red-run agents. Solves
 the web interaction problem — curl can't handle CSRF tokens, session rotation,
 JavaScript-rendered forms, or multi-step authentication flows. Each session
 maintains its own cookie jar and localStorage across tool calls.
