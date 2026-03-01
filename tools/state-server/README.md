@@ -2,7 +2,7 @@
 
 MCP server providing SQLite-backed engagement state management for red-run.
 Runs as two instances from the same codebase — a read-only `state-reader` for
-subagents and a read-write `state-writer` for the orchestrator. Both open the
+agents and a read-write `state-writer` for the orchestrator. Both open the
 same `engagement/state.db`.
 
 ## Prerequisites
@@ -19,7 +19,7 @@ The server runs as an MCP server, started automatically by Claude Code via
 `.mcp.json`. Two instances are configured — one per mode:
 
 ```bash
-# Read-only (subagents)
+# Read-only (agents)
 uv run --directory tools/state-server python server.py --mode read
 
 # Read + write (orchestrator)
@@ -28,7 +28,7 @@ uv run --directory tools/state-server python server.py --mode write
 
 ### Dual-mode architecture
 
-The orchestrator is the **sole writer** of engagement state. Subagents get
+The orchestrator is the **sole writer** of engagement state. Agents get
 read-only access — they physically cannot see write tools because their MCP
 instance doesn't register them.
 
@@ -39,8 +39,8 @@ writes (single-threaded), write conflicts are impossible.
 
 1. Orchestrator calls `init_engagement()` to create `engagement/state.db`
 2. Orchestrator records targets, ports, credentials, vulns via write tools
-3. Subagents call `get_state_summary()` on activation to read current state
-4. Subagents report findings in their return summary
+3. Agents call `get_state_summary()` on activation to read current state
+4. Agents report findings in their return summary
 5. Orchestrator parses returns and records state changes
 6. Orchestrator calls `get_state_summary()` to decide next actions
 

@@ -25,9 +25,9 @@ Autonomous mode pairs with `claude --dangerously-skip-permissions` (a.k.a. yolo 
 
 ## Architecture
 
-The `orchestrator` is a Claude Code skill intended to run with Opus 4.6 in extended thinking mode. It runs in the main conversation thread. It delegates skill execution to **custom domain subagents** — focused Sonnet agents with MCP access that each handle one skill per invocation. This keeps context isolated (each agent starts fresh) while the `orchestrator` maintains the big picture via a SQLite state database.
+The `orchestrator` is a Claude Code skill intended to run with Opus 4.6 in extended thinking mode. It runs in the main conversation thread. It delegates skill execution to **agents** — focused Sonnet agents with MCP access that each handle one skill per invocation. This keeps context isolated (each agent starts fresh) while the `orchestrator` maintains the big picture via a SQLite state database.
 
-**Subagents:**
+**Agents:**
 
 | Agent | Domain | Key capability |
 |-------|--------|----------------|
@@ -55,14 +55,14 @@ Claude Code’s Bash tool runs each command as a separate process — there’s 
 
 The **shell-server** MCP solves this with two session types:
 
-- **`start_listener`** — catches inbound reverse shells. Subagents open a catcher, send a reverse shell payload through whatever RCE they’ve achieved, then interact via `send_command()`.
-- **`start_process`** — spawns local interactive tools in a persistent PTY. When you have credentials and a service port open, subagents call `start_process(command="evil-winrm -i TARGET -u admin -p pass")` and drive the session through `send_command()`. Evil-winrm’s built-in `upload`/`download` commands also make it the preferred file transfer method for Windows targets.
+- **`start_listener`** — catches inbound reverse shells. Agents open a catcher, send a reverse shell payload through whatever RCE they’ve achieved, then interact via `send_command()`.
+- **`start_process`** — spawns local interactive tools in a persistent PTY. When you have credentials and a service port open, agents call `start_process(command="evil-winrm -i TARGET -u admin -p pass")` and drive the session through `send_command()`. Evil-winrm’s built-in `upload`/`download` commands also make it the preferred file transfer method for Windows targets.
 
 Both session types persist across tool calls, support prompt detection, and save transcripts to `engagement/evidence/` on close.
 
 ### Inter-skill routing
 
-The `orchestrator` makes every routing decision by spawning the appropriate domain subagent with a skill name and context. When an LFI reads Tomcat credentials, the `orchestrator` spawns `web-exploit-agent` with `tomcat-manager-deploy` to get a shell. When BloodHound reveals an ACL path, it spawns `ad-exploit-agent` with `acl-abuse`. Context (injection point, working payloads, target platform, mode) is passed in the agent's Task prompt.
+The `orchestrator` makes every routing decision by spawning the appropriate agent with a skill name and context. When an LFI reads Tomcat credentials, the `orchestrator` spawns `web-exploit-agent` with `tomcat-manager-deploy` to get a shell. When BloodHound reveals an ACL path, it spawns `ad-exploit-agent` with `acl-abuse`. Context (injection point, working payloads, target platform, mode) is passed in the agent's Task prompt.
 
 ## Skills
 
@@ -87,19 +87,19 @@ engagement/
 ├── state.db          # SQLite engagement state (managed via MCP state-server)
 ├── activity.md       # Chronological action log (`orchestrator` writes)
 ├── findings.md       # Confirmed vulnerabilities (`orchestrator` writes)
-└── evidence/         # Saved output, responses, dumps (subagents write)
-    └── logs/         # Subagent JSONL transcripts (captured automatically)
+└── evidence/         # Saved output, responses, dumps (agents write)
+    └── logs/         # Agent JSONL transcripts (captured automatically)
 ```
 
 - Activity logged at milestones (test confirmed, data extracted, finding discovered)
 - Findings numbered with severity, target, technique, impact, and reproduction steps
-- Subagent JSONL transcripts automatically captured via a `SubagentStop` hook — every tool call, decision, and error from each domain agent is preserved for retrospective analysis
+- Agent JSONL transcripts automatically captured via a `SubagentStop` hook — every tool call, decision, and error from each agent is preserved for retrospective analysis
 
 ### State management
 
 Large engagements generate more state than fits in a single conversation context. The **state-server MCP** solves this — a SQLite database that persists across sessions and context compactions, with structured queries for targets, credentials, access, vulnerabilities, pivot paths, and blocked items.
 
-The `orchestrator` is the sole writer of engagement state. Subagents call `get_state_summary()` (read-only) on activation and report findings in their return summary. The `orchestrator` parses these summaries and calls structured write tools (`add_target`, `add_credential`, `add_vuln`, etc.) to update state. This enforces that all routing decisions flow through the `orchestrator`.
+The `orchestrator` is the sole writer of engagement state. Agents call `get_state_summary()` (read-only) on activation and report findings in their return summary. The `orchestrator` parses these summaries and calls structured write tools (`add_target`, `add_credential`, `add_vuln`, etc.) to update state. This enforces that all routing decisions flow through the `orchestrator`.
 
 | Table | Contents |
 |-------|----------|
@@ -114,7 +114,7 @@ The `orchestrator` is the sole writer of engagement state. Subagents call `get_s
 
 The skills in this repo are a starting point. The `retrospective` skill is what makes them yours.
 
-After an engagement, run a retrospective. Claude reads the engagement directory — `activity.md`, `state.db`, `findings.md`, and the subagent JSONL transcripts in `evidence/logs/` — and analyzes what happened. It reviews every skill routing decision, identifies gaps in payloads and methodology, flags techniques that were done by hand instead of through a skill, and produces a prioritized list of improvements: skill updates, new skills to build, routing fixes.
+After an engagement, run a retrospective. Claude reads the engagement directory — `activity.md`, `state.db`, `findings.md`, and the agent JSONL transcripts in `evidence/logs/` — and analyzes what happened. It reviews every skill routing decision, identifies gaps in payloads and methodology, flags techniques that were done by hand instead of through a skill, and produces a prioritized list of improvements: skill updates, new skills to build, routing fixes.
 
 The actionable items are specific. Not "improve the SQL injection skill" but "`sql-injection-blind` only carried MySQL `SLEEP()` payloads — add MSSQL `WAITFOR DELAY` and PostgreSQL `pg_sleep()` for time-based detection." You discuss the findings with Claude, decide what to change, and update the skills right there in the same session.
 
@@ -151,7 +151,7 @@ The cycle is: **engage → retrospective → improve skills → engage again**. 
 
 The installer:
 1. Installs `orchestrator` as a native Claude Code skill (`~/.claude/skills/`)
-2. Installs **custom subagents** to `~/.claude/agents/`
+2. Installs **agents** to `~/.claude/agents/`
 3. Sets up **MCP servers** — `skill-router` (ChromaDB + embeddings), `nmap-server`, `shell-server`, `browser-server` (Chromium), `state-server`
 4. Verifies project config (`.mcp.json`, settings, Docker for nmap)
 

@@ -1,6 +1,6 @@
 # nmap MCP Server
 
-MCP server running nmap inside a Docker container for red-run subagents.
+MCP server running nmap inside a Docker container for red-run agents.
 Eliminates the sudo attack surface — nmap runs in an isolated container with
 minimal capabilities, and all inputs are validated before execution.
 
