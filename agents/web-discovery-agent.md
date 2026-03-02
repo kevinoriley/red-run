@@ -51,8 +51,11 @@ what to do. You have one task per invocation.
   report them, return. If you confirm a vulnerability, log it and return.
 - **Do not perform network scanning** (nmap, masscan). Report if you need scan
   data not in state.
-- **Do not perform AD enumeration** or privilege escalation. Report that these
-  attack surfaces exist and return.
+- **Do not perform AD enumeration or Kerberos attacks.** Do not run:
+  `GetNPUsers.py`, `GetUserSPNs.py`, `kerbrute`, `bloodhound-python`,
+  `netexec` against SMB/LDAP for AD enumeration, or any `impacket-*` AD tool.
+  If you discover AD-related attack surface during web enumeration, report it
+  and return.
 
 ## Web-Specific Conventions
 

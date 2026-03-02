@@ -99,6 +99,11 @@ intervention. Do not spend rounds trying alternatives or workarounds.
 - **Do not exploit AD vulnerabilities.** Enumerate the domain, map attack
   paths, report findings, return. If you identify a Kerberoastable account
   or ADCS misconfiguration, log it and return.
+- **Do not crack hashes or passwords.** If you capture hashes (AS-REP, TGS,
+  NTLM, MSCACHE2), save them to `engagement/evidence/` and report them in your
+  return summary. Do NOT run hashcat, john, custom wordlist generation, or any
+  offline cracking. The orchestrator routes cracking to
+  **credential-cracking-agent**.
 - **Do not perform network scanning** (nmap). Report if you need scan data not
   in state.
 - **Do not perform web application testing** or privilege escalation. Report

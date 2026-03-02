@@ -74,6 +74,13 @@ Check these in order:
   return summary — the orchestrator decides where to test them.
 - **Do not perform any enumeration or exploitation.** You crack hashes and
   open files. Nothing else.
+- **Do not create custom wordlists, password lists, or mutation scripts.** Use
+  only wordlists already present on the system (rockyou.txt, SecLists) and
+  hashcat/john built-in rules (best64, d3ad0ne, dive). If the orchestrator
+  specifies a wordlist, use exactly that — do not substitute or supplement.
+- **If required wordlists are missing, STOP and return immediately.** Report
+  which wordlists were checked and not found. Do not improvise alternatives.
+  The orchestrator will handle the missing prerequisite.
 
 ## Engagement Files
 
