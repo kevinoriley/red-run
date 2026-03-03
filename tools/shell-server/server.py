@@ -28,6 +28,8 @@ import os
 import pty
 import re
 import select
+import shlex
+import shutil
 import signal
 import socket
 import struct
@@ -58,6 +60,49 @@ PROBE_MARKER = "__SHELL_PROBE__"
 MARKER_START = "__CMD_START_7f3a__"
 MARKER_END = "__CMD_END_7f3a__"
 
+# Privileged Docker mode
+SHELL_DOCKER_IMAGE = os.environ.get("SHELL_DOCKER_IMAGE", "red-run-shell:latest")
+_docker_shell_available: bool | None = None  # Set at startup
+
+
+def _check_docker_shell() -> str | None:
+    """Check if Docker and the shell image are available. Returns error message or None."""
+    docker_path = shutil.which("docker")
+    if not docker_path:
+        return "docker not found. Install Docker to use privileged mode."
+
+    try:
+        result = subprocess.run(
+            ["docker", "info"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode != 0:
+            return (
+                "Docker daemon not running. Start Docker first.\n"
+                f"stderr: {result.stderr.strip()}"
+            )
+    except subprocess.TimeoutExpired:
+        return "docker info timed out — Docker daemon may be unresponsive."
+
+    try:
+        result = subprocess.run(
+            ["docker", "image", "inspect", SHELL_DOCKER_IMAGE],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode != 0:
+            return (
+                f"Docker image '{SHELL_DOCKER_IMAGE}' not found. "
+                f"Build it with: docker build -t {SHELL_DOCKER_IMAGE} tools/shell-server/"
+            )
+    except subprocess.TimeoutExpired:
+        return "docker image inspect timed out."
+
+    return None
+
 
 @dataclass
 class Listener:
@@ -85,6 +130,7 @@ class Session:
     master_fd: int | None = None  # PTY master fd (local only)
     process: subprocess.Popen | None = None  # subprocess handle (local only)
     command: str = ""  # original command (local only)
+    privileged: bool = False  # running inside Docker container
     pty: bool = False
     prompt_pattern: str = ""
     status: str = "connected"  # "connected" | "stabilized" | "closed"
@@ -165,6 +211,10 @@ def _detect_prompt(session: Session) -> str:
 
 def create_server() -> FastMCP:
     """Create and configure the shell MCP server."""
+    global _docker_shell_available
+    docker_err = _check_docker_shell()
+    _docker_shell_available = docker_err is None
+
     mcp = FastMCP(
         "red-run-shell-server",
         instructions=(
@@ -337,6 +387,7 @@ def create_server() -> FastMCP:
         command: str,
         label: str = "",
         timeout: int = 30,
+        privileged: bool = False,
     ) -> str:
         """Spawn a local interactive process in a PTY.
 
@@ -352,9 +403,29 @@ def create_server() -> FastMCP:
                    "evil-winrm-dc01"). Used in transcript filenames.
             timeout: Seconds to wait for the process to start and produce
                      initial output (default 30).
+            privileged: Run inside a Docker container with network
+                       capabilities (NET_RAW, NET_ADMIN, NET_BIND_SERVICE).
+                       Use for tools that need raw sockets or low-port
+                       binding (e.g., Responder, mitm6, tcpdump).
+                       Requires the red-run-shell Docker image.
         """
         session_id = str(uuid.uuid4())[:8]
         effective_label = label or command.split()[0].split("/")[-1]
+
+        # Wrap command in Docker if privileged mode requested
+        if privileged:
+            if not _docker_shell_available:
+                return (
+                    f"ERROR: Privileged mode requires Docker image "
+                    f"'{SHELL_DOCKER_IMAGE}'. Build it with: "
+                    f"docker build -t {SHELL_DOCKER_IMAGE} tools/shell-server/"
+                )
+            command = (
+                f"docker run --rm -i --network=host "
+                f"--cap-drop=ALL --cap-add=NET_RAW --cap-add=NET_ADMIN "
+                f"--cap-add=NET_BIND_SERVICE {SHELL_DOCKER_IMAGE} "
+                f"/bin/bash -c {shlex.quote(command)}"
+            )
 
         try:
             master_fd, slave_fd = pty.openpty()
@@ -411,6 +482,7 @@ def create_server() -> FastMCP:
             master_fd=master_fd,
             process=proc,
             command=command,
+            privileged=privileged,
             pty=True,
         )
 
@@ -429,10 +501,12 @@ def create_server() -> FastMCP:
             "pid": proc.pid,
             "command": command,
             "label": effective_label,
+            "privileged": privileged,
             "prompt_pattern": prompt,
             "message": (
-                f"Process started (PID {proc.pid}). Use send_command() to "
-                f"interact and close_session() to terminate."
+                f"Process started (PID {proc.pid})"
+                f"{' [privileged/Docker]' if privileged else ''}. "
+                f"Use send_command() to interact and close_session() to terminate."
             ),
         }, indent=2)
 
@@ -716,6 +790,7 @@ def create_server() -> FastMCP:
             }
             if session.session_type == "local":
                 entry["command"] = session.command
+                entry["privileged"] = session.privileged
             else:
                 entry["port"] = session.port
             result["sessions"].append(entry)

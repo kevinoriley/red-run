@@ -153,6 +153,19 @@ fi
 echo "  [shell-server] Installing Python dependencies..."
 uv sync --directory "${MCP_SHELL_SERVER}" --quiet
 
+# Build Docker image for shell-server (privileged mode)
+if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
+    echo "  [shell-server] Building Docker image..."
+    docker build -t red-run-shell:latest "${MCP_SHELL_SERVER}" --quiet
+    echo "  [shell-server] Docker image: OK"
+else
+    echo ""
+    echo "  NOTE: Docker image for shell-server (privileged mode) not built."
+    echo "  Privileged mode (Responder, mitm6, etc.) requires Docker."
+    echo "  Build manually: docker build -t red-run-shell:latest tools/shell-server/"
+    echo ""
+fi
+
 # state-server (SQLite engagement state)
 echo "  [state-server] Installing Python dependencies..."
 uv sync --directory "${MCP_STATE_SERVER}" --quiet
@@ -186,7 +199,7 @@ echo "Installed ${native_count} native skill(s) to ${SKILLS_DST}/ (${MODE} mode)
 echo "Installed ${agent_count} custom subagent(s) to ${AGENTS_DST}/"
 echo "63 technique/discovery skills served via MCP skill-router"
 echo "nmap MCP server ready (Dockerized nmap)"
-echo "shell MCP server ready (TCP listener + reverse shell manager)"
+echo "shell MCP server ready (TCP listener + reverse shell + privileged Docker)"
 echo "state MCP server ready (SQLite engagement state)"
 echo "browser MCP server ready (headless Chromium)"
 if [[ "$config_warnings" -eq 0 ]]; then

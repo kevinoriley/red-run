@@ -149,14 +149,14 @@ every routing decision.
 
 | Agent | Domain | MCP Servers | Use For |
 |-------|--------|-------------|---------|
-| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, state-reader | network-recon, smb-exploitation, pivoting-tunneling (haiku) |
-| `web-discovery-agent` | Web discovery | skill-router, shell-server, state-reader | web-discovery |
-| `web-exploit-agent` | Web exploitation | skill-router, shell-server, state-reader | All web technique skills |
-| `ad-discovery-agent` | AD discovery | skill-router, shell-server, state-reader | ad-discovery |
+| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, state-interim | network-recon, smb-exploitation, pivoting-tunneling (haiku) |
+| `web-discovery-agent` | Web discovery | skill-router, shell-server, browser-server, state-interim | web-discovery |
+| `web-exploit-agent` | Web exploitation | skill-router, shell-server, browser-server, state-reader | All web technique skills |
+| `ad-discovery-agent` | AD discovery | skill-router, shell-server, state-interim | ad-discovery |
 | `ad-exploit-agent` | AD exploitation | skill-router, shell-server, state-reader | All AD technique skills |
 | `password-spray-agent` | Credential spraying | skill-router, shell-server, state-reader | password-spraying (haiku) |
-| `linux-privesc-agent` | Linux privesc | skill-router, shell-server, state-reader | Linux discovery + technique skills, container escapes |
-| `windows-privesc-agent` | Windows privesc | skill-router, shell-server, state-reader | Windows discovery + technique skills |
+| `linux-privesc-agent` | Linux privesc | skill-router, shell-server, state-interim | Linux discovery + technique skills, container escapes |
+| `windows-privesc-agent` | Windows privesc | skill-router, shell-server, state-interim | Windows discovery + technique skills |
 | `evasion-agent` | AV/EDR evasion | skill-router, shell-server, state-reader | AV bypass payload generation |
 | `credential-cracking-agent` | Credential cracking | skill-router, state-reader | credential-cracking (haiku, local-only) |
 
@@ -305,7 +305,15 @@ Before every skill invocation, append to
 When a skill completes and returns control to the orchestrator:
 
 1. Parse the subagent's return summary for new findings
-2. Call structured write tools to record state changes:
+2. **Deduplicate interim writes**: Discovery agents (network-recon, web-discovery,
+   ad-discovery, linux-privesc, windows-privesc) use state-interim MCP and may
+   have already written credentials, vulns, pivots, or blocked entries mid-run.
+   Before calling `add_credential()`, `add_vuln()`, `add_pivot()`, or
+   `add_blocked()`, call `get_state_summary()` and check if the finding already
+   exists in state. Skip writes that would duplicate what the agent already
+   recorded. Technique agents (web-exploit, ad-exploit, etc.) use state-reader
+   and never write — no dedup needed for their returns.
+3. Call structured write tools to record state changes:
    - New hosts/ports → `add_target()` / `add_port()`
    - New credentials → `add_credential()`
    - Credential test results → `test_credential()`
@@ -327,22 +335,22 @@ When a skill completes and returns control to the orchestrator:
      technique is blocked. Mark `retry: "no"` only when a **technique
      agent** (web-exploit, ad-exploit, linux-privesc, windows-privesc)
      exhausts its skill's methodology and still fails.
-3. Append to `engagement/activity.md` with skill outcome
-4. Append to `engagement/findings.md` if vulnerabilities were confirmed
-5. **Check for new usernames** — if the skill returned usernames not
+4. Append to `engagement/activity.md` with skill outcome
+5. Append to `engagement/findings.md` if vulnerabilities were confirmed
+6. **Check for new usernames** — if the skill returned usernames not
    previously in state, trigger the **Usernames Found** hard stop before
    continuing. This applies to ANY skill that discovers users: network-recon
    (RPC/LDAP null session), web-discovery (user enumeration), ad-discovery
    (BloodHound/LDAP), SQLi (user table dump), credential-dumping (SAM/LSASS),
    or any other source.
-6. Call `get_state_summary()` for routing decision
-7. Run the Step 5 decision logic
-8. Route to the next skill based on updated state
+7. Call `get_state_summary()` for routing decision
+8. Run the Step 5 decision logic
+9. Route to the next skill based on updated state
 
 #### Parallel Fork Returns
 
 When a returning agent was part of a parallel fork (see **Parallel Fork
-Execution**), steps 1–4 above still apply — parse findings, record state, log
+Execution**), steps 1–5 above still apply — parse findings, record state, log
 activity, log findings. Steps 5–8 are replaced by the **Race Resolution**
 procedure. Do not run decision logic or route to the next skill until the fork
 is fully resolved.
@@ -958,13 +966,19 @@ Multiple agents achieve the goal (rare but possible).
 
 #### 5. State Consistency Rules
 
-- Subagents are **read-only** — they use state-reader MCP and cannot write state.
+- **Discovery agents** (network-recon, web-discovery, ad-discovery,
+  linux-privesc, windows-privesc) use state-interim MCP and can write 4
+  add-only tables mid-run: credentials, vulns, pivots, blocked.
+- **Technique agents** (web-exploit, ad-exploit, etc.) use state-reader
+  MCP and are fully read-only.
 - The orchestrator processes agent returns **one at a time**, even when agents
-  ran in parallel. State writes are serialized through the orchestrator.
+  ran in parallel. It deduplicates findings that discovery agents already
+  wrote via interim before recording remaining state changes.
 - Evidence filenames are skill-prefixed (e.g., `kerberoasting-tgs-hashes.txt`,
   `acl-abuse-dacl-modify.log`) — no collision risk from parallel agents.
-- SQLite WAL mode handles concurrent readers safely. No write conflicts are
-  possible because only the orchestrator writes.
+- SQLite WAL mode + busy_timeout handles concurrent readers and interim
+  writers safely. No write conflicts are possible because interim agents
+  only INSERT (never UPDATE) and the orchestrator serializes its writes.
 
 ### Clock Skew Recovery
 

@@ -1,9 +1,10 @@
 # state MCP Server
 
 MCP server providing SQLite-backed engagement state management for red-run.
-Runs as two instances from the same codebase — a read-only `state-reader` for
-agents and a read-write `state-writer` for the orchestrator. Both open the
-same `engagement/state.db`.
+Runs as three instances from the same codebase — a read-only `state-reader`
+for technique agents, an `state-interim` with 4 add-only write tools for
+discovery agents, and a full read-write `state-writer` for the orchestrator.
+All three open the same `engagement/state.db`.
 
 ## Prerequisites
 
@@ -16,24 +17,42 @@ uv sync --directory tools/state-server
 ## Usage
 
 The server runs as an MCP server, started automatically by Claude Code via
-`.mcp.json`. Two instances are configured — one per mode:
+`.mcp.json`. Three instances are configured — one per mode:
 
 ```bash
-# Read-only (agents)
+# Read-only (technique agents)
 uv run --directory tools/state-server python server.py --mode read
 
-# Read + write (orchestrator)
+# Read + 4 add-only writes (discovery agents)
+uv run --directory tools/state-server python server.py --mode interim
+
+# Read + all writes (orchestrator)
 uv run --directory tools/state-server python server.py --mode write
 ```
 
-### Dual-mode architecture
+### Three-mode architecture
 
-The orchestrator is the **sole writer** of engagement state. Agents get
-read-only access — they physically cannot see write tools because their MCP
-instance doesn't register them.
+| Mode | Instance | Agents | Write Access |
+|------|----------|--------|-------------|
+| `read` | state-reader | Technique agents (web-exploit, ad-exploit, etc.) | None |
+| `interim` | state-interim | Discovery agents (network-recon, web-discovery, ad-discovery, linux-privesc, windows-privesc) | 4 add-only tools: `add_credential`, `add_vuln`, `add_pivot`, `add_blocked` |
+| `write` | state-writer | Orchestrator only | All read + write tools |
 
-SQLite WAL mode handles concurrent readers safely. Since only the orchestrator
-writes (single-threaded), write conflicts are impossible.
+**Why interim mode?** Discovery agents run for 5-15 minutes. Without interim
+writes, credentials found at minute 2 aren't visible to concurrent agents
+until the discovery agent returns. Interim mode lets discovery agents write
+actionable findings immediately so the orchestrator and concurrent agents can
+see them mid-run.
+
+**Why only 4 tools?** These are add-only (INSERT), never update existing
+records, and represent findings that other agents can act on immediately:
+credentials (spray/test), vulns (exploit), pivots (plan chains), blocked
+(skip dead ends). Target/port/access management and all UPDATE operations
+remain orchestrator-only to avoid contention.
+
+SQLite WAL mode + `PRAGMA busy_timeout=5000` handles concurrent readers and
+interim writers safely. Interim agents only INSERT into separate tables, so
+write conflicts with the orchestrator are prevented by the busy timeout.
 
 ### Typical workflow
 
@@ -57,6 +76,15 @@ writes (single-threaded), write conflicts are impossible.
 | `get_vulns` | `status` (optional), `target` (optional) | Confirmed vulnerabilities |
 | `get_pivot_map` | `status` (optional) | Pivot path edges (what leads where) |
 | `get_blocked` | `target` (optional) | Failed technique attempts |
+
+### Interim tools (interim mode only)
+
+| Tool | Parameters | Description |
+|------|-----------|-------------|
+| `add_credential` | `username`, `secret`, `secret_type`, `domain`, `source` | Record a credential (password, hash, key, token) |
+| `add_vuln` | `title` (required), `host`, `vuln_type`, `severity`, `endpoint`, `details` | Record a confirmed vulnerability |
+| `add_pivot` | `source`, `destination` (required), `method`, `status` | Record a pivot path |
+| `add_blocked` | `technique`, `reason` (required), `host`, `retry`, `notes` | Record a blocked/failed technique |
 
 ### Write tools (write mode only)
 
