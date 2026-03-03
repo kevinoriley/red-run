@@ -359,8 +359,13 @@ Bash(
 
 - **Spawn**: After every background agent launch, if no watcher is currently
   running. One watcher suffices for multiple concurrent agents.
-- **Respawn**: After every watcher notification, spawn a new watcher with the
-  updated cursor. The old watcher has exited — a new one is needed.
+- **Respawn**: After every watcher notification, **immediately spawn a new
+  watcher** with the current cursor before doing anything else — this minimizes
+  the blind window. Then call `poll_events(since_id=<event_cursor>)` to catch
+  any events written between the old watcher's exit and the new watcher's
+  start. Display and process any gap events, then update the cursor. The new
+  watcher is already running and will catch anything that arrives while you
+  process the backfill.
 - **Cleanup**: When all background agents have completed, do NOT spawn a new
   watcher. The watcher's 10-minute timeout handles cleanup if the orchestrator
   forgets.

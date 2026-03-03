@@ -78,11 +78,14 @@ start_process(command="mitm6 -d intelligence.htb", privileged=True)
 ```
 
 **What happens:**
-- Command is wrapped in `docker run --rm -i --network=host --cap-drop=ALL
-  --cap-add=NET_RAW --cap-add=NET_ADMIN --cap-add=NET_BIND_SERVICE`
+- Command is wrapped in `docker run --rm -i --network=host --name red-run-<session_id>
+  --cap-drop=ALL --cap-add=NET_RAW --cap-add=NET_ADMIN --cap-add=NET_BIND_SERVICE`
 - Uses `-i` only (not `-it`) — the host PTY provides terminal behavior
 - `--network=host` shares the host's full network namespace (including tun0/VPN)
 - The PTY setup, prompt detection, and cleanup all work unchanged
+- `close_session()` runs `docker kill` on the named container before killing the
+  process — ensures the container is cleaned up even if SIGTERM to the docker CLI
+  doesn't propagate
 
 **Capabilities granted:**
 - `NET_RAW` — raw sockets (Responder, tcpdump, scapy)

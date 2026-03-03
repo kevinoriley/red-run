@@ -131,6 +131,7 @@ class Session:
     process: subprocess.Popen | None = None  # subprocess handle (local only)
     command: str = ""  # original command (local only)
     privileged: bool = False  # running inside Docker container
+    container_name: str | None = None  # Docker container name (privileged only)
     pty: bool = False
     prompt_pattern: str = ""
     status: str = "connected"  # "connected" | "stabilized" | "closed"
@@ -413,6 +414,7 @@ def create_server() -> FastMCP:
         effective_label = label or command.split()[0].split("/")[-1]
 
         # Wrap command in Docker if privileged mode requested
+        container_name: str | None = None
         if privileged:
             if not _docker_shell_available:
                 return (
@@ -421,8 +423,10 @@ def create_server() -> FastMCP:
                     f"docker build -t {SHELL_DOCKER_IMAGE} tools/shell-server/"
                 )
             # ENTRYPOINT is /bin/bash, so pass -c <cmd> as args
+            container_name = f"red-run-{session_id}"
             command = (
                 f"docker run --rm -i --network=host "
+                f"--name {container_name} "
                 f"--cap-drop=ALL --cap-add=NET_RAW --cap-add=NET_ADMIN "
                 f"--cap-add=NET_BIND_SERVICE {SHELL_DOCKER_IMAGE} "
                 f"-c {shlex.quote(command)}"
@@ -484,6 +488,7 @@ def create_server() -> FastMCP:
             process=proc,
             command=command,
             privileged=privileged,
+            container_name=container_name,
             pty=True,
         )
 
@@ -832,6 +837,16 @@ def create_server() -> FastMCP:
 
             try:
                 if session.session_type == "local" and session.process:
+                    # Kill Docker container explicitly for privileged sessions
+                    # (SIGTERM to docker CLI doesn't reliably stop the container)
+                    if session.container_name:
+                        try:
+                            subprocess.run(
+                                ["docker", "kill", session.container_name],
+                                capture_output=True, timeout=10,
+                            )
+                        except Exception:
+                            pass
                     try:
                         pgid = os.getpgid(session.process.pid)
                         os.killpg(pgid, signal.SIGTERM)
