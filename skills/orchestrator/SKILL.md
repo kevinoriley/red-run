@@ -108,7 +108,7 @@ The only commands the orchestrator may execute directly are:
 - `mkdir -p engagement/evidence/logs` — engagement directory creation
 - File writes to `engagement/scope.md`, `engagement/activity.md`, `engagement/findings.md`
 - State-writer MCP tools (`init_engagement`, `add_target`, `add_credential`, `add_access`, `add_vuln`, `add_pivot`, `add_blocked`, and their update variants) — engagement state
-- State-reader MCP tools (`get_state_summary`, `get_targets`, `get_credentials`, `get_access`, `get_vulns`, `get_pivot_map`, `get_blocked`) — state queries
+- State-reader MCP tools (`get_state_summary`, `get_targets`, `get_credentials`, `get_access`, `get_vulns`, `get_pivot_map`, `get_blocked`, `poll_events`) — state queries
 - Skill-router MCP tools (`get_skill`, `search_skills`, `list_skills`) — skill routing
 - `getent hosts <hostname>` — hostname resolution verification (local-only, no network traffic)
 - `ldapsearch -x -H ldap://TARGET -b "DC=..." -s base lockoutThreshold lockOutObservationWindow lockoutDuration minPwdLength pwdProperties` — lockout policy query (safety-critical pre-spray check, single base-scope read, not enumeration)
@@ -149,14 +149,14 @@ every routing decision.
 
 | Agent | Domain | MCP Servers | Use For |
 |-------|--------|-------------|---------|
-| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, state-reader | network-recon, smb-exploitation, pivoting-tunneling (haiku) |
-| `web-discovery-agent` | Web discovery | skill-router, shell-server, state-reader | web-discovery |
-| `web-exploit-agent` | Web exploitation | skill-router, shell-server, state-reader | All web technique skills |
-| `ad-discovery-agent` | AD discovery | skill-router, shell-server, state-reader | ad-discovery |
+| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, state-interim | network-recon, smb-exploitation, pivoting-tunneling (haiku) |
+| `web-discovery-agent` | Web discovery | skill-router, shell-server, browser-server, state-interim | web-discovery |
+| `web-exploit-agent` | Web exploitation | skill-router, shell-server, browser-server, state-reader | All web technique skills |
+| `ad-discovery-agent` | AD discovery | skill-router, shell-server, state-interim | ad-discovery |
 | `ad-exploit-agent` | AD exploitation | skill-router, shell-server, state-reader | All AD technique skills |
 | `password-spray-agent` | Credential spraying | skill-router, shell-server, state-reader | password-spraying (haiku) |
-| `linux-privesc-agent` | Linux privesc | skill-router, shell-server, state-reader | Linux discovery + technique skills, container escapes |
-| `windows-privesc-agent` | Windows privesc | skill-router, shell-server, state-reader | Windows discovery + technique skills |
+| `linux-privesc-agent` | Linux privesc | skill-router, shell-server, state-interim | Linux discovery + technique skills, container escapes |
+| `windows-privesc-agent` | Windows privesc | skill-router, shell-server, state-interim | Windows discovery + technique skills |
 | `evasion-agent` | AV/EDR evasion | skill-router, shell-server, state-reader | AV bypass payload generation |
 | `credential-cracking-agent` | Credential cracking | skill-router, state-reader | credential-cracking (haiku, local-only) |
 
@@ -254,16 +254,22 @@ Use this table to pick the right agent for each skill:
 The orchestrator runs a decision loop. Each iteration:
 
 ```
+watcher_task_id = None   # track the running watcher
+
 while objectives_not_met:
     summary = get_state_summary()
     analyze: unexploited vulns, unchained access, untested creds, pivot map
     pick highest-value next action → select skill + domain agent
     append to activity.md (routing decision)
-    spawn agent with: skill name, target info, mode, context from summary
-    agent returns: findings summary, routing recommendations
-    parse return → call add_target/add_credential/add_vuln/etc.
-    append to activity.md (outcome)
-    append to findings.md (if vulns confirmed)
+    spawn agent in background with: skill name, target info, mode, context
+    if watcher_task_id: TaskStop(watcher_task_id)   # kill stale watcher
+    watcher_task_id = spawn event watcher in background (cursor, db path)
+    END TURN — user is free to interact
+
+    # Notifications arrive asynchronously:
+    # - Watcher fires → process interim findings, spawn follow-up + new watcher
+    # - Agent completes → Post-Skill Checkpoint, next routing decision
+    # - User messages → respond, poll_events() as supplementary check
 ```
 
 Each iteration is normally one skill invocation. Sequential execution is the
@@ -300,12 +306,154 @@ Before every skill invocation, append to
 - Reason: <why this skill was chosen>
 ```
 
+### Event Monitoring
+
+Discovery agents write findings mid-run via state-interim MCP tools. Each
+interim write (credential, vuln, pivot, blocked) also emits a row to the
+`state_events` table. The orchestrator uses a **background event watcher** to
+get push notifications when agents find something — zero context burn, and the
+user stays free to interact while agents work.
+
+**Setup:** Maintain an `event_cursor` variable starting at `0`.
+
+#### Background Event Watcher
+
+The watcher is a shell script that polls `state_events` via Python's built-in
+sqlite3 module and exits when new events arrive — triggering a task-notification
+push to the orchestrator.
+
+**Lifecycle:**
+
+```
+1. Orchestrator spawns discovery agent(s) in background
+2. Orchestrator spawns watcher via Bash(run_in_background=true)
+3. Orchestrator ENDS ITS TURN — user is free to chat
+
+4. [time passes — agent works, writes findings to state.db]
+
+5. Watcher detects new state_events row(s)
+6. Watcher sleeps 5s (debounce — let agent finish its batch)
+7. Watcher reads all new events, outputs them as JSON, exits
+8. Task-notification pushes to orchestrator automatically
+
+9. Orchestrator reads watcher output, displays findings
+10. Guided: present follow-up options to operator
+    Autonomous: auto-spawn follow-up agent in background
+11. Spawn NEW watcher with updated cursor
+12. Repeat until all agents complete
+```
+
+**Watcher script** lives at `tools/hooks/event-watcher.sh` in the repo. It
+uses Python's built-in `sqlite3` module (no CLI dependency) to poll and fetch
+events as JSON. Args: `<cursor> <db_path>`. Polls every 5s, debounces 5s on
+detection, 10-minute timeout.
+
+**Spawning the watcher:**
+
+Before spawning a new watcher, always kill the previous one (if any) to avoid
+stale timeout notifications that waste tokens:
+
+```
+# Kill previous watcher if running
+if watcher_task_id:
+    TaskStop(task_id=watcher_task_id)
+
+# Spawn new watcher and track its task ID
+watcher_task_id = Bash(
+    command="bash tools/hooks/event-watcher.sh <event_cursor> ./engagement/state.db",
+    run_in_background=true,
+    description="Event watcher (cursor <N>)"
+)
+```
+
+#### Watcher Lifecycle Management
+
+Track the current watcher's background task ID in a `watcher_task_id` variable.
+**Always `TaskStop` the previous watcher before spawning a new one** — stale
+watchers that timeout produce notifications that waste tokens on empty results.
+
+- **Spawn**: After every background agent launch. Kill the previous watcher
+  first (`TaskStop(watcher_task_id)`), then spawn a fresh one. One watcher
+  suffices for multiple concurrent agents.
+- **Respawn**: After every watcher notification, **kill the old watcher** (it
+  already exited, but call `TaskStop` defensively), then **immediately spawn a
+  new watcher** with the updated cursor — this minimizes the blind window. Then
+  call `poll_events(since_id=<event_cursor>)` to catch any events written
+  between the old watcher's exit and the new watcher's start. Display and
+  process any gap events, then update the cursor. The new watcher is already
+  running and will catch anything that arrives while you process the backfill.
+- **Cleanup**: When all background agents have completed, `TaskStop` the
+  running watcher and clear `watcher_task_id`. Do NOT spawn a new one.
+- **On agent return**: If a watcher is still running and other agents are also
+  still running, let it continue. If no agents remain running, `TaskStop` the
+  watcher and clear `watcher_task_id`.
+
+#### Actionable Event Criteria
+
+When the watcher fires, read the JSON output and evaluate each event:
+
+| Event Type | Actionable? | Follow-up Action |
+|------------|-------------|-----------------|
+| credential | Always | Authenticated enumeration or spray against services |
+| vuln (high/critical) | When a technique skill exists | Spawn technique agent |
+| vuln (medium/low/info) | Display only | Note for later |
+| pivot | When destination is actionable | Spawn appropriate agent |
+| blocked | Display only | Note for later |
+
+**Guided mode response:** Display the findings as a timeline, then present
+follow-up options via `AskUserQuestion` (e.g., "AD-discovery found valid creds
+for Tiffany.Molina — spin up authenticated AD enumeration while web-discovery
+continues?"). After operator responds, spawn new watcher.
+
+**Autonomous mode response:** Auto-spawn follow-up agent in background, log
+routing decision to `activity.md`, spawn new watcher. All without operator
+interaction.
+
+#### Display Format
+
+When the watcher fires or `poll_events` returns new events, display them as a
+compact timeline before continuing with the next action:
+
+```
+**[Interim findings from agents]**
+| Time | Agent | Finding |
+|------|-------|---------|
+| 14:22:03 | web-discovery | credential: admin (password) |
+| 14:22:15 | web-discovery | vuln: SQLi in /search [high] on 10.10.10.5 |
+```
+
+Update `event_cursor` to the highest event ID seen after each notification.
+
+#### Supplementary Polling
+
+The watcher is the primary notification mechanism. As a safety net, also call
+`poll_events(since_id=<event_cursor>)` at these interaction points to catch
+events written between watcher exit and new watcher spawn:
+- When any agent returns (before parsing its return summary)
+- Before every routing decision
+- Before presenting choices in guided mode
+
+**Deduplication:** Events represent the same writes that already land in state
+tables — they don't create extra work. The Post-Skill Checkpoint's existing
+dedup logic (step 2) handles any overlap between event-visible findings and
+the agent's return summary.
+
 ### Post-Skill Checkpoint
 
 When a skill completes and returns control to the orchestrator:
 
+0. **Poll events:** Call `poll_events(since_id=<event_cursor>)` and display any
+   new findings as a timeline (see Event Monitoring above). Update the cursor.
 1. Parse the subagent's return summary for new findings
-2. Call structured write tools to record state changes:
+2. **Deduplicate interim writes**: Discovery agents (network-recon, web-discovery,
+   ad-discovery, linux-privesc, windows-privesc) use state-interim MCP and may
+   have already written credentials, vulns, pivots, or blocked entries mid-run.
+   Before calling `add_credential()`, `add_vuln()`, `add_pivot()`, or
+   `add_blocked()`, call `get_state_summary()` and check if the finding already
+   exists in state. Skip writes that would duplicate what the agent already
+   recorded. Technique agents (web-exploit, ad-exploit, etc.) use state-reader
+   and never write — no dedup needed for their returns.
+3. Call structured write tools to record state changes:
    - New hosts/ports → `add_target()` / `add_port()`
    - New credentials → `add_credential()`
    - Credential test results → `test_credential()`
@@ -327,22 +475,22 @@ When a skill completes and returns control to the orchestrator:
      technique is blocked. Mark `retry: "no"` only when a **technique
      agent** (web-exploit, ad-exploit, linux-privesc, windows-privesc)
      exhausts its skill's methodology and still fails.
-3. Append to `engagement/activity.md` with skill outcome
-4. Append to `engagement/findings.md` if vulnerabilities were confirmed
-5. **Check for new usernames** — if the skill returned usernames not
+4. Append to `engagement/activity.md` with skill outcome
+5. Append to `engagement/findings.md` if vulnerabilities were confirmed
+6. **Check for new usernames** — if the skill returned usernames not
    previously in state, trigger the **Usernames Found** hard stop before
    continuing. This applies to ANY skill that discovers users: network-recon
    (RPC/LDAP null session), web-discovery (user enumeration), ad-discovery
    (BloodHound/LDAP), SQLi (user table dump), credential-dumping (SAM/LSASS),
    or any other source.
-6. Call `get_state_summary()` for routing decision
-7. Run the Step 5 decision logic
-8. Route to the next skill based on updated state
+7. Call `get_state_summary()` for routing decision
+8. Run the Step 5 decision logic
+9. Route to the next skill based on updated state
 
 #### Parallel Fork Returns
 
 When a returning agent was part of a parallel fork (see **Parallel Fork
-Execution**), steps 1–4 above still apply — parse findings, record state, log
+Execution**), steps 1–5 above still apply — parse findings, record state, log
 activity, log findings. Steps 5–8 are replaced by the **Race Resolution**
 procedure. Do not run decision logic or route to the next skill until the fork
 is fully resolved.
@@ -911,13 +1059,17 @@ all agents in a single message** — this ensures true parallel execution.
 
 #### 3. Wait for First Return
 
-Background agents auto-notify on completion. Do **not** poll or sleep. Continue
-waiting until at least one agent returns.
+Background agents auto-notify on completion. The event watcher runs alongside
+fork agents — if the watcher fires with actionable findings before any fork
+agent completes, the orchestrator can act on them (spawn follow-up agents, ask
+the operator in guided mode). However, **watcher notifications do NOT resolve
+the fork** — fork resolution still requires an agent to complete and return.
+Spawn a new watcher after processing each notification.
 
 #### 4. Race Resolution
 
-When an agent returns, apply the standard Post-Skill Checkpoint steps 1–4
-(parse, record state, log activity, log findings). Then resolve the fork:
+When an agent returns, apply the standard Post-Skill Checkpoint steps 0–4
+(poll events, parse, record state, log activity, log findings). Then resolve the fork:
 
 **Case 1 — Goal achieved (winner):**
 The returning agent achieved the convergent goal (credential obtained, access
@@ -958,18 +1110,29 @@ Multiple agents achieve the goal (rare but possible).
 
 #### 5. State Consistency Rules
 
-- Subagents are **read-only** — they use state-reader MCP and cannot write state.
+- **Discovery agents** (network-recon, web-discovery, ad-discovery,
+  linux-privesc, windows-privesc) use state-interim MCP and can write 4
+  add-only tables mid-run: credentials, vulns, pivots, blocked.
+- **Technique agents** (web-exploit, ad-exploit, etc.) use state-reader
+  MCP and are fully read-only.
 - The orchestrator processes agent returns **one at a time**, even when agents
-  ran in parallel. State writes are serialized through the orchestrator.
+  ran in parallel. It deduplicates findings that discovery agents already
+  wrote via interim before recording remaining state changes.
 - Evidence filenames are skill-prefixed (e.g., `kerberoasting-tgs-hashes.txt`,
   `acl-abuse-dacl-modify.log`) — no collision risk from parallel agents.
-- SQLite WAL mode handles concurrent readers safely. No write conflicts are
-  possible because only the orchestrator writes.
+- SQLite WAL mode + busy_timeout handles concurrent readers and interim
+  writers safely. No write conflicts are possible because interim agents
+  only INSERT (never UPDATE) and the orchestrator serializes its writes.
 
 ### Clock Skew Recovery
 
 When an AD skill returns with `KRB_AP_ERR_SKEW` or clock skew as the failure
-reason:
+reason, follow this two-attempt recovery flow. The first attempt uses standard
+clock sync + agent retry. The second attempt (if the first fails due to clock
+drift during agent startup latency) produces an **atomic script** that syncs
+and runs the exploit command in one shot — eliminating the latency gap.
+
+#### Attempt 1: Standard Sync + Agent Retry
 
 1. Write a temporary script to the working directory:
    ```bash
@@ -992,10 +1155,80 @@ reason:
 5. Clean up: `rm temp_clock-sync.sh` after successful retry.
 6. Log to `engagement/activity.md`:
    ```
-   ### [YYYY-MM-DD HH:MM:SS] orchestrator → clock-skew recovery
+   ### [YYYY-MM-DD HH:MM:SS] orchestrator → clock-skew recovery (attempt 1)
    - KRB_AP_ERR_SKEW detected during <skill-name>
    - Clock synced via ntpdate, retrying skill
    ```
+
+#### Attempt 2: Atomic Sync + Exploit Script
+
+If the retried agent returns with `KRB_AP_ERR_SKEW` **again** — the clock is
+drifting faster than agent startup latency allows — switch to an atomic script.
+The problem: spawning an agent takes minutes (skill loading, context building,
+tool calls), during which the clock drifts back out of the 5-minute Kerberos
+window. The fix: a single script that syncs the clock and runs the Kerberos
+command with zero gap between them.
+
+1. Extract the **exact command** that failed from the agent's return summary.
+   The agent's Clock Skew Interrupt should include the commands that were
+   attempted. If not, reconstruct from the skill's methodology and the
+   engagement context (credentials, SPNs, target IPs).
+
+2. Write `temp_clock-attack.sh` with both the sync and the exploit command:
+   ```bash
+   #!/usr/bin/env bash
+   set -euo pipefail
+   DC_IP="<DC_IP>"
+   EVIDENCE_DIR="<absolute path to engagement/evidence>"
+
+   echo "[*] Syncing clock with DC..."
+   sudo ntpdate "$DC_IP" || sudo rdate -n "$DC_IP"
+   echo "[+] Clock synced — running attack immediately"
+
+   # === THE KERBEROS COMMAND(S) ===
+   # Paste the exact command(s) from the skill methodology.
+   # Example for constrained delegation:
+   #   getST.py -spn 'WWW/dc.target.htb' -impersonate Administrator \
+   #     -hashes ':NTHASH' -dc-ip "$DC_IP" 'domain.htb/svc_account$'
+   #   export KRB5CCNAME=Administrator@WWW_dc.target.htb@DOMAIN.HTB.ccache
+   #   wmiexec.py -k -no-pass domain.htb/Administrator@dc.target.htb
+   <COMMANDS HERE>
+   ```
+   Save as `temp_clock-attack.sh` and `chmod +x temp_clock-attack.sh`.
+
+3. Present to the user:
+   > Clock drifted again during agent startup. This target's clock moves too
+   > fast for the agent retry model. Here's an atomic script that syncs the
+   > clock and runs the Kerberos command immediately — no gap.
+   >
+   > Review and run: `sudo bash ./temp_clock-attack.sh`
+   >
+   > If the command produces a `.ccache` file, let me know and I'll continue
+   > the chain (shell via wmiexec/psexec using the ticket).
+
+4. After user confirms the script ran:
+   - Parse the output — check for ticket files, shell access, errors
+   - If a `.ccache` file was produced, the orchestrator can continue the
+     chain: establish a shell using `start_process` with the ticket
+     (e.g., `wmiexec.py -k -no-pass`), or route to the next skill
+   - If the command itself was a shell command (wmiexec, psexec), ask
+     the user for the output (whoami, flags, etc.) and record access
+   - Record all findings via state-writer MCP tools as normal
+
+5. Clean up: `rm temp_clock-sync.sh temp_clock-attack.sh` after success.
+
+6. Log to `engagement/activity.md`:
+   ```
+   ### [YYYY-MM-DD HH:MM:SS] orchestrator → clock-skew recovery (attempt 2 — atomic script)
+   - Agent retry failed — clock drifting faster than agent startup latency
+   - Produced atomic sync+exploit script for operator
+   - Result: <outcome>
+   ```
+
+**Important:** The atomic script is a **fallback**, not the default. Always
+try the standard sync + agent retry first — it preserves the normal agent
+model with full skill methodology, evidence saving, and structured return.
+The atomic script sacrifices agent-managed execution for timing precision.
 
 ### AV Evasion Recovery
 
@@ -1275,6 +1508,12 @@ Custom wordlist: <path if custom, omit otherwise>.",
    This is NOT a parallel fork (convergent goals). This is **independent phase
    parallelization** — spray and discovery have different goals (credential
    finding vs attack surface mapping) and can overlap safely.
+
+   The event watcher is already running (or spawn one if not). If the spray
+   agent writes valid credentials via state-interim, the watcher catches them
+   and notifies the orchestrator — no waiting for spray completion. In guided
+   mode, present the new credentials and ask the operator about follow-up
+   actions. In autonomous mode, spawn authenticated enumeration immediately.
 
 7. When the spray agent returns (auto-notified):
    - Parse the return summary — record valid credentials via

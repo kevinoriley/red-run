@@ -16,7 +16,7 @@ tools:
 mcpServers:
   - skill-router
   - shell-server
-  - state-reader
+  - state-interim
 model: sonnet
 ---
 
@@ -119,13 +119,21 @@ send_command(session_id=..., command="id")
   you find network-level information (new subnets, services, credentials).
 - **Do not perform AD enumeration**. If you find domain credentials or identify
   that the host is domain-joined, report it and return.
+- **Do not crack hashes offline.** Do not run `hashcat`, `john`, or any offline
+  cracking tool. If you obtain password hashes (shadow, /etc/passwd, etc.),
+  save them to `engagement/evidence/` and return to the orchestrator with the
+  hash file path, hash type, and a routing recommendation to
+  **credential-cracking**.
 
 ## Engagement Files
 
-- **State**: Call `get_state_summary()` from the state-reader MCP to read
-  current engagement state. **Do NOT write engagement state.** Report all
-  findings in your return summary — the orchestrator updates state on your
-  behalf.
+- **State**: Call `get_state_summary()` from the state-interim MCP to read
+  current engagement state.
+- **Interim writes**: Write findings immediately when actionable by a
+  different agent type: credentials → `add_credential()`, vulns → `add_vuln()`,
+  pivot paths → `add_pivot()`, blocked techniques → `add_blocked()`.
+  Do NOT write internal analysis context. Still report ALL findings in
+  your return summary.
 - **Activity and Findings**: Do NOT write to activity.md or findings.md.
   The orchestrator maintains these files based on your return summary.
 - **Evidence**: Save raw output to `engagement/evidence/` with descriptive
@@ -172,5 +180,6 @@ The orchestrator reads this summary and makes the next routing decision.
 - When running Bash commands against network targets, always use
   `dangerouslyDisableSandbox: true` — the bwrap sandbox blocks network sockets.
 - MCP tool calls (get_skill) do NOT need the sandbox flag.
+- Before `git clone` or `pip install`, check if the tool exists locally: `which <tool>` or `find /opt /usr/share /usr/local -name '<tool>' -type f`. Only download if genuinely missing.
 - Privesc commands often run ON the target (through a shell), not from the
   attack machine. Ensure you're executing in the right context.

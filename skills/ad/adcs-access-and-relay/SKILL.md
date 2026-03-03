@@ -127,8 +127,8 @@ commands so the user can start them before Claude triggers coercion.
 ### Enumerate CA permissions
 
 ```bash
-# Certipy
-certipy find -k -no-pass -dc-ip DC_IP -vulnerable
+# Certipy — always use -output to avoid writing to CWD
+certipy find -k -no-pass -dc-ip DC_IP -vulnerable -output engagement/evidence/certipy-adcs
 
 # Certify — PKI object ACLs
 Certify.exe pkiobjects /domain:DOMAIN /showAdmins

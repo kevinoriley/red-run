@@ -85,13 +85,17 @@ cd $TMPDIR && getTGT.py DOMAIN/user:'Password' -dc-ip DC_IP
 export KRB5CCNAME=$TMPDIR/user.ccache
 
 # All Certipy commands use -k -no-pass after this
-certipy find -k -no-pass -dc-ip DC_IP -vulnerable
+certipy find -k -no-pass -dc-ip DC_IP -vulnerable -output engagement/evidence/certipy-adcs
 ```
 
-**Tool output directory**: `getTGT.py`, `certipy req`, and `certipy auth` all
-write output files to CWD with no output-path flag. Always prefix these commands
-with `cd $TMPDIR &&`. `getTGT.py` does NOT support `-out` — CWD is the only
-control. When saving evidence, use `mv` (not `cp`) to avoid stray duplicates:
+**Tool output directory**: `certipy find` supports `-output` to control where
+results are written — always use `-output engagement/evidence/certipy-<label>`.
+Without it, certipy writes `{timestamp}_Certipy.{json,txt}` to CWD.
+
+`getTGT.py`, `certipy req`, and `certipy auth` all write output files to CWD
+with no output-path flag. Always prefix these commands with `cd $TMPDIR &&`.
+`getTGT.py` does NOT support `-out` — CWD is the only control. When saving
+evidence, use `mv` (not `cp`) to avoid stray duplicates:
 
 ```bash
 mv $TMPDIR/administrator.pfx engagement/evidence/administrator.pfx
@@ -135,13 +139,13 @@ Run ADCS enumeration to identify vulnerable templates. If the orchestrator or
 
 ```bash
 # Full enumeration with vulnerability detection
-certipy find -k -no-pass -dc-ip DC_IP -vulnerable
+certipy find -k -no-pass -dc-ip DC_IP -vulnerable -output engagement/evidence/certipy-adcs
 
 # JSON output for structured analysis
-certipy find -k -no-pass -dc-ip DC_IP -vulnerable -json -output adcs-enum
+certipy find -k -no-pass -dc-ip DC_IP -vulnerable -json -output engagement/evidence/certipy-adcs
 
 # With password (if no TGT available)
-certipy find -username user@DOMAIN -password 'Pass' -dc-ip DC_IP -vulnerable
+certipy find -username user@DOMAIN -password 'Pass' -dc-ip DC_IP -vulnerable -output engagement/evidence/certipy-adcs
 ```
 
 ### Certify.exe (Windows)

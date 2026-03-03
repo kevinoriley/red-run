@@ -152,3 +152,4 @@ The orchestrator reads this summary and makes the next routing decision.
 - When running Bash commands against network targets, always use
   `dangerouslyDisableSandbox: true` — the bwrap sandbox blocks network sockets.
 - MCP tool calls (get_skill) do NOT need the sandbox flag.
+- Before `git clone` or `pip install`, check if the tool exists locally: `which <tool>` or `find /opt /usr/share /usr/local -name '<tool>' -type f`. Only download if genuinely missing.

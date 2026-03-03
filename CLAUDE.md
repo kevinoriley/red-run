@@ -12,14 +12,14 @@ The orchestrator spawns domain-specific subagents for each skill invocation:
 
 | Agent | Domain | MCP Servers | Skills |
 |-------|--------|-------------|--------|
-| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, state-reader | network-recon, smb-exploitation, pivoting-tunneling (haiku) |
-| `web-discovery-agent` | Web discovery | skill-router, shell-server, browser-server, state-reader | web-discovery |
+| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, state-interim | network-recon, smb-exploitation, pivoting-tunneling (haiku) |
+| `web-discovery-agent` | Web discovery | skill-router, shell-server, browser-server, state-interim | web-discovery |
 | `web-exploit-agent` | Web exploitation | skill-router, shell-server, browser-server, state-reader | All web technique skills |
-| `ad-discovery-agent` | AD discovery | skill-router, shell-server, state-reader | ad-discovery |
+| `ad-discovery-agent` | AD discovery | skill-router, shell-server, state-interim | ad-discovery |
 | `ad-exploit-agent` | AD exploitation | skill-router, shell-server, state-reader | All AD technique skills |
 | `password-spray-agent` | Credential spraying | skill-router, shell-server, state-reader | password-spraying (haiku) |
-| `linux-privesc-agent` | Linux privesc | skill-router, shell-server, state-reader | Linux discovery + privesc + container escapes |
-| `windows-privesc-agent` | Windows privesc | skill-router, shell-server, state-reader | Windows discovery + privesc |
+| `linux-privesc-agent` | Linux privesc | skill-router, shell-server, state-interim | Linux discovery + privesc + container escapes |
+| `windows-privesc-agent` | Windows privesc | skill-router, shell-server, state-interim | Windows discovery + privesc |
 | `evasion-agent` | AV/EDR evasion | skill-router, shell-server, state-reader | av-edr-evasion |
 | `credential-cracking-agent` | Credential cracking | skill-router, state-reader | credential-cracking (haiku, local-only) |
 
@@ -35,18 +35,19 @@ Agent source files live in `agents/` (version controlled), installed to `~/.clau
 |--------|----------|-------|---------|
 | skill-router | `tools/skill-router/` | `search_skills`, `get_skill`, `list_skills` | Semantic skill discovery and loading |
 | nmap-server | `tools/nmap-server/` | `nmap_scan`, `get_scan`, `list_scans` | Dockerized nmap scanning with input validation |
-| shell-server | `tools/shell-server/` | `start_listener`, `start_process`, `send_command`, `read_output`, `stabilize_shell`, `list_sessions`, `close_session` | TCP listener, reverse shell, and local interactive process manager |
-| state-reader | `tools/state-server/` | `get_state_summary`, `get_targets`, `get_credentials`, `get_access`, `get_vulns`, `get_pivot_map`, `get_blocked` | Read-only engagement state queries (subagents) |
+| shell-server | `tools/shell-server/` | `start_listener`, `start_process` (supports `privileged` Docker mode), `send_command`, `read_output`, `stabilize_shell`, `list_sessions`, `close_session` | TCP listener, reverse shell, local interactive process manager, and privileged Docker execution |
+| state-reader | `tools/state-server/` | `get_state_summary`, `get_targets`, `get_credentials`, `get_access`, `get_vulns`, `get_pivot_map`, `get_blocked`, `poll_events` | Read-only engagement state queries (technique agents) |
+| state-interim | `tools/state-server/` | All read tools + `add_credential`, `add_vuln`, `add_pivot`, `add_blocked` (each emits a `state_events` row) | Read + 4 add-only writes (discovery agents) |
 | state-writer | `tools/state-server/` | All read tools + `init_engagement`, `close_engagement`, `add_target`, `add_port`, `add_credential`, `add_access`, `add_vuln`, `add_pivot`, `add_blocked`, and update variants | Full engagement state management (orchestrator only) |
 | browser-server | `tools/browser-server/` | `browser_open`, `browser_navigate`, `browser_get_page`, `browser_click`, `browser_fill`, `browser_select`, `browser_screenshot`, `browser_cookies`, `browser_evaluate`, `close_browser`, `list_browser_sessions` | Headless browser automation (web agents) |
 
-The state-reader and state-writer are two instances of the same server (`tools/state-server/server.py`) running in different modes (`--mode read` vs `--mode write`). Both open the same `engagement/state.db`. SQLite WAL mode handles concurrent readers safely. Since only the orchestrator writes (via state-writer), write conflicts are impossible. Subagents physically cannot see write tools because their MCP instance doesn't register them.
+The state-reader, state-interim, and state-writer are three instances of the same server (`tools/state-server/server.py`) running in different modes (`--mode read`, `--mode interim`, `--mode write`). All three open the same `engagement/state.db`. SQLite WAL mode + `busy_timeout=5000` handles concurrent readers and writers safely. Discovery agents use state-interim to write actionable findings (credentials, vulns, pivots, blocked) mid-run without waiting for the orchestrator to parse their return summary. Technique agents use state-reader (fully read-only). The orchestrator uses state-writer for full read/write access and deduplicates findings that discovery agents already wrote via interim.
 
 The skill-router is backed by ChromaDB + sentence-transformer embeddings (`all-MiniLM-L6-v2`). Skills are indexed from structured frontmatter fields (description, keywords, tools, opsec).
 
 The nmap-server runs nmap inside a Docker container (`--network=host`, minimal capabilities) and returns parsed JSON. All inputs are validated before reaching subprocess. Requires Docker.
 
-The shell-server manages TCP listeners, reverse shell sessions, and local interactive processes. It solves the persistent shell problem — Claude Code's Bash tool runs each command as a separate process, so interactive shells, privilege escalation tools, and credential-based access tools (evil-winrm, psexec.py, ssh, msfconsole) have no way to maintain state between calls.
+The shell-server manages TCP listeners, reverse shell sessions, and local interactive processes. It solves the persistent shell problem — Claude Code's Bash tool runs each command as a separate process, so interactive shells, privilege escalation tools, and credential-based access tools (evil-winrm, psexec.py, ssh, msfconsole) have no way to maintain state between calls. The `privileged` parameter on `start_process` wraps commands in a Docker container with network capabilities (NET_RAW, NET_ADMIN, NET_BIND_SERVICE) for tools needing raw sockets or low-port binding (Responder, mitm6, tcpdump). Requires the `red-run-shell` Docker image (built by install.sh).
 
 The browser-server provides headless Chromium automation via Playwright. It solves the web interaction problem — curl can't handle CSRF tokens, session rotation, JavaScript-rendered forms, or multi-step authentication flows. Each session maintains its own cookie jar and localStorage. Web agents use browser tools as the default for navigating sites and curl as fallback for precise payload control.
 
@@ -124,9 +125,11 @@ engagement/
 - Produces engagement summary when complete
 
 **Subagent responsibility:**
-- Call `get_state_summary()` from the state-reader MCP to read current state
-- Save raw evidence to `engagement/evidence/` (the only directory subagents write to)
-- Report all findings clearly in their return summary — the orchestrator records state changes
+- Call `get_state_summary()` from the state-reader or state-interim MCP to read current state
+- **Discovery agents** (state-interim): Write actionable findings immediately via `add_credential()`, `add_vuln()`, `add_pivot()`, `add_blocked()` so concurrent agents can see them mid-run
+- **Technique agents** (state-reader): Read-only — report all findings in return summary
+- Save raw evidence to `engagement/evidence/` (the only engagement directory subagents write to)
+- Report all findings clearly in their return summary — the orchestrator deduplicates and records remaining state changes
 
 ### State Management
 
@@ -142,11 +145,14 @@ Engagement state lives in `engagement/state.db`, a SQLite database managed by th
 | **vulns** | Confirmed vulns with status: `found`, `active`, `done` | `get_vulns(status="found")` |
 | **pivot_map** | What leads where — vuln X gives access Y, creds Z work on host W | `get_pivot_map()` |
 | **blocked** | What was tried and why it failed — prevents re-testing | `get_blocked()` |
+| **state_events** | Event log emitted by interim writes — real-time polling | `poll_events(since_id=0)` |
 
 **Rules:**
 - `get_state_summary()` produces a compact markdown summary (~200 lines) for subagent consumption
 - Subagents call `get_state_summary()` on activation, report findings in their return summary
-- The orchestrator parses return summaries and calls structured write tools (`add_target`, `add_credential`, `add_vuln`, etc.)
+- Discovery agents (state-interim) also write actionable findings mid-run via 4 add-only tools; each write emits a `state_events` row
+- The orchestrator polls `poll_events()` at interaction points for real-time visibility into discovery agent findings
+- The orchestrator parses return summaries, deduplicates interim writes, and calls structured write tools for remaining state changes
 - Orchestrator uses state summary + pivot map to chain vulns toward impact
 
 ## Documentation Rules
@@ -208,6 +214,7 @@ red-run/
     shell-server/         # MCP server (TCP listener + shell manager)
       README.md            # Server documentation
       server.py           # FastMCP server — start_listener, send_command, stabilize_shell, etc.
+      Dockerfile           # Python + Responder + impacket + mitm6 image (built by install.sh)
       pyproject.toml       # Python dependencies (mcp)
     browser-server/       # MCP server (headless Chromium)
       README.md            # Server documentation
@@ -220,6 +227,7 @@ red-run/
       pyproject.toml       # Python dependencies (mcp)
     hooks/                # Claude Code hooks
       save-agent-log.sh   # SubagentStop hook — copies JSONL transcripts to engagement/evidence/logs/
+      event-watcher.sh    # Background event poller — spawned by orchestrator to watch state_events
 ```
 
 ## Skill File Format

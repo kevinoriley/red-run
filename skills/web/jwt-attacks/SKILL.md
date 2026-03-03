@@ -25,7 +25,6 @@ keywords:
   - JWT claim tampering
 tools:
   - jwt_tool
-  - hashcat
   - burpsuite (JWT Editor extension)
   - openssl
 opsec: low
@@ -199,23 +198,19 @@ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiJ9.
 
 If the token uses HMAC (HS256/384/512), the signing secret may be weak.
 
-### hashcat (GPU-accelerated)
+### Save JWT for offline cracking
 
 ```bash
-# Save the full JWT to a file
-echo -n 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.signature' > jwt.txt
-
-# Dictionary attack
-hashcat -a 0 -m 16500 jwt.txt /usr/share/wordlists/rockyou.txt
-
-# With rules
-hashcat -a 0 -m 16500 jwt.txt /usr/share/wordlists/rockyou.txt -r /usr/share/hashcat/rules/best64.rule
-
-# Brute force (6-8 char mixed case)
-hashcat -a 3 -m 16500 jwt.txt ?u?l?l?l?l?l?l?l -i --increment-min=6
+# Save the full JWT to a file for the credential-cracking skill
+echo -n 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.signature' > engagement/evidence/jwt-hash.txt
 ```
 
-### jwt_tool dictionary
+**Do NOT crack hashes in this skill.** Save the JWT to `engagement/evidence/`
+and return to the orchestrator with the hash file path, hash type (JWT / hashcat
+mode 16500 for HS256, 16600 for HS384, 16700 for HS512), and a routing
+recommendation to **credential-cracking**.
+
+### jwt_tool dictionary (quick check)
 
 ```bash
 python3 jwt_tool.py eyJ0eXAi... -C -d /usr/share/wordlists/rockyou.txt
@@ -566,12 +561,11 @@ Do not loop. Work through failures systematically:
   attack only works on libraries that accept any algorithm from the token
 - Try both PKCS#1 and PKCS#8 PEM formats
 
-### hashcat Not Cracking
+### JWT Secret Not Cracking
 
-- Confirm token is a valid JWT (three Base64URL segments)
-- Ensure the full JWT (header.payload.signature) is in the hash file
-- Mode 16500 only supports HS256 — use 16600 for HS384 and 16700 for HS512
-- Try the jwt-secrets wordlist: https://github.com/wallarm/jwt-secrets
+If jwt_tool dictionary check fails and you need GPU-accelerated cracking, route
+to **credential-cracking** with the JWT hash file and hashcat mode 16500
+(HS256), 16600 (HS384), or 16700 (HS512).
 
 ### jwt_tool Errors
 

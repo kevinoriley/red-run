@@ -256,14 +256,21 @@ SOAPHound.exe -c c:\temp\cache.txt --certdump -o c:\temp\bh-output
 
 ```bash
 # Certipy — full certificate template enumeration
-certipy find 'DOMAIN/user:Password123@DC01.DOMAIN.LOCAL'
+certipy find 'DOMAIN/user:Password123@DC01.DOMAIN.LOCAL' \
+  -output engagement/evidence/certipy-full-DOMAIN
 
 # Find vulnerable templates only
-certipy find 'DOMAIN/user:Password123@DC01.DOMAIN.LOCAL' -vulnerable -hide-admins
+certipy find 'DOMAIN/user:Password123@DC01.DOMAIN.LOCAL' -vulnerable -hide-admins \
+  -output engagement/evidence/certipy-vulnerable-DOMAIN
 
 # With Kerberos
-certipy find 'DOMAIN/user@DC01.DOMAIN.LOCAL' -k
+certipy find 'DOMAIN/user@DC01.DOMAIN.LOCAL' -k \
+  -output engagement/evidence/certipy-full-DOMAIN
 ```
+
+**Certipy output**: Always use `-output engagement/evidence/certipy-<label>`
+to write results to the evidence directory. Without `-output`, certipy writes
+`{timestamp}_Certipy.{json,txt}` to CWD, polluting the working directory.
 
 **Certipy version notes:**
 - Certipy v5.0+ removed the `-bloodhound` flag. Run `certipy find` without it

@@ -1,17 +1,22 @@
 """MCP server for SQLite-backed engagement state management.
 
-Runs in two modes controlled by --mode:
-- read:  Read-only tools (get_state_summary, get_targets, etc.)
-         Listed in every subagent's mcpServers block.
-- write: Read + write tools (add_target, add_credential, etc.)
-         Only accessible to the main thread (orchestrator).
+Runs in three modes controlled by --mode:
+- read:    Read-only tools (get_state_summary, get_targets, etc.)
+           Listed in technique subagents' mcpServers block.
+- interim: Read tools + 4 add-only write tools (add_credential, add_vuln,
+           add_pivot, add_blocked). Listed in discovery subagents' mcpServers
+           block so they can record actionable findings mid-run without waiting
+           for the orchestrator to parse their return summary.
+- write:   Read + all write tools (add_target, add_credential, etc.)
+           Only accessible to the main thread (orchestrator).
 
-Both instances open the same engagement/state.db. SQLite WAL mode handles
-concurrent readers safely. Since only the orchestrator writes (single-threaded),
-write conflicts are impossible.
+All instances open the same engagement/state.db. SQLite WAL mode handles
+concurrent readers safely. busy_timeout prevents SQLITE_BUSY when the
+orchestrator and an interim-mode agent write concurrently.
 
 Usage:
     uv run python server.py --mode read
+    uv run python server.py --mode interim
     uv run python server.py --mode write
 """
 
@@ -44,6 +49,7 @@ def _get_db() -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
+    conn.execute("PRAGMA busy_timeout=5000")
     return conn
 
 
@@ -63,6 +69,29 @@ def _resolve_target_id(conn: sqlite3.Connection, host: str) -> int | None:
 def _now_sql() -> str:
     """SQLite expression for current UTC timestamp."""
     return "strftime('%Y-%m-%dT%H:%M:%SZ', 'now')"
+
+
+def _emit_event(
+    conn: sqlite3.Connection,
+    event_type: str,
+    record_id: int,
+    summary: str,
+    agent: str = "",
+) -> None:
+    """Insert a state_events row inside the current transaction.
+
+    Called by interim-mode write tools so the orchestrator can poll for
+    real-time findings via poll_events().  Silently skips if the table
+    doesn't exist (older DBs without the v2 schema).
+    """
+    try:
+        conn.execute(
+            "INSERT INTO state_events (event_type, record_id, summary, agent) "
+            "VALUES (?, ?, ?, ?)",
+            (event_type, record_id, summary, agent),
+        )
+    except sqlite3.OperationalError:
+        pass  # table doesn't exist in older DBs — skip silently
 
 
 # ---------------------------------------------------------------------------
@@ -447,6 +476,43 @@ def register_read_tools(mcp: FastMCP) -> None:
             ).fetchall()
         conn.close()
         return json.dumps(_rows_to_dicts(rows), indent=2)
+
+    @mcp.tool()
+    def poll_events(since_id: int = 0, limit: int = 50) -> str:
+        """Poll for state events since a checkpoint.
+
+        Returns new events written by interim-mode discovery agents plus a
+        cursor for the next call.  Use this for real-time monitoring of
+        findings as they happen — call repeatedly with the returned cursor.
+
+        Args:
+            since_id: Last event ID seen (0 = from the beginning).
+            limit: Maximum events to return (default 50).
+        """
+        try:
+            conn = _get_db()
+        except FileNotFoundError:
+            return json.dumps({"events": [], "cursor": 0, "count": 0})
+
+        # Backward compat: check table exists (older DBs without v2 schema)
+        if not conn.execute(
+            "SELECT name FROM sqlite_master "
+            "WHERE type='table' AND name='state_events'"
+        ).fetchone():
+            conn.close()
+            return json.dumps({"events": [], "cursor": 0, "count": 0})
+
+        rows = conn.execute(
+            "SELECT * FROM state_events WHERE id > ? ORDER BY id LIMIT ?",
+            (since_id, limit),
+        ).fetchall()
+        events = _rows_to_dicts(rows)
+        cursor = events[-1]["id"] if events else since_id
+        conn.close()
+        return json.dumps(
+            {"events": events, "cursor": cursor, "count": len(events)},
+            indent=2,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -1098,6 +1164,207 @@ def register_write_tools(mcp: FastMCP) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Interim tools (registered only in interim mode — discovery agents)
+# ---------------------------------------------------------------------------
+
+def register_interim_tools(mcp: FastMCP) -> None:
+    """Register add-only write tools for discovery agents.
+
+    Interim mode gives discovery agents the ability to record actionable
+    findings (credentials, vulns, pivot paths, blocked techniques) mid-run
+    so concurrent agents and the orchestrator can see them immediately —
+    without waiting for the discovery agent's full return summary.
+
+    Only 4 add-only tools are exposed. No update tools, no target/port/access
+    management, no lifecycle tools. The orchestrator remains the authoritative
+    writer for everything else.
+    """
+
+    @mcp.tool()
+    def add_credential(
+        username: str = "",
+        secret: str = "",
+        secret_type: str = "password",
+        domain: str = "",
+        source: str = "",
+        discovered_by: str = "",
+    ) -> str:
+        """Add a credential (password, hash, key, token, etc.).
+
+        Args:
+            username: Username or account name.
+            secret: The credential value (password, hash, key, token).
+            secret_type: Type of secret: password, ntlm_hash, aes_key,
+                        kerberos_tgt, kerberos_tgs, ssh_key, token,
+                        certificate, other.
+            domain: Domain (for AD credentials).
+            source: Where this credential was found.
+            discovered_by: Skill that found this credential.
+        """
+        conn = _get_db()
+        cursor = conn.execute(
+            "INSERT INTO credentials "
+            "(username, secret, secret_type, domain, source, discovered_by) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (username, secret, secret_type, domain, source, discovered_by),
+        )
+        cred_id = cursor.lastrowid
+        summary = (
+            f"{domain}\\{username} ({secret_type})"
+            if domain
+            else f"{username} ({secret_type})"
+        )
+        _emit_event(conn, "credential", cred_id, summary, discovered_by)
+        conn.commit()
+        conn.close()
+        return json.dumps({
+            "credential_id": cred_id,
+            "username": username,
+            "secret_type": secret_type,
+            "domain": domain,
+        }, indent=2)
+
+    @mcp.tool()
+    def add_vuln(
+        title: str,
+        host: str = "",
+        vuln_type: str = "",
+        status: str = "found",
+        severity: str = "medium",
+        endpoint: str = "",
+        details: str = "",
+        evidence_path: str = "",
+        discovered_by: str = "",
+    ) -> str:
+        """Add a confirmed vulnerability.
+
+        Args:
+            title: Short vulnerability title (e.g., "SQLi in /search parameter").
+            host: Target host (empty = unassociated).
+            vuln_type: Vulnerability class (e.g., "sqli", "xss", "rce").
+            status: Status: found, active, done.
+            severity: Severity: info, low, medium, high, critical.
+            endpoint: Affected endpoint/URL/path.
+            details: Technical details.
+            evidence_path: Path to evidence file in engagement/evidence/.
+            discovered_by: Skill that found this vulnerability.
+        """
+        conn = _get_db()
+        target_id = None
+        if host:
+            target_id = _resolve_target_id(conn, host)
+            if target_id is None:
+                conn.close()
+                return f"ERROR: Target '{host}' not found. Add the target first."
+
+        cursor = conn.execute(
+            "INSERT INTO vulns "
+            "(target_id, title, vuln_type, status, severity, endpoint, "
+            "details, evidence_path, discovered_by) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (target_id, title, vuln_type, status, severity, endpoint,
+             details, evidence_path, discovered_by),
+        )
+        vuln_id = cursor.lastrowid
+        summary = f"{title} [{severity}]"
+        if host:
+            summary += f" on {host}"
+        _emit_event(conn, "vuln", vuln_id, summary, discovered_by)
+        conn.commit()
+        conn.close()
+        return json.dumps({
+            "vuln_id": vuln_id,
+            "title": title,
+            "severity": severity,
+            "status": status,
+        }, indent=2)
+
+    @mcp.tool()
+    def add_pivot(
+        source: str,
+        destination: str,
+        method: str = "",
+        status: str = "identified",
+        discovered_by: str = "",
+        notes: str = "",
+    ) -> str:
+        """Add a pivot path (what leads where).
+
+        Args:
+            source: Source (e.g., "SQLi on 10.10.10.5:/search").
+            destination: Destination (e.g., "DB creds for 10.10.10.1:mssql").
+            method: How the pivot works.
+            status: Status: identified, exploited, blocked.
+            discovered_by: Skill that identified this path.
+            notes: Additional notes.
+        """
+        conn = _get_db()
+        cursor = conn.execute(
+            "INSERT INTO pivot_map "
+            "(source, destination, method, status, discovered_by, notes) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (source, destination, method, status, discovered_by, notes),
+        )
+        pivot_id = cursor.lastrowid
+        _emit_event(
+            conn, "pivot", pivot_id,
+            f"{source} -> {destination}", discovered_by,
+        )
+        conn.commit()
+        conn.close()
+        return json.dumps({
+            "pivot_id": pivot_id,
+            "source": source,
+            "destination": destination,
+            "status": status,
+        }, indent=2)
+
+    @mcp.tool()
+    def add_blocked(
+        technique: str,
+        reason: str,
+        host: str = "",
+        retry: str = "no",
+        notes: str = "",
+        blocked_by: str = "",
+    ) -> str:
+        """Record a blocked/failed technique attempt.
+
+        Args:
+            technique: Technique that was attempted (e.g., "kerberoasting").
+            reason: Why it failed.
+            host: Target host (empty = not host-specific).
+            retry: Retry assessment: no, later, with_context.
+            notes: Additional notes.
+            blocked_by: Skill that was blocked.
+        """
+        conn = _get_db()
+        target_id = None
+        if host:
+            target_id = _resolve_target_id(conn, host)
+
+        cursor = conn.execute(
+            "INSERT INTO blocked "
+            "(target_id, technique, reason, retry, notes, blocked_by) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (target_id, technique, reason, retry, notes, blocked_by),
+        )
+        blocked_id = cursor.lastrowid
+        summary = technique
+        if host:
+            summary += f" on {host}"
+        summary += f" | {reason} [{retry}]"
+        _emit_event(conn, "blocked", blocked_id, summary, blocked_by)
+        conn.commit()
+        conn.close()
+        return json.dumps({
+            "blocked_id": blocked_id,
+            "technique": technique,
+            "retry": retry,
+        }, indent=2)
+
+
+# ---------------------------------------------------------------------------
 # Server creation and entrypoint
 # ---------------------------------------------------------------------------
 
@@ -1105,28 +1372,44 @@ def create_server(mode: str) -> FastMCP:
     """Create and configure the state MCP server.
 
     Args:
-        mode: "read" for read-only tools, "write" for read + write tools.
+        mode: "read" for read-only tools, "interim" for read + 4 add-only
+              write tools, "write" for read + all write tools.
     """
-    name = f"red-run-state-{'reader' if mode == 'read' else 'writer'}"
-    instructions = (
-        "Provides engagement state management for red-run. "
-        + (
+    names = {"read": "red-run-state-reader", "interim": "red-run-state-interim", "write": "red-run-state-writer"}
+    name = names[mode]
+
+    instructions_map = {
+        "read": (
+            "Provides engagement state management for red-run. "
             "Read-only access to engagement state (targets, credentials, "
             "access, vulns, pivot map, blocked). Use get_state_summary() "
             "for a compact overview."
-            if mode == "read"
-            else "Full read/write access to engagement state. Use write tools "
+        ),
+        "interim": (
+            "Provides engagement state management for red-run. "
+            "Read access plus 4 add-only write tools (add_credential, "
+            "add_vuln, add_pivot, add_blocked) for discovery agents to "
+            "record actionable findings mid-run. Use get_state_summary() "
+            "for a compact overview."
+        ),
+        "write": (
+            "Provides engagement state management for red-run. "
+            "Full read/write access to engagement state. Use write tools "
             "to record targets, credentials, access, vulns, pivots, and "
             "blocked items. Use get_state_summary() for a compact overview."
-        )
-    )
+        ),
+    }
 
-    mcp = FastMCP(name, instructions=instructions)
+    mcp = FastMCP(name, instructions=instructions_map[mode])
 
     # Read tools always registered
     register_read_tools(mcp)
 
-    # Write tools only in write mode
+    # Interim tools for discovery agents
+    if mode == "interim":
+        register_interim_tools(mcp)
+
+    # Full write tools for orchestrator
     if mode == "write":
         register_write_tools(mcp)
 
@@ -1137,9 +1420,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="State MCP server")
     parser.add_argument(
         "--mode",
-        choices=["read", "write"],
+        choices=["read", "interim", "write"],
         required=True,
-        help="Server mode: 'read' for read-only, 'write' for read+write",
+        help="Server mode: 'read' for read-only, 'interim' for read + 4 add-only writes, 'write' for read+write",
     )
     args = parser.parse_args()
     server = create_server(args.mode)

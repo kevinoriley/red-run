@@ -142,3 +142,4 @@ skill with your payload.
 - When transferring payloads to target or using network tools, use
   `dangerouslyDisableSandbox: true` — the bwrap sandbox blocks network sockets.
 - MCP tool calls (get_skill, send_command) do NOT need the sandbox flag.
+- Before `git clone` or `pip install`, check if the tool exists locally: `which <tool>` or `find /opt /usr/share /usr/local -name '<tool>' -type f`. Only download if genuinely missing.

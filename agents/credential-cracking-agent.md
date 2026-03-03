@@ -137,5 +137,6 @@ The orchestrator reads this summary and makes the next routing decision.
 - All cracking is local — do NOT use `dangerouslyDisableSandbox: true` unless
   hashcat or john needs to write to paths outside the sandbox allowlist.
 - MCP tool calls (get_skill, get_state_summary) do NOT need the sandbox flag.
+- Before `git clone` or `pip install`, check if the tool exists locally: `which <tool>` or `find /opt /usr/share /usr/local -name '<tool>' -type f`. Only download if genuinely missing.
 - hashcat session files may need `$TMPDIR` as the working directory if the
   default session path is not writable.

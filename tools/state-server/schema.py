@@ -9,7 +9,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 SCHEMA_SQL = """\
 PRAGMA journal_mode=WAL;
@@ -133,6 +133,16 @@ CREATE TABLE IF NOT EXISTS blocked (
     notes         TEXT NOT NULL DEFAULT '',
     blocked_by    TEXT NOT NULL DEFAULT '',
     created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS state_events (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_type  TEXT NOT NULL
+                CHECK (event_type IN ('credential', 'vuln', 'pivot', 'blocked')),
+    record_id   INTEGER NOT NULL,
+    summary     TEXT NOT NULL,
+    agent       TEXT NOT NULL DEFAULT '',
+    created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
 """
 
