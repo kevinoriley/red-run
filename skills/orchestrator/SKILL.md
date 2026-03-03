@@ -254,13 +254,16 @@ Use this table to pick the right agent for each skill:
 The orchestrator runs a decision loop. Each iteration:
 
 ```
+watcher_task_id = None   # track the running watcher
+
 while objectives_not_met:
     summary = get_state_summary()
     analyze: unexploited vulns, unchained access, untested creds, pivot map
     pick highest-value next action → select skill + domain agent
     append to activity.md (routing decision)
     spawn agent in background with: skill name, target info, mode, context
-    spawn event watcher in background (cursor, db path) if not already running
+    if watcher_task_id: TaskStop(watcher_task_id)   # kill stale watcher
+    watcher_task_id = spawn event watcher in background (cursor, db path)
     END TURN — user is free to interact
 
     # Notifications arrive asynchronously:
@@ -347,8 +350,16 @@ detection, 10-minute timeout.
 
 **Spawning the watcher:**
 
+Before spawning a new watcher, always kill the previous one (if any) to avoid
+stale timeout notifications that waste tokens:
+
 ```
-Bash(
+# Kill previous watcher if running
+if watcher_task_id:
+    TaskStop(task_id=watcher_task_id)
+
+# Spawn new watcher and track its task ID
+watcher_task_id = Bash(
     command="bash tools/hooks/event-watcher.sh <event_cursor> ./engagement/state.db",
     run_in_background=true,
     description="Event watcher (cursor <N>)"
@@ -357,22 +368,25 @@ Bash(
 
 #### Watcher Lifecycle Management
 
-- **Spawn**: After every background agent launch, if no watcher is currently
-  running. One watcher suffices for multiple concurrent agents.
-- **Respawn**: After every watcher notification, **immediately spawn a new
-  watcher** with the current cursor before doing anything else — this minimizes
-  the blind window. Then call `poll_events(since_id=<event_cursor>)` to catch
-  any events written between the old watcher's exit and the new watcher's
-  start. Display and process any gap events, then update the cursor. The new
-  watcher is already running and will catch anything that arrives while you
-  process the backfill.
-- **Cleanup**: When all background agents have completed, do NOT spawn a new
-  watcher. The watcher's 10-minute timeout handles cleanup if the orchestrator
-  forgets.
-- **On agent return**: If a watcher is still running when an agent completes,
-  let it continue — it may catch events from other still-running agents. If no
-  agents remain running, the watcher will timeout naturally (or can be killed
-  via `TaskStop`).
+Track the current watcher's background task ID in a `watcher_task_id` variable.
+**Always `TaskStop` the previous watcher before spawning a new one** — stale
+watchers that timeout produce notifications that waste tokens on empty results.
+
+- **Spawn**: After every background agent launch. Kill the previous watcher
+  first (`TaskStop(watcher_task_id)`), then spawn a fresh one. One watcher
+  suffices for multiple concurrent agents.
+- **Respawn**: After every watcher notification, **kill the old watcher** (it
+  already exited, but call `TaskStop` defensively), then **immediately spawn a
+  new watcher** with the updated cursor — this minimizes the blind window. Then
+  call `poll_events(since_id=<event_cursor>)` to catch any events written
+  between the old watcher's exit and the new watcher's start. Display and
+  process any gap events, then update the cursor. The new watcher is already
+  running and will catch anything that arrives while you process the backfill.
+- **Cleanup**: When all background agents have completed, `TaskStop` the
+  running watcher and clear `watcher_task_id`. Do NOT spawn a new one.
+- **On agent return**: If a watcher is still running and other agents are also
+  still running, let it continue. If no agents remain running, `TaskStop` the
+  watcher and clear `watcher_task_id`.
 
 #### Actionable Event Criteria
 
@@ -1113,7 +1127,12 @@ Multiple agents achieve the goal (rare but possible).
 ### Clock Skew Recovery
 
 When an AD skill returns with `KRB_AP_ERR_SKEW` or clock skew as the failure
-reason:
+reason, follow this two-attempt recovery flow. The first attempt uses standard
+clock sync + agent retry. The second attempt (if the first fails due to clock
+drift during agent startup latency) produces an **atomic script** that syncs
+and runs the exploit command in one shot — eliminating the latency gap.
+
+#### Attempt 1: Standard Sync + Agent Retry
 
 1. Write a temporary script to the working directory:
    ```bash
@@ -1136,10 +1155,80 @@ reason:
 5. Clean up: `rm temp_clock-sync.sh` after successful retry.
 6. Log to `engagement/activity.md`:
    ```
-   ### [YYYY-MM-DD HH:MM:SS] orchestrator → clock-skew recovery
+   ### [YYYY-MM-DD HH:MM:SS] orchestrator → clock-skew recovery (attempt 1)
    - KRB_AP_ERR_SKEW detected during <skill-name>
    - Clock synced via ntpdate, retrying skill
    ```
+
+#### Attempt 2: Atomic Sync + Exploit Script
+
+If the retried agent returns with `KRB_AP_ERR_SKEW` **again** — the clock is
+drifting faster than agent startup latency allows — switch to an atomic script.
+The problem: spawning an agent takes minutes (skill loading, context building,
+tool calls), during which the clock drifts back out of the 5-minute Kerberos
+window. The fix: a single script that syncs the clock and runs the Kerberos
+command with zero gap between them.
+
+1. Extract the **exact command** that failed from the agent's return summary.
+   The agent's Clock Skew Interrupt should include the commands that were
+   attempted. If not, reconstruct from the skill's methodology and the
+   engagement context (credentials, SPNs, target IPs).
+
+2. Write `temp_clock-attack.sh` with both the sync and the exploit command:
+   ```bash
+   #!/usr/bin/env bash
+   set -euo pipefail
+   DC_IP="<DC_IP>"
+   EVIDENCE_DIR="<absolute path to engagement/evidence>"
+
+   echo "[*] Syncing clock with DC..."
+   sudo ntpdate "$DC_IP" || sudo rdate -n "$DC_IP"
+   echo "[+] Clock synced — running attack immediately"
+
+   # === THE KERBEROS COMMAND(S) ===
+   # Paste the exact command(s) from the skill methodology.
+   # Example for constrained delegation:
+   #   getST.py -spn 'WWW/dc.target.htb' -impersonate Administrator \
+   #     -hashes ':NTHASH' -dc-ip "$DC_IP" 'domain.htb/svc_account$'
+   #   export KRB5CCNAME=Administrator@WWW_dc.target.htb@DOMAIN.HTB.ccache
+   #   wmiexec.py -k -no-pass domain.htb/Administrator@dc.target.htb
+   <COMMANDS HERE>
+   ```
+   Save as `temp_clock-attack.sh` and `chmod +x temp_clock-attack.sh`.
+
+3. Present to the user:
+   > Clock drifted again during agent startup. This target's clock moves too
+   > fast for the agent retry model. Here's an atomic script that syncs the
+   > clock and runs the Kerberos command immediately — no gap.
+   >
+   > Review and run: `sudo bash ./temp_clock-attack.sh`
+   >
+   > If the command produces a `.ccache` file, let me know and I'll continue
+   > the chain (shell via wmiexec/psexec using the ticket).
+
+4. After user confirms the script ran:
+   - Parse the output — check for ticket files, shell access, errors
+   - If a `.ccache` file was produced, the orchestrator can continue the
+     chain: establish a shell using `start_process` with the ticket
+     (e.g., `wmiexec.py -k -no-pass`), or route to the next skill
+   - If the command itself was a shell command (wmiexec, psexec), ask
+     the user for the output (whoami, flags, etc.) and record access
+   - Record all findings via state-writer MCP tools as normal
+
+5. Clean up: `rm temp_clock-sync.sh temp_clock-attack.sh` after success.
+
+6. Log to `engagement/activity.md`:
+   ```
+   ### [YYYY-MM-DD HH:MM:SS] orchestrator → clock-skew recovery (attempt 2 — atomic script)
+   - Agent retry failed — clock drifting faster than agent startup latency
+   - Produced atomic sync+exploit script for operator
+   - Result: <outcome>
+   ```
+
+**Important:** The atomic script is a **fallback**, not the default. Always
+try the standard sync + agent retry first — it preserves the normal agent
+model with full skill methodology, evidence saving, and structured return.
+The atomic script sacrifices agent-managed execution for timing precision.
 
 ### AV Evasion Recovery
 
