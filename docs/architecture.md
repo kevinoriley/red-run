@@ -193,3 +193,17 @@ The tools that require elevated privileges are isolated behind MCP servers and D
 The pattern is consistent: if something needs elevated privilege, either it runs inside a container that has the specific capability, or the orchestrator stops and asks the operator to do it. Claude never runs `sudo` itself.
 
 This also means red-run works without adding Claude Code to sudoers, without `NOPASSWD` entries, and without `--dangerously-skip-permissions` for privilege escalation on the *host*. The attack surface is the target, not your machine.
+
+You can enforce this at the Claude Code level by adding `Bash(sudo *)` to the deny list in `~/.claude/settings.json`. This makes Claude Code refuse any Bash command starting with `sudo`, regardless of what an agent or skill tries to do:
+
+```json
+{
+  "permissions": {
+    "deny": [
+      "Bash(sudo *)"
+    ]
+  }
+}
+```
+
+This comes from the [Trail of Bits Claude Code hardening guide](https://blog.trailofbits.com/2025/07/10/securing-claude-code/), which has other useful deny rules for destructive commands (`rm -rf`, `git push --force`, `dd`, etc.). See [Installation](installation.md) for the recommended setup.

@@ -74,7 +74,25 @@ For everything else (file reads, writes, local processing, hash cracking),
 keep sandbox enabled.
 ```
 
-> **Trail of Bits config:** For additional guardrails, consider the [Trail of Bits Claude Code configuration](https://github.com/trailofbits/claude-code-config).
+### Hardening with permission denies
+
+red-run is [designed so Claude never needs sudo](architecture.md#privilege-boundaries) — nmap and Responder run inside Docker containers, and system changes like `/etc/hosts` are hard stops that require operator action. You can enforce this by denying `sudo` in `~/.claude/settings.json`:
+
+```json
+{
+  "permissions": {
+    "deny": [
+      "Bash(sudo *)",
+      "Bash(rm -rf *)",
+      "Bash(rm -fr *)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)"
+    ]
+  }
+}
+```
+
+The `Bash(sudo *)` rule makes Claude Code refuse any Bash command starting with `sudo`. The other rules block common destructive commands. See the [Trail of Bits Claude Code hardening guide](https://blog.trailofbits.com/2025/07/10/securing-claude-code/) for the full recommended configuration.
 
 ## Running
 
