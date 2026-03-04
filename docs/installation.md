@@ -16,7 +16,7 @@ red-run requires the following installed:
 ## Install
 
 ```bash
-git clone https://github.com/kevinoriley/red-run.git
+git clone https://github.com/blacklanternsecurity/red-run.git
 cd red-run
 ./install.sh
 ```

@@ -203,8 +203,8 @@ See [Engagement State](engagement-state.md) for the full schema, mode architectu
 
 For complete documentation of each server — parameters, environment variables, architecture, and edge cases — see the README in each server's directory:
 
-- [`tools/skill-router/README.md`](https://github.com/kevinoriley/red-run/blob/main/tools/skill-router/README.md)
-- [`tools/nmap-server/README.md`](https://github.com/kevinoriley/red-run/blob/main/tools/nmap-server/README.md)
-- [`tools/shell-server/README.md`](https://github.com/kevinoriley/red-run/blob/main/tools/shell-server/README.md)
-- [`tools/browser-server/README.md`](https://github.com/kevinoriley/red-run/blob/main/tools/browser-server/README.md)
-- [`tools/state-server/README.md`](https://github.com/kevinoriley/red-run/blob/main/tools/state-server/README.md)
+- [`tools/skill-router/README.md`](https://github.com/blacklanternsecurity/red-run/blob/main/tools/skill-router/README.md)
+- [`tools/nmap-server/README.md`](https://github.com/blacklanternsecurity/red-run/blob/main/tools/nmap-server/README.md)
+- [`tools/shell-server/README.md`](https://github.com/blacklanternsecurity/red-run/blob/main/tools/shell-server/README.md)
+- [`tools/browser-server/README.md`](https://github.com/blacklanternsecurity/red-run/blob/main/tools/browser-server/README.md)
+- [`tools/state-server/README.md`](https://github.com/blacklanternsecurity/red-run/blob/main/tools/state-server/README.md)

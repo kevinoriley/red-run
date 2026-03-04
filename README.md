@@ -8,7 +8,7 @@ Offensive security toolkit for Claude Code.
 
 red-run combines skills, MCP servers, and agents with routing logic that guides Claude through the phases of an infrastructure-focused attack — recon, initial access, lateral movement, privilege escalation, and post-exploitation. It tracks engagement state in a SQLite database that persists across context compactions, routes to skills via semantic search (RAG), and delegates execution to focused agents that each handle one technique per invocation.
 
-The orchestrator presents the attack surface, chain analysis, and available paths — you choose what to hit next. Once you pick a path, the agent runs end-to-end and reports back. See the [Architecture docs](https://kevinoriley.github.io/red-run/architecture/) for diagrams and data flow.
+The orchestrator presents the attack surface, chain analysis, and available paths — you choose what to hit next. Once you pick a path, the agent runs end-to-end and reports back. See the [Architecture docs](https://blacklanternsecurity.github.io/red-run/architecture/) for diagrams and data flow.
 
 ## Skills
 
@@ -27,13 +27,13 @@ Skills are baseline templates researched and built by Claude. Refine them manual
 
 ## Documentation
 
-Full documentation is available at the [docs site](https://kevinoriley.github.io/red-run/):
+Full documentation is available at the [docs site](https://blacklanternsecurity.github.io/red-run/):
 
-- [Architecture](https://kevinoriley.github.io/red-run/architecture/) — platform vs strategy layers, prompt architecture, data flow
-- [Installation](https://kevinoriley.github.io/red-run/installation/) — prerequisites, setup, sandbox configuration
-- [Running an Engagement](https://kevinoriley.github.io/red-run/running-an-engagement/) — end-to-end operator guide
-- [MCP Servers](https://kevinoriley.github.io/red-run/mcp-servers/) — nmap, shell, browser, state, skill-router
-- [Writing Skills](https://kevinoriley.github.io/red-run/writing-skills/) — contributor guide for new skills
+- [Architecture](https://blacklanternsecurity.github.io/red-run/architecture/) — platform vs strategy layers, prompt architecture, data flow
+- [Installation](https://blacklanternsecurity.github.io/red-run/installation/) — prerequisites, setup, sandbox configuration
+- [Running an Engagement](https://blacklanternsecurity.github.io/red-run/running-an-engagement/) — end-to-end operator guide
+- [MCP Servers](https://blacklanternsecurity.github.io/red-run/mcp-servers/) — nmap, shell, browser, state, skill-router
+- [Writing Skills](https://blacklanternsecurity.github.io/red-run/writing-skills/) — contributor guide for new skills
 
 See also: [ARCHITECTURE.md](ARCHITECTURE.md) for Mermaid diagrams, [SKILLS.md](SKILLS.md) for the full skill inventory.
 
@@ -49,7 +49,7 @@ See also: [ARCHITECTURE.md](ARCHITECTURE.md) for Mermaid diagrams, [SKILLS.md](S
 
 The installer sets up the orchestrator, agents, and MCP servers, and indexes `skills/` into ChromaDB for semantic retrieval. The repo must stay in place — skill-router reads from `skills/` at runtime.
 
-Run from a VM or dedicated pentesting machine. See [Installation docs](https://kevinoriley.github.io/red-run/installation/) for sandbox configuration and troubleshooting.
+Run from a VM or dedicated pentesting machine. See [Installation docs](https://blacklanternsecurity.github.io/red-run/installation/) for sandbox configuration and troubleshooting.
 
 ## Warning
 

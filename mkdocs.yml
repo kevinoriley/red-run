@@ -1,6 +1,6 @@
 site_name: red-run
 site_description: Offensive security toolkit for Claude Code
-repo_url: https://github.com/kevinoriley/red-run
+repo_url: https://github.com/blacklanternsecurity/red-run
 theme:
   name: material
   palette:
