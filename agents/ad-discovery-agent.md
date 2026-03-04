@@ -75,8 +75,16 @@ guidance.
 If **any** Kerberos operation returns `KRB_AP_ERR_SKEW`, `Clock skew too great`,
 or `Kerberos SessionError: KRB_AP_ERR_SKEW`:
 
-**STOP IMMEDIATELY.** Do not retry. Do not fall back to NTLM. Do not continue
-with the skill methodology.
+**STOP THE ENTIRE INVOCATION.** Do not retry. Do not fall back to NTLM — not
+for the Kerberos operation that failed, and not for any other operation either.
+Do not continue with ANY part of the skill methodology, even parts that could
+technically work with NTLM (SMB enumeration, LDAP queries, etc.). The clock
+must be fixed before this agent does any more work.
+
+**Why no NTLM fallback:** NTLM authentication generates Event 4776 and
+triggers CrowdStrike Identity Module PTH signatures. The engagement uses
+Kerberos-first for OPSEC. If clock skew prevents Kerberos, the answer is to
+fix the clock — not to downgrade authentication and blow OPSEC.
 
 1. Report in your return summary:
    `Clock skew: KRB_AP_ERR_SKEW — requires sudo ntpdate <DC_IP>`
@@ -87,7 +95,8 @@ with the skill methodology.
    - Include any findings gathered before the error
 
 This is not a stall — it is a known prerequisite failure requiring operator
-intervention. Do not spend rounds trying alternatives or workarounds.
+intervention. Do not spend rounds trying alternatives or workarounds. Do not
+rationalize that "this specific task doesn't need Kerberos" — return now.
 
 ## Scope Boundaries — What You Must NOT Do
 
@@ -126,25 +135,28 @@ an interactive shell.
 RCE. Interactive shells are more reliable and required for privilege escalation
 tools that spawn new shells.
 
-## Interactive Processes via MCP
+## Tool Execution — Bash vs Shell-Server
 
-Use `start_process` to spawn local interactive tools in a persistent PTY.
-This is for tools that need session persistence — credential-based access
-tools, exploit frameworks, and tools that maintain state between commands.
+**Bash is the default.** Most penetration testing tools are run-and-exit CLI
+commands. Run them via Bash (with `dangerouslyDisableSandbox: true` for any
+command that touches the network).
 
-- `start_process(command="<tool>", label="<label>")` — spawn the process
-- `send_command(session_id=..., command=...)` — interact with it
-- `read_output(session_id=...)` — check for async output
-- `close_session(session_id=..., save_transcript=true)` — clean up
+**`start_process` is ONLY for tools that maintain persistent interactive
+sessions** or **tools in the Docker pentest toolbox** (`privileged=True`):
 
-**When to use which:**
+| Category | Examples | `privileged`? |
+|----------|----------|---------------|
+| Docker pentest tools | evil-winrm, chisel, ligolo-ng, socat | Yes — `privileged=True` (Docker-only) |
+| Host tools | ssh, msfconsole | No — runs on host directly |
 
-| Scenario | Tool |
-|----------|------|
-| Target sends reverse shell callback | `start_listener` |
-| Have credentials + service port open | `start_process` |
-| Exploit framework (msfconsole) | `start_process` |
-| Single non-interactive command | Bash |
+**Do NOT run `which` to check for Docker tools** — they are only available
+inside the Docker container. These are rare for AD discovery.
+
+**Everything else uses Bash** — including netexec (nxc), manspider, kerbrute,
+bloodhound-python, certipy, bloodyAD, enum4linux-ng, ldapsearch, and all
+Impacket one-shot scripts (GetUserSPNs.py, GetNPUsers.py, getTGT.py,
+getST.py, lookupsid.py, findDelegation.py, etc.). If a tool runs a command
+and exits, it goes through Bash — even if it runs for minutes.
 
 ## Engagement Files
 
@@ -203,3 +215,8 @@ The orchestrator reads this summary and makes the next routing decision.
   `dangerouslyDisableSandbox: true` — the bwrap sandbox blocks network sockets.
 - MCP tool calls (get_skill) do NOT need the sandbox flag.
 - Before `git clone` or `pip install`, check if the tool exists locally: `which <tool>` or `find /opt /usr/share /usr/local -name '<tool>' -type f`. Only download if genuinely missing.
+- **Share spidering**: Use `manspider` for content search (keyword matching,
+  regex, file type filtering). It's installed on the attackbox
+  (`~/.local/bin/manspider`) and runs via Bash. Use `nxc smb --shares` for
+  share listing and access checks. This is a quick pass — the orchestrator
+  may task a deeper review if the quick spider finds nothing.

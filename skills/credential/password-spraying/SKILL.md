@@ -296,13 +296,13 @@ SecLists file is appended.**
 
 **Generate a self-contained spray script, then execute it in one shot.**
 
-The Bash tool has a 2-minute timeout. Large spray rounds (500+ passwords × 8+
-users) exceed this, causing the command to move to background and forcing the
-agent to poll with sleep/wait/ps — wasting ~50% of total spray time on overhead.
+The Bash tool defaults to a 2-minute timeout, but supports up to 10 minutes
+via `timeout=600000`. Large spray rounds may exceed even this — for those,
+use `run_in_background=true` and check the output later.
 
 **The fix:** Generate a bash script with all spray rounds baked in, then execute
-it via `start_process` (persistent PTY, no timeout). The script runs all rounds
-sequentially within one process, outputs structured results, and exits.
+it via Bash with extended timeout. The script runs all rounds sequentially
+within one process, outputs structured results, and exits.
 
 ### Step 1: Generate the Spray Script
 
@@ -378,17 +378,17 @@ grep -E '(\[\+\]|Pwn3d)' "$RESULTS" 2>/dev/null || echo "(none found)" | tee -a 
    of nxc (see Service Protocol Commands below)
 4. Write the script via the Write tool, then `chmod +x`
 
-### Step 2: Execute via start_process
+### Step 2: Execute via Bash
 
-Run the script in a persistent PTY session — no Bash timeout issues:
+Run the script with an extended timeout (10 minutes). Spray scripts are
+non-interactive batch jobs — they run and exit. Use Bash, not `start_process`:
 
 ```
-start_process(command="bash engagement/evidence/spray-runner.sh", label="spray-runner")
+Bash(command="bash engagement/evidence/spray-runner.sh", timeout=600000, dangerouslyDisableSandbox=true)
 ```
 
-Then monitor output with `read_output(session_id=...)` until the script
-prints `[*] Spray complete`. Use `send_command(session_id=..., command="")`
-if needed to check for new output.
+If the spray may exceed 10 minutes (very large user lists or many services),
+use `run_in_background=true` and check the output later via `TaskOutput`.
 
 ### Step 3: Parse Results
 
@@ -619,7 +619,7 @@ grep -i 'valid pass' "$RESULTS" 2>/dev/null || echo "(none found)" | tee -a "$RE
 - Operator explicitly requests kerbrute
 
 **Execute the same way** — write via Write tool, `chmod +x`, run via
-`start_process`.
+Bash with `timeout=600000`.
 
 ### Hash Spray (Lateral Movement)
 
@@ -689,7 +689,7 @@ After finding valid credentials:
   accounts
 - **High-privilege account**: Route to **credential-dumping** (DCSync)
 
-When routing, pass: valid username/password, domain, DC hostname, current mode.
+When routing, pass: valid username/password, domain, DC hostname.
 
 ## Stall Detection
 
@@ -722,12 +722,9 @@ Do not loop. Work through failures systematically:
 - Assessment: **blocked** (permanent — config, patched, missing prereq) or
   **retry-later** (may work with different context, creds, or access)
 
-**Mode behavior:**
-- **Guided**: Tell the user you're stalled, present what was tried, and
-  recommend the next best path.
-- **Autonomous**: Return findings to the orchestrator. Do not retry the same
-  technique — the orchestrator will decide whether to revisit with new context
-  or route elsewhere.
+**When stalled:** Tell the user you're stalled, present what was tried, and
+recommend the next best path. Return findings to the orchestrator — it will
+decide whether to revisit with new context or route elsewhere.
 
 ## Troubleshooting
 

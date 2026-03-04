@@ -494,7 +494,7 @@ If multiple services trust the same JWT issuer:
 Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
 
 When routing, pass along: the forged token, confirmed attack type, target
-algorithm, current mode, and any secrets recovered.
+algorithm, and any secrets recovered.
 
 ## Stall Detection
 
@@ -527,12 +527,9 @@ Do not loop. Work through failures systematically:
 - Assessment: **blocked** (permanent — config, patched, missing prereq) or
   **retry-later** (may work with different context, creds, or access)
 
-**Mode behavior:**
-- **Guided**: Tell the user you're stalled, present what was tried, and
-  recommend the next best path.
-- **Autonomous**: Return findings to the orchestrator. Do not retry the same
-  technique — the orchestrator will decide whether to revisit with new context
-  or route elsewhere.
+**When stalled:** Tell the user you're stalled, present what was tried, and
+recommend the next best path. Return findings to the orchestrator — it will
+decide whether to revisit with new context or route elsewhere.
 
 ## OPSEC Notes
 

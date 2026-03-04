@@ -580,10 +580,9 @@ If credentials aren't found but command execution is confirmed:
 
 - **Shell as non-root on Linux** → STOP. Return to orchestrator recommending
   **linux-discovery**. Pass: hostname, current user, access method
-  (injection-based RCE or reverse shell), current mode.
+  (injection-based RCE or reverse shell).
 - **Shell as non-admin on Windows** → STOP. Return to orchestrator recommending
-  **windows-discovery**. Pass: hostname, current user, access method, current
-  mode.
+  **windows-discovery**. Pass: hostname, current user, access method.
 - **Found credentials** → update state.md, test against SSH/RDP/WinRM/other
   services. Return to orchestrator recommending the appropriate discovery skill.
 - **Blind injection only, no shell** → extract credentials via DNS/HTTP
@@ -591,7 +590,7 @@ If credentials aren't found but command execution is confirmed:
   use credentials for direct access.
 
 When routing, always pass along: injection point, working payload, target
-platform, current mode, and any credentials found.
+platform, and any credentials found.
 
 ## Stall Detection
 
@@ -624,12 +623,9 @@ Do not loop. Work through failures systematically:
 - Assessment: **blocked** (permanent — config, patched, missing prereq) or
   **retry-later** (may work with different context, creds, or access)
 
-**Mode behavior:**
-- **Guided**: Tell the user you're stalled, present what was tried, and
-  recommend the next best path.
-- **Autonomous**: Return findings to the orchestrator. Do not retry the same
-  technique — the orchestrator will decide whether to revisit with new context
-  or route elsewhere.
+**When stalled:** Tell the user you're stalled, present what was tried, and
+recommend the next best path. Return findings to the orchestrator — it will
+decide whether to revisit with new context or route elsewhere.
 
 ## OPSEC Notes
 

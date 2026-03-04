@@ -67,14 +67,27 @@ requires testing a reverse shell callback:
 - Call `list_sessions()` to verify the connection
 - Call `close_session(session_id=..., save_transcript=true)` when done
 
-## Interactive Processes via MCP
+## Tool Execution — Bash vs Shell-Server
 
-Use `start_process` to spawn local interactive tools in a persistent PTY when
-needed for payload delivery:
+**Bash is the default.** Compilation and payload generation tools are
+run-and-exit CLI commands. Run them via Bash.
 
-- `start_process(command="evil-winrm -i TARGET -u user -p pass")` — for file
-  transfer via evil-winrm's `upload` command
-- `send_command(session_id=..., command="upload /path/to/payload.dll C:\\Windows\\Temp\\payload.dll")`
+**`start_process` is ONLY for evil-winrm or SSH sessions** when transferring
+payloads to a target. If the orchestrator provides a `session_id` for an
+existing shell, use `send_command` on that session instead of spawning a new
+one.
+
+Evil-winrm is a Docker-only tool — always use `privileged=True`. Do NOT check
+`which evil-winrm` on the host.
+
+```bash
+# Only when WinRM is available and you need to upload a payload:
+start_process(command="evil-winrm -i TARGET -u user -p pass", privileged=True)
+send_command(session_id=..., command="upload /path/to/payload.dll C:\\Windows\\Temp\\payload.dll")
+```
+
+**Everything else uses Bash** — including mingw cross-compilation, msfvenom,
+objdump, and all other build tools. If it runs and exits, use Bash.
 
 ## Scope Boundaries — What You Must NOT Do
 

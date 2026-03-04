@@ -17,15 +17,21 @@ uv sync --directory tools/shell-server
 No sudo or special system configuration required. The server binds TCP
 listeners as the current user.
 
-### Privileged Docker image (optional)
+### Docker pentest toolbox (recommended)
 
-For tools needing raw sockets or low-port binding (Responder, mitm6, tcpdump):
+The Docker image contains a full pentest toolkit for interactive sessions:
+evil-winrm, impacket (psexec/wmiexec/smbexec/smbclient/mssqlclient), chisel,
+ligolo-ng, socat, Responder, mitm6, and tcpdump.
 
 ```bash
 docker build -t red-run-shell:latest tools/shell-server/
 ```
 
 The install script builds this automatically when Docker is available.
+
+Tools in the image are accessed via `start_process(command=..., privileged=True)`.
+This is required for tools not installed on the host (evil-winrm, chisel,
+ligolo-ng) and for daemons needing raw sockets (Responder, mitm6).
 
 ## Usage
 
@@ -66,15 +72,28 @@ Works with any interactive CLI tool: `evil-winrm`, `psexec.py`, `ssh`,
 | `list_sessions` | (none) | List all listeners and sessions with status |
 | `close_session` | `session_id` (required), `save_transcript` (default true) | Close session, optionally save transcript |
 
-## Privileged Docker mode
+## Docker mode (`privileged=True`)
 
-Some tools need raw sockets (Responder, mitm6) or low-port binding that
-unprivileged users can't provide. The `privileged` parameter wraps the command
-in `docker run` with minimal capabilities — same pattern as nmap-server.
+The `privileged` parameter runs the command inside the `red-run-shell` Docker
+container. Use it for two cases:
+
+1. **Docker-only tools** — evil-winrm, chisel, ligolo-ng, socat (not installed
+   on the host, only in the Docker image)
+2. **Raw socket tools** — Responder, mitm6, tcpdump (need NET_RAW/NET_ADMIN)
 
 ```python
+# Docker-only tools
+start_process(command="evil-winrm -i 10.10.10.5 -u admin -p pass", privileged=True)
+start_process(command="chisel server --reverse --port 8080", privileged=True)
+start_process(command="ligolo-proxy -selfcert", privileged=True)
+
+# Raw socket daemons
 start_process(command="Responder.py -I tun0", privileged=True)
 start_process(command="mitm6 -d intelligence.htb", privileged=True)
+
+# Host tools (no Docker needed)
+start_process(command="ssh user@target")
+start_process(command="msfconsole -q")
 ```
 
 **What happens:**
@@ -86,6 +105,17 @@ start_process(command="mitm6 -d intelligence.htb", privileged=True)
 - `close_session()` runs `docker kill` on the named container before killing the
   process — ensures the container is cleaned up even if SIGTERM to the docker CLI
   doesn't propagate
+
+**Tools in the Docker image:**
+- evil-winrm (Ruby gem)
+- impacket (psexec.py, wmiexec.py, smbexec.py, smbclient.py, mssqlclient.py, etc.)
+- chisel (TCP/UDP tunnel for pivoting)
+- ligolo-ng proxy (TUN-based pivot proxy)
+- socat (port forwarding)
+- Responder (LLMNR/NBT-NS/mDNS poisoner)
+- mitm6 (IPv6 DHCP poisoning)
+- tcpdump (packet capture)
+- openssh-client (ssh, scp)
 
 **Capabilities granted:**
 - `NET_RAW` — raw sockets (Responder, tcpdump, scapy)

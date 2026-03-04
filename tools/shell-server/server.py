@@ -64,6 +64,20 @@ MARKER_END = "__CMD_END_7f3a__"
 SHELL_DOCKER_IMAGE = os.environ.get("SHELL_DOCKER_IMAGE", "red-run-shell:latest")
 _docker_shell_available: bool | None = None  # Set at startup
 
+# Real-time command log — tail -f this file to see what agents are doing
+_CMD_LOG = _PROJECT_ROOT / "engagement" / "evidence" / "shell-commands.log"
+
+
+def _log_command(session: "ShellSession", command: str) -> None:
+    """Append a timestamped command entry to the command log."""
+    try:
+        if _CMD_LOG.parent.exists():
+            ts = datetime.now().strftime("%H:%M:%S")
+            label = session.label or session.session_id[:8]
+            _CMD_LOG.open("a").write(f"[{ts}] [{label}] {command}\n")
+    except Exception:
+        pass  # Never break send_command over logging
+
 
 def _check_docker_shell() -> str | None:
     """Check if Docker and the shell image are available. Returns error message or None."""
@@ -404,10 +418,13 @@ def create_server() -> FastMCP:
                    "evil-winrm-dc01"). Used in transcript filenames.
             timeout: Seconds to wait for the process to start and produce
                      initial output (default 30).
-            privileged: Run inside a Docker container with network
-                       capabilities (NET_RAW, NET_ADMIN, NET_BIND_SERVICE).
-                       Use for tools that need raw sockets or low-port
-                       binding (e.g., Responder, mitm6, tcpdump).
+            privileged: Run inside the red-run-shell Docker container.
+                       The container includes a full pentest toolkit:
+                       evil-winrm, impacket (psexec/wmiexec/smbexec/
+                       smbclient/mssqlclient), chisel, ligolo-ng, socat,
+                       Responder, mitm6, and tcpdump. Also grants network
+                       capabilities (NET_RAW, NET_ADMIN, NET_BIND_SERVICE)
+                       for tools needing raw sockets.
                        Requires the red-run-shell Docker image.
         """
         session_id = str(uuid.uuid4())[:8]
@@ -550,6 +567,9 @@ def create_server() -> FastMCP:
             return (
                 f"ERROR: Process exited with code {session.process.returncode}."
             )
+
+        # Real-time command log for operator visibility
+        _log_command(session, command)
 
         with session._lock:
             # Drain any leftover output

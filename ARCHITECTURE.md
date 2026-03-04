@@ -104,17 +104,7 @@ flowchart TD
     %% ── Step 3: Attack Surface ──
     Surface[Categorize attack surface<br>Web · AD · SMB · DB<br>Containers · Remote Access]
 
-    subgraph S3["Mode Selection"]
-        ModeCheck{Mode?}
-        ModeCheck -->|guided| Present[Present surface<br>+ chain analysis<br>Operator picks path]
-        ModeCheck -->|autonomous| AutoPick[Prioritize:<br>Web → AD → DB → Other]
-    end
-
-    Surface --> ModeCheck
-
-    %% ── Step 4: Discovery & Exploitation ──
-    Present --> SkillPick
-    AutoPick --> SkillPick
+    Surface -->|"Present surface +<br>chain analysis<br>Operator picks path"| SkillPick
 
     subgraph S4["Discovery & Exploitation"]
         SkillPick[Pick skill + agent<br>from routing table]
@@ -212,7 +202,7 @@ flowchart TD
 
     class ScanQ,SprayStop,HostsFix hardstop
     class NR,WD,PW,LinDisc,ADEnum,WinDisc,AVRecover,AgentRun agent
-    class HostCheck,WebPorts,VhostCheck,ModeCheck,UserCheck,SprayQ,D1,D2,D3,D4,D5,D6,DiscoverHost decision
+    class HostCheck,WebPorts,VhostCheck,UserCheck,SprayQ,D1,D2,D3,D4,D5,D6,DiscoverHost decision
     class Start,Done,Retro endpoint
 ```
 

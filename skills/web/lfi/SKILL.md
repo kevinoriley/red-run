@@ -5,19 +5,27 @@ description: >
   exploitation during authorized penetration testing.
 keywords:
   - LFI
+  - lfi
   - local file inclusion
   - path traversal
   - directory traversal
+  - file read
   - file inclusion
   - php://filter
   - PHP wrappers
   - log poisoning
   - RFI
+  - rfi
   - remote file inclusion
   - LFI to RCE
   - ../../../etc/passwd
   - file read vulnerability
   - include vulnerability
+  - file_get_contents
+  - include()
+  - require()
+  - UNC path
+  - Windows LFI
 tools:
   - burpsuite
   - ffuf
@@ -488,7 +496,7 @@ execution and note the limitation in the engagement state.
 Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
 
 When routing, pass along: platform, language, confirmed traversal depth, working
-bypass technique, current mode.
+and bypass technique.
 
 ## Stall Detection
 
@@ -521,12 +529,9 @@ Do not loop. Work through failures systematically:
 - Assessment: **blocked** (permanent — config, patched, missing prereq) or
   **retry-later** (may work with different context, creds, or access)
 
-**Mode behavior:**
-- **Guided**: Tell the user you're stalled, present what was tried, and
-  recommend the next best path.
-- **Autonomous**: Return findings to the orchestrator. Do not retry the same
-  technique — the orchestrator will decide whether to revisit with new context
-  or route elsewhere.
+**When stalled:** Tell the user you're stalled, present what was tried, and
+recommend the next best path. Return findings to the orchestrator — it will
+decide whether to revisit with new context or route elsewhere.
 
 ## OPSEC Notes
 

@@ -75,25 +75,28 @@ required for privilege escalation tools that spawn new shells.
 **When the skill text says "establish reverse shell"**, use the shell-server
 MCP tools instead of asking the user to set up a netcat listener.
 
-## Interactive Processes via MCP
+## Tool Execution — Bash vs Shell-Server
 
-Use `start_process` to spawn local interactive tools in a persistent PTY.
-This is for tools that need session persistence — credential-based access
-tools, exploit frameworks, and tools that maintain state between commands.
+**Bash is the default.** Most penetration testing tools are run-and-exit CLI
+commands. Run them via Bash (with `dangerouslyDisableSandbox: true` for any
+command that touches the network).
 
-- `start_process(command="<tool>", label="<label>")` — spawn the process
-- `send_command(session_id=..., command=...)` — interact with it
-- `read_output(session_id=...)` — check for async output
-- `close_session(session_id=..., save_transcript=true)` — clean up
+**`start_process` is ONLY for tools that maintain persistent interactive
+sessions** or **tools in the Docker pentest toolbox** (`privileged=True`):
 
-**When to use which:**
+| Category | Examples | `privileged`? |
+|----------|----------|---------------|
+| Docker pentest tools | chisel, ligolo-ng, socat | Yes — `privileged=True` (Docker-only) |
+| Host tools | ssh, msfconsole | No — runs on host directly |
+| Privileged network daemons | Responder, ntlmrelayx, mitm6, tcpdump | Yes — `privileged=True` (needs raw sockets) |
 
-| Scenario | Tool |
-|----------|------|
-| Target sends reverse shell callback | `start_listener` |
-| Have credentials + service port open | `start_process` |
-| Exploit framework (msfconsole) | `start_process` |
-| Single non-interactive command | Bash |
+**Do NOT run `which` to check for Docker tools** — they are only available
+inside the Docker container. These are rare for network recon.
+
+**Everything else uses Bash** — including netexec (nxc), manspider,
+enum4linux-ng, smbclient (command-line mode), rpcclient (one-shot),
+snmpwalk, onesixtyone, and all other CLI tools. If a tool runs a command and
+exits, it goes through Bash — even if it runs for minutes.
 
 ## Scope Boundaries — What You Must NOT Do
 
@@ -149,6 +152,18 @@ When you're done, provide a clear summary for the orchestrator:
 
 The orchestrator reads this summary and makes the next routing decision.
 
+## MCP Tool Names
+
+MCP tool names use **hyphens**, not underscores. Getting this wrong causes
+"tool not found" errors:
+
+- **Correct**: `mcp__nmap-server__nmap_scan`, `mcp__state-interim__get_state_summary`
+- **Wrong**: `mcp__nmap_server__nmap_scan`, `mcp__state_interim__get_state_summary`
+
+The server name portion uses hyphens (`nmap-server`, `state-interim`,
+`shell-server`, `skill-router`). The tool name portion uses underscores
+(`nmap_scan`, `get_state_summary`).
+
 ## Operational Notes
 
 - Run `date '+%Y-%m-%d %H:%M:%S'` for real timestamps — never write placeholder
@@ -161,3 +176,8 @@ The orchestrator reads this summary and makes the next routing decision.
 - Keep your work focused. Full port scans can take 10+ minutes. The
   `NMAP_TIMEOUT` env var controls the MCP server's subprocess timeout
   (default 600s).
+- **Share spidering**: Use `manspider` for content search (keyword matching,
+  regex, file type filtering). It's installed on the attackbox
+  (`~/.local/bin/manspider`) and runs via Bash. Use `nxc smb --shares` for
+  share listing and access checks. This is a quick pass — the orchestrator
+  may task a deeper review if the quick spider finds nothing.

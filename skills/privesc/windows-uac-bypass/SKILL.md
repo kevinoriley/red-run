@@ -555,8 +555,7 @@ After achieving high integrity:
 - **Domain escalation**: Route to **ad-discovery** for domain enumeration
 - **Persist access**: Use autorun techniques from Step 5 for persistence
 
-When routing, pass along: hostname, OS version, current integrity level (high),
-current mode.
+When routing, pass along: hostname, OS version, current integrity level (high).
 
 ## Stall Detection
 
@@ -589,12 +588,9 @@ Do not loop. Work through failures systematically:
 - Assessment: **blocked** (permanent — config, patched, missing prereq) or
   **retry-later** (may work with different context, creds, or access)
 
-**Mode behavior:**
-- **Guided**: Tell the user you're stalled, present what was tried, and
-  recommend the next best path.
-- **Autonomous**: Return findings to the orchestrator. Do not retry the same
-  technique — the orchestrator will decide whether to revisit with new context
-  or route elsewhere.
+**When stalled:** Tell the user you're stalled, present what was tried, and
+recommend the next best path. Return findings to the orchestrator — it will
+decide whether to revisit with new context or route elsewhere.
 
 ## Troubleshooting
 

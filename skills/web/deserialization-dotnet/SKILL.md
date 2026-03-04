@@ -373,7 +373,7 @@ execution and note the limitation in the engagement state.
 
 - **Got RCE + shell stabilized**: STOP. Return to orchestrator recommending
   **linux-discovery** or **windows-discovery** (based on target OS). Pass:
-  hostname, current user, shell session ID, access method, current mode.
+  hostname, current user, shell session ID, and access method.
 - **Machine keys obtained**: Forge ViewState for any ASP.NET application
   sharing those keys — lateral movement across IIS sites
 - **Found credentials in web.config**: Connection strings, API keys — route
@@ -386,7 +386,7 @@ execution and note the limitation in the engagement state.
 Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
 
 When routing, pass along: confirmed formatter/gadget, target framework,
-machine keys if obtained, current mode, and any payloads that succeeded.
+machine keys if obtained, and any payloads that succeeded.
 
 ## Stall Detection
 
@@ -419,12 +419,9 @@ Do not loop. Work through failures systematically:
 - Assessment: **blocked** (permanent — config, patched, missing prereq) or
   **retry-later** (may work with different context, creds, or access)
 
-**Mode behavior:**
-- **Guided**: Tell the user you're stalled, present what was tried, and
-  recommend the next best path.
-- **Autonomous**: Return findings to the orchestrator. Do not retry the same
-  technique — the orchestrator will decide whether to revisit with new context
-  or route elsewhere.
+**When stalled:** Tell the user you're stalled, present what was tried, and
+recommend the next best path. Return findings to the orchestrator — it will
+decide whether to revisit with new context or route elsewhere.
 
 ## OPSEC Notes
 

@@ -202,7 +202,7 @@ memory error. A "usage:" response means the build is patched regardless of versi
 
 If `sudo -l` returns anything usable → STOP. Return to orchestrator recommending
 **linux-sudo-suid-capabilities**. Pass: hostname, current user, sudo -l output,
-sudo version, current mode. Do not execute privilege escalation commands inline.
+sudo version. Do not execute privilege escalation commands inline.
 
 **Doas (OpenBSD alternative):**
 
@@ -239,8 +239,8 @@ ps aux 2>/dev/null | grep polkit
 
 If either polkit CVE prerequisite is met → STOP. Return to orchestrator
 recommending **linux-sudo-suid-capabilities**. Pass: hostname, current user,
-polkit version, pkexec SUID status, accountsservice presence, current mode. Do
-not execute exploitation commands inline.
+polkit version, pkexec SUID status, accountsservice presence. Do not execute
+exploitation commands inline.
 
 ## Step 4: SUID/SGID and Capabilities
 
@@ -295,7 +295,7 @@ getcap -r / 2>/dev/null
 
 Any SUID/capability finding → STOP. Return to orchestrator recommending
 **linux-sudo-suid-capabilities**. Pass: hostname, current user, SUID binaries
-or capabilities found, kernel version, current mode. Do not execute privilege
+or capabilities found, kernel version. Do not execute privilege
 escalation commands inline.
 
 ## Step 5: Scheduled Tasks and Process Monitoring
@@ -346,8 +346,8 @@ Watch for root-owned processes that execute writable scripts or use relative pat
 
 Any finding here → STOP. Return to orchestrator recommending
 **linux-cron-service-abuse**. Pass: hostname, current user, specific findings
-(writable scripts, wildcard commands, writable unit files), kernel version,
-current mode. Do not execute exploitation commands inline.
+(writable scripts, wildcard commands, writable unit files), kernel version.
+Do not execute exploitation commands inline.
 
 ## Step 6: File and Directory Permissions
 
@@ -549,8 +549,8 @@ perl linux-exploit-suggester-2.pl -k $(uname -r)
 
 Match kernel version against known exploits → STOP. Return to orchestrator
 recommending **linux-kernel-exploits**. Pass: hostname, kernel version,
-distribution, architecture, compiler availability, exploit-suggester output,
-current mode. Do not execute kernel exploits inline.
+distribution, architecture, compiler availability, exploit-suggester output.
+Do not execute kernel exploits inline.
 
 ## Step 11: Automated Enumeration Tools
 
@@ -623,8 +623,8 @@ capabilities on binaries, polkit CVE-2021-4034 (pkexec SUID) or CVE-2021-3560
 (polkit < 0.117 + accountsservice + dbus-send)
 → STOP. Return to orchestrator recommending **linux-sudo-suid-capabilities**.
   Pass: hostname, current user, specific findings (sudo entries / SUID binaries /
-  capabilities / polkit version and pkexec SUID status), kernel version,
-  current mode. Do not execute privilege escalation commands inline.
+  capabilities / polkit version and pkexec SUID status), kernel version.
+  Do not execute privilege escalation commands inline.
 
 ### Scheduled Task / Service Vectors Found
 
@@ -642,7 +642,7 @@ docker/lxd group membership, writable PATH directories, Python path hijack, shar
 object injection, writable profile scripts
 → STOP. Return to orchestrator recommending **linux-file-path-abuse**. Pass:
   hostname, current user, specific findings (writable files / NFS exports /
-  library paths / group memberships), kernel version, current mode. Do not
+  library paths / group memberships), kernel version. Do not
   execute exploitation commands inline.
 
 ### Kernel Exploit Candidates Found
@@ -651,21 +651,19 @@ Kernel version matches known CVE (DirtyPipe, DirtyCow, GameOver(lay)), exploit-s
 returns hits, old unpatched kernel, compiler available on target
 → STOP. Return to orchestrator recommending **linux-kernel-exploits**. Pass:
   hostname, kernel version, distribution, architecture, compiler availability,
-  exploit-suggester output, current mode. Do not execute kernel exploits inline.
+  exploit-suggester output. Do not execute kernel exploits inline.
 
 ### Multiple Vectors Found
 
-In **guided** mode, present all findings ranked by reliability and OPSEC:
+Present all findings ranked by reliability and OPSEC:
 1. Sudo NOPASSWD / SUID (near-certain, low OPSEC)
 2. Capabilities with cap_setuid (direct root, low OPSEC)
 3. Writable cron/service scripts (reliable, wait for execution)
 4. File permission abuse (reliable if writable)
 5. Kernel exploits (last resort — may crash system)
 
-In **autonomous** mode, pursue the most reliable vector first, fall back on failure.
-
 When routing, pass along: hostname, kernel version, distribution, current user,
-specific findings, current mode.
+specific findings.
 
 ## Troubleshooting
 

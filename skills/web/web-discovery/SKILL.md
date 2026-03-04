@@ -518,7 +518,7 @@ the correct exploitation skill.
 **Routing is mandatory.** When a match is found in the tables below, STOP.
 Return to the orchestrator recommending the matched skill. Pass: the confirmed
 injection point (URL, parameter, method), observed response behavior, suspected
-DBMS (if SQL), current mode, and any payloads that already succeeded. Do not
+DBMS (if SQL), and any payloads that already succeeded. Do not
 execute exploitation commands inline — even if the technique seems simple.
 
 ### SQL Injection
@@ -658,6 +658,7 @@ execute exploitation commands inline — even if the technique seems simple.
 | Extension blocked but alternative accepted | **file-upload-bypass** |
 | Config file upload accepted (.htaccess, web.config) | **file-upload-bypass** (config exploitation) |
 | Upload endpoint found, basic server-side content blocked | **file-upload-bypass** (discovery testing is preliminary — technique skill has 20+ bypass variants) |
+| SMB share maps to web root + user has write access | **smb-share-webshell** (write webshell via smbclient, trigger via HTTP) |
 
 ### Request Smuggling
 
@@ -754,7 +755,7 @@ techniques before routing.
 
 When returning to the orchestrator, pass along: the confirmed injection point
 (URL, parameter, method), observed response behavior, suspected DBMS (if SQL),
-current mode, and any payloads that already succeeded. Do not execute
+and any payloads that already succeeded. Do not execute
 exploitation commands inline.
 
 ## Troubleshooting

@@ -75,25 +75,19 @@ sessions. Use these if a skill achieves code execution on a target.
 - Call `send_command(session_id=..., command=...)` for subsequent commands
 - Call `close_session(session_id=..., save_transcript=true)` when done
 
-## Interactive Processes via MCP
+## Tool Execution — Bash vs Shell-Server
 
-Use `start_process` to spawn local interactive tools in a persistent PTY.
-This is for tools that need session persistence — credential-based access
-tools, exploit frameworks, and tools that maintain state between commands.
+**Bash is the default.** All spraying tools are run-and-exit CLI commands.
+Run them via Bash (with `dangerouslyDisableSandbox: true` for any command
+that touches the network).
 
-- `start_process(command="<tool>", label="<label>")` — spawn the process
-- `send_command(session_id=..., command=...)` — interact with it
-- `read_output(session_id=...)` — check for async output
-- `close_session(session_id=..., save_transcript=true)` — clean up
+**Do NOT use `start_process` for spraying.** Tools like netexec (nxc), hydra,
+kerbrute, and medusa are CLI tools that run a command and exit. They do not
+need persistent sessions. Use Bash for all of them.
 
-**When to use which:**
-
-| Scenario | Tool |
-|----------|------|
-| Target sends reverse shell callback | `start_listener` |
-| Have credentials + service port open | `start_process` |
-| Exploit framework (msfconsole) | `start_process` |
-| Single non-interactive command | Bash |
+`start_process` is only appropriate for interactive remote shells (evil-winrm,
+ssh) after valid credentials are confirmed — and even then, this agent's job
+is to spray and return, not establish shells.
 
 ## Engagement Files
 

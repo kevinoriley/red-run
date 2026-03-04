@@ -63,6 +63,14 @@ encounter a scenario not covered here, note it and return — do not improvise
 attacks, write custom exploit code, or apply techniques from other domains.
 The orchestrator will provide specific guidance or route to a different skill.
 
+**Do NOT spider or enumerate SMB shares.** Never run `nxc smb`, `spider_plus`,
+`manspider`, `smbclient`, or any remote share enumeration tool. Share spidering
+is performed from the attackbox by ad-discovery or network-recon — not from
+inside a low-privilege shell. If `net share` (the only allowed share command)
+reveals a share not already in engagement state, record it as an interim finding
+via `add_vuln()` and note it in your return summary. Do not connect to it, read
+its contents, or spider it — a different agent handles that from the attackbox.
+
 ## State Management
 
 Call `get_state_summary()` from the state-reader MCP server to read current
@@ -262,7 +270,7 @@ Get-Process | Select-Object Name, Id, Path | Where-Object {$_.Path -notlike "C:\
 Any finding here → STOP. Return to orchestrator recommending
 **windows-service-dll-abuse**. Pass: hostname, current user, specific findings
 (unquoted paths, writable binaries, modifiable services, DLL hijack targets),
-OS version, current mode. Do not execute exploitation commands inline.
+OS version. Do not execute exploitation commands inline.
 
 ## Step 4: Scheduled Tasks and Autorun
 
@@ -297,8 +305,7 @@ reg query HKLM\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallEle
 
 Both must return `0x1` — if so, STOP. Return to orchestrator recommending
 **windows-uac-bypass**. Pass: hostname, current user, AlwaysInstallElevated
-confirmation, OS version, current mode. Do not execute MSI payload commands
-inline.
+confirmation, OS version. Do not execute MSI payload commands inline.
 
 ## Step 5: Network and Shares
 
@@ -399,8 +406,8 @@ If `BUILTIN\Users:(I)(RX)` appears → SAM readable by non-admin users.
 
 Any credentials found → STOP. Return to orchestrator recommending
 **windows-credential-harvesting**. Pass: hostname, current user, credential
-locations found, OS version, current mode. Do not execute credential extraction
-commands inline.
+locations found, OS version. Do not execute credential extraction commands
+inline.
 
 ## Step 7: Security Controls Detection
 
@@ -493,7 +500,7 @@ SeImpersonate, SeAssignPrimaryToken, SeDebug, SeBackup, SeTakeOwnership,
 SeRestore, SeLoadDriver, SeManageVolume
 → STOP. Return to orchestrator recommending **windows-token-impersonation**.
   Pass: hostname, current user, specific privileges found, OS version and build,
-  current mode. Do not execute token impersonation commands inline.
+  Do not execute token impersonation commands inline.
 
 ### Service Misconfigurations Found
 
@@ -502,8 +509,8 @@ weak service registry ACLs, DLL search order hijacking, writable PATH directorie
 auto-updater abuse
 → STOP. Return to orchestrator recommending **windows-service-dll-abuse**. Pass:
   hostname, current user, specific findings (unquoted paths / writable binaries /
-  modifiable services / DLL hijack targets), OS version, current mode. Do not
-  execute exploitation commands inline.
+  modifiable services / DLL hijack targets), OS version. Do not execute
+  exploitation commands inline.
 
 ### UAC Bypass Needed
 
@@ -511,7 +518,7 @@ High-integrity needed but running medium-integrity, UAC enabled,
 AlwaysInstallElevated
 → STOP. Return to orchestrator recommending **windows-uac-bypass**. Pass:
   hostname, current user, integrity level, UAC settings, AlwaysInstallElevated
-  status, OS version, current mode. Do not execute UAC bypass commands inline.
+  status, OS version. Do not execute UAC bypass commands inline.
 
 ### Stored Credentials Found
 
@@ -519,8 +526,8 @@ Registry passwords, unattend files, PowerShell history, DPAPI blobs,
 HiveNightmare, credential vault entries
 → STOP. Return to orchestrator recommending **windows-credential-harvesting**.
   Pass: hostname, current user, credential locations found (registry / unattend /
-  history / vault), OS version, current mode. Do not execute credential
-  extraction commands inline.
+  history / vault), OS version. Do not execute credential extraction commands
+  inline.
 
 ### Missing Patches / Kernel Vectors
 
@@ -528,22 +535,19 @@ Watson/WES-NG hits, old OS without patches, vulnerable drivers loaded,
 BYOVD candidates
 → STOP. Return to orchestrator recommending **windows-kernel-exploits**. Pass:
   hostname, OS version and build, installed hotfixes, Watson/WES-NG output,
-  vulnerable drivers identified, current mode. Do not execute kernel exploits
-  inline.
+  vulnerable drivers identified. Do not execute kernel exploits inline.
 
 ### Multiple Vectors Found
 
-In **guided** mode, present all findings ranked by reliability and OPSEC:
+Present all findings ranked by reliability and OPSEC:
 1. Token impersonation (if SeImpersonate — near-certain, low OPSEC)
 2. Service/DLL abuse (if writable — reliable, medium OPSEC)
 3. Stored credentials (if found — immediate value)
 4. UAC bypass (if needed — reliable, low-medium OPSEC)
 5. Kernel exploits (last resort — may crash system)
 
-In **autonomous** mode, pursue the most reliable vector first, fall back on failure.
-
 When routing, pass along: hostname, OS version, current user, integrity level,
-specific findings, current mode.
+specific findings.
 
 ## Troubleshooting
 

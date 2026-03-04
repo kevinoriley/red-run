@@ -410,10 +410,10 @@ After catching a shell as the Tomcat service user:
 
 - **Linux target**: STOP. Return to orchestrator recommending
   **linux-discovery**. Pass: hostname, current user (tomcat/tomcatN), shell
-  session ID, access method (reverse shell via WAR deploy), current mode.
+  session ID, access method (reverse shell via WAR deploy).
 - **Windows target**: STOP. Return to orchestrator recommending
   **windows-discovery**. Pass: hostname, current user, shell session ID,
-  access method, current mode.
+  access method.
 - **Tomcat running as root/SYSTEM** (rare but happens): You already have
   maximum privileges. Collect evidence and report.
 - **Other web apps on same Tomcat**: Check for additional applications with
@@ -423,7 +423,7 @@ Update `engagement/state.md` with any new credentials, access, vulns, or pivot
 paths discovered.
 
 When routing, pass along: target hostname/IP, current user, shell session ID,
-Tomcat version, current mode, and any credentials found on the system.
+Tomcat version, and any credentials found on the system.
 
 ### Post-Exploitation Quick Wins
 
@@ -490,12 +490,9 @@ Do not loop. Work through failures systematically:
 - Assessment: **blocked** (permanent — config, patched, missing prereq) or
   **retry-later** (may work with different context, creds, or access)
 
-**Mode behavior:**
-- **Guided**: Tell the user you're stalled, present what was tried, and
-  recommend the next best path.
-- **Autonomous**: Return findings to the orchestrator. Do not retry the same
-  technique — the orchestrator will decide whether to revisit with new context
-  or route elsewhere.
+**When stalled:** Tell the user you're stalled, present what was tried, and
+recommend the next best path. Return findings to the orchestrator — it will
+decide whether to revisit with new context or route elsewhere.
 
 ## OPSEC Notes
 

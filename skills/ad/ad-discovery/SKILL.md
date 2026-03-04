@@ -210,8 +210,8 @@ Use output as username list for **password-spraying** and AS-REP roasting checks
 
 If network position allows, note LLMNR/NBT-NS traffic for Responder-based
 hash capture. → STOP. Return to orchestrator recommending **auth-coercion-relay**.
-Pass: DC IP, domain name, network position, LLMNR/NBT-NS traffic details,
-current mode. Do not execute poisoning or relay commands inline.
+Pass: DC IP, domain name, network position, LLMNR/NBT-NS traffic details.
+Do not execute poisoning or relay commands inline.
 
 ## Step 3: BloodHound Collection
 
@@ -324,8 +324,8 @@ nxc ldap DC01.DOMAIN.LOCAL -u 'user' -p 'Password123' --kerberoasting output.txt
 ```
 
 If SPNs found on user accounts → STOP. Return to orchestrator recommending
-**kerberos-roasting**. Pass: DC IP, domain name, SPN list, current credentials,
-current mode. Do not request or crack service tickets inline.
+**kerberos-roasting**. Pass: DC IP, domain name, SPN list, current credentials.
+Do not request or crack service tickets inline.
 
 ### AS-REP Roastable Accounts
 
@@ -368,8 +368,8 @@ Get-DomainComputer -TrustedToAuth
 ```
 
 If found → STOP. Return to orchestrator recommending **kerberos-delegation**.
-Pass: DC IP, domain name, delegation type and targets, current credentials,
-current mode. Do not exploit delegation inline.
+Pass: DC IP, domain name, delegation type and targets, current credentials.
+Do not exploit delegation inline.
 
 ### Privileged Group Membership
 
@@ -395,8 +395,8 @@ nxc ldap DC01.DOMAIN.LOCAL -u 'user' -p 'Password123' --gmsa
 ```
 
 If readable → STOP. Return to orchestrator recommending **credential-dumping**.
-Pass: DC IP, domain name, LAPS/gMSA target details, current credentials,
-current mode. Do not extract managed passwords inline.
+Pass: DC IP, domain name, LAPS/gMSA target details, current credentials.
+Do not extract managed passwords inline.
 
 ### Trust Enumeration
 
@@ -416,8 +416,7 @@ Get-DomainForeignGroupMember
 
 If trusts found → STOP. Return to orchestrator recommending **trust-attacks**.
 Pass: DC IP, domain name, trust relationships enumerated, trust types and
-directions, current credentials, current mode. Do not exploit trust
-relationships inline.
+directions, current credentials. Do not exploit trust relationships inline.
 
 ### Share Enumeration
 
@@ -425,8 +424,12 @@ relationships inline.
 # NetExec — find accessible shares
 nxc smb 10.10.10.0/24 -u 'user' -p 'Password123' --shares
 
-# Spider shares for sensitive files
-nxc smb DC01.DOMAIN.LOCAL -u 'user' -p 'Password123' -M spider_plus
+# Spider shares for sensitive files — use manspider for keyword/regex content search
+# manspider runs from the attackbox via Bash (quick pass — orchestrator may task deeper review)
+manspider DC01.DOMAIN.LOCAL -u 'user' -p 'Password123' -d DOMAIN \
+  -c password passwd cred secret connectionstring
+manspider DC01.DOMAIN.LOCAL -u 'user' -p 'Password123' -d DOMAIN \
+  -e '(password|passwd|pwd)\s*[=:]\s*\S+' -f xml conf config ini txt ps1 bat vbs kdbx
 ```
 
 Check SYSVOL/NETLOGON for Group Policy Preferences (GPP) passwords, scripts
@@ -473,7 +476,7 @@ Find-LocalAdminAccess -Verbose
 
 If local admin found → STOP. Return to orchestrator recommending
 **credential-dumping** (SAM/LSASS). Pass: target hostname, local admin
-credentials, DC IP, domain name, current mode. Do not dump credentials inline.
+credentials, DC IP, domain name. Do not dump credentials inline.
 
 ### SCCM / Deployment
 
@@ -484,7 +487,7 @@ python3 sccmhunter.py find -u 'user' -p 'Password123' -d DOMAIN.LOCAL -dc-ip DC_
 
 If SCCM found → STOP. Return to orchestrator recommending
 **sccm-exploitation**. Pass: DC IP, domain name, SCCM server details, current
-credentials, current mode. Do not exploit SCCM inline.
+credentials. Do not exploit SCCM inline.
 
 ## Step 5: Attack Surface Routing
 
@@ -541,8 +544,7 @@ When multiple attack paths exist, prioritize by OPSEC and reliability:
 ## Step 6: Escalate or Pivot
 
 After mapping the attack surface:
-- **Multiple paths identified**: In guided mode, present the top 3 paths ranked
-  by OPSEC and reliability. In autonomous mode, pursue the highest-value path.
+- **Multiple paths identified**: Present the top 3 paths ranked by OPSEC and reliability.
 - **No clear path**: Expand enumeration scope (additional subnets, different
   protocols), try password spraying, or check for relay opportunities.
 - **Credentials found in shares/GPP**: Route to **pass-the-hash** or use for
@@ -552,7 +554,6 @@ When routing to a technique skill, pass along:
 - Target user/host/service
 - Current credentials and access level
 - Domain name and DC hostname
-- Current mode (guided/autonomous)
 - Relevant enumeration output
 
 ## Troubleshooting

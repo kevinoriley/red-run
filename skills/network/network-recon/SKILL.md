@@ -185,25 +185,19 @@ ports, no OS detection, no raw-socket NSE scripts).
 **After starting an nmap scan (via MCP or handoff), STOP. Do nothing else until
 scan results are available.** No httpx, no curl, no netexec, no nuclei, no
 "quick triage" — nothing touches the network until nmap results are parsed.
-This applies in both guided and autonomous modes.
-
 The nmap scan is the foundation. Every subsequent decision — which services to
 enumerate, which skills to route to, which quick wins to check — depends on
 knowing the full port and service landscape. Running tools before nmap completes
 wastes time on assumptions, produces duplicate traffic, and risks missing the
 ports that actually matter.
 
-**Autonomous mode does not bypass this gate.** Autonomous means you make
-decisions without asking — it does not mean you fill wait time with speculative
-network traffic.
-
 **Non-privileged commands** that CAN be executed directly by Claude for
 **post-scan** service enumeration (only AFTER nmap results are parsed):
 - `httpx`, `netexec`, `nuclei`, `whatweb`, `ffuf`
 - `ldapsearch`, `smbclient`, `rpcclient`, `snmpwalk`
 
-**Autonomous mode:** Batch all pending privileged commands so the user can run
-them in one pass. Present them as a numbered list, each with its output file path.
+Batch all pending privileged commands so the user can run them in one pass.
+Present them as a numbered list, each with its output file path.
 
 ## Step 1: Host Discovery
 
@@ -233,8 +227,7 @@ sudo nmap -sn -PE -PP -PS21,22,25,80,113,135,443,445,3389,8080 -PU53,111,137,161
 grep "Status: Up" discovery.gnmap | awk '{print $2}' > live_hosts.txt
 ```
 
-**In guided mode**, present the list of live hosts. Ask which to scan further
-or proceed with all.
+Present the list of live hosts. Ask which to scan further or proceed with all.
 
 ## Step 2: Port Scanning
 
@@ -969,7 +962,7 @@ If running from a compromised host with access to a new subnet:
 
 ### Multiple Attack Surfaces
 
-In **guided** mode, present all findings ranked by exploitability:
+Present all findings ranked by exploitability:
 1. Known CVEs with public exploits (EternalBlue, BlueKeep, Log4Shell)
 2. Default/anonymous access (FTP, Redis, SNMP, NFS)
 3. Web applications (→ return to orchestrator recommending **web-discovery**)
@@ -977,11 +970,11 @@ In **guided** mode, present all findings ranked by exploitability:
 5. Database services with access
 6. IPMI/BMC access
 
-In **autonomous** mode, pursue highest-value target first (Domain Controller >
-web app with known vuln > database with creds > default service access).
+Recommend starting with the highest-value targets (Domain Controller > web app
+with known vuln > database with creds > default service access).
 
 When routing, pass along: target IP, open ports, identified services and versions,
-OS, any credentials or access found, current mode.
+OS, any credentials or access found.
 
 ## Troubleshooting
 

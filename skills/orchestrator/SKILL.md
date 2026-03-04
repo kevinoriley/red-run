@@ -49,8 +49,8 @@ through a domain subagent (preferred) or inline via `get_skill()` (fallback).
 
 1. Look up the skill in the **Skill-to-Agent Routing Table** (see Subagent
    Delegation section) to find the correct domain agent.
-2. Spawn the agent via the Task tool with the skill name, target info, mode,
-   and relevant context from the state summary.
+2. Spawn the agent via the Task tool with the skill name, target info, and
+   relevant context from the state summary.
 3. Wait for the agent to return with findings.
 4. Parse the return summary and record findings using state-writer MCP tools.
 
@@ -74,9 +74,8 @@ contain curated payloads, edge-case handling, troubleshooting steps, and methodo
 that general knowledge lacks. Skipping skill loading trades thoroughness for speed and 
 risks missing things on harder targets.
 
-This applies in both guided and autonomous modes. Autonomous mode means you
-make triage and routing decisions without asking — it DOES NOT mean you bypass
-the skill library and associated routing decisions.
+Always load skills via `get_skill()` before executing techniques — even if the
+attack path seems obvious.
 
 ### Finding Skills
 
@@ -167,7 +166,7 @@ Spawn the appropriate domain agent via the Task tool:
 ```
 Task(
     subagent_type="network-recon-agent",
-    prompt="Load skill 'network-recon'. Target: 10.10.10.5. Mode: guided. No credentials provided.",
+    prompt="Load skill 'network-recon'. Target: 10.10.10.5. No credentials provided.",
     description="Network recon on 10.10.10.5"
 )
 ```
@@ -177,6 +176,36 @@ The agent will:
 2. Follow the methodology, using MCP tools as needed (e.g., `nmap_scan`)
 3. Report findings and return — the orchestrator records state changes and decides what to invoke next
 4. Return a summary of findings and routing recommendations
+
+**Operator live-tail.** After spawning any background agent, append its
+label and output path to the dashboard file (one `label:path` per line),
+then print a short hint. When launching the **first** agent of a batch,
+truncate the file; subsequent agents in the same batch append.
+
+The dashboard file lives at `tools/agent-dashboard/.dashboard` (relative to
+repo root). Use the Bash tool to write it.
+
+```bash
+# First agent in batch — truncate
+echo "web-discovery:/tmp/.../output" > tools/agent-dashboard/.dashboard
+# Second agent — append
+echo "ad-discovery:/tmp/.../output" >> tools/agent-dashboard/.dashboard
+```
+
+After writing, always print this hint:
+
+```
+Watch live: bash tools/agent-dashboard/dashboard.sh
+```
+
+The dashboard reads the dashboard file and tails all listed agent
+output files. It works for both single and multiple agents — one consistent
+command for the operator.
+
+Print the hint for every backgrounded agent — network-recon, web-discovery,
+web-exploit, ad-discovery, ad-exploit, linux-privesc, windows-privesc,
+evasion, password-spray, and credential-cracking. Skip it only for the
+event watcher (utility script, not an agent).
 
 **Context passing — do NOT override skill methodology.** When routing to a
 technique agent, pass discovery-phase findings as **informational context**,
@@ -228,7 +257,7 @@ Use this table to pick the right agent for each skill:
 | command-injection, python-code-injection | web-exploit-agent | Web |
 | ajp-ghostcat | web-exploit-agent | Web (Tomcat AJP exploitation) |
 | tomcat-manager-deploy | web-exploit-agent | Web (Tomcat Manager WAR deployment) |
-| ssrf, lfi, file-upload-bypass, xxe | web-exploit-agent | Web |
+| ssrf, lfi, file-upload-bypass, smb-share-webshell, xxe | web-exploit-agent | Web |
 | deserialization-java, deserialization-dotnet, deserialization-php | web-exploit-agent | Web |
 | jwt-attacks, request-smuggling, nosql-injection, ldap-injection | web-exploit-agent | Web |
 | idor, cors-misconfiguration, csrf | web-exploit-agent | Web |
@@ -261,7 +290,7 @@ while objectives_not_met:
     analyze: unexploited vulns, unchained access, untested creds, pivot map
     pick highest-value next action → select skill + domain agent
     append to activity.md (routing decision)
-    spawn agent in background with: skill name, target info, mode, context
+    spawn agent in background with: skill name, target info, context
     if watcher_task_id: TaskStop(watcher_task_id)   # kill stale watcher
     watcher_task_id = spawn event watcher in background (cursor, db path)
     END TURN — user is free to interact
@@ -276,9 +305,8 @@ Each iteration is normally one skill invocation. Sequential execution is the
 default because it keeps state simple. However, when the orchestrator detects
 **convergent independent paths** (multiple skills targeting the same
 intermediate goal with no shared dependencies), it may race them in parallel.
-See **Parallel Fork Execution** below for mechanics. In guided mode, forks are
-presented to the operator for approval. In autonomous mode, forks execute
-automatically.
+See **Parallel Fork Execution** below for mechanics. Forks are always presented
+to the operator for approval.
 
 #### Built-in Task Sub-Agents (Warning)
 
@@ -337,8 +365,7 @@ push to the orchestrator.
 8. Task-notification pushes to orchestrator automatically
 
 9. Orchestrator reads watcher output, displays findings
-10. Guided: present follow-up options to operator
-    Autonomous: auto-spawn follow-up agent in background
+10. Present follow-up options to operator
 11. Spawn NEW watcher with updated cursor
 12. Repeat until all agents complete
 ```
@@ -400,14 +427,10 @@ When the watcher fires, read the JSON output and evaluate each event:
 | pivot | When destination is actionable | Spawn appropriate agent |
 | blocked | Display only | Note for later |
 
-**Guided mode response:** Display the findings as a timeline, then present
-follow-up options via `AskUserQuestion` (e.g., "AD-discovery found valid creds
-for Tiffany.Molina — spin up authenticated AD enumeration while web-discovery
-continues?"). After operator responds, spawn new watcher.
-
-**Autonomous mode response:** Auto-spawn follow-up agent in background, log
-routing decision to `activity.md`, spawn new watcher. All without operator
-interaction.
+Display the findings as a timeline, then present follow-up options via
+`AskUserQuestion` (e.g., "AD-discovery found valid creds for Tiffany.Molina —
+spin up authenticated AD enumeration while web-discovery continues?"). After
+operator responds, spawn new watcher. Log routing decision to `activity.md`.
 
 #### Display Format
 
@@ -431,7 +454,7 @@ The watcher is the primary notification mechanism. As a safety net, also call
 events written between watcher exit and new watcher spawn:
 - When any agent returns (before parsing its return summary)
 - Before every routing decision
-- Before presenting choices in guided mode
+- Before presenting choices to the operator
 
 **Deduplication:** Events represent the same writes that already land in state
 tables — they don't create extra work. The Post-Skill Checkpoint's existing
@@ -499,25 +522,10 @@ Skills should NOT chain directly into other skills' scope areas. If a discovery
 skill finds something outside its scope, it reports findings and returns — the
 orchestrator records state changes and decides what to invoke next.
 
-## Mode
-
-Check if the user has set a mode:
-- **Guided** (default): Pause at routing decisions — present the attack surface
-  map, chain analysis, and available paths, then let the user choose which
-  skill to invoke next. Once a skill is routed to an agent, the agent runs
-  end-to-end. Individual commands within the agent go through Claude Code's
-  normal permission prompts (unless `--dangerously-skip-permissions` is active).
-- **Autonomous**: Route to skills automatically. Make triage decisions at forks.
-  Report at phase boundaries and when significant access is gained. Combine
-  with `--dangerously-skip-permissions` for fully unattended execution.
-
-Skills and agents do not need mode awareness — the orchestrator is the only
-component that checks mode. If unclear, default to guided.
-
-### Guided Mode — Fork Presentation
+### Fork Presentation
 
 When **Fork Detection** (see Decision Logic) identifies convergent independent
-paths, guided mode presents the fork to the operator instead of auto-forking.
+paths, present the fork to the operator.
 
 **Format:**
 ```
@@ -630,11 +638,10 @@ Do not run scanning or enumeration tools directly from the orchestrator.
 
 ### Network Recon (if IP/subnet in scope)
 
-**Hard stop — scan selection (ALL modes, including autonomous).**
+**Hard stop — scan selection.**
 
 Before spawning the network-recon agent, present the operator with scan
-options via `AskUserQuestion`. This hard stop applies in BOTH guided AND
-autonomous modes — the operator always chooses the scan type.
+options via `AskUserQuestion`. The operator always chooses the scan type.
 
 **Question — Scan type** (single-select):
 - Header: "Scan type"
@@ -781,29 +788,25 @@ Based on recon results, categorize the attack surface:
 | Remote access | SSH (22), RDP (3389), WinRM (5985/5986) | password-spray-agent → `password-spraying` |
 | Custom services | Non-standard ports | Manual investigation |
 
-**In guided mode**: Present the attack surface map and ask which paths to
-pursue first. Recommend starting with the highest-value targets.
-
-**In autonomous mode**: Prioritize by likely impact: web apps → AD → databases
-→ other services.
+Present the attack surface map and ask which paths to pursue first. Recommend
+starting with the highest-value targets.
 
 ## Step 4: Vulnerability Discovery & Exploitation
 
 Route to discovery skills based on attack surface. Pass along:
 - Target details (URL, IP, port, technology)
-- Current mode (guided/autonomous)
 - Any credentials from scope or already discovered
 
 ### Web Applications
 
 STOP. Spawn **web-discovery-agent** with skill `web-discovery`. Pass: target
-URL, technology stack, current mode, any credentials. Do not execute ffuf,
+URL, technology stack, any credentials. Do not execute ffuf,
 httpx, or nuclei commands inline.
 
 ### Active Directory
 
 STOP. Spawn **ad-discovery-agent** with skill `ad-discovery`. Pass: DC IP,
-domain name, any credentials, current mode. Do not execute netexec, ldapsearch,
+domain name, any credentials. Do not execute netexec, ldapsearch,
 or bloodhound commands inline.
 
 ### Credential Attacks
@@ -891,7 +894,7 @@ Common chains that produce shell access on a host:
 > - Windows target → STOP. Spawn **windows-privesc-agent** with skill `windows-discovery`.
 >
 > Pass: target hostname/IP, current user, access method (specify: interactive
-> reverse shell on port X, SSH session, WinRM, etc.), current mode, any
+> reverse shell on port X, SSH session, WinRM, etc.), any
 > credentials. The discovery skill enumerates systematically and returns findings
 > — the orchestrator then decides which technique skill to invoke next (sudo/SUID
 > abuse, cron/MOTD exploitation, kernel exploits, token impersonation, etc.).
@@ -943,12 +946,11 @@ When reading the state summary (via `get_state_summary()`), the orchestrator sho
    services?
 5. **Check for uncracked hashes** — if the Credentials section contains hashes
    without plaintext (NTLM, Kerberos TGS, shadow, etc.) or the engagement has
-   encrypted files (ZIP, Office, KeePass, SSH key), spawn
-   **credential-cracking-agent** with the hash details. Cracked passwords
-   unlock new testing against all services. The cracking agent is forkable —
-   if another technique skill targets the same credential goal (e.g., ACL
-   abuse toward the same account), race them in parallel via the fork
-   mechanism.
+   encrypted files (ZIP, Office, KeePass, SSH key), trigger the **Hashes
+   Found** hard stop (see below). Cracked passwords unlock new testing against
+   all services. The cracking agent is forkable — if another technique skill
+   targets the same credential goal (e.g., ACL abuse toward the same account),
+   race them in parallel via the fork mechanism.
 6. **Check pivot map** — are there identified paths not yet followed?
 7. **Check blocked items** — two categories:
    a. **`retry: "with_context"`** — these are techniques blocked at the
@@ -986,7 +988,7 @@ When reading the state summary (via `get_state_summary()`), the orchestrator sho
 Before selecting a single next skill, check whether the current state presents
 **convergent independent paths** — multiple skills that target the same
 intermediate goal with no dependencies between them. If so, these paths can be
-raced in parallel (autonomous mode) or presented as a fork (guided mode).
+presented as a fork to the operator.
 
 **Fork criteria — ALL must hold:**
 
@@ -1027,8 +1029,8 @@ goal, spawn them all. The real constraint is independence, not count.
 | Kerberoasting (needs results) → then pass-the-hash with cracked cred | No | Dependency chain — path B requires path A output |
 | Web shell upload + deserialization RCE → both target initial foothold | Yes | Convergent goal (shell on web server), independent vectors |
 
-**In guided mode:** fork detection still runs, but instead of auto-forking,
-present the fork via the **Guided Mode — Fork Presentation** format above.
+When a fork is detected, present it to the operator via the **Fork Presentation**
+format above.
 
 ### Parallel Fork Execution
 
@@ -1062,7 +1064,7 @@ all agents in a single message** — this ensures true parallel execution.
 Background agents auto-notify on completion. The event watcher runs alongside
 fork agents — if the watcher fires with actionable findings before any fork
 agent completes, the orchestrator can act on them (spawn follow-up agents, ask
-the operator in guided mode). However, **watcher notifications do NOT resolve
+the operator). However, **watcher notifications do NOT resolve
 the fork** — fork resolution still requires an agent to complete and return.
 Spawn a new watcher after processing each notification.
 
@@ -1147,9 +1149,8 @@ and runs the exploit command in one shot — eliminating the latency gap.
 2. Present to the user:
    > Clock skew detected — Kerberos authentication requires clocks within 5
    > minutes of the DC. Run `sudo ./temp_clock-sync.sh` to sync, then confirm.
-3. In **autonomous mode**: Write the script and tell the user to run it. Wait
-   for confirmation before retrying. This is one of the few cases where
-   autonomous mode must pause for operator intervention (sudo requirement).
+3. Wait for the user to confirm clock is synced before retrying (sudo
+   requirement — always a hard stop).
 4. After user confirms clock is synced, retry the **same skill invocation**
    with identical parameters (same agent, same skill, same target context).
 5. Clean up: `rm temp_clock-sync.sh` after successful retry.
@@ -1370,9 +1371,8 @@ If exit code is non-zero, the hostname does not resolve.
    ```
 8. Resume the engagement loop from where it was paused
 
-**In autonomous mode**: Same behavior — this is a hard stop in ALL modes.
-Write the script, present it, wait. This is one of the few cases where
-autonomous mode must pause for operator intervention (sudo requirement).
+This is always a hard stop — write the script, present it, wait for operator
+intervention (sudo requirement).
 
 ### Usernames Found
 
@@ -1381,9 +1381,8 @@ null sessions, web-discovery via user enumeration, ad-discovery via
 BloodHound/LDAP — the orchestrator MUST trigger this hard stop before
 proceeding with credential attacks.
 
-**Hard stop in BOTH guided AND autonomous modes** — never auto-spray.
-Password spraying is high-OPSEC and risks account lockouts. The operator
-must choose the intensity.
+**Hard stop** — never auto-spray. Password spraying is high-OPSEC and risks
+account lockouts. The operator must choose the intensity.
 
 **When to trigger:**
 - After recording new usernames in engagement state (from any skill)
@@ -1492,7 +1491,6 @@ Target: <IP>. Services: <only operator-selected services, e.g. 'SMB 445, WinRM 5
 Domain: <domain or 'N/A'>. Hostname: <hostname>.
 Usernames: <list or path to file>.
 Lockout policy: <threshold/window/duration if known, or 'unknown — enumerate first'>.
-Mode: <guided/autonomous>.
 Custom wordlist: <path if custom, omit otherwise>.",
     description="Password spray on <target>"
 )
@@ -1511,9 +1509,8 @@ Custom wordlist: <path if custom, omit otherwise>.",
 
    The event watcher is already running (or spawn one if not). If the spray
    agent writes valid credentials via state-interim, the watcher catches them
-   and notifies the orchestrator — no waiting for spray completion. In guided
-   mode, present the new credentials and ask the operator about follow-up
-   actions. In autonomous mode, spawn authenticated enumeration immediately.
+   and notifies the orchestrator — no waiting for spray completion. Present
+   new credentials and ask the operator about follow-up actions.
 
 7. When the spray agent returns (auto-notified):
    - Parse the return summary — record valid credentials via
@@ -1530,13 +1527,57 @@ Custom wordlist: <path if custom, omit otherwise>.",
      record the findings and integrate them into the next routing decision.
      Do NOT interrupt the running skill.
 
-**In guided mode**: Present the chain analysis and recommend next steps.
-Show the reasoning: "We have SQLi on the web app. We could extract credentials
-and test them against SMB, or we could try to get command execution via
-stacked queries."
+Present the chain analysis and recommend next steps. Show the reasoning: "We
+have SQLi on the web app. We could extract credentials and test them against
+SMB, or we could try to get command execution via stacked queries."
 
-**In autonomous mode**: Execute the highest-impact chain automatically.
-Report at each milestone.
+### Hashes Found
+
+When ANY skill returns with captured hashes (NTLMv2 from Responder, Kerberos
+TGS from Kerberoasting, NTLM from SAM/LSASS, shadow file hashes, etc.) or
+encrypted files that need cracking (ZIP, Office, KeePass, SSH keys), the
+orchestrator MUST trigger this hard stop before spawning the cracking agent.
+
+**Hard stop** — never auto-crack.
+Operators may have dedicated cracking rigs with better GPUs. The operator
+always chooses the cracking method.
+
+**When to trigger:**
+- After recording a hash credential in engagement state (from any skill)
+- After discovering encrypted files that block progress
+- Re-triggers when additional hashes are discovered later
+
+**Hard stop procedure:**
+
+1. Collect hash details: type, source, account, file path
+2. Present the hard stop with hash context. Use `AskUserQuestion`:
+
+   **Context block** (print before the question):
+   ```
+   [orchestrator] HARD STOP — hashes captured
+
+   | Hash | Type | Account | File |
+   |------|------|---------|------|
+   | NTLMv2 | hashcat 5600 | flight\svc_apache | engagement/evidence/ntlmv2-svc_apache.txt |
+   ```
+
+   **Question — Cracking method** (single-select):
+   - Header: "Cracking"
+   - Options:
+     - Crack locally (Recommended) — run hashcat/john on this machine
+     - Export for external rig — hash file path provided, operator cracks
+       externally and provides plaintext
+     - Skip cracking — don't crack, continue engagement via other paths
+
+3. After operator responds:
+   - **Crack locally**: Spawn **credential-cracking-agent** with hash details,
+     hash type, file path, and account context. Run in background.
+   - **Export for external rig**: Print the hash file path and hashcat command
+     line. Wait for the operator to provide the cracked plaintext. When
+     provided, record via `add_credential()` (or `update_credential()` with
+     `cracked=true` and the plaintext secret) and continue the engagement loop.
+   - **Skip**: Log to `activity.md` and continue the engagement loop via
+     other attack paths.
 
 ## Step 6: Post-Exploitation
 

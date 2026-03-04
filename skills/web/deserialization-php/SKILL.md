@@ -323,7 +323,7 @@ execution and note the limitation in the engagement state.
 
 - **Got RCE + shell stabilized**: STOP. Return to orchestrator recommending
   **linux-discovery** or **windows-discovery** (based on target OS). Pass:
-  hostname, current user, shell session ID, access method, current mode.
+  hostname, current user, shell session ID, and access method.
 - **File write only (no direct RCE)**: Write webshell to web root, then
   access it; or write `.htaccess` to enable PHP execution in upload dir
 - **Auth bypass only**: Explore admin functionality, look for additional
@@ -370,12 +370,9 @@ Do not loop. Work through failures systematically:
 - Assessment: **blocked** (permanent — config, patched, missing prereq) or
   **retry-later** (may work with different context, creds, or access)
 
-**Mode behavior:**
-- **Guided**: Tell the user you're stalled, present what was tried, and
-  recommend the next best path.
-- **Autonomous**: Return findings to the orchestrator. Do not retry the same
-  technique — the orchestrator will decide whether to revisit with new context
-  or route elsewhere.
+**When stalled:** Tell the user you're stalled, present what was tried, and
+recommend the next best path. Return findings to the orchestrator — it will
+decide whether to revisit with new context or route elsewhere.
 
 ## OPSEC Notes
 

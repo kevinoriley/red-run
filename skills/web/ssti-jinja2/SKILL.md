@@ -328,7 +328,7 @@ execution and note the limitation in the engagement state.
 
 - **Got RCE + shell stabilized**: STOP. Return to orchestrator recommending
   **linux-discovery** or **windows-discovery** (based on target OS). Pass:
-  hostname, current user, shell session ID, access method, current mode.
+  hostname, current user, shell session ID, access method.
 - **Got SECRET_KEY**: Forge Flask session cookies (`flask-unsign`)
 - **Got DB credentials**: Direct database access, dump users/data
 - **Reflected but not stored**: One-time execution — chain with SSRF or XSS
@@ -339,7 +339,7 @@ execution and note the limitation in the engagement state.
 Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
 
 When routing, pass along: confirmed engine, injection point, working payload,
-filter restrictions, current mode.
+filter restrictions.
 
 ## Stall Detection
 
@@ -372,12 +372,9 @@ Do not loop. Work through failures systematically:
 - Assessment: **blocked** (permanent — config, patched, missing prereq) or
   **retry-later** (may work with different context, creds, or access)
 
-**Mode behavior:**
-- **Guided**: Tell the user you're stalled, present what was tried, and
-  recommend the next best path.
-- **Autonomous**: Return findings to the orchestrator. Do not retry the same
-  technique — the orchestrator will decide whether to revisit with new context
-  or route elsewhere.
+**When stalled:** Tell the user you're stalled, present what was tried, and
+recommend the next best path. Return findings to the orchestrator — it will
+decide whether to revisit with new context or route elsewhere.
 
 ## OPSEC Notes
 

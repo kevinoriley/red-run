@@ -2,9 +2,13 @@
 
 Offensive security toolkit for Claude Code.
 
+<p align="center">
+  <img src="docs/dashboard.jpg" width="700" alt="Agent dashboard showing live multi-pane output from parallel agents">
+</p>
+
 red-run combines skills, MCP servers, and agents with routing logic that guides Claude through the phases of an infrastructure-focused attack — recon, initial access, lateral movement, privilege escalation, and post-exploitation. It tracks engagement state in a SQLite database that persists across context compactions, routes to skills via semantic search (RAG), and delegates execution to focused agents that each handle one technique per invocation.
 
-In **guided mode** (default), the orchestrator presents the attack surface, chain analysis, and available paths — you choose what to hit next. In **autonomous mode**, it routes automatically and keeps going until objectives are met or all paths are exhausted.
+The orchestrator presents the attack surface, chain analysis, and available paths — you choose what to hit next. Once you pick a path, the agent runs end-to-end and reports back.
 
 ## Features
 
@@ -111,7 +115,7 @@ Recommended: [Trail of Bits Claude Code configuration](https://github.com/trailo
 
 ## Warning
 
-Autonomous mode pairs with `claude --dangerously-skip-permissions` (yolo mode). **We do not recommend this.** Claude will chain skills, pop shells, move laterally, and escalate privileges **on its own**. Use guided mode and avoid `--dangerously-skip-permissions` for maximum safety. You are responsible for containing Claude on your systems and for any legal consequences under the CFAA or equivalent legislation.
+`claude --dangerously-skip-permissions` (yolo mode) is available but **not recommended**. With it active, Claude will chain skills, pop shells, move laterally, and escalate privileges without pausing for confirmation. Avoid `--dangerously-skip-permissions` for maximum safety. You are responsible for containing Claude on your systems and for any legal consequences under the CFAA or equivalent legislation.
 
 ## Disclaimer
 

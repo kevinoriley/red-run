@@ -78,25 +78,27 @@ kernel exploits, sudo/SUID abuse) spawn a new interactive root shell. Without
 the shell-server, there is no way to receive and interact with these shells —
 Claude Code's Bash tool runs each command as a separate process.
 
-## Interactive Processes via MCP
+## Tool Execution — Bash vs Shell-Server
 
-Use `start_process` to spawn local interactive tools in a persistent PTY.
-This is for tools that need session persistence — SSH sessions, exploit
-frameworks, and tools that maintain state between commands.
+**Bash is the default.** Most penetration testing tools are run-and-exit CLI
+commands. Run them via Bash (with `dangerouslyDisableSandbox: true` for any
+command that touches the network).
 
-- `start_process(command="<tool>", label="<label>")` — spawn the process
-- `send_command(session_id=..., command=...)` — interact with it
-- `read_output(session_id=...)` — check for async output
-- `close_session(session_id=..., save_transcript=true)` — clean up
+**`start_process` is ONLY for tools that maintain persistent interactive
+sessions:**
 
-**When to use which:**
+| Category | Examples | `privileged`? |
+|----------|----------|---------------|
+| Docker pentest tools | chisel, ligolo-ng, socat | Yes — `privileged=True` (Docker-only) |
+| Host tools | ssh, msfconsole | No — runs on host directly |
 
-| Scenario | Tool |
-|----------|------|
-| Target sends reverse shell callback | `start_listener` |
-| Have SSH credentials + port 22 open | `start_process` |
-| Exploit framework (msfconsole) | `start_process` |
-| Single non-interactive command | Bash |
+**Do NOT run `which` to check for Docker tools** (chisel, ligolo-ng, etc.) —
+they are only available inside the Docker container. Just use
+`start_process(command=..., privileged=True)` directly.
+
+**Everything else uses Bash** — including linpeas, pspy, and any script you
+transfer to the target. If a tool runs a command and exits, it goes through
+Bash.
 
 **SSH example:**
 

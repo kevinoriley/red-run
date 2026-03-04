@@ -116,25 +116,21 @@ catch a shell via shell-server rather than continuing to inject commands through
 the web vulnerability. Interactive shells are more reliable, faster, and
 required for privilege escalation tools that spawn new shells.
 
-## Interactive Processes via MCP
+## Tool Execution — Bash vs Shell-Server
 
-Use `start_process` to spawn local interactive tools in a persistent PTY.
-This is for tools that need session persistence — credential-based access
-tools, exploit frameworks, and tools that maintain state between commands.
+**Bash is the default.** Most penetration testing tools are run-and-exit CLI
+commands. Run them via Bash (with `dangerouslyDisableSandbox: true` for any
+command that touches the network).
 
-- `start_process(command="<tool>", label="<label>")` — spawn the process
-- `send_command(session_id=..., command=...)` — interact with it
-- `read_output(session_id=...)` — check for async output
-- `close_session(session_id=..., save_transcript=true)` — clean up
+**`start_process` is ONLY for tools that maintain persistent interactive
+sessions** (evil-winrm, ssh, psexec.py, msfconsole) or **privileged network
+daemons** (Responder, ntlmrelayx — with `privileged=True`). These are rare
+for web discovery.
 
-**When to use which:**
-
-| Scenario | Tool |
-|----------|------|
-| Target sends reverse shell callback | `start_listener` |
-| Have credentials + service port open | `start_process` |
-| Exploit framework (msfconsole) | `start_process` |
-| Single non-interactive command | Bash |
+**Everything else uses Bash** — including ffuf, nuclei, httpx, curl, wget,
+nikto, whatweb, wpscan, gobuster, feroxbuster, sqlmap, and all other CLI
+tools. If a tool runs a command and exits, it goes through Bash — even if it
+runs for minutes.
 
 ## Engagement Files
 

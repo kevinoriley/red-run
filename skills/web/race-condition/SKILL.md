@@ -665,7 +665,7 @@ After confirming a race condition:
 - **Token/nonce reuse**: Route to **jwt-attacks** if JWT tokens, **csrf** if CSRF tokens are race-susceptible.
 - **Session state corruption**: Route to **idor** for further access control testing.
 
-When routing, pass along: the confirmed race endpoint, synchronization technique that worked, number of concurrent requests needed, current mode, and any session/token context.
+When routing, pass along: the confirmed race endpoint, synchronization technique that worked, number of concurrent requests needed, and any session/token context.
 
 ## Stall Detection
 
@@ -698,12 +698,9 @@ Do not loop. Work through failures systematically:
 - Assessment: **blocked** (permanent — config, patched, missing prereq) or
   **retry-later** (may work with different context, creds, or access)
 
-**Mode behavior:**
-- **Guided**: Tell the user you're stalled, present what was tried, and
-  recommend the next best path.
-- **Autonomous**: Return findings to the orchestrator. Do not retry the same
-  technique — the orchestrator will decide whether to revisit with new context
-  or route elsewhere.
+**When stalled:** Tell the user you're stalled, present what was tried, and
+recommend the next best path. Return findings to the orchestrator — it will
+decide whether to revisit with new context or route elsewhere.
 
 ## Troubleshooting
 

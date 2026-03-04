@@ -47,25 +47,9 @@ The skill-router is backed by ChromaDB + sentence-transformer embeddings (`all-M
 
 The nmap-server runs nmap inside a Docker container (`--network=host`, minimal capabilities) and returns parsed JSON. All inputs are validated before reaching subprocess. Requires Docker.
 
-The shell-server manages TCP listeners, reverse shell sessions, and local interactive processes. It solves the persistent shell problem — Claude Code's Bash tool runs each command as a separate process, so interactive shells, privilege escalation tools, and credential-based access tools (evil-winrm, psexec.py, ssh, msfconsole) have no way to maintain state between calls. The `privileged` parameter on `start_process` wraps commands in a Docker container with network capabilities (NET_RAW, NET_ADMIN, NET_BIND_SERVICE) for tools needing raw sockets or low-port binding (Responder, mitm6, tcpdump). Requires the `red-run-shell` Docker image (built by install.sh).
+The shell-server manages TCP listeners, reverse shell sessions, and local interactive processes. It solves the persistent shell problem — Claude Code's Bash tool runs each command as a separate process, so interactive shells, privilege escalation tools, and credential-based access tools (evil-winrm, psexec.py, ssh, msfconsole) have no way to maintain state between calls. The `privileged` parameter on `start_process` runs commands inside the `red-run-shell` Docker container, which contains a full pentest toolkit: evil-winrm, impacket, chisel, ligolo-ng, socat, Responder, mitm6, and tcpdump. Use `privileged=True` for Docker-only tools (evil-winrm, chisel, ligolo-ng) and for daemons needing raw sockets (Responder, mitm6). Requires the `red-run-shell` Docker image (built by install.sh).
 
 The browser-server provides headless Chromium automation via Playwright. It solves the web interaction problem — curl can't handle CSRF tokens, session rotation, JavaScript-rendered forms, or multi-step authentication flows. Each session maintains its own cookie jar and localStorage. Web agents use browser tools as the default for navigating sites and curl as fallback for precise payload control.
-
-### Modes
-
-Mode is an **orchestrator-only concept**. Skills and agents do not check or
-enforce mode — the orchestrator is the only component that uses it.
-
-- **Guided** (default): The orchestrator pauses at routing decisions — presents
-  the attack surface, chain analysis, and available paths, then lets the user
-  choose which skill to invoke next. Once a skill is routed to an agent, the
-  agent runs end-to-end. Individual commands within the agent go through Claude
-  Code's normal permission prompts.
-- **Autonomous**: The orchestrator routes to skills automatically, makes triage
-  decisions at forks, and reports at phase boundaries. Combine with
-  `--dangerously-skip-permissions` for fully unattended execution.
-
-> **On autonomous mode:** Autonomous mode pairs with `claude --dangerously-skip-permissions` (a.k.a. yolo mode). We do not recommend this. We do not endorse this. We are not responsible for what happens. You will watch Claude chain four skills, pop a shell, and pivot to a subnet you forgot was in scope. It is exhilarating and horrifying in equal measure. Use guided mode or avoid `--dangerously-skip-permissions` for the sake of us all.
 
 ### Skill Types
 - **Orchestrator** (`skills/orchestrator/`): Takes a target, runs recon, routes to discovery skills
@@ -74,9 +58,9 @@ enforce mode — the orchestrator is the only component that uses it.
 
 ### Inter-Skill Routing
 
-The orchestrator makes every routing decision. When a skill says "Route to **skill-name**", the orchestrator looks up the correct agent in the Skill-to-Agent Routing Table and spawns it with that skill. Context (injection point, target technology, mode, working payloads) is passed in the Task prompt.
+The orchestrator makes every routing decision. When a skill says "Route to **skill-name**", the orchestrator looks up the correct agent in the Skill-to-Agent Routing Table and spawns it with that skill. Context (injection point, target technology, working payloads) is passed in the Task prompt.
 
-**Mandatory skill loading**: When a skill says "Route to **skill-name**", that skill MUST be loaded via `get_skill()` — either by a subagent or inline. Never execute a technique without loading the matching skill. Skills contain methodology, edge cases, payloads, and troubleshooting that general knowledge does not. This applies in both guided and autonomous modes.
+**Mandatory skill loading**: When a skill says "Route to **skill-name**", that skill MUST be loaded via `get_skill()` — either by a subagent or inline. Never execute a technique without loading the matching skill. Skills contain methodology, edge cases, payloads, and troubleshooting that general knowledge does not. Always load skills via `get_skill()` — never execute techniques without loading the matching skill.
 
 **Skill discovery**: If unsure which skill to use, call `search_skills(query)` with a description of the situation. Validate the result before loading — check that the skill's description matches what you need.
 
@@ -99,7 +83,7 @@ engagement/
 ```
 
 **Behavior:**
-- Skills check for `./engagement/` at start. Guided mode asks to create it if absent; autonomous mode creates it automatically.
+- Skills check for `./engagement/` at start. If absent, ask the operator before creating it.
 - Activity entries logged at milestones, not every command. Format: `### [HH:MM] skill-name → target` with bullet points.
 - Findings numbered sequentially. Light summaries — use `pentest-findings` skill for formal report-quality writeups.
 - Evidence saved with descriptive filenames to `engagement/evidence/`.

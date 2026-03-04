@@ -43,6 +43,9 @@ config
 objects
 refs
 
+# Dashboard agent list (written at runtime by orchestrator)
+tools/agent-dashboard/.dashboard
+
 # Engagement data — never commit
 loot/
 evidence/

@@ -71,26 +71,28 @@ exploits, service abuse, DLL hijacking) spawn a new SYSTEM shell. Without
 the shell-server, there is no way to receive and interact with these shells —
 Claude Code's Bash tool runs each command as a separate process.
 
-## Interactive Processes via MCP
+## Tool Execution — Bash vs Shell-Server
 
-Use `start_process` to spawn local interactive tools in a persistent PTY.
-This is for tools that need session persistence — credential-based access
-(evil-winrm, ssh), exploit frameworks (msfconsole), and tools that maintain
-state between commands.
+**Bash is the default.** Most penetration testing tools are run-and-exit CLI
+commands. Run them via Bash (with `dangerouslyDisableSandbox: true` for any
+command that touches the network).
 
-- `start_process(command="<tool>", label="<label>")` — spawn the process
-- `send_command(session_id=..., command=...)` — interact with it
-- `read_output(session_id=...)` — check for async output
-- `close_session(session_id=..., save_transcript=true)` — clean up
+**`start_process` is ONLY for tools that maintain persistent interactive
+sessions:**
 
-**When to use which:**
+| Category | Examples | `privileged`? |
+|----------|----------|---------------|
+| Docker pentest tools | evil-winrm, chisel, ligolo-ng, socat | Yes — `privileged=True` (Docker-only) |
+| Impacket interactive shells | psexec.py, wmiexec.py, smbexec.py, mssqlclient.py | Yes — `privileged=True` (available in Docker) |
+| Host tools | ssh, msfconsole | No — runs on host directly |
 
-| Scenario | Tool |
-|----------|------|
-| Target sends reverse shell callback | `start_listener` |
-| Have credentials + service port open | `start_process` |
-| Exploit framework (msfconsole) | `start_process` |
-| Single non-interactive command | Bash |
+**Do NOT run `which` to check for Docker tools** (evil-winrm, chisel, etc.) —
+they are only available inside the Docker container. Just use
+`start_process(command=..., privileged=True)` directly.
+
+**Everything else uses Bash** — including netexec (nxc), winpeas,
+Impacket one-shot scripts (secretsdump.py, getTGT.py, etc.), and any other
+CLI tools. If a tool runs a command and exits, it goes through Bash.
 
 **Evil-WinRM for file transfer (preferred on Windows):** When WinRM is
 available (port 5985 or 5986), use evil-winrm's built-in `upload` and
@@ -98,7 +100,8 @@ available (port 5985 or 5986), use evil-winrm's built-in `upload` and
 reliable than SMB or base64 encoding:
 
 ```bash
-start_process(command="evil-winrm -i TARGET -u user -p 'Password123'")
+# Evil-winrm is Docker-only — must use privileged=True
+start_process(command="evil-winrm -i TARGET -u user -p 'Password123'", privileged=True)
 # Then via send_command:
 send_command(session_id=..., command="upload /path/to/linpeas.exe C:\\Windows\\Temp\\linpeas.exe")
 send_command(session_id=..., command="download C:\\Users\\admin\\Desktop\\flag.txt ./flag.txt")

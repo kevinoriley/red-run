@@ -191,8 +191,7 @@ curl -sL https://github.com/stealthcopter/deepce/raw/main/deepce.sh | bash
 ./linpeas.sh
 ```
 
-**In guided mode**, present all findings and ask which escape vector to pursue.
-**In autonomous mode**, proceed to the most reliable escape based on findings.
+Present all findings and ask which escape vector to pursue.
 
 ## Step 2: Docker Socket Escape
 
@@ -1007,12 +1006,9 @@ Do not loop. Work through failures systematically:
 - Assessment: **blocked** (permanent — config, patched, missing prereq) or
   **retry-later** (may work with different context, creds, or access)
 
-**Mode behavior:**
-- **Guided**: Tell the user you're stalled, present what was tried, and
-  recommend the next best path.
-- **Autonomous**: Return findings to the orchestrator. Do not retry the same
-  technique — the orchestrator will decide whether to revisit with new context
-  or route elsewhere.
+**When stalled:** Tell the user you're stalled, present what was tried, and
+recommend the next best path. Return findings to the orchestrator — it will
+decide whether to revisit with new context or route elsewhere.
 
 ## Troubleshooting
 
