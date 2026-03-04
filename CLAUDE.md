@@ -31,29 +31,21 @@ Agent source files live in `agents/` (version controlled), installed to `~/.clau
 
 ### MCP Servers
 
-| Server | Location | Tools | Purpose |
-|--------|----------|-------|---------|
-| skill-router | `tools/skill-router/` | `search_skills`, `get_skill`, `list_skills` | Semantic skill discovery and loading |
-| nmap-server | `tools/nmap-server/` | `nmap_scan`, `get_scan`, `list_scans` | Dockerized nmap scanning with input validation |
-| shell-server | `tools/shell-server/` | `start_listener`, `start_process` (supports `privileged` Docker mode), `send_command`, `read_output`, `stabilize_shell`, `list_sessions`, `close_session` | TCP listener, reverse shell, local interactive process manager, and privileged Docker execution |
-| state-reader | `tools/state-server/` | `get_state_summary`, `get_targets`, `get_credentials`, `get_access`, `get_vulns`, `get_pivot_map`, `get_blocked`, `poll_events` | Read-only engagement state queries (technique agents) |
-| state-interim | `tools/state-server/` | All read tools + `add_credential`, `add_vuln`, `add_pivot`, `add_blocked` (each emits a `state_events` row) | Read + 4 add-only writes (discovery agents) |
-| state-writer | `tools/state-server/` | All read tools + `init_engagement`, `close_engagement`, `add_target`, `add_port`, `add_credential`, `add_access`, `add_vuln`, `add_pivot`, `add_blocked`, and update variants | Full engagement state management (orchestrator only) |
-| browser-server | `tools/browser-server/` | `browser_open`, `browser_navigate`, `browser_get_page`, `browser_click`, `browser_fill`, `browser_select`, `browser_screenshot`, `browser_cookies`, `browser_evaluate`, `close_browser`, `list_browser_sessions` | Headless browser automation (web agents) |
+| Server | Location | Purpose |
+|--------|----------|---------|
+| skill-router | `tools/skill-router/` | Semantic skill discovery and loading (ChromaDB + embeddings) |
+| nmap-server | `tools/nmap-server/` | Dockerized nmap scanning with input validation |
+| shell-server | `tools/shell-server/` | TCP listener, reverse shell, local interactive process manager, privileged Docker execution |
+| state-reader | `tools/state-server/` | Read-only engagement state queries (technique agents) |
+| state-interim | `tools/state-server/` | Read + 4 add-only writes (discovery agents) |
+| state-writer | `tools/state-server/` | Full engagement state management (orchestrator only) |
+| browser-server | `tools/browser-server/` | Headless browser automation (web agents) |
 
-The state-reader, state-interim, and state-writer are three instances of the same server (`tools/state-server/server.py`) running in different modes (`--mode read`, `--mode interim`, `--mode write`). All three open the same `engagement/state.db`. SQLite WAL mode + `busy_timeout=5000` handles concurrent readers and writers safely. Discovery agents use state-interim to write actionable findings (credentials, vulns, pivots, blocked) mid-run without waiting for the orchestrator to parse their return summary. Technique agents use state-reader (fully read-only). The orchestrator uses state-writer for full read/write access and deduplicates findings that discovery agents already wrote via interim.
-
-The skill-router is backed by ChromaDB + sentence-transformer embeddings (`all-MiniLM-L6-v2`). Skills are indexed from structured frontmatter fields (description, keywords, tools, opsec).
-
-The nmap-server runs nmap inside a Docker container (`--network=host`, minimal capabilities) and returns parsed JSON. All inputs are validated before reaching subprocess. Requires Docker.
-
-The shell-server manages TCP listeners, reverse shell sessions, and local interactive processes. It solves the persistent shell problem — Claude Code's Bash tool runs each command as a separate process, so interactive shells, privilege escalation tools, and credential-based access tools (evil-winrm, psexec.py, ssh, msfconsole) have no way to maintain state between calls. The `privileged` parameter on `start_process` runs commands inside the `red-run-shell` Docker container, which contains a full pentest toolkit: evil-winrm, impacket, chisel, ligolo-ng, socat, Responder, mitm6, and tcpdump. Use `privileged=True` for Docker-only tools (evil-winrm, chisel, ligolo-ng) and for daemons needing raw sockets (Responder, mitm6). Requires the `red-run-shell` Docker image (built by install.sh).
-
-The browser-server provides headless Chromium automation via Playwright. It solves the web interaction problem — curl can't handle CSRF tokens, session rotation, JavaScript-rendered forms, or multi-step authentication flows. Each session maintains its own cookie jar and localStorage. Web agents use browser tools as the default for navigating sites and curl as fallback for precise payload control.
+The state-reader, state-interim, and state-writer are three instances of the same server running in different modes. Discovery agents use state-interim to write actionable findings mid-run. Technique agents use state-reader (read-only). The orchestrator uses state-writer for full read/write access. See each server's `README.md` for tool details.
 
 ### Skill Types
 - **Orchestrator** (`skills/orchestrator/`): Takes a target, runs recon, routes to discovery skills
-- **Discovery** (`skills/<category>/*-discovery/`): Identifies vulnerabilities, routes to technique skills via decision tree
+- **Discovery** (`skills/<category>/*-discovery/`): Identifies vulnerabilities, recommends technique skills via decision tree (orchestrator does the actual routing)
 - **Technique** (`skills/<category>/<technique>/`): Exploits a specific vulnerability class
 
 ### Inter-Skill Routing
@@ -68,9 +60,9 @@ The orchestrator makes every routing decision. When a skill says "Route to **ski
 
 ### Engagement Logging
 
-Skills support optional engagement logging for structured pentests.
+Skills support optional engagement logging. No engagement directory = no logging — skills degrade gracefully.
 
-**Directory structure** (created by orchestrator or first skill that needs it):
+**Directory structure** (created by orchestrator):
 
 ```
 engagement/
@@ -82,61 +74,19 @@ engagement/
     └── logs/         # Subagent JSONL transcripts (captured by SubagentStop hook)
 ```
 
-**Behavior:**
-- Skills check for `./engagement/` at start. If absent, ask the operator before creating it.
-- Activity entries logged at milestones, not every command. Format: `### [HH:MM] skill-name → target` with bullet points.
-- Findings numbered sequentially. Light summaries — use `pentest-findings` skill for formal report-quality writeups.
-- Evidence saved with descriptive filenames to `engagement/evidence/`.
-- No engagement directory = no logging. Skills degrade gracefully.
+**Orchestrator responsibility:** Creates engagement directory, initializes state.db, is the **sole writer** of state/activity.md/findings.md, parses subagent returns, chains vulns toward impact.
 
-**Subagent transcript capture:**
-- A `SubagentStop` hook (`tools/hooks/save-agent-log.sh`) copies raw JSONL
-  transcripts from domain subagents into `engagement/evidence/logs/`.
-- Filename format: `{ISO-timestamp}-{agent-type}.jsonl` (e.g.,
-  `20260227T143052Z-web-exploit-agent.jsonl`).
-- Only triggers for red-run agents (network-recon, web-discovery,
-  web-exploit, ad-discovery, ad-exploit, password-spray, linux-privesc,
-  windows-privesc) — not built-in subagents (Explore, Plan, general-purpose).
-- No engagement directory = hook exits silently. No logging, no errors.
-- The retrospective skill parses these logs for post-engagement analysis.
-
-**Orchestrator responsibility:**
-- Creates engagement directory, initializes `scope.md`, and calls `init_engagement()` to create `state.db`
-- Is the **sole writer** of all engagement state (SQLite), `activity.md`, and `findings.md`
-- Parses subagent return summaries and records findings via state-writer MCP tools
-- Calls `get_state_summary()` to decide next actions and which skill to invoke
-- Analyzes state to chain vulnerabilities toward maximum impact
-- Produces engagement summary when complete
-
-**Subagent responsibility:**
-- Call `get_state_summary()` from the state-reader or state-interim MCP to read current state
-- **Discovery agents** (state-interim): Write actionable findings immediately via `add_credential()`, `add_vuln()`, `add_pivot()`, `add_blocked()` so concurrent agents can see them mid-run
-- **Technique agents** (state-reader): Read-only — report all findings in return summary
-- Save raw evidence to `engagement/evidence/` (the only engagement directory subagents write to)
-- Report all findings clearly in their return summary — the orchestrator deduplicates and records remaining state changes
+**Subagent responsibility:** Read state via `get_state_summary()`, save evidence to `engagement/evidence/`, report all findings in return summary. Discovery agents (state-interim) also write actionable findings mid-run. Technique agents (state-reader) are read-only.
 
 ### State Management
 
-Engagement state lives in `engagement/state.db`, a SQLite database managed by the state-server MCP. The **orchestrator is the sole writer** — subagents are read-only.
-
-**Tables:**
-
-| Table | Contents | Key Queries |
-|-------|----------|-------------|
-| **targets** + **ports** | Hosts, IPs, OS, ports, services (normalized 1:many) | `get_targets()`, "all targets with port 445" |
-| **credentials** + **credential_access** | Username/secret pairs + where each has been tested | `get_credentials(untested_only=True)` |
-| **access** | Current footholds: shells, sessions, tokens, DB access | `get_access(active_only=True)` |
-| **vulns** | Confirmed vulns with status: `found`, `active`, `done` | `get_vulns(status="found")` |
-| **pivot_map** | What leads where — vuln X gives access Y, creds Z work on host W | `get_pivot_map()` |
-| **blocked** | What was tried and why it failed — prevents re-testing | `get_blocked()` |
-| **state_events** | Event log emitted by interim writes — real-time polling | `poll_events(since_id=0)` |
+Engagement state lives in `engagement/state.db` (SQLite, managed by state-server MCP). Tables: targets, ports, credentials, credential_access, access, vulns, pivot_map, blocked, state_events.
 
 **Rules:**
 - `get_state_summary()` produces a compact markdown summary (~200 lines) for subagent consumption
 - Subagents call `get_state_summary()` on activation, report findings in their return summary
-- Discovery agents (state-interim) also write actionable findings mid-run via 4 add-only tools; each write emits a `state_events` row
-- The orchestrator polls `poll_events()` at interaction points for real-time visibility into discovery agent findings
-- The orchestrator parses return summaries, deduplicates interim writes, and calls structured write tools for remaining state changes
+- Discovery agents (state-interim) write actionable findings mid-run; each write emits a `state_events` row
+- Orchestrator polls `poll_events()` for real-time visibility, parses returns, deduplicates interim writes
 - Orchestrator uses state summary + pivot map to chain vulns toward impact
 
 ## Documentation Rules
@@ -147,10 +97,12 @@ when making changes.
 | Component | Documentation | Rule |
 |-----------|--------------|------|
 | Repo root | `README.md` | Update when architecture, installation, or user-facing behavior changes |
+| Docs site | `docs/*.md` | Human-facing reference. Update when features, architecture, or workflows change |
 | MCP servers (`tools/*/`) | `README.md` per server | **Required.** Update when tools, parameters, behavior, or prerequisites change |
 | Skills (`skills/*/`) | `SKILL.md` | Self-contained — no separate README |
 | Agents (`agents/`) | `<agent-name>.md` | Self-contained — no separate README |
-| Hooks (`tools/hooks/`) | Inline comments | No README needed |
+| Hooks (`tools/hooks/`) | `README.md` | Update when hook scripts change |
+| Dashboard (`tools/agent-dashboard/`) | `README.md` | Update when dashboard modes or keybindings change |
 
 **When modifying a tool server:** If you change tools, parameters, behavior, or
 dependencies in a `tools/*/` server, update its `README.md` in the same commit.

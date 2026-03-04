@@ -1,0 +1,36 @@
+site_name: red-run
+site_description: Offensive security toolkit for Claude Code
+repo_url: https://github.com/kevinoriley/red-run
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: red
+    accent: red
+  features:
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+    - search.suggest
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Installation: installation.md
+  - Running an Engagement: running-an-engagement.md
+  - Engagement State: engagement-state.md
+  - MCP Servers: mcp-servers.md
+  - Agents: agents.md
+  - Skills Reference: skills-reference.md
+  - Dashboard & Monitoring: dashboard-and-monitoring.md
+  - Writing Skills: writing-skills.md
+markdown_extensions:
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - tables

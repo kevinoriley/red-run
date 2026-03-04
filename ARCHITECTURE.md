@@ -12,18 +12,19 @@ graph TD
     User --> Orch[Orchestrator]
 
     Orch --> Agents
+    Orch --> MCP
 
     subgraph Agents["Agents"]
         direction LR
         NetRecon[network-recon] ~~~ WebDisc[web-discovery] ~~~ WebExpl[web-exploit] ~~~ ADDisc[ad-discovery] ~~~ ADExpl[ad-exploit]
-        LinPE[linux-privesc] ~~~ WinPE[windows-privesc] ~~~ PwSpray[password-spray] ~~~ Evasion[evasion]
+        LinPE[linux-privesc] ~~~ WinPE[windows-privesc] ~~~ PwSpray[password-spray] ~~~ Evasion[evasion] ~~~ CredCrack[credential-cracking]
     end
 
     Agents --> MCP
 
     subgraph MCP["MCP Servers"]
         direction LR
-        NmapSrv[nmap-server] ~~~ BrowserSrv[browser-server] ~~~ ShellSrv[shell-server] ~~~ SkillRouter[skill-router] ~~~ StateR[state-reader] ~~~ StateW[state-writer]
+        NmapSrv[nmap-server] ~~~ BrowserSrv[browser-server] ~~~ ShellSrv[shell-server] ~~~ SkillRouter[skill-router] ~~~ StateR[state-reader] ~~~ StateI[state-interim] ~~~ StateW[state-writer]
     end
 
     Agents --> Engage
@@ -43,8 +44,8 @@ graph TD
     classDef user fill:#553c9a,stroke:#e9d8fd,color:#e9d8fd
 
     class Orch orch
-    class NetRecon,WebDisc,WebExpl,ADDisc,ADExpl,PwSpray,LinPE,WinPE,Evasion agent
-    class SkillRouter,NmapSrv,ShellSrv,BrowserSrv,StateR,StateW mcp
+    class NetRecon,WebDisc,WebExpl,ADDisc,ADExpl,PwSpray,LinPE,WinPE,Evasion,CredCrack agent
+    class SkillRouter,NmapSrv,ShellSrv,BrowserSrv,StateR,StateI,StateW mcp
     class DB,ScopeMD,ActivityMD,FindingsMD,Evidence storage
     class User user
 ```
@@ -54,13 +55,16 @@ graph TD
 | Agent | MCP Servers |
 |-------|-------------|
 | orchestrator | skill-router, state-reader, state-writer |
-| network-recon | skill-router, nmap-server, shell-server, state-reader |
-| web-discovery | skill-router, shell-server, browser-server, state-reader |
+| network-recon | skill-router, nmap-server, shell-server, state-interim |
+| web-discovery | skill-router, shell-server, browser-server, state-interim |
 | web-exploit | skill-router, shell-server, browser-server, state-reader |
-| ad-discovery, ad-exploit | skill-router, shell-server, state-reader |
-| linux-privesc, windows-privesc | skill-router, shell-server, state-reader |
+| ad-discovery | skill-router, shell-server, state-interim |
+| ad-exploit | skill-router, shell-server, state-reader |
+| linux-privesc | skill-router, shell-server, state-interim |
+| windows-privesc | skill-router, shell-server, state-interim |
 | password-spray | skill-router, shell-server, state-reader |
 | evasion | skill-router, shell-server, state-reader |
+| credential-cracking | skill-router, state-reader |
 
 ## Engagement Workflow
 

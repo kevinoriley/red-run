@@ -50,3 +50,6 @@ tools/agent-dashboard/.dashboard
 loot/
 evidence/
 engagement/
+
+# MkDocs build output
+site/
