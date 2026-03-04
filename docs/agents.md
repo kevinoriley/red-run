@@ -164,7 +164,7 @@ Each agent operates within strict scope boundaries defined by its loaded skill:
 - **Scope boundary**: When a skill says "Route to **skill-name**", the agent stops and returns to the orchestrator with findings and the recommended next skill. Agents never load or execute another skill.
 - **Stay in methodology**: Agents only use techniques documented in their loaded skill. No improvisation, no custom exploit code, no techniques from other domains.
 - **Stall detection**: If an agent spends 5+ tool-calling rounds on the same failure with no meaningful progress, it stops and returns with what was attempted, what failed, and whether it's permanently blocked or retryable.
-- **AV/EDR detection**: If a payload is caught by antivirus, the agent stops immediately and returns structured context for the evasion agent.
+- **AV/EDR detection**: If a payload is caught by antivirus, the agent stops immediately and returns structured context for the orchestrator to pass to the evasion agent.
 - **DNS failures**: If hostname resolution fails, the agent stops and returns the failing hostname so the orchestrator can request operator intervention.
 
 Agent source files live in `agents/` (version controlled) and are installed to `~/.claude/agents/` by `install.sh`.
