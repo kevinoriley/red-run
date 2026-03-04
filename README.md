@@ -8,50 +8,7 @@ Offensive security toolkit for Claude Code.
 
 red-run combines skills, MCP servers, and agents with routing logic that guides Claude through the phases of an infrastructure-focused attack — recon, initial access, lateral movement, privilege escalation, and post-exploitation. It tracks engagement state in a SQLite database that persists across context compactions, routes to skills via semantic search (RAG), and delegates execution to focused agents that each handle one technique per invocation.
 
-The orchestrator presents the attack surface, chain analysis, and available paths — you choose what to hit next. Once you pick a path, the agent runs end-to-end and reports back.
-
-```mermaid
-graph TD
-    User([Operator])
-    User --> Orch[Orchestrator]
-
-    Orch --> Agents
-    Orch --> MCP
-
-    subgraph Agents["Agents"]
-        direction LR
-        NetRecon[network-recon] ~~~ WebDisc[web-discovery] ~~~ WebExpl[web-exploit] ~~~ ADDisc[ad-discovery] ~~~ ADExpl[ad-exploit]
-        LinPE[linux-privesc] ~~~ WinPE[windows-privesc] ~~~ PwSpray[password-spray] ~~~ Evasion[evasion] ~~~ CredCrack[credential-cracking]
-    end
-
-    Agents --> MCP
-
-    subgraph MCP["MCP Servers"]
-        direction LR
-        NmapSrv[nmap-server] ~~~ BrowserSrv[browser-server] ~~~ ShellSrv[shell-server] ~~~ SkillRouter[skill-router] ~~~ StateR[state-reader] ~~~ StateI[state-interim] ~~~ StateW[state-writer]
-    end
-
-    Agents --> Engage
-
-    subgraph Engage["engagement/"]
-        direction LR
-        Evidence[evidence/] ~~~ DB[(state.db)] ~~~ ScopeMD[scope.md] ~~~ ActivityMD[activity.md] ~~~ FindingsMD[findings.md]
-    end
-
-    Orch --> Engage
-
-    classDef orch fill:#2d3748,stroke:#e2e8f0,color:#e2e8f0,stroke-width:2px
-    classDef agent fill:#2b6cb0,stroke:#bee3f8,color:#bee3f8
-    classDef mcp fill:#2f855a,stroke:#c6f6d5,color:#c6f6d5
-    classDef storage fill:#744210,stroke:#fefcbf,color:#fefcbf
-    classDef user fill:#553c9a,stroke:#e9d8fd,color:#e9d8fd
-
-    class Orch orch
-    class NetRecon,WebDisc,WebExpl,ADDisc,ADExpl,PwSpray,LinPE,WinPE,Evasion,CredCrack agent
-    class SkillRouter,NmapSrv,ShellSrv,BrowserSrv,StateR,StateI,StateW mcp
-    class DB,ScopeMD,ActivityMD,FindingsMD,Evidence storage
-    class User user
-```
+The orchestrator presents the attack surface, chain analysis, and available paths — you choose what to hit next. Once you pick a path, the agent runs end-to-end and reports back. See the [Architecture docs](https://kevinoriley.github.io/red-run/architecture/) for diagrams and data flow.
 
 ## Skills
 
