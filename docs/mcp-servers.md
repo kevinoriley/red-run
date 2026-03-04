@@ -55,7 +55,7 @@ All servers are configured in `.mcp.json` at the repo root:
 
 **Location:** `tools/skill-router/` · **3 tools**
 
-Semantic skill discovery and retrieval. Skills are indexed from YAML frontmatter into ChromaDB with `all-MiniLM-L6-v2` sentence-transformer embeddings. Agents call `search_skills()` to find relevant skills by describing their situation in natural language, then `get_skill()` to load the full methodology.
+Semantic skill discovery and retrieval. Skills are indexed from YAML frontmatter into ChromaDB with `all-MiniLM-L6-v2` sentence-transformer embeddings. The orchestrator calls `search_skills()` to find the right skill for a situation, then tells the agent which skill to load. Agents call `get_skill()` to load the full methodology — they never call `search_skills()` themselves.
 
 | Tool | Description |
 |------|-------------|
