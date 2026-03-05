@@ -18,9 +18,15 @@ from pathlib import Path
 # Suppress HF Hub warnings and telemetry (no need to phone home for local embeddings)
 import logging
 import os
+import warnings
 
 logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
+logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
 os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+os.environ.setdefault("HF_HUB_DISABLE_IMPLICIT_TOKEN", "1")
+os.environ.setdefault("SAFETENSORS_FAST_GPU", "0")
+warnings.filterwarnings("ignore", message=".*unauthenticated.*")
+warnings.filterwarnings("ignore", message=".*UNEXPECTED.*")
 
 import chromadb
 import yaml

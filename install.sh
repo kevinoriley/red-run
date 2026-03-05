@@ -135,7 +135,7 @@ echo "  [skill-router] Installing Python dependencies..."
 uv sync --directory "${MCP_SKILL_ROUTER}" --quiet
 
 echo "  [skill-router] Indexing skills into ChromaDB (downloads embedding model on first run)..."
-uv run --directory "${MCP_SKILL_ROUTER}" python indexer.py
+uv run --directory "${MCP_SKILL_ROUTER}" python indexer.py 2>/dev/null
 
 # nmap-server
 echo "  [nmap-server] Installing Python dependencies..."
