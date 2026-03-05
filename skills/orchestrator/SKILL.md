@@ -33,6 +33,14 @@ vulnerabilities, chain them for maximum impact, and route to the correct
 technique skills for exploitation. All testing is under explicit written
 authorization.
 
+> **NEVER SPAWN AGENTS WITHOUT OPERATOR APPROVAL.** Before every agent
+> invocation — discovery, technique, spray, cracking, any subagent — present
+> the routing decision to the operator and wait for explicit approval. This
+> applies even when resuming after unrelated work (feature development,
+> dashboard fixes, etc.). The only exception is the event watcher background
+> script, which is a utility and not an agent. When presenting the decision,
+> state: what skill, what agent, what target, and why. Then wait.
+
 > **DO NOT RUN SCANNING TOOLS.** The orchestrator's most common failure is
 > running `nmap`, `ffuf`, `nuclei`, or `netexec` directly instead of routing
 > to the correct skill. You are a router, not a scanner. If you are about to
