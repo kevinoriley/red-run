@@ -32,9 +32,13 @@ MCP_BROWSER_SERVER="${REPO_DIR}/tools/browser-server"
 NATIVE_SKILLS=("orchestrator")
 
 MODE="symlink"
-if [[ "${1:-}" == "--copy" ]]; then
-    MODE="copy"
-fi
+REBUILD_DOCKER=false
+for arg in "$@"; do
+    case "$arg" in
+        --copy) MODE="copy" ;;
+        --rebuild) REBUILD_DOCKER=true ;;
+    esac
+done
 
 mkdir -p "${SKILLS_DST}" "${AGENTS_DST}"
 
@@ -139,9 +143,13 @@ uv sync --directory "${MCP_NMAP_SERVER}" --quiet
 
 # Build Docker image for nmap
 if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
-    echo "  [nmap-server] Building Docker image..."
-    docker build -t red-run-nmap:latest "${MCP_NMAP_SERVER}" --quiet
-    echo "  [nmap-server] Docker image: OK"
+    if [[ "$REBUILD_DOCKER" == true ]] || ! docker image inspect red-run-nmap:latest &>/dev/null; then
+        echo "  [nmap-server] Building Docker image..."
+        docker build -t red-run-nmap:latest "${MCP_NMAP_SERVER}" --quiet
+        echo "  [nmap-server] Docker image: OK"
+    else
+        echo "  [nmap-server] Docker image: already exists (use --rebuild to force)"
+    fi
 else
     echo ""
     echo "  WARNING: Docker required for nmap MCP server but not available."
@@ -155,9 +163,13 @@ uv sync --directory "${MCP_SHELL_SERVER}" --quiet
 
 # Build Docker image for shell-server (privileged mode)
 if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
-    echo "  [shell-server] Building Docker image..."
-    docker build -t red-run-shell:latest "${MCP_SHELL_SERVER}" --quiet
-    echo "  [shell-server] Docker image: OK"
+    if [[ "$REBUILD_DOCKER" == true ]] || ! docker image inspect red-run-shell:latest &>/dev/null; then
+        echo "  [shell-server] Building Docker image..."
+        docker build -t red-run-shell:latest "${MCP_SHELL_SERVER}" --quiet
+        echo "  [shell-server] Docker image: OK"
+    else
+        echo "  [shell-server] Docker image: already exists (use --rebuild to force)"
+    fi
 else
     echo ""
     echo "  NOTE: Docker image for shell-server (privileged mode) not built."

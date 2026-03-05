@@ -7,7 +7,7 @@ ARG LIGOLO_VERSION=0.8.2
 RUN apt-get update && apt-get install -y --no-install-recommends \
     net-tools iproute2 iputils-ping dnsutils tcpdump gcc libc6-dev \
     libffi-dev libssl-dev git curl socat openssh-client \
-    ruby ruby-dev \
+    ruby ruby-dev make \
     && rm -rf /var/lib/apt/lists/*
 
 # Evil-WinRM — WinRM shell for Windows targets
