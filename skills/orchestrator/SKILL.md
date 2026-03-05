@@ -3,8 +3,13 @@ name: orchestrator
 description: >
   USE THIS SKILL when the user provides a target or list of targets (IPs,
   hostnames, URLs, subnets) and asks to attack, pentest, hack, scan, assess,
-  or test them. Trigger phrases: "attack X", "pentest X", "hack X", "scan X",
-  "start testing X", "pop X", "CTF target X", "engage X", "these targets".
+  or test them. ALSO USE THIS SKILL when the user references an existing
+  engagement — resuming, continuing, picking up, checking status, or asking
+  about next steps. Trigger phrases: "attack X", "pentest X", "hack X",
+  "scan X", "start testing X", "pop X", "CTF target X", "engage X",
+  "these targets", "resume engagement", "pick it up", "continue testing",
+  "next steps", "where were we", "resuming", "advise next steps",
+  "what should we do next", "engagement status".
   This is the entry point for all multi-phase penetration tests — handles
   recon, attack surface mapping, vulnerability chaining, and routes to
   technique skills for exploitation. Do NOT use when the user names a specific
@@ -21,6 +26,12 @@ keywords:
   - begin assessment
   - structured assessment
   - pentest orchestration
+  - resume engagement
+  - continue engagement
+  - pick up where we left off
+  - next steps engagement
+  - engagement status
+  - advise next steps
 tools: []
 opsec: medium
 ---
@@ -634,6 +645,26 @@ with date and second precision for timeline reconstruction.
 This entry must be written as soon as the engagement directory exists.
 Subsequent milestone entries append bullet points under this same header or
 create new headers as phases progress.
+
+## Resuming an Existing Engagement
+
+If `engagement/state.db` already exists (the user said "resume", "continue",
+"pick it up", "next steps", "where were we", etc.), **skip Step 1** entirely:
+
+1. Call `get_state_summary()` to load the full engagement state.
+2. Print a concise status briefing for the operator: targets, current access,
+   key vulns, active tunnels, blocked paths.
+3. Append to `activity.md`:
+   ```
+   ### [YYYY-MM-DD HH:MM:SS] orchestrator → resumed
+   - Engagement resumed. State loaded from state.db.
+   ```
+4. Run the **Step 5 decision logic** to determine the next action.
+5. Present the recommended next action to the operator and wait for approval
+   before spawning any agents.
+
+Do NOT re-initialize scope, re-create the engagement directory, or re-run
+`init_engagement()`. The state database is the source of truth.
 
 ## Step 1: Scope & Engagement Setup
 
