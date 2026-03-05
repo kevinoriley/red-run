@@ -2,6 +2,17 @@
 
 Claude Code skill library for penetration testing and CTF work.
 
+## Token Budget
+
+Every token costs money and latency. Consider token impact when making ANY
+change to red-run — agent templates, skill text, MCP responses, orchestrator
+prompts. Prefer designs that minimize per-invocation token usage without
+sacrificing needed functionality. Examples: put hints in tool responses (loaded
+only when called) rather than agent templates (loaded every invocation); keep
+agent templates focused; avoid verbose boilerplate. This is a judgment call —
+never cut needed context, but always ask "does this need to be in every
+invocation?"
+
 ## Architecture
 
 The **orchestrator** is a native Claude Code skill that runs in the main conversation thread. It routes skill execution to **custom domain subagents** — each subagent has MCP access and executes one skill per invocation. All other skills (63 discovery + technique skills) are served on-demand via the **MCP skill-router**.

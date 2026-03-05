@@ -151,11 +151,19 @@ class Session:
     status: str = "connected"  # "connected" | "stabilized" | "closed"
     connected_at: datetime = field(default_factory=lambda: datetime.now(tz=timezone.utc))
     transcript: list[tuple[str, str, str]] = field(default_factory=list)
+    live_log: Path | None = None
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
     def log(self, direction: str, data: str) -> None:
         ts = datetime.now(tz=timezone.utc).isoformat()
         self.transcript.append((ts, direction, data))
+        if self.live_log:
+            prefix = ">>>" if direction == "send" else "<<<"
+            try:
+                with open(self.live_log, "a") as f:
+                    f.write(f"[{ts}] {prefix}\n{data}\n\n")
+            except OSError:
+                pass
 
     def send(self, data: str) -> None:
         if self.session_type == "local":
@@ -293,6 +301,18 @@ def create_server() -> FastMCP:
                     port=listener.port,
                     label=listener.label,
                 )
+
+                # Set up live log for dashboard tailing
+                evidence_dir = _PROJECT_ROOT / "engagement" / "evidence"
+                if evidence_dir.exists():
+                    safe_label = re.sub(r"[^a-zA-Z0-9_-]", "_", listener.label)
+                    live_log_path = evidence_dir / f"shell-{session_id}-{safe_label}.log"
+                    session.live_log = live_log_path
+                    with open(live_log_path, "w") as f:
+                        f.write(f"# Shell Live Log — {listener.label}\n")
+                        f.write(f"# Remote: {addr[0]}:{addr[1]}\n")
+                        f.write(f"# Port: {listener.port}\n")
+                        f.write(f"# Started: {session.connected_at.isoformat()}\n\n")
 
                 sessions[session_id] = session
                 listener.session_id = session_id
@@ -509,6 +529,19 @@ def create_server() -> FastMCP:
             pty=True,
         )
 
+        # Set up live log for dashboard tailing
+        evidence_dir = _PROJECT_ROOT / "engagement" / "evidence"
+        live_log_path = None
+        if evidence_dir.exists():
+            safe_label = re.sub(r"[^a-zA-Z0-9_-]", "_", effective_label)
+            live_log_path = evidence_dir / f"shell-{session_id}-{safe_label}.log"
+            session.live_log = live_log_path
+            # Write header
+            with open(live_log_path, "w") as f:
+                f.write(f"# Shell Live Log — {effective_label}\n")
+                f.write(f"# Command: {command}\n")
+                f.write(f"# Started: {session.connected_at.isoformat()}\n\n")
+
         # Drain initial output (banner, MOTD, etc.)
         session.drain(timeout=2.0)
 
@@ -526,10 +559,16 @@ def create_server() -> FastMCP:
             "label": effective_label,
             "privileged": privileged,
             "prompt_pattern": prompt,
+            "live_log": str(live_log_path) if live_log_path else None,
             "message": (
                 f"Process started (PID {proc.pid})"
                 f"{' [privileged/Docker]' if privileged else ''}. "
                 f"Use send_command() to interact and close_session() to terminate."
+                + (
+                    f" Tip: Append live_log path to tools/agent-dashboard/.dashboard"
+                    f" for operator visibility."
+                    if live_log_path else ""
+                )
             ),
         }, indent=2)
 
@@ -819,6 +858,8 @@ def create_server() -> FastMCP:
                 entry["privileged"] = session.privileged
             else:
                 entry["port"] = session.port
+            if session.live_log:
+                entry["live_log"] = str(session.live_log)
             result["sessions"].append(entry)
 
         if not result["listeners"] and not result["sessions"]:
@@ -848,12 +889,16 @@ def create_server() -> FastMCP:
             transcript_path = None
 
             if save_transcript and session.transcript:
-                evidence_dir = _PROJECT_ROOT / "engagement" / "evidence"
-                if evidence_dir.exists():
-                    safe_label = re.sub(r"[^a-zA-Z0-9_-]", "_", session.label)
-                    filename = f"shell-{session_id}-{safe_label}.log"
-                    transcript_path = evidence_dir / filename
-                    _save_transcript(session, transcript_path)
+                if session.live_log:
+                    # Live log already has content — just use that path
+                    transcript_path = session.live_log
+                else:
+                    evidence_dir = _PROJECT_ROOT / "engagement" / "evidence"
+                    if evidence_dir.exists():
+                        safe_label = re.sub(r"[^a-zA-Z0-9_-]", "_", session.label)
+                        filename = f"shell-{session_id}-{safe_label}.log"
+                        transcript_path = evidence_dir / filename
+                        _save_transcript(session, transcript_path)
 
             try:
                 if session.session_type == "local" and session.process:

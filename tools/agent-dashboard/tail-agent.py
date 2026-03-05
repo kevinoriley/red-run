@@ -12,6 +12,7 @@ Shows:
     Cyan    - agent reasoning text
     Yellow  - shell commands sent to targets (▶ SHELL[session] command)
     Yellow  - bash commands (▶ BASH description)
+    Green   - tool output (Bash results, shell-server responses)
     Dim     - skill loads, state queries, file reads/writes, other MCP tool calls
 """
 import curses
@@ -87,39 +88,116 @@ def format_tool(name: str, inp: dict) -> tuple[str, str]:
     return ("dim", f"TOOL {name}")
 
 
-def parse_line(line: str) -> list[tuple[str, str]]:
-    """Parse a JSONL line and return list of (category, text) tuples."""
+# Tool IDs whose results should be rendered (Bash, shell-server commands)
+_SHOW_RESULT_TOOLS = {"Bash", "mcp__shell-server__send_command",
+                       "mcp__shell-server__read_output",
+                       "mcp__shell-server__start_process",
+                       "mcp__shell-server__stabilize_shell"}
+
+# Regex to strip ANSI escape sequences (CSI sequences, cursor control, etc.)
+_ANSI_RE = re.compile(r"\x1b\[[\x20-\x3f]*[\x40-\x7e]|\x1b[()][0-9A-B]|\x01|\x02")
+
+
+def _clean_result(raw: str) -> str:
+    """Extract readable content from a tool result string."""
+    # Unwrap MCP JSON wrapper: {"result": "..."}
+    if raw.startswith('{"result":'):
+        try:
+            obj = json.loads(raw)
+            raw = obj.get("result", raw)
+        except (json.JSONDecodeError, ValueError):
+            pass
+    # If it's still JSON (start_process response), extract key fields
+    if raw.startswith("{"):
+        try:
+            obj = json.loads(raw)
+            if "session_id" in obj:
+                parts = [f"session={obj['session_id']}"]
+                if obj.get("label"):
+                    parts.append(obj["label"])
+                if obj.get("message"):
+                    parts.append(obj["message"])
+                return " | ".join(parts)
+        except (json.JSONDecodeError, ValueError):
+            pass
+    # Strip ANSI escapes and clean up
+    clean = _ANSI_RE.sub("", raw)
+    clean = clean.replace("\r\n", "\n").replace("\r", "\n")
+    # Collapse redundant blank lines
+    while "\n\n\n" in clean:
+        clean = clean.replace("\n\n\n", "\n\n")
+    return clean.strip()
+
+
+def parse_line(line: str, pending: dict | None = None) -> list[tuple[str, str]]:
+    """Parse a JSONL line and return list of (category, text) tuples.
+
+    Args:
+        pending: dict tracking tool_use_id -> tool_name for result rendering.
+                 Mutated in-place across calls. Pass {} for stateful parsing.
+    """
+    if pending is None:
+        pending = {}
     line = line.strip()
-    if not line or '"type":"assistant"' not in line:
+    if not line:
         return []
     try:
         obj = json.loads(line)
     except (json.JSONDecodeError, ValueError):
         return []
-    if obj.get("type") != "assistant":
-        return []
 
+    msg_type = obj.get("type")
     results = []
-    for item in obj.get("message", {}).get("content", []):
-        if not isinstance(item, dict):
-            continue
-        if item.get("type") == "text":
-            text = item.get("text", "").strip()
-            if text:
-                results.append(("text", text))
-        elif item.get("type") == "tool_use":
-            kind, msg = format_tool(item.get("name", ""), item.get("input", {}))
-            results.append((kind, msg))
+
+    if msg_type == "assistant":
+        for item in obj.get("message", {}).get("content", []):
+            if not isinstance(item, dict):
+                continue
+            if item.get("type") == "text":
+                text = item.get("text", "").strip()
+                if text:
+                    results.append(("text", text))
+            elif item.get("type") == "tool_use":
+                name = item.get("name", "")
+                kind, msg = format_tool(name, item.get("input", {}))
+                results.append((kind, msg))
+                # Track tools whose output we want to display
+                tool_id = item.get("id", "")
+                if tool_id and name in _SHOW_RESULT_TOOLS:
+                    pending[tool_id] = name
+
+    elif msg_type == "user":
+        for item in obj.get("message", {}).get("content", []):
+            if not isinstance(item, dict):
+                continue
+            if item.get("type") == "tool_result":
+                tid = item.get("tool_use_id", "")
+                if tid in pending:
+                    pending.pop(tid)
+                    content = item.get("content", "")
+                    if isinstance(content, str) and content.strip():
+                        cleaned = _clean_result(content)
+                        if cleaned:
+                            results.append(("result", cleaned))
+
     return results
+
+
+GREEN = "\033[32m"
+
+# Shared pending state for non-dashboard mode
+_cli_pending: dict = {}
 
 
 def process_line(line: str) -> None:
     """Parse and print a single JSONL line (non-dashboard mode)."""
-    for kind, msg in parse_line(line):
+    for kind, msg in parse_line(line, _cli_pending):
         if kind == "text":
             print(f"{CYAN}{msg}{RESET}", flush=True)
         elif kind == "shell":
             print(f"{YELLOW}▶ {msg}{RESET}", flush=True)
+        elif kind == "result":
+            print(f"{GREEN}{msg}{RESET}", flush=True)
         else:
             print(f"{DIM}  {msg}{RESET}", flush=True)
 
@@ -152,6 +230,7 @@ class AgentPane:
         self.queue: queue.Queue = queue.Queue()
         self.scroll_offset: int = 0  # 0 = bottom (auto-follow), >0 = scrolled up
         self.auto_follow: bool = True  # snap to bottom on new content
+        self.pending: dict = {}  # tool_use_id -> tool_name for result tracking
 
 
 def tail_thread(pane: AgentPane, stop_event: threading.Event) -> None:
@@ -169,7 +248,7 @@ def tail_thread(pane: AgentPane, stop_event: threading.Event) -> None:
         while not stop_event.is_set():
             line = f.readline()
             if line:
-                for kind, text in parse_line(line):
+                for kind, text in parse_line(line, pane.pending):
                     pane.queue.put((kind, text))
             else:
                 time.sleep(0.3)
@@ -193,6 +272,9 @@ def _init_colors() -> dict[str, int]:
     # Pair for stopped indicator
     curses.init_pair(len(cmap) + 3, curses.COLOR_RED, -1)
     pairs["stopped"] = len(cmap) + 3
+    # Pair for tool results (green)
+    curses.init_pair(len(cmap) + 4, curses.COLOR_GREEN, -1)
+    pairs["result"] = len(cmap) + 4
     return pairs
 
 
@@ -758,6 +840,8 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                             attr = curses.color_pair(color_pairs["cyan"])
                         elif kind == "shell":
                             attr = curses.color_pair(color_pairs["yellow"]) | curses.A_BOLD
+                        elif kind == "result":
+                            attr = curses.color_pair(color_pairs["result"])
                         else:
                             attr = curses.color_pair(color_pairs["dim"]) | curses.A_DIM
                         try:

@@ -124,7 +124,11 @@ The orchestrator routes to skills — it does not run attack tools itself.
 The only commands the orchestrator may execute directly are:
 
 - `mkdir -p engagement/evidence/logs` — engagement directory creation
-- File writes to `engagement/scope.md`, `engagement/activity.md`, `engagement/findings.md`
+- File writes to `engagement/scope.md`, `engagement/activity.md`, `engagement/findings.md`.
+  For `activity.md` and `findings.md` (append-only logs), use Bash `echo >>` or
+  `cat >> ... <<'EOF'` instead of Read+Edit — avoids loading the full log into
+  context just to append. Use Write/Edit only for `scope.md` (structured, may
+  need mid-file edits).
 - State-writer MCP tools (`init_engagement`, `add_target`, `add_credential`, `add_access`, `add_vuln`, `add_pivot`, `add_blocked`, `add_tunnel`, `update_tunnel`, and their update variants) — engagement state
 - State-reader MCP tools (`get_state_summary`, `get_targets`, `get_credentials`, `get_access`, `get_vulns`, `get_pivot_map`, `get_blocked`, `get_tunnels`, `poll_events`) — state queries
 - Skill-router MCP tools (`get_skill`, `search_skills`, `list_skills`) — skill routing
@@ -1287,15 +1291,29 @@ and runs the exploit command in one shot — eliminating the latency gap.
    ```bash
    #!/usr/bin/env bash
    set -euo pipefail
-   # Sync attackbox clock with domain controller
    DC_IP="<DC_IP from engagement state>"
-   sudo ntpdate "$DC_IP" || sudo rdate -n "$DC_IP"
-   echo "[+] Clock synced with $DC_IP"
+
+   # Disable VirtualBox time sync if running (it fights ntpdate)
+   if pgrep -x VBoxService >/dev/null 2>&1; then
+       echo "[*] Disabling VirtualBox time sync..."
+       killall VBoxService 2>/dev/null
+       VBoxService --disable-timesync &
+       sleep 1
+   fi
+
+   # Sync and keep syncing (clock drifts back without a loop)
+   echo "[*] Syncing clock with $DC_IP every 5s (Ctrl-C to stop)..."
+   while true; do
+       ntpdate "$DC_IP" || rdate -n "$DC_IP"
+       sleep 5
+   done
    ```
    Save as `temp_clock-sync.sh` and `chmod +x temp_clock-sync.sh`.
 2. Present to the user:
    > Clock skew detected — Kerberos authentication requires clocks within 5
-   > minutes of the DC. Run `sudo ./temp_clock-sync.sh` to sync, then confirm.
+   > minutes of the DC. Run `sudo bash ./temp_clock-sync.sh &` to sync in
+   > the background, then confirm. The script disables VirtualBox time sync
+   > (if running) and loops ntpdate every 5 seconds to prevent drift.
 3. Wait for the user to confirm clock is synced before retrying (sudo
    requirement — always a hard stop).
 4. After user confirms clock is synced, retry the **same skill invocation**
