@@ -66,15 +66,28 @@ The orchestrator will provide specific guidance or route to a different skill.
 
 ## State Management
 
-Call `get_state_summary()` from the state-reader MCP server to read current
+Call `get_state_summary()` from the state-interim MCP server to read current
 engagement state. Use it to:
 - Skip re-testing targets, parameters, or vulns already confirmed
 - Leverage existing credentials or access for this technique
 - Understand what's been tried and failed (check Blocked section)
 
-**Do NOT write engagement state.** When your work is complete, report all
-findings clearly in your return summary. The orchestrator parses your summary
-and records state changes. Your return summary must include:
+### Interim Writes
+
+Write actionable findings **immediately** via state-interim so the orchestrator
+can react in real time (via event watcher) instead of waiting for your full
+return summary. Use these tools as you discover findings:
+
+- `add_credential()` — cleartext creds found in config files, .bash_history, env vars, or databases
+- `add_vuln()` — confirmed vulnerabilities a technique agent should exploit (SUID binaries, sudo misconfigs, kernel CVEs)
+- `add_pivot()` — additional NICs/subnets discovered via `ip addr`/`ip route`, new hosts from ARP table
+- `add_blocked()` — techniques attempted and failed (so orchestrator doesn't re-route)
+
+**Do NOT write to `activity.md`, `findings.md`, or modify targets/ports/access.**
+The orchestrator manages those. Still report all findings in your return summary —
+interim writes supplement it, they don't replace it.
+
+Your return summary must include:
 - New targets/hosts discovered (with ports and services)
 - New credentials or tokens found
 - Access gained or changed (user, privilege level, method)
@@ -125,6 +138,9 @@ env | grep -iE "pass|key|secret|token|proxy" 2>/dev/null
 - Architecture (affects binary compatibility for exploits)
 - PATH directories (writable ones = hijacking opportunity)
 - Environment variables (leaked credentials, writable library paths)
+
+If `env | grep` reveals cleartext credentials (passwords, tokens, API keys),
+write them immediately: `add_credential(username=..., secret=..., source="env vars on <host>")`.
 
 ## Step 2: User Context and Privileges
 
@@ -448,6 +464,10 @@ cat ~/.docker/config.json 2>/dev/null
 ssh-add -l 2>/dev/null
 ```
 
+**Interim writes:** Any cleartext credentials found in history files, config
+files, database connection strings, or cloud credential files — write immediately:
+`add_credential(username=..., secret=..., source="<file_path> on <host>")`.
+
 ## Step 8: Network and Services
 
 ```bash
@@ -484,6 +504,11 @@ ls -la /var/run/docker.sock 2>/dev/null
 
 Writable Docker socket → route to **linux-file-path-abuse**.
 Internal services on loopback → investigate for exploitation.
+
+**Interim writes after network enumeration:**
+- Additional NIC found via `ip addr` → `add_pivot(source="<host> <iface>", destination="<subnet>", method="Additional NIC — pivot candidate")`
+- New hosts from `ip neigh`/ARP table → `add_pivot(source="<host> ARP table", destination="<new_host>", method="ARP neighbor discovery")`
+- Exploitable internal-only services on loopback → `add_vuln(title="Internal <service> on <host>:127.0.0.1:<port>", vuln_type="internal-service")`
 
 ## Step 9: Security Controls Detection
 

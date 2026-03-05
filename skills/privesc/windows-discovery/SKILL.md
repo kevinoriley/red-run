@@ -73,15 +73,28 @@ its contents, or spider it — a different agent handles that from the attackbox
 
 ## State Management
 
-Call `get_state_summary()` from the state-reader MCP server to read current
+Call `get_state_summary()` from the state-interim MCP server to read current
 engagement state. Use it to:
 - Skip re-testing targets, parameters, or vulns already confirmed
 - Leverage existing credentials or access for this technique
 - Understand what's been tried and failed (check Blocked section)
 
-**Do NOT write engagement state.** When your work is complete, report all
-findings clearly in your return summary. The orchestrator parses your summary
-and records state changes. Your return summary must include:
+### Interim Writes
+
+Write actionable findings **immediately** via state-interim so the orchestrator
+can react in real time (via event watcher) instead of waiting for your full
+return summary. Use these tools as you discover findings:
+
+- `add_credential()` — cleartext creds in scheduled tasks, registry, config files, PowerShell history, unattend.xml
+- `add_vuln()` — confirmed vulnerabilities (unquoted service paths, weak service permissions, AlwaysInstallElevated, HiveNightmare)
+- `add_pivot()` — additional NICs/subnets discovered via `ipconfig /all`/`route print`, new hosts from ARP table
+- `add_blocked()` — techniques attempted and failed (so orchestrator doesn't re-route)
+
+**Do NOT write to `activity.md`, `findings.md`, or modify targets/ports/access.**
+The orchestrator manages those. Still report all findings in your return summary —
+interim writes supplement it, they don't replace it.
+
+Your return summary must include:
 - New targets/hosts discovered (with ports and services)
 - New credentials or tokens found
 - Access gained or changed (user, privilege level, method)
@@ -267,6 +280,10 @@ wmic process list full
 Get-Process | Select-Object Name, Id, Path | Where-Object {$_.Path -notlike "C:\Windows\System32\*"} | Sort-Object Path
 ```
 
+**Interim writes:** Unquoted service paths or writable service binaries found →
+`add_vuln(title="Unquoted service path: <service>", host="<host>", vuln_type="service-misconfig", severity="medium")`.
+Writable service configuration → `add_vuln(title="Modifiable service: <service>", host="<host>", vuln_type="service-misconfig", severity="high")`.
+
 Any finding here → STOP. Return to orchestrator recommending
 **windows-service-dll-abuse**. Pass: hostname, current user, specific findings
 (unquoted paths, writable binaries, modifiable services, DLL hijack targets),
@@ -324,6 +341,10 @@ netstat -ano | findstr LISTENING | findstr 127.0.0.1
 ```
 
 Look for: databases (3306/5432/1433), web interfaces (8080/8443), management (5985/5986).
+
+**Interim writes after network enumeration:**
+- Additional NIC found via `ipconfig /all` → `add_pivot(source="<host> <adapter>", destination="<subnet>", method="Additional NIC — pivot candidate")`
+- New hosts from `arp -a` → `add_pivot(source="<host> ARP table", destination="<new_host>", method="ARP neighbor discovery")`
 
 **SNMP community strings:**
 
@@ -403,6 +424,10 @@ icacls C:\Windows\System32\config\SAM
 ```
 
 If `BUILTIN\Users:(I)(RX)` appears → SAM readable by non-admin users.
+
+**Interim writes:** Any cleartext credentials found in registry, unattend files,
+PowerShell history, or config files — write immediately:
+`add_credential(username=..., secret=..., source="<location> on <host>")`.
 
 Any credentials found → STOP. Return to orchestrator recommending
 **windows-credential-harvesting**. Pass: hostname, current user, credential

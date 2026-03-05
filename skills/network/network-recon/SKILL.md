@@ -106,15 +106,28 @@ should be the equivalent of nmap with `--script safe` — observing, not acting.
 
 ## State Management
 
-Call `get_state_summary()` from the state-reader MCP server to read current
+Call `get_state_summary()` from the state-interim MCP server to read current
 engagement state. Use it to:
 - Skip re-testing targets, parameters, or vulns already confirmed
 - Leverage existing credentials or access for this technique
 - Understand what's been tried and failed (check Blocked section)
 
-**Do NOT write engagement state.** When your work is complete, report all
-findings clearly in your return summary. The orchestrator parses your summary
-and records state changes. Your return summary must include:
+### Interim Writes
+
+Write actionable findings **immediately** via state-interim so the orchestrator
+can react in real time (via event watcher) instead of waiting for your full
+return summary. Use these tools as you discover findings:
+
+- `add_credential()` — default credentials on services (FTP anonymous, Redis unauthenticated, SNMP community strings)
+- `add_vuln()` — anonymous/null session access, SMB signing disabled, LDAP signing not required, EternalBlue, BlueKeep
+- `add_pivot()` — domain name and hostnames discovered (for hosts-file update trigger), new subnets from routing info
+- `add_blocked()` — techniques attempted and failed (so orchestrator doesn't re-route)
+
+**Do NOT write to `activity.md`, `findings.md`, or modify targets/ports/access.**
+The orchestrator manages those. Still report all findings in your return summary —
+interim writes supplement it, they don't replace it.
+
+Your return summary must include:
 - New targets/hosts discovered (with ports and services)
 - New credentials or tokens found
 - Access gained or changed (user, privilege level, method)
@@ -301,6 +314,10 @@ ftp TARGET_IP
 # login: anonymous / anonymous@
 ```
 
+**Interim writes:** Anonymous FTP access →
+`add_vuln(title="FTP anonymous access on <host>", host="<host>", vuln_type="anonymous-access", severity="medium")`.
+Credentials found in FTP files → `add_credential(username=..., secret=..., source="FTP file on <host>")`.
+
 **Quick wins:** Anonymous login with write access, writable web root, config files
 with credentials, ProFTPD `mod_copy` (CVE-2019-12815), vsftpd 2.3.4 backdoor.
 FTP brute force → route to **password-spraying**.
@@ -317,6 +334,9 @@ ssh -o PreferredAuthentications=none -o ConnectTimeout=5 root@TARGET_IP 2>&1
 # User enumeration (OpenSSH < 7.7 — CVE-2018-15473)
 # Use auxiliary/scanner/ssh/ssh_enumusers in Metasploit
 ```
+
+**Interim writes:** Default SSH credentials confirmed →
+`add_credential(username=..., secret=..., source="SSH default creds on <host>")`.
 
 **Quick wins:** Default creds, key reuse from other hosts, CVE-2018-15473 user enum,
 CVE-2024-6387 (regreSSHion — OpenSSH 8.5p1-9.7p1 on glibc systems).
@@ -522,6 +542,12 @@ manspider TARGET_IP -u 'user' -p 'Password123' -d DOMAIN -c password secret
 Only run MANSPIDER after the share access table is complete — it needs at least
 one readable share to be useful. If all shares returned DENIED, skip this step.
 
+**Interim writes for SMB:**
+- SMB signing disabled → `add_vuln(title="SMB signing disabled on <host>", host="<host>", vuln_type="smb-signing", severity="medium")`
+- Null session or guest access → `add_vuln(title="SMB null/guest access on <host>", host="<host>", vuln_type="null-session", severity="medium")`
+- EternalBlue confirmed → `add_vuln(title="MS17-010 EternalBlue on <host>", host="<host>", vuln_type="rce", severity="critical")`
+- Domain name/hostnames from SMB → `add_pivot(source="SMB on <host>", destination="<domain>/<hostname>", method="SMB OS discovery")`
+
 **Quick wins:** Null session (user enum, share listing), guest access to shares,
 writable shares (web root, SYSVOL), EternalBlue (MS17-010), SMBGhost
 (CVE-2020-0796), PrintNightmare.
@@ -546,6 +572,11 @@ ldapsearch -x -H ldap://TARGET_IP -b "DC=domain,DC=local" "(objectClass=user)" s
 # Nmap LDAP scripts
 nmap -sV -p389,636,3268 --script ldap-rootdse,ldap-search TARGET_IP
 ```
+
+**Interim writes for LDAP:**
+- LDAP signing not required → `add_vuln(title="LDAP signing not required on <host>", host="<host>", vuln_type="ldap-signing", severity="medium")`
+- Anonymous bind with directory read → `add_vuln(title="LDAP anonymous bind on <host>", host="<host>", vuln_type="null-session", severity="medium")`
+- Domain name from rootDSE → `add_pivot(source="LDAP rootDSE on <host>", destination="<domain>", method="LDAP enumeration")`
 
 **Quick wins:** Anonymous bind with full directory read, password in description
 field, domain info disclosure via rootDSE.
@@ -697,6 +728,10 @@ snmpwalk -v2c -c public TARGET_IP 1.3.6.1.2.1.25.4.2.1.2  # Running processes
 snmpwalk -v2c -c public TARGET_IP 1.3.6.1.2.1.6.13.1.3    # TCP connections
 snmpwalk -v2c -c public TARGET_IP 1.3.6.1.2.1.25.6.3.1.2  # Installed software
 ```
+
+**Interim writes for SNMP:**
+- Default community string found → `add_credential(username="", secret="<community>", secret_type="other", source="SNMP on <host>")`
+- Network interfaces revealing new subnets → `add_pivot(source="SNMP on <host>", destination="<subnet>", method="SNMP interface enumeration")`
 
 **Quick wins:** Default `public`/`private` community strings, user enumeration,
 running process list, installed software, network interfaces, Net-SNMP Extend RCE.

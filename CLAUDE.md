@@ -12,7 +12,8 @@ The orchestrator spawns domain-specific subagents for each skill invocation:
 
 | Agent | Domain | MCP Servers | Skills |
 |-------|--------|-------------|--------|
-| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, state-interim | network-recon, smb-exploitation, pivoting-tunneling (haiku) |
+| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, state-interim | network-recon, smb-exploitation (haiku) |
+| `pivoting-agent` | Pivoting | skill-router, shell-server, state-interim | pivoting-tunneling (sonnet) |
 | `web-discovery-agent` | Web discovery | skill-router, shell-server, browser-server, state-interim | web-discovery |
 | `web-exploit-agent` | Web exploitation | skill-router, shell-server, browser-server, state-reader | All web technique skills |
 | `ad-discovery-agent` | AD discovery | skill-router, shell-server, state-interim | ad-discovery |
@@ -23,7 +24,7 @@ The orchestrator spawns domain-specific subagents for each skill invocation:
 | `evasion-agent` | AV/EDR evasion | skill-router, shell-server, state-reader | av-edr-evasion |
 | `credential-cracking-agent` | Credential cracking | skill-router, state-reader | credential-cracking (haiku, local-only) |
 
-Each invocation: agent loads one skill via `get_skill()`, executes methodology, saves evidence, and returns findings. The orchestrator parses the return summary, records state changes via the state-writer MCP, and makes the next routing decision. Subagents are read-only for state — they never write engagement state directly.
+Each invocation: agent loads one skill via `get_skill()`, executes methodology, saves evidence, and returns findings. The orchestrator parses the return summary, records state changes via the state-writer MCP, and makes the next routing decision. Discovery agents and the pivoting-agent use state-interim for mid-run writes; technique agents are read-only.
 
 **Inline fallback**: If subagents aren't installed, the orchestrator loads skills inline via `get_skill()` in the main thread.
 
@@ -37,7 +38,7 @@ Agent source files live in `agents/` (version controlled), installed to `~/.clau
 | nmap-server | `tools/nmap-server/` | Dockerized nmap scanning with input validation |
 | shell-server | `tools/shell-server/` | TCP listener, reverse shell, local interactive process manager, privileged Docker execution |
 | state-reader | `tools/state-server/` | Read-only engagement state queries (technique agents) |
-| state-interim | `tools/state-server/` | Read + 4 add-only writes (discovery agents) |
+| state-interim | `tools/state-server/` | Read + 5 add-only writes (discovery agents + pivoting-agent) |
 | state-writer | `tools/state-server/` | Full engagement state management (orchestrator only) |
 | browser-server | `tools/browser-server/` | Headless browser automation (web agents) |
 
@@ -80,7 +81,7 @@ engagement/
 
 ### State Management
 
-Engagement state lives in `engagement/state.db` (SQLite, managed by state-server MCP). Tables: targets, ports, credentials, credential_access, access, vulns, pivot_map, blocked, state_events.
+Engagement state lives in `engagement/state.db` (SQLite, managed by state-server MCP). Tables: targets, ports, credentials, credential_access, access, vulns, pivot_map, blocked, tunnels, state_events.
 
 **Rules:**
 - `get_state_summary()` produces a compact markdown summary (~200 lines) for subagent consumption
@@ -126,6 +127,7 @@ red-run/
     windows-privesc-agent.md
     evasion-agent.md
     credential-cracking-agent.md
+    pivoting-agent.md
   skills/
     _template/SKILL.md    # Canonical template
     orchestrator/SKILL.md # Master orchestrator (native skill)

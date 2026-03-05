@@ -89,15 +89,31 @@ and return to the orchestrator. Do not continue past discovery.
 
 ## State Management
 
-Call `get_state_summary()` from the state-reader MCP server to read current
+Call `get_state_summary()` from the state-interim MCP server to read current
 engagement state. Use it to:
 - Skip re-testing targets, parameters, or vulns already confirmed
 - Leverage existing credentials or access for this technique
 - Understand what's been tried and failed (check Blocked section)
 
-**Do NOT write engagement state.** When your work is complete, report all
-findings clearly in your return summary. The orchestrator parses your summary
-and records state changes. Your return summary must include:
+### Interim Writes
+
+Write actionable findings **immediately** via state-interim so the orchestrator
+can react in real time (via event watcher) instead of waiting for your full
+return summary. Use these tools as you discover findings:
+
+- `add_credential()` — login bypass, default creds, credentials found in config files or backups
+- `add_vuln()` — confirmed SQLi, file upload, SSTI, command injection, XSS, or any other confirmed vulnerability class
+- `add_pivot()` — internal URLs/hosts found (SSRF targets, API endpoints linking to backend services)
+- `add_blocked()` — techniques attempted and failed (so orchestrator doesn't re-route)
+
+Write vhost discoveries as `add_vuln(vuln_type="info")` so the orchestrator
+triggers a hosts-file update check.
+
+**Do NOT write to `activity.md`, `findings.md`, or modify targets/ports/access.**
+The orchestrator manages those. Still report all findings in your return summary —
+interim writes supplement it, they don't replace it.
+
+Your return summary must include:
 - New targets/hosts discovered (with ports and services)
 - New credentials or tokens found
 - Access gained or changed (user, privilege level, method)
@@ -148,6 +164,10 @@ ffuf -c -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt \
   -u https://TARGET -H "Host: FUZZ.TARGET" -mc all -fs <default-response-size>
 ```
 
+**Interim writes:** Vhosts discovered via `Host:` header fuzzing →
+`add_vuln(title="Vhost discovered: <vhost>", host="<target>", vuln_type="info", severity="info")`
+so the orchestrator triggers a hosts-file update check.
+
 ## Step 1b: CMS Detection
 
 When content discovery reveals a CMS (WordPress, Drupal, Joomla), run the
@@ -175,8 +195,9 @@ wpscan --url https://TARGET/ -U users.txt -P /usr/share/wordlists/rockyou.txt
 **What to do with findings:**
 - Vulnerable plugin/theme with known exploit → route through Step 4 by
   vulnerability type (SQLi, LFI, RCE, file upload, etc.)
-- `wp-config.php` backup found → extract DB credentials, report in return
-  summary
+- `wp-config.php` backup found → extract DB credentials, write immediately:
+  `add_credential(username=..., secret=..., source="wp-config.php on <target>")`,
+  and report in return summary
 - XML-RPC enabled (`/xmlrpc.php` returns 405) → route to credential brute-force
   via `system.multicall` amplification
 - User enumeration successful → report usernames for password spraying
@@ -229,9 +250,16 @@ These trigger detectable behavior across multiple vulnerability classes:
 
 For each class below: inject the probes, observe the response. **The moment any
 probe triggers** (error message, evaluated output, time delay, callback), STOP.
-Do not try more payloads. Do not attempt exploitation. Update
-`engagement/state.md` and route to the skill listed in the `→ ROUTE` callout
-immediately. The technique skill has the methodology — you do not.
+Do not try more payloads. Do not attempt exploitation. Write the finding
+immediately via `add_vuln()` and route to the skill listed in the `→ ROUTE`
+callout. The technique skill has the methodology — you do not.
+
+**Interim writes on confirmed injection:**
+- SQLi confirmed → `add_vuln(title="SQLi in <param> on <URL>", host="<host>", vuln_type="sqli", severity="high")`
+- SSTI confirmed → `add_vuln(title="SSTI (<engine>) in <param> on <URL>", host="<host>", vuln_type="ssti", severity="critical")`
+- Command injection → `add_vuln(title="Command injection in <param> on <URL>", host="<host>", vuln_type="rce", severity="critical")`
+- SSRF with internal access → `add_pivot(source="SSRF on <URL>", destination="<internal_host>", method="SSRF")`
+- Default/discovered credentials → `add_credential(username=..., secret=..., source="<context>")`
 
 **SQL Injection:**
 ```

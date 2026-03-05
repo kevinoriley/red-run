@@ -2,8 +2,9 @@
 
 MCP server providing SQLite-backed engagement state management for red-run.
 Runs as three instances from the same codebase — a read-only `state-reader`
-for technique agents, an `state-interim` with 4 add-only write tools for
-discovery agents, and a full read-write `state-writer` for the orchestrator.
+for technique agents, a `state-interim` with 5 add-only write tools for
+discovery agents and the pivoting-agent, and a full read-write `state-writer`
+for the orchestrator.
 All three open the same `engagement/state.db`.
 
 ## Prerequisites
@@ -23,7 +24,7 @@ The server runs as an MCP server, started automatically by Claude Code via
 # Read-only (technique agents)
 uv run --directory tools/state-server python server.py --mode read
 
-# Read + 4 add-only writes (discovery agents)
+# Read + 5 add-only writes (discovery agents + pivoting-agent)
 uv run --directory tools/state-server python server.py --mode interim
 
 # Read + all writes (orchestrator)
@@ -35,7 +36,7 @@ uv run --directory tools/state-server python server.py --mode write
 | Mode | Instance | Agents | Write Access |
 |------|----------|--------|-------------|
 | `read` | state-reader | Technique agents (web-exploit, ad-exploit, etc.) | None |
-| `interim` | state-interim | Discovery agents (network-recon, web-discovery, ad-discovery, linux-privesc, windows-privesc) | 4 add-only tools: `add_credential`, `add_vuln`, `add_pivot`, `add_blocked` |
+| `interim` | state-interim | Discovery agents (network-recon, web-discovery, ad-discovery, linux-privesc, windows-privesc) + pivoting-agent | 5 add-only tools: `add_credential`, `add_vuln`, `add_pivot`, `add_blocked`, `add_tunnel` |
 | `write` | state-writer | Orchestrator only | All read + write tools |
 
 **Why interim mode?** Discovery agents run for 5-15 minutes. Without interim
@@ -44,11 +45,12 @@ until the discovery agent returns. Interim mode lets discovery agents write
 actionable findings immediately so the orchestrator and concurrent agents can
 see them mid-run.
 
-**Why only 4 tools?** These are add-only (INSERT), never update existing
+**Why only 5 tools?** These are add-only (INSERT), never update existing
 records, and represent findings that other agents can act on immediately:
 credentials (spray/test), vulns (exploit), pivots (plan chains), blocked
-(skip dead ends). Target/port/access management and all UPDATE operations
-remain orchestrator-only to avoid contention.
+(skip dead ends), tunnels (routing context for internal networks).
+Target/port/access management and all UPDATE operations remain
+orchestrator-only to avoid contention.
 
 SQLite WAL mode + `PRAGMA busy_timeout=5000` handles concurrent readers and
 interim writers safely. Interim agents only INSERT into separate tables, so
@@ -76,6 +78,7 @@ write conflicts with the orchestrator are prevented by the busy timeout.
 | `get_vulns` | `status` (optional), `target` (optional) | Confirmed vulnerabilities |
 | `get_pivot_map` | `status` (optional) | Pivot path edges (what leads where) |
 | `get_blocked` | `target` (optional) | Failed technique attempts |
+| `get_tunnels` | `status` (optional), `pivot_host` (optional) | Active tunnels |
 | `poll_events` | `since_id` (default 0), `limit` (default 50) | Poll for interim state events since a cursor (real-time monitoring) |
 
 ### Interim tools (interim mode only)
@@ -86,6 +89,7 @@ write conflicts with the orchestrator are prevented by the busy timeout.
 | `add_vuln` | `title` (required), `host`, `vuln_type`, `severity`, `endpoint`, `details` | Record a confirmed vulnerability |
 | `add_pivot` | `source`, `destination` (required), `method`, `status` | Record a pivot path |
 | `add_blocked` | `technique`, `reason` (required), `host`, `retry`, `notes` | Record a blocked/failed technique |
+| `add_tunnel` | `tunnel_type`, `pivot_host`, `target_subnet`, `local_endpoint`, `remote_endpoint`, `requires_proxychains` | Record an established tunnel |
 
 ### Write tools (write mode only)
 
@@ -106,10 +110,12 @@ write conflicts with the orchestrator are prevented by the busy timeout.
 | `add_pivot` | `source`, `destination` (required), `method`, `status` | Record a pivot path |
 | `update_pivot` | `id` (required), `status`, `notes` | Update pivot path status |
 | `add_blocked` | `technique`, `reason` (required), `host`, `retry`, `notes` | Record a blocked/failed technique |
+| `add_tunnel` | `tunnel_type`, `pivot_host`, `target_subnet`, `local_endpoint`, `remote_endpoint`, `requires_proxychains` | Record an established tunnel |
+| `update_tunnel` | `id` (required), `status`, `notes` | Update tunnel status (active/down/closed) |
 
 ## Schema
 
-The database has 9 tables:
+The database has 10 tables:
 
 | Table | Purpose |
 |-------|---------|
@@ -122,6 +128,7 @@ The database has 9 tables:
 | `vulns` | Confirmed vulnerabilities with severity and status |
 | `pivot_map` | Directed edges showing what leads where |
 | `blocked` | Failed techniques with reasons and retry assessment |
+| `tunnels` | Active tunnels — type, pivot host, target subnet, endpoints, proxychains requirement |
 | `state_events` | Event log for interim writes — enables real-time polling by the orchestrator |
 
 Schema versioning uses `PRAGMA user_version` for future migrations.

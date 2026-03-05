@@ -9,7 +9,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 SCHEMA_SQL = """\
 PRAGMA journal_mode=WAL;
@@ -137,14 +137,81 @@ CREATE TABLE IF NOT EXISTS blocked (
 
 CREATE TABLE IF NOT EXISTS state_events (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_type  TEXT NOT NULL
-                CHECK (event_type IN ('credential', 'vuln', 'pivot', 'blocked')),
+    event_type  TEXT NOT NULL,
     record_id   INTEGER NOT NULL,
     summary     TEXT NOT NULL,
     agent       TEXT NOT NULL DEFAULT '',
     created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
+
+CREATE TABLE IF NOT EXISTS tunnels (
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    tunnel_type          TEXT NOT NULL DEFAULT 'other',
+    pivot_host           TEXT NOT NULL DEFAULT '',
+    target_subnet        TEXT NOT NULL DEFAULT '',
+    local_endpoint       TEXT NOT NULL DEFAULT '',
+    remote_endpoint      TEXT NOT NULL DEFAULT '',
+    requires_proxychains INTEGER NOT NULL DEFAULT 0,
+    status               TEXT NOT NULL DEFAULT 'active'
+                         CHECK (status IN ('active', 'down', 'closed')),
+    notes                TEXT NOT NULL DEFAULT '',
+    created_by           TEXT NOT NULL DEFAULT '',
+    created_at           TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    updated_at           TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
 """
+
+
+def _migrate_v2_to_v3(conn: sqlite3.Connection) -> None:
+    """Migrate schema from v2 to v3: add tunnels table, relax state_events CHECK.
+
+    Non-destructive — uses CREATE TABLE IF NOT EXISTS for tunnels.
+    Recreates state_events without the CHECK constraint on event_type so that
+    new event types (like 'tunnel') work without DDL changes.
+    """
+    # Add tunnels table
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS tunnels (
+            id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+            tunnel_type          TEXT NOT NULL DEFAULT 'other',
+            pivot_host           TEXT NOT NULL DEFAULT '',
+            target_subnet        TEXT NOT NULL DEFAULT '',
+            local_endpoint       TEXT NOT NULL DEFAULT '',
+            remote_endpoint      TEXT NOT NULL DEFAULT '',
+            requires_proxychains INTEGER NOT NULL DEFAULT 0,
+            status               TEXT NOT NULL DEFAULT 'active'
+                                 CHECK (status IN ('active', 'down', 'closed')),
+            notes                TEXT NOT NULL DEFAULT '',
+            created_by           TEXT NOT NULL DEFAULT '',
+            created_at           TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+            updated_at           TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+        );
+    """)
+
+    # Recreate state_events without the CHECK constraint on event_type.
+    # SQLite doesn't support ALTER TABLE DROP CONSTRAINT, so we rename → copy → drop.
+    has_check = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='state_events'"
+    ).fetchone()
+    if has_check and "CHECK" in (has_check[0] or ""):
+        conn.executescript("""
+            ALTER TABLE state_events RENAME TO _state_events_old;
+
+            CREATE TABLE state_events (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_type  TEXT NOT NULL,
+                record_id   INTEGER NOT NULL,
+                summary     TEXT NOT NULL,
+                agent       TEXT NOT NULL DEFAULT '',
+                created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+            );
+
+            INSERT INTO state_events (id, event_type, record_id, summary, agent, created_at)
+                SELECT id, event_type, record_id, summary, agent, created_at
+                FROM _state_events_old;
+
+            DROP TABLE _state_events_old;
+        """)
 
 
 def init_db(db_path: str | Path) -> sqlite3.Connection:
@@ -154,7 +221,17 @@ def init_db(db_path: str | Path) -> sqlite3.Connection:
     """
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
+
+    # Check current version for migrations
+    current_version = conn.execute("PRAGMA user_version").fetchone()[0]
+
+    # Apply base schema (CREATE IF NOT EXISTS — safe for existing DBs)
     conn.executescript(SCHEMA_SQL)
+
+    # Run migrations for existing databases
+    if current_version == 2:
+        _migrate_v2_to_v3(conn)
+
     conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     conn.commit()
     return conn
