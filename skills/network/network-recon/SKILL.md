@@ -17,6 +17,10 @@ keywords:
   - scan this IP
   - scan this subnet
   - enumerate this box
+  - scan through tunnel
+  - pivot scan
+  - proxychains nmap
+  - internal network recon
 tools:
   - nmap
   - nuclei
@@ -106,15 +110,28 @@ should be the equivalent of nmap with `--script safe` — observing, not acting.
 
 ## State Management
 
-Call `get_state_summary()` from the state-reader MCP server to read current
+Call `get_state_summary()` from the state-interim MCP server to read current
 engagement state. Use it to:
 - Skip re-testing targets, parameters, or vulns already confirmed
 - Leverage existing credentials or access for this technique
 - Understand what's been tried and failed (check Blocked section)
 
-**Do NOT write engagement state.** When your work is complete, report all
-findings clearly in your return summary. The orchestrator parses your summary
-and records state changes. Your return summary must include:
+### Interim Writes
+
+Write actionable findings **immediately** via state-interim so the orchestrator
+can react in real time (via event watcher) instead of waiting for your full
+return summary. Use these tools as you discover findings:
+
+- `add_credential()` — default credentials on services (FTP anonymous, Redis unauthenticated, SNMP community strings)
+- `add_vuln()` — anonymous/null session access, SMB signing disabled, LDAP signing not required, EternalBlue, BlueKeep
+- `add_pivot()` — domain name and hostnames discovered (for hosts-file update trigger), new subnets from routing info
+- `add_blocked()` — techniques attempted and failed (so orchestrator doesn't re-route)
+
+**Do NOT write to `activity.md`, `findings.md`, or modify targets/ports/access.**
+The orchestrator manages those. Still report all findings in your return summary —
+interim writes supplement it, they don't replace it.
+
+Your return summary must include:
 - New targets/hosts discovered (with ports and services)
 - New credentials or tokens found
 - Access gained or changed (user, privilege level, method)
@@ -131,10 +148,12 @@ and records state changes. Your return summary must include:
 
 ## Prerequisites
 
-- Network access to target(s) — direct or via pivot
+- Network access to target(s) — direct or via pivot tunnel
 - Target IP, hostname, or CIDR range
 - Scope confirmation (which IPs/ranges are authorized)
 - nmap installed (core tool — all other tools optional)
+- **If scanning through a tunnel:** check engagement state for tunnel details
+  (type, local endpoint, requires_proxychains, proxychains config path)
 
 ## Privileged Commands
 
@@ -229,6 +248,157 @@ grep "Status: Up" discovery.gnmap | awk '{print $2}' > live_hosts.txt
 
 Present the list of live hosts. Ask which to scan further or proceed with all.
 
+## Pivot Mode — Scanning Through a Tunnel
+
+When the orchestrator says you're scanning through a tunnel (chisel SOCKS, SSH
+dynamic forward, ligolo, etc.), **everything changes**. Nmap through proxychains
+is extremely slow — a /24 with top-1000 ports means 256,000 TCP connect attempts
+through SOCKS, each timeout ~15 seconds. A full subnet scan can take hours and
+often times out.
+
+**Check the engagement state** (`get_state_summary()`) for tunnel details. The
+Tunnels section tells you the tunnel type, local endpoint, whether proxychains
+is required, and which hosts are already known-live.
+
+### The nmap MCP Server Does NOT Support Proxychains
+
+The `nmap_scan` MCP tool runs nmap directly — it cannot route through SOCKS
+proxies. When scanning through a tunnel that requires proxychains, you MUST use
+Bash with `dangerouslyDisableSandbox: true` instead of the nmap MCP server.
+
+All nmap commands through proxychains require these flags:
+```bash
+proxychains4 -f <config_path> nmap -sT -Pn -n [other options] TARGET
+```
+- `-sT` — TCP connect scan (only scan type that works through SOCKS)
+- `-Pn` — skip host discovery (ICMP doesn't work through SOCKS)
+- `-n` — no DNS resolution (avoid DNS leaks outside the tunnel)
+- No `-sS`, `-sU`, `-O`, or raw-socket features — SOCKS is TCP-only
+
+### Two-Phase Approach (Required for Pivot Scanning)
+
+**Never scan an entire subnet with nmap through proxychains.** Instead, use a
+fast Phase 1 to find live hosts, then targeted Phase 2 for port/service detail.
+
+#### Phase 1: Fast Host Discovery
+
+Use lightweight methods that are much faster than nmap through SOCKS. Try these
+in order — use whichever works for your access level on the pivot host.
+
+**Option A — Commands on the pivot host via existing shell session.**
+If you have a shell on the pivot host (WinRM, SSH, reverse shell), run discovery
+commands directly on it. No proxychains overhead — these execute locally on the
+internal network.
+
+Windows pivot host:
+```powershell
+# ARP cache — already-known neighbors (instant)
+arp -a
+
+# DNS zone dump — if pivot host is a DC or has DNS access
+Get-DnsServerResourceRecord -ZoneName <domain> -RRType A | Select-Object HostName, @{N='IP';E={$_.RecordData.IPv4Address}}
+
+# Ping sweep (fast, covers the subnet)
+1..254 | ForEach-Object { $ip="192.168.100.$_"; if(Test-Connection -Count 1 -Quiet -TimeoutSeconds 1 $ip){$ip} }
+
+# PowerShell TCP port check on specific hosts (confirm specific services)
+Test-NetConnection -ComputerName 192.168.100.2 -Port 445 -InformationLevel Quiet
+```
+
+Linux pivot host:
+```bash
+# ARP cache
+arp -a
+
+# Ping sweep
+for i in $(seq 1 254); do ping -c1 -W1 192.168.100.$i &>/dev/null && echo "192.168.100.$i alive" & done; wait
+
+# Bash TCP check (no tools needed)
+for port in 22 80 135 445 3389 5985; do
+  (echo >/dev/tcp/192.168.100.2/$port) 2>/dev/null && echo "192.168.100.2:$port open"
+done
+```
+
+**Option B — Single-port sweep through proxychains.**
+If you can't run commands on the pivot host, sweep one common port across the
+subnet. Much faster than scanning many ports per host.
+
+```bash
+# SMB sweep — fast, catches Windows hosts
+proxychains4 -f <config> nxc smb 192.168.100.0/24 --timeout 5 2>&1 | grep -v "timeout"
+
+# Or nmap with a SINGLE port — minimize SOCKS overhead
+proxychains4 -f <config> nmap -sT -Pn -n -p 445 192.168.100.0/24 --open -oG pivot_discovery.gnmap
+```
+
+**Option C — Combined approach (best results).**
+Run ARP + ping sweep on the pivot host first, then validate with a single-port
+proxychains sweep to catch hosts that block ICMP.
+
+After Phase 1, collect the list of confirmed live hosts. **Only these hosts
+proceed to Phase 2.**
+
+#### Phase 2: Targeted Port Scanning
+
+Scan ONLY the live hosts found in Phase 1. Use focused port lists, not `-p-`.
+
+```bash
+# Common Windows ports — covers most AD/enterprise services
+proxychains4 -f <config> nmap -sT -Pn -n -p 21,22,25,53,80,88,110,135,139,143,389,443,445,464,587,636,993,995,1433,2049,3268,3306,3389,5432,5985,5986,8080,8443,9389 <live_host> -oA pivot_scan_HOSTNAME
+
+# If you already know the OS (e.g., from Phase 1 SMB banner), narrow further:
+# Windows server — core ports
+proxychains4 -f <config> nmap -sT -Pn -n -p 80,88,135,139,389,443,445,636,1433,3268,3389,5985,5986,8080 <live_host> -oA pivot_scan_HOSTNAME
+
+# Linux server — core ports
+proxychains4 -f <config> nmap -sT -Pn -n -p 21,22,25,53,80,110,139,143,443,445,993,2049,3306,5432,8080 <live_host> -oA pivot_scan_HOSTNAME
+```
+
+**Service version detection** — only on confirmed open ports:
+```bash
+# After finding open ports, run -sV on JUST those ports
+proxychains4 -f <config> nmap -sT -Pn -n -sV -p <open_ports_csv> <live_host> -oA pivot_svc_HOSTNAME
+```
+
+**Timing matters.** Through SOCKS, `-T4` can cause excessive timeouts. Use `-T3`
+or even `-T2` for reliability. Add `--max-retries 2 --host-timeout 300s` to
+prevent individual hosts from stalling the entire scan.
+
+### Alternative: Static nmap on Pivot Host
+
+For the fastest results, upload a static nmap binary to the pivot host and scan
+locally. This avoids all SOCKS overhead.
+
+```bash
+# Download static nmap on attackbox (NOT on target)
+# https://github.com/andrew-d/static-binaries or compile yourself
+
+# Transfer to pivot host (via existing shell session)
+# Use base64, certutil, or python http server + curl/wget
+
+# Run locally on pivot host — full speed, no proxychains
+./nmap -sT -Pn -p- 192.168.100.0/24 -oG /tmp/internal_scan.gnmap
+
+# Pull results back to attackbox for analysis
+```
+
+This is more invasive (leaves artifacts on the pivot host) but orders of
+magnitude faster. Use when speed matters more than stealth.
+
+### Pivot Mode Summary
+
+| Method | Speed | Invasiveness | When to use |
+|--------|-------|--------------|-------------|
+| Commands on pivot host | Fast | Low | Have shell access, quick discovery |
+| Single-port proxychains sweep | Medium | Low | No shell, need to find hosts |
+| Targeted nmap through proxychains | Slow | Low | Port/service detail on known hosts |
+| Static nmap on pivot host | Fastest | High | Large subnet, speed critical |
+| Full subnet nmap through proxychains | **Never** | N/A | **Don't do this** |
+
+After pivot scanning, continue with Step 3 (service enumeration) for each
+discovered host. All service enumeration tools (nxc, smbclient, ldapsearch,
+etc.) work through proxychains — prefix them the same way.
+
 ## Step 2: Port Scanning
 
 Check the orchestrator's prompt for a `Scan type:` directive. This tells you
@@ -301,6 +471,10 @@ ftp TARGET_IP
 # login: anonymous / anonymous@
 ```
 
+**Interim writes:** Anonymous FTP access →
+`add_vuln(title="FTP anonymous access on <host>", host="<host>", vuln_type="anonymous-access", severity="medium")`.
+Credentials found in FTP files → `add_credential(username=..., secret=..., source="FTP file on <host>")`.
+
 **Quick wins:** Anonymous login with write access, writable web root, config files
 with credentials, ProFTPD `mod_copy` (CVE-2019-12815), vsftpd 2.3.4 backdoor.
 FTP brute force → route to **password-spraying**.
@@ -317,6 +491,9 @@ ssh -o PreferredAuthentications=none -o ConnectTimeout=5 root@TARGET_IP 2>&1
 # User enumeration (OpenSSH < 7.7 — CVE-2018-15473)
 # Use auxiliary/scanner/ssh/ssh_enumusers in Metasploit
 ```
+
+**Interim writes:** Default SSH credentials confirmed →
+`add_credential(username=..., secret=..., source="SSH default creds on <host>")`.
 
 **Quick wins:** Default creds, key reuse from other hosts, CVE-2018-15473 user enum,
 CVE-2024-6387 (regreSSHion — OpenSSH 8.5p1-9.7p1 on glibc systems).
@@ -522,6 +699,12 @@ manspider TARGET_IP -u 'user' -p 'Password123' -d DOMAIN -c password secret
 Only run MANSPIDER after the share access table is complete — it needs at least
 one readable share to be useful. If all shares returned DENIED, skip this step.
 
+**Interim writes for SMB:**
+- SMB signing disabled → `add_vuln(title="SMB signing disabled on <host>", host="<host>", vuln_type="smb-signing", severity="medium")`
+- Null session or guest access → `add_vuln(title="SMB null/guest access on <host>", host="<host>", vuln_type="null-session", severity="medium")`
+- EternalBlue confirmed → `add_vuln(title="MS17-010 EternalBlue on <host>", host="<host>", vuln_type="rce", severity="critical")`
+- Domain name/hostnames from SMB → `add_pivot(source="SMB on <host>", destination="<domain>/<hostname>", method="SMB OS discovery")`
+
 **Quick wins:** Null session (user enum, share listing), guest access to shares,
 writable shares (web root, SYSVOL), EternalBlue (MS17-010), SMBGhost
 (CVE-2020-0796), PrintNightmare.
@@ -546,6 +729,11 @@ ldapsearch -x -H ldap://TARGET_IP -b "DC=domain,DC=local" "(objectClass=user)" s
 # Nmap LDAP scripts
 nmap -sV -p389,636,3268 --script ldap-rootdse,ldap-search TARGET_IP
 ```
+
+**Interim writes for LDAP:**
+- LDAP signing not required → `add_vuln(title="LDAP signing not required on <host>", host="<host>", vuln_type="ldap-signing", severity="medium")`
+- Anonymous bind with directory read → `add_vuln(title="LDAP anonymous bind on <host>", host="<host>", vuln_type="null-session", severity="medium")`
+- Domain name from rootDSE → `add_pivot(source="LDAP rootDSE on <host>", destination="<domain>", method="LDAP enumeration")`
 
 **Quick wins:** Anonymous bind with full directory read, password in description
 field, domain info disclosure via rootDSE.
@@ -697,6 +885,10 @@ snmpwalk -v2c -c public TARGET_IP 1.3.6.1.2.1.25.4.2.1.2  # Running processes
 snmpwalk -v2c -c public TARGET_IP 1.3.6.1.2.1.6.13.1.3    # TCP connections
 snmpwalk -v2c -c public TARGET_IP 1.3.6.1.2.1.25.6.3.1.2  # Installed software
 ```
+
+**Interim writes for SNMP:**
+- Default community string found → `add_credential(username="", secret="<community>", secret_type="other", source="SNMP on <host>")`
+- Network interfaces revealing new subnets → `add_pivot(source="SNMP on <host>", destination="<subnet>", method="SNMP interface enumeration")`
 
 **Quick wins:** Default `public`/`private` community strings, user enumeration,
 running process list, installed software, network interfaces, Net-SNMP Extend RCE.
@@ -999,3 +1191,11 @@ OS, any credentials or access found.
 ### Nmap XML parsing fails
 - Ensure scan completed (check for `</nmaprun>` closing tag).
 - If scan was interrupted, partial XML is unusable — re-run with `-oA` to get all formats.
+
+### Nmap through proxychains times out or takes forever
+- **Never scan an entire /24 with nmap through proxychains.** Use the two-phase
+  approach in the Pivot Mode section.
+- Use `-T3` or `-T2` instead of `-T4` — aggressive timing causes SOCKS timeouts.
+- Add `--max-retries 2 --host-timeout 300s` to bound individual hosts.
+- Scan fewer ports: use a targeted list instead of `--top-ports 1000` or `-p-`.
+- If all else fails, upload a static nmap binary to the pivot host and scan locally.

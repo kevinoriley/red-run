@@ -149,6 +149,11 @@ for proper terminal behavior.
 
 ## Transcripts
 
-Every send/recv is logged in memory. On `close_session(save_transcript=true)`,
-the full transcript is written to `engagement/evidence/shell-{id}-{label}.log`
-(if the engagement directory exists).
+Every send/recv is logged in real-time to a live log file at
+`engagement/evidence/shell-{id}-{label}.log` (if the engagement directory
+exists). The file is created when the session starts and appended to on every
+send/recv — suitable for `tail -f` and dashboard tailing. The `live_log` path
+is returned in the `start_process` and `list_sessions` responses.
+
+On `close_session(save_transcript=true)`, the live log path is returned as the
+transcript path (no duplicate write needed).

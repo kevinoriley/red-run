@@ -88,15 +88,28 @@ and present routing recommendations. Do not continue past enumeration.
 
 ## State Management
 
-Call `get_state_summary()` from the state-reader MCP server to read current
+Call `get_state_summary()` from the state-interim MCP server to read current
 engagement state. Use it to:
 - Skip re-testing targets, parameters, or vulns already confirmed
 - Leverage existing credentials or access for this technique
 - Understand what's been tried and failed (check Blocked section)
 
-**Do NOT write engagement state.** When your work is complete, report all
-findings clearly in your return summary. The orchestrator parses your summary
-and records state changes. Your return summary must include:
+### Interim Writes
+
+Write actionable findings **immediately** via state-interim so the orchestrator
+can react in real time (via event watcher) instead of waiting for your full
+return summary. Use these tools as you discover findings:
+
+- `add_credential()` — valid credentials (pre-created computer accounts, gMSA readable, cleartext in descriptions/GPP/shares)
+- `add_vuln()` — ADCS misconfigs (ESC1-ESC8), Kerberoastable accounts, coercion vectors, SMB signing disabled, LDAP signing not required
+- `add_pivot()` — delegation paths, ACL abuse chains, trust relationships, new subnets from AD Sites
+- `add_blocked()` — techniques attempted and failed (so orchestrator doesn't re-route)
+
+**Do NOT write to `activity.md`, `findings.md`, or modify targets/ports/access.**
+The orchestrator manages those. Still report all findings in your return summary —
+interim writes supplement it, they don't replace it.
+
+Your return summary must include:
 - New targets/hosts discovered (with ports and services)
 - New credentials or tokens found
 - Access gained or changed (user, privilege level, method)
@@ -167,6 +180,11 @@ nxc ldap DC01.DOMAIN.LOCAL --port 636
 - SMB signing disabled on non-DCs -> note for **auth-coercion-relay**
 - LDAP signing not required -> note for **auth-coercion-relay** (relay to LDAP)
 - Domain name, DC hostnames, OS versions -> record in the engagement state
+
+**Interim writes:**
+- SMB signing disabled → `add_vuln(title="SMB signing disabled on <host>", host="<host>", vuln_type="smb-signing", severity="medium")`
+- LDAP signing not required → `add_vuln(title="LDAP signing not required on <host>", host="<host>", vuln_type="ldap-signing", severity="medium")`
+- Domain name/hostnames discovered → `add_pivot(source="AD discovery", destination="<domain>/<hostname>", method="DNS/SMB enumeration")`
 
 ## Step 2: Unauthenticated Enumeration
 
@@ -281,6 +299,9 @@ certipy find 'DOMAIN/user@DC01.DOMAIN.LOCAL' -k \
   -output engagement/evidence/certipy-full-DOMAIN
 ```
 
+**Interim writes:** Vulnerable ADCS templates found →
+`add_vuln(title="ADCS <ESC_type> on <template>", host="<CA_host>", vuln_type="adcs", severity="high")`.
+
 **Certipy output**: Always use `-output engagement/evidence/certipy-<label>`
 to write results to the evidence directory. Without `-output`, certipy writes
 `{timestamp}_Certipy.{json,txt}` to CWD, polluting the working directory.
@@ -361,10 +382,11 @@ nxc ldap DC01.DOMAIN.LOCAL -u 'user' -p 'Password123' -M pre2k
 - A pre2k computer account is functionally equivalent to a domain user credential
   but with a machine account's group memberships and trust level
 
-If pre2k finds valid machine credentials → record as a credential finding in
-your return summary. Include: account name, confirmed password, and any group
-memberships or privileges visible from LDAP. The orchestrator will route to
-appropriate technique skills (pass-the-hash, kerberos-delegation, etc.).
+If pre2k finds valid machine credentials → write immediately:
+`add_credential(username="MACHINE$", secret="machine", source="pre2k module on <DC>")`.
+Also record in your return summary: account name, confirmed password, and any
+group memberships or privileges visible from LDAP. The orchestrator will route
+to appropriate technique skills (pass-the-hash, kerberos-delegation, etc.).
 
 ### NetExec Module Sweep
 
@@ -387,6 +409,7 @@ nxc smb DC01.DOMAIN.LOCAL -u 'user' -p 'Password123' -M gpp_autologin
 **User descriptions** are a common source of cleartext passwords — admins often
 document initial passwords or service account passwords in the AD description
 field. Any result containing password-like strings is a credential finding.
+Write immediately: `add_credential(username=..., secret=..., source="AD description field")`.
 
 #### Coercion & Relay Surface
 
@@ -407,6 +430,9 @@ nxc smb DC01.DOMAIN.LOCAL -u 'user' -p 'Password123' -M coerce_plus
 Note all coercion-eligible hosts for **auth-coercion-relay**. WebDAV is
 especially valuable — it enables HTTP-based coercion that works even when SMB
 signing is enforced.
+
+**Interim writes:** Coercion-eligible hosts →
+`add_vuln(title="Coercion: <type> on <host>", host="<host>", vuln_type="coercion", severity="medium")`.
 
 #### Attack Surface Mapping
 
@@ -513,6 +539,9 @@ Get-DomainComputer -Unconstrained
 Get-DomainUser -TrustedToAuth
 Get-DomainComputer -TrustedToAuth
 ```
+
+**Interim writes:** Delegation paths found →
+`add_pivot(source="<account>", destination="<target_service>", method="<unconstrained|constrained|RBCD> delegation")`.
 
 If found → STOP. Return to orchestrator recommending **kerberos-delegation**.
 Pass: DC IP, domain name, delegation type and targets, current credentials.

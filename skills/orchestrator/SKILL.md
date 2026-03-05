@@ -3,8 +3,13 @@ name: orchestrator
 description: >
   USE THIS SKILL when the user provides a target or list of targets (IPs,
   hostnames, URLs, subnets) and asks to attack, pentest, hack, scan, assess,
-  or test them. Trigger phrases: "attack X", "pentest X", "hack X", "scan X",
-  "start testing X", "pop X", "CTF target X", "engage X", "these targets".
+  or test them. ALSO USE THIS SKILL when the user references an existing
+  engagement — resuming, continuing, picking up, checking status, or asking
+  about next steps. Trigger phrases: "attack X", "pentest X", "hack X",
+  "scan X", "start testing X", "pop X", "CTF target X", "engage X",
+  "these targets", "resume engagement", "pick it up", "continue testing",
+  "next steps", "where were we", "resuming", "advise next steps",
+  "what should we do next", "engagement status".
   This is the entry point for all multi-phase penetration tests — handles
   recon, attack surface mapping, vulnerability chaining, and routes to
   technique skills for exploitation. Do NOT use when the user names a specific
@@ -21,6 +26,12 @@ keywords:
   - begin assessment
   - structured assessment
   - pentest orchestration
+  - resume engagement
+  - continue engagement
+  - pick up where we left off
+  - next steps engagement
+  - engagement status
+  - advise next steps
 tools: []
 opsec: medium
 ---
@@ -113,9 +124,13 @@ The orchestrator routes to skills — it does not run attack tools itself.
 The only commands the orchestrator may execute directly are:
 
 - `mkdir -p engagement/evidence/logs` — engagement directory creation
-- File writes to `engagement/scope.md`, `engagement/activity.md`, `engagement/findings.md`
-- State-writer MCP tools (`init_engagement`, `add_target`, `add_credential`, `add_access`, `add_vuln`, `add_pivot`, `add_blocked`, and their update variants) — engagement state
-- State-reader MCP tools (`get_state_summary`, `get_targets`, `get_credentials`, `get_access`, `get_vulns`, `get_pivot_map`, `get_blocked`, `poll_events`) — state queries
+- File writes to `engagement/scope.md`, `engagement/activity.md`, `engagement/findings.md`.
+  For `activity.md` and `findings.md` (append-only logs), use Bash `echo >>` or
+  `cat >> ... <<'EOF'` instead of Read+Edit — avoids loading the full log into
+  context just to append. Use Write/Edit only for `scope.md` (structured, may
+  need mid-file edits).
+- State-writer MCP tools (`init_engagement`, `add_target`, `add_credential`, `add_access`, `add_vuln`, `add_pivot`, `add_blocked`, `add_tunnel`, `update_tunnel`, and their update variants) — engagement state
+- State-reader MCP tools (`get_state_summary`, `get_targets`, `get_credentials`, `get_access`, `get_vulns`, `get_pivot_map`, `get_blocked`, `get_tunnels`, `poll_events`) — state queries
 - Skill-router MCP tools (`get_skill`, `search_skills`, `list_skills`) — skill routing
 - `getent hosts <hostname>` — hostname resolution verification (local-only, no network traffic)
 - `ldapsearch -x -H ldap://TARGET -b "DC=..." -s base lockoutThreshold lockOutObservationWindow lockoutDuration minPwdLength pwdProperties` — lockout policy query (safety-critical pre-spray check, single base-scope read, not enumeration)
@@ -192,7 +207,8 @@ every routing decision.
 
 | Agent | Domain | MCP Servers | Use For |
 |-------|--------|-------------|---------|
-| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, state-interim | network-recon, smb-exploitation, pivoting-tunneling (haiku) |
+| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, state-interim | network-recon, smb-exploitation (haiku) |
+| `pivoting-agent` | Pivoting | skill-router, shell-server, state-interim | pivoting-tunneling (sonnet) |
 | `web-discovery-agent` | Web discovery | skill-router, shell-server, browser-server, state-interim | web-discovery |
 | `web-exploit-agent` | Web exploitation | skill-router, shell-server, browser-server, state-reader | All web technique skills |
 | `ad-discovery-agent` | AD discovery | skill-router, shell-server, state-interim | ad-discovery |
@@ -311,7 +327,7 @@ Use this table to pick the right agent for each skill:
 |-------|-------|-----|
 | network-recon | network-recon-agent | Needs nmap MCP |
 | smb-exploitation | network-recon-agent | Network-level exploitation |
-| pivoting-tunneling | network-recon-agent | Network-level tools |
+| pivoting-tunneling | pivoting-agent | Tunnel setup + verification (sonnet) |
 | web-discovery | web-discovery-agent | Web enumeration + attack surface mapping |
 | sql-injection-union, sql-injection-blind, sql-injection-error, sql-injection-stacked | web-exploit-agent | Web |
 | xss-reflected, xss-stored, xss-dom | web-exploit-agent | Web |
@@ -633,6 +649,26 @@ with date and second precision for timeline reconstruction.
 This entry must be written as soon as the engagement directory exists.
 Subsequent milestone entries append bullet points under this same header or
 create new headers as phases progress.
+
+## Resuming an Existing Engagement
+
+If `engagement/state.db` already exists (the user said "resume", "continue",
+"pick it up", "next steps", "where were we", etc.), **skip Step 1** entirely:
+
+1. Call `get_state_summary()` to load the full engagement state.
+2. Print a concise status briefing for the operator: targets, current access,
+   key vulns, active tunnels, blocked paths.
+3. Append to `activity.md`:
+   ```
+   ### [YYYY-MM-DD HH:MM:SS] orchestrator → resumed
+   - Engagement resumed. State loaded from state.db.
+   ```
+4. Run the **Step 5 decision logic** to determine the next action.
+5. Present the recommended next action to the operator and wait for approval
+   before spawning any agents.
+
+Do NOT re-initialize scope, re-create the engagement directory, or re-run
+`init_engagement()`. The state database is the source of truth.
 
 ## Step 1: Scope & Engagement Setup
 
@@ -985,7 +1021,7 @@ Common chains that produce shell access on a host:
 - Service account → ad-exploit-agent(`kerberos-roasting`) → more credentials
 - Machine keys from IIS → ViewState RCE on other IIS sites
 - Database link → linked server → second database
-- Host access on new subnet → network-recon-agent(`pivoting-tunneling`) → then network-recon-agent(`network-recon`) on internal network
+- Host access on new subnet → pivoting-agent(`pivoting-tunneling`) → then network-recon-agent(`network-recon`) on internal network
 
 **Privilege Escalation:**
 - Local admin → ad-exploit-agent(`credential-dumping`) → domain user
@@ -1037,6 +1073,35 @@ When reading the state summary (via `get_state_summary()`), the orchestrator sho
    targets the same credential goal (e.g., ACL abuse toward the same account),
    race them in parallel via the fork mechanism.
 6. **Check pivot map** — are there identified paths not yet followed?
+   For pivots with `status: "identified"` and method containing "pivot candidate"
+   or "Additional NIC":
+   a. Check `get_tunnels()` — does an active tunnel already cover this subnet?
+   b. If no tunnel covers the target subnet, spawn **pivoting-agent** with
+      `pivoting-tunneling`:
+      ```
+      Task(
+          subagent_type="pivoting-agent",
+          prompt="Load skill 'pivoting-tunneling'. Pivot host: <host>. Target subnet: <subnet>. Access: <ssh/shell/winrm + user + creds>. Tool preference: SSH > sshuttle > ligolo > chisel.",
+          description="Pivoting to <subnet> via <host>"
+      )
+      ```
+   c. After pivoting-agent returns with tunnel established:
+      - Record tunnel via `add_tunnel()` if the agent didn't already (check state)
+      - Update the pivot status to `exploited` via `update_pivot()`
+      - Spawn **network-recon-agent** with `network-recon` on the internal subnet
+   d. **Tunnel context in subsequent agent prompts.** After a tunnel is
+      established, ALL agent prompts targeting hosts behind that tunnel must
+      include:
+      - Whether the tunnel is transparent (sshuttle, ligolo, ssh_tun) or
+        requires proxychains (ssh -D, chisel SOCKS)
+      - The local SOCKS endpoint if proxychains is required (e.g.,
+        `socks5://127.0.0.1:1080`)
+      - Example: *"Tunnel active: ligolo via 10.10.10.5 → 172.16.0.0/24
+        (transparent — tools work natively, no proxychains needed)."*
+   e. **Tunnel health check.** Before spawning any agent targeting an internal
+      host behind a tunnel, call `get_tunnels(status="active")` and verify the
+      tunnel covering that subnet is still active. If the tunnel is down/closed,
+      re-spawn pivoting-agent to re-establish it before proceeding.
 7. **Check blocked items** — two categories:
    a. **`retry: "with_context"`** — these are techniques blocked at the
       discovery phase that have a corresponding technique skill with deeper
@@ -1198,8 +1263,9 @@ Multiple agents achieve the goal (rare but possible).
 #### 5. State Consistency Rules
 
 - **Discovery agents** (network-recon, web-discovery, ad-discovery,
-  linux-privesc, windows-privesc) use state-interim MCP and can write 4
-  add-only tables mid-run: credentials, vulns, pivots, blocked.
+  linux-privesc, windows-privesc) and the **pivoting-agent** use state-interim
+  MCP and can write 5 add-only tables mid-run: credentials, vulns, pivots,
+  blocked, tunnels.
 - **Technique agents** (web-exploit, ad-exploit, etc.) use state-reader
   MCP and are fully read-only.
 - The orchestrator processes agent returns **one at a time**, even when agents
@@ -1225,15 +1291,29 @@ and runs the exploit command in one shot — eliminating the latency gap.
    ```bash
    #!/usr/bin/env bash
    set -euo pipefail
-   # Sync attackbox clock with domain controller
    DC_IP="<DC_IP from engagement state>"
-   sudo ntpdate "$DC_IP" || sudo rdate -n "$DC_IP"
-   echo "[+] Clock synced with $DC_IP"
+
+   # Disable VirtualBox time sync if running (it fights ntpdate)
+   if pgrep -x VBoxService >/dev/null 2>&1; then
+       echo "[*] Disabling VirtualBox time sync..."
+       killall VBoxService 2>/dev/null
+       VBoxService --disable-timesync &
+       sleep 1
+   fi
+
+   # Sync and keep syncing (clock drifts back without a loop)
+   echo "[*] Syncing clock with $DC_IP every 5s (Ctrl-C to stop)..."
+   while true; do
+       ntpdate "$DC_IP" || rdate -n "$DC_IP"
+       sleep 5
+   done
    ```
    Save as `temp_clock-sync.sh` and `chmod +x temp_clock-sync.sh`.
 2. Present to the user:
    > Clock skew detected — Kerberos authentication requires clocks within 5
-   > minutes of the DC. Run `sudo ./temp_clock-sync.sh` to sync, then confirm.
+   > minutes of the DC. Run `sudo bash ./temp_clock-sync.sh &` to sync in
+   > the background, then confirm. The script disables VirtualBox time sync
+   > (if running) and loops ntpdate every 5 seconds to prevent drift.
 3. Wait for the user to confirm clock is synced before retrying (sudo
    requirement — always a hard stop).
 4. After user confirms clock is synced, retry the **same skill invocation**
