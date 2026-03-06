@@ -5,7 +5,7 @@ set -euo pipefail
 # EDIT THIS — add all in-scope targets (IPs, CIDRs)
 # ============================================================
 SCOPE=(
-    # "10.10.10.5"
+     "10.10.10.5"
     # "10.10.10.0/24"
 )
 
@@ -18,6 +18,11 @@ ANTHROPIC_V6="2607:6bc0::/48"
 # DNS resolver (auto-detected from /etc/resolv.conf)
 DNS_SERVER="$(grep -m1 '^nameserver' /etc/resolv.conf | awk '{print $2}')"
 # ============================================================
+
+if [ "$(id -u)" -ne 0 ]; then
+    echo "[!] This script requires root. Run: sudo bash $0"
+    exit 1
+fi
 
 if [ ${#SCOPE[@]} -eq 0 ]; then
     echo "[!] SCOPE array is empty. Edit this script first."
