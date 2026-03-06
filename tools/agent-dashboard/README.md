@@ -94,6 +94,14 @@ file is empty, showing "Waiting for agents..." until entries appear.
 The status bar shows `LIVE` when auto-following or `scrolled +N` when
 scrolled up. Scrolling to the bottom re-enables live follow.
 
+### Firewall indicator
+
+The status bar shows an `FW` indicator on both ends. A background thread
+pings `1.1.1.1` every 5 seconds — if the ping is blocked, the firewall is
+active (green). If the ping succeeds, the firewall is down (red). Unknown
+state shows as dim `??`. This runs in all modes regardless of engagement
+type, so the operator always has visibility into network isolation state.
+
 ### Agent browser
 
 Press `b` to open a modal overlay listing all agent output files from the
