@@ -628,23 +628,20 @@ function renderGraph() {
     }
   }
 
-  // Pivots — label with method, subtitle with src->dest
+  // Pivots — rendered as labeled edges, not nodes
+  const pivotStyles = { exploited: 'confirmed', identified: 'pending', blocked: 'blocked' };
   for (const p of state.pivot_map) {
-    const label = p.method || 'pivot';
-    const sub = `${p.source} \u2192 ${p.destination}`;
-    addNode(`pivot:${p.id}`, 'pivot', label, sub, `${p.source} \u2192 ${p.destination}\n${p.method}\n${p.status}`);
-    let srcLinked = false;
+    const style = pivotStyles[p.status] || 'pending';
+    const label = (p.method || 'pivot') + (p.status !== 'exploited' ? ` (${p.status})` : '');
+    // Find best source: active access on source host, or the host itself
+    let fromId = null;
     for (const a of state.access) {
-      if (a.host === p.source && a.active) {
-        edges.push({ from: `access:${a.id}`, to: `pivot:${p.id}`, style: p.status === 'exploited' ? 'confirmed' : 'pending' });
-        srcLinked = true; break;
-      }
+      if (a.host === p.source && a.active) { fromId = `access:${a.id}`; break; }
     }
-    if (!srcLinked && nodeMap[`host:${p.source}`]) {
-      edges.push({ from: `host:${p.source}`, to: `pivot:${p.id}`, style: 'pending' });
-    }
-    if (nodeMap[`host:${p.destination}`]) {
-      edges.push({ from: `pivot:${p.id}`, to: `host:${p.destination}`, style: p.status === 'exploited' ? 'confirmed' : 'pending' });
+    if (!fromId && nodeMap[`host:${p.source}`]) fromId = `host:${p.source}`;
+    const toId = nodeMap[`host:${p.destination}`] ? `host:${p.destination}` : null;
+    if (fromId && toId) {
+      edges.push({ from: fromId, to: toId, style, label });
     }
   }
 
@@ -691,7 +688,7 @@ function renderGraph() {
   // Unvisited nodes get layer based on type
   for (const n of nodes) {
     if (!visited.has(n.id)) {
-      n.layer = { host: 1, vuln: 2, cred: 3, access: 4, pivot: 5, blocked: 2 }[n.type] || 1;
+      n.layer = { host: 1, vuln: 2, cred: 3, access: 4, blocked: 2 }[n.type] || 1;
     }
   }
 
@@ -731,6 +728,7 @@ function renderGraph() {
   </defs>`;
 
   // Draw edges
+  const edgeColors = { confirmed: '#3fb950', pending: '#e3b341', blocked: '#f85149' };
   for (const e of edges) {
     const from = positions[e.from], to = positions[e.to];
     if (!from || !to) continue;
@@ -740,6 +738,12 @@ function renderGraph() {
     const cls = `edge edge-${e.style}`;
     const marker = { confirmed: 'ah-green', pending: 'ah-yellow', blocked: 'ah-red' }[e.style] || 'ah-green';
     svgHtml += `<path class="${cls}" d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}" marker-end="url(#${marker})"/>`;
+    if (e.label) {
+      const lx = mx, ly = (y1 + y2) / 2 - 4;
+      const col = edgeColors[e.style] || '#8b949e';
+      svgHtml += `<rect x="${lx - e.label.length*3.2 - 4}" y="${ly - 9}" width="${e.label.length*6.4 + 8}" height="14" rx="3" fill="#0d1117" fill-opacity="0.85"/>`;
+      svgHtml += `<text x="${lx}" y="${ly}" text-anchor="middle" font-size="9" fill="${col}" font-weight="600">${esc(e.label)}</text>`;
+    }
   }
 
   // Draw nodes
@@ -749,7 +753,6 @@ function renderGraph() {
     vuln: { fill: '#3d1f00', stroke: '#d29922' },
     cred: { fill: '#1f0d3d', stroke: '#bc8cff' },
     access: { fill: '#0d3d0d', stroke: '#3fb950' },
-    pivot: { fill: '#21262d', stroke: '#58a6ff' },
     blocked: { fill: '#3d0d0d', stroke: '#f85149' },
   };
 
@@ -815,12 +818,11 @@ function renderGraph() {
     { shape: 'diamond', fill: '#3d1f00', stroke: '#d29922', label: 'Vuln' },
     { shape: 'hex', fill: '#1f0d3d', stroke: '#bc8cff', label: 'Credential' },
     { shape: 'dblrect', fill: '#0d3d0d', stroke: '#3fb950', label: 'Access' },
-    { shape: 'rect', fill: '#21262d', stroke: '#58a6ff', label: 'Pivot' },
     { shape: 'xrect', fill: '#3d0d0d', stroke: '#f85149', label: 'Blocked' },
   ];
   const edgeLegend = [
-    { cls: 'edge-confirmed', label: 'Confirmed' },
-    { cls: 'edge-pending', label: 'Pending' },
+    { cls: 'edge-confirmed', label: 'Exploited' },
+    { cls: 'edge-pending', label: 'Identified' },
     { cls: 'edge-blocked', label: 'Blocked' },
   ];
   const legendH = 36;
