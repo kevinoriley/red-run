@@ -503,16 +503,19 @@ function renderTables() {
   container.innerHTML = html;
 }
 
-// Show tooltip only when cell content is clipped
+// Show tooltip only when cell content is clipped by line-clamp
 document.addEventListener('mouseenter', e => {
   const cell = e.target.closest('.cell[data-tip]');
   if (!cell) return;
   const td = cell.parentElement;
-  if (cell.scrollHeight > cell.clientHeight || cell.scrollWidth > cell.clientWidth) {
-    td.title = cell.dataset.tip;
-  } else {
-    td.title = '';
-  }
+  // Temporarily remove clamp to measure true height
+  const origDisplay = cell.style.display;
+  const origClamp = cell.style.webkitLineClamp;
+  cell.style.webkitLineClamp = 'unset';
+  const full = cell.scrollHeight;
+  cell.style.webkitLineClamp = origClamp || '';
+  const clamped = cell.clientHeight;
+  td.title = (full > clamped + 2) ? cell.dataset.tip : '';
 }, true);
 
 function getCellValue(row, col, def) {
