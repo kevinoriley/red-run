@@ -1,0 +1,1564 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Offensive security toolkit for Claude Code">
+      
+      
+      
+      
+        <link rel="prev" href="../installation/">
+      
+      
+        <link rel="next" href="../engagement-state/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Running an Engagement - red-run</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="red" data-md-color-accent="red">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#running-an-engagement" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="red-run" class="md-header__button md-logo" aria-label="red-run" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            red-run
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Running an Engagement
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/blacklanternsecurity/red-run" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="red-run" class="md-nav__button md-logo" aria-label="red-run" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    red-run
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/blacklanternsecurity/red-run" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running an Engagement
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running an Engagement
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#starting-a-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Starting a Test
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Starting a Test">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope-gathering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scope Gathering
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#engagement-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Engagement Directory
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#engagement-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Engagement Workflow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reconnaissance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reconnaissance
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reconnaissance">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scan-type-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scan Type Selection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hostname-resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hostname Resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#web-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web Discovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#attack-surface-presentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attack Surface Presentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#skill-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skill Routing
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Skill Routing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-rag-means-here" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What RAG means here
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hardcoded-vs-dynamic-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hardcoded vs dynamic routing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#context-passing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context passing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hard-stops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hard Stops
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chaining-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chaining Logic
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recovery-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recovery Paths
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recovery Paths">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#avedr-blocked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AV/EDR Blocked
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clock-skew" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clock Skew
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dns-resolution-failure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DNS Resolution Failure
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#monitoring-during-engagement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Monitoring During Engagement
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Monitoring During Engagement">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dashboard
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-watcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Event Watcher
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#post-engagement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Post-Engagement
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Post-Engagement">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#retrospective" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retrospective
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../engagement-state/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engagement State
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp-servers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Servers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../skills-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboard-and-monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard & Monitoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../writing-skills/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing Skills
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#starting-a-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Starting a Test
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Starting a Test">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope-gathering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scope Gathering
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#engagement-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Engagement Directory
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#engagement-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Engagement Workflow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reconnaissance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reconnaissance
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reconnaissance">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scan-type-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scan Type Selection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hostname-resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hostname Resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#web-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web Discovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#attack-surface-presentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attack Surface Presentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#skill-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skill Routing
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Skill Routing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-rag-means-here" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What RAG means here
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hardcoded-vs-dynamic-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hardcoded vs dynamic routing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#context-passing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context passing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hard-stops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hard Stops
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chaining-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chaining Logic
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recovery-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recovery Paths
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recovery Paths">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#avedr-blocked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AV/EDR Blocked
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clock-skew" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clock Skew
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dns-resolution-failure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DNS Resolution Failure
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#monitoring-during-engagement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Monitoring During Engagement
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Monitoring During Engagement">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dashboard
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-watcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Event Watcher
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#post-engagement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Post-Engagement
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Post-Engagement">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#retrospective" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retrospective
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="running-an-engagement">Running an Engagement</h1>
+<p>This page describes how the <strong>CTF orchestrator</strong> drives a penetration test from target to objective. The orchestrator is one skill (<code>skills/orchestrator/SKILL.md</code>) — a different orchestrator would use the same skill library with completely different workflow logic. See <a href="../architecture/#platform-vs-strategy">Architecture</a> for more on this separation.</p>
+<h2 id="starting-a-test">Starting a Test</h2>
+<p>Trigger the orchestrator with a target:</p>
+<div class="highlight"><pre><span></span><code>attack 10.10.10.5
+pentest 192.168.1.0/24
+hack school.flight.htb
+</code></pre></div>
+<p>Any of these trigger phrases work: <code>attack</code>, <code>pentest</code>, <code>hack</code>, <code>scan</code>, <code>assess</code>, <code>test</code>, <code>pop</code>, <code>engage</code>, or <code>CTF target</code>.</p>
+<h3 id="scope-gathering">Scope Gathering</h3>
+<p>The orchestrator's first action is gathering scope:</p>
+<ol>
+<li><strong>Targets</strong> — IPs, hostnames, CIDR ranges</li>
+<li><strong>Credentials</strong> — any provided usernames, passwords, hashes</li>
+<li><strong>Rules of engagement</strong> — what's in scope, what's off-limits</li>
+<li><strong>Objectives</strong> — flags, domain admin, data exfiltration goals</li>
+</ol>
+<h3 id="engagement-directory">Engagement Directory</h3>
+<p>The orchestrator creates the engagement directory structure:</p>
+<div class="highlight"><pre><span></span><code>engagement/
+├── scope.md          # Target scope and rules of engagement
+├── state.db          # SQLite engagement state database
+├── activity.md       # Chronological action log
+├── findings.md       # Confirmed vulnerabilities
+└── evidence/         # Saved output and dumps
+    └── logs/         # Agent JSONL transcripts
+</code></pre></div>
+<p>It initializes <code>state.db</code> via <code>init_engagement()</code> and writes the scope to <code>scope.md</code>.</p>
+<h2 id="engagement-workflow">Engagement Workflow</h2>
+<p>The orchestrator follows this decision flow from target to objective:</p>
+<pre class="mermaid"><code>flowchart TD
+    Start(["User: &amp;quot;attack TARGET&amp;quot;"]) --&gt; Scope
+
+    subgraph S1["Scope &amp; Setup"]
+        Scope[Gather scope, creds,&lt;br&gt;rules of engagement]
+        Scope --&gt; Init[mkdir engagement/&lt;br&gt;init_engagement]
+        Init --&gt; WriteScope[Write scope.md&lt;br&gt;activity.md · findings.md]
+    end
+
+    WriteScope --&gt; ScanQ
+
+    subgraph S2["Reconnaissance"]
+        ScanQ{HARD STOP&lt;br&gt;Scan type?}
+        ScanQ --&gt;|quick / full / custom| NR[network-recon-agent&lt;br&gt;→ network-recon]
+        ScanQ --&gt;|import XML| Parse[Parse XML&lt;br&gt;record to state]
+
+        NR --&gt; RecordRecon[Record hosts, ports,&lt;br&gt;services to state]
+        Parse --&gt; RecordRecon
+
+        RecordRecon --&gt; HostCheck{New hostnames&lt;br&gt;resolve?}
+        HostCheck --&gt;|no| HostsFix["HARD STOP&lt;br&gt;Write hosts-update.sh&lt;br&gt;Wait for operator"]
+        HostsFix --&gt;|operator confirms| HostCheck
+        HostCheck --&gt;|yes| WebPorts{HTTP/HTTPS&lt;br&gt;ports found?}
+
+        WebPorts --&gt;|yes| WD[web-discovery-agent&lt;br&gt;→ web-discovery]
+        WebPorts --&gt;|no| Surface
+
+        WD --&gt; VhostCheck{Vhosts&lt;br&gt;resolve?}
+        VhostCheck --&gt;|no| HostsFix
+        VhostCheck --&gt;|yes| Surface
+    end
+
+    Surface[Categorize attack surface&lt;br&gt;Web · AD · SMB · DB&lt;br&gt;Containers · Remote Access]
+
+    Surface --&gt;|"Present surface +&lt;br&gt;chain analysis&lt;br&gt;Operator picks path"| SkillPick
+
+    subgraph S4["Discovery &amp; Exploitation"]
+        SkillPick[Pick skill + agent&lt;br&gt;from routing table]
+        SkillPick --&gt; Spawn[Spawn agent&lt;br&gt;with skill + context]
+        Spawn --&gt; AgentRun
+
+        subgraph AgentBox["Agent invocation"]
+            AgentRun[Load skill → execute&lt;br&gt;→ save evidence&lt;br&gt;→ return findings]
+        end
+    end
+
+    AgentRun --&gt; PostSkill
+
+    subgraph Post["Post-Skill Checkpoint"]
+        PostSkill[Parse return summary]
+        PostSkill --&gt; RecordState["Record to state:&lt;br&gt;add_target · add_credential&lt;br&gt;add_vuln · add_access&lt;br&gt;add_pivot · add_blocked"]
+        RecordState --&gt; LogActivity[Append activity.md&lt;br&gt;+ findings.md]
+        LogActivity --&gt; UserCheck{New usernames&lt;br&gt;discovered?}
+        UserCheck --&gt;|yes| SprayStop
+        UserCheck --&gt;|no| ChainAnalysis
+    end
+
+    subgraph Spray["Credential Attack Gate"]
+        SprayStop["HARD STOP&lt;br&gt;Show usernames&lt;br&gt;+ lockout policy"]
+        SprayStop --&gt; SprayQ{Spray&lt;br&gt;intensity?}
+        SprayQ --&gt;|skip| ChainAnalysis
+        SprayQ --&gt;|light / medium / heavy| PW[password-spray-agent&lt;br&gt;→ password-spraying]
+        PW --&gt; RecordCreds[Record valid creds&lt;br&gt;to state]
+        RecordCreds --&gt; ChainAnalysis
+    end
+
+    subgraph S5["Chaining"]
+        ChainAnalysis["get_state_summary()&lt;br&gt;Analyze pivot map"]
+        ChainAnalysis --&gt; D1{Unexploited&lt;br&gt;vulns?}
+        D1 --&gt;|yes| SkillPick
+        D1 --&gt;|no| D2{Shell access&lt;br&gt;without root?}
+        D2 --&gt;|yes| DiscoverHost
+        D2 --&gt;|no| D3{Untested&lt;br&gt;creds?}
+        D3 --&gt;|yes| TestCreds[Test creds against&lt;br&gt;all services]
+        TestCreds --&gt; SkillPick
+        D3 --&gt;|no| D4{Uncracked&lt;br&gt;hashes?}
+        D4 --&gt;|yes| Crack["credential-cracking&lt;br&gt;(inline)"]
+        Crack --&gt; ChainAnalysis
+        D4 --&gt;|no| D5{Pivot paths&lt;br&gt;available?}
+        D5 --&gt;|yes| SkillPick
+        D5 --&gt;|no| D6{Objectives&lt;br&gt;met?}
+    end
+
+    subgraph HostDisc["Shell → Host Discovery"]
+        DiscoverHost{OS?}
+        DiscoverHost --&gt;|Linux| LinDisc[linux-privesc-agent&lt;br&gt;→ linux-discovery]
+        DiscoverHost --&gt;|Windows DC| ADEnum[ad-discovery-agent&lt;br&gt;→ ad-discovery]
+        DiscoverHost --&gt;|Windows non-DC| WinDisc[windows-privesc-agent&lt;br&gt;→ windows-discovery]
+        LinDisc &amp; ADEnum &amp; WinDisc --&gt; PostSkill
+    end
+
+    AgentRun --&gt;|"AV blocked"| AVRecover
+    AgentRun --&gt;|"clock skew"| ClockRecover
+
+    subgraph Recovery["Recovery Paths"]
+        AVRecover[evasion-agent&lt;br&gt;→ av-edr-evasion]
+        AVRecover --&gt;|"bypass payload"| Spawn
+        AVRecover --&gt;|"no bypass"| RecordBlocked[add_blocked&lt;br&gt;move to next vector]
+        RecordBlocked --&gt; ChainAnalysis
+
+        ClockRecover["Write clock-sync.sh&lt;br&gt;Wait for operator"]
+        ClockRecover --&gt;|"synced"| Spawn
+    end
+
+    D6 --&gt;|yes| PostExploit
+    D6 --&gt;|no| Stuck[No more paths&lt;br&gt;Report current state]
+
+    subgraph S6["Post-Exploitation"]
+        PostExploit[Collect evidence&lt;br&gt;Update state&lt;br&gt;Verify objectives]
+    end
+
+    PostExploit --&gt; Done
+    Stuck --&gt; Done
+
+    Done([Engagement Complete])
+    Done -.-&gt; Retro[retrospective&lt;br&gt;→ skill improvements]</code></pre>
+<h2 id="reconnaissance">Reconnaissance</h2>
+<p>After scope setup, the orchestrator runs reconnaissance.</p>
+<h3 id="scan-type-selection">Scan Type Selection</h3>
+<blockquote>
+<p><strong>Hard Stop:</strong> The orchestrator pauses and asks the operator to choose a scan type before proceeding. This is the first of several <strong>hard stops</strong> — points where the orchestrator requires operator input.</p>
+</blockquote>
+<p>Options:</p>
+<ul>
+<li><strong>Quick</strong> — Top ports, fast service detection</li>
+<li><strong>Full</strong> — All 65535 ports with version detection and scripts (<code>-A -p- -T4</code>)</li>
+<li><strong>Custom</strong> — Operator-specified nmap flags</li>
+<li><strong>Import XML</strong> — Parse existing nmap XML output</li>
+</ul>
+<p>The orchestrator spawns the <code>network-recon-agent</code> with the <code>network-recon</code> skill, which runs nmap via the nmap-server MCP and enumerates discovered services.</p>
+<h3 id="hostname-resolution">Hostname Resolution</h3>
+<p>When nmap discovers hostnames that don't resolve from the attackbox, the orchestrator hits a <strong>hard stop</strong>:</p>
+<ol>
+<li>Writes a <code>hosts-update.sh</code> script with the required <code>/etc/hosts</code> entries</li>
+<li>Pauses and asks the operator to run it</li>
+<li>Resumes only after confirmation</li>
+</ol>
+<p>This pattern repeats when web discovery finds virtual hosts that need resolution.</p>
+<h3 id="web-discovery">Web Discovery</h3>
+<p>If HTTP/HTTPS ports are found, the orchestrator spawns the <code>web-discovery-agent</code> with the <code>web-discovery</code> skill. This performs content discovery, technology fingerprinting, parameter fuzzing, and vulnerability identification.</p>
+<h2 id="attack-surface-presentation">Attack Surface Presentation</h2>
+<p>After recon, the orchestrator categorizes the attack surface:</p>
+<ul>
+<li><strong>Web</strong> — HTTP/HTTPS services, applications, APIs</li>
+<li><strong>Active Directory</strong> — Domain controllers, Kerberos, LDAP</li>
+<li><strong>SMB</strong> — File shares, named pipes</li>
+<li><strong>Database</strong> — MSSQL, MySQL, PostgreSQL</li>
+<li><strong>Containers</strong> — Docker, Kubernetes</li>
+<li><strong>Remote Access</strong> — SSH, RDP, WinRM</li>
+</ul>
+<p>It presents the surface with chain analysis — how vulnerabilities might connect to achieve objectives — and the operator picks the attack path.</p>
+<h2 id="skill-routing">Skill Routing</h2>
+<p>The orchestrator needs to pick the right skill for each situation. Most of the time, skills tell it what to do next — a discovery skill's decision tree says "if you found SQLi, route to <strong>sql-injection-union</strong>", and the orchestrator looks that up in a hardcoded routing table that maps skill names to agents. But sometimes the orchestrator encounters a situation that doesn't match any hardcoded route — an unusual service, an uncommon vulnerability, a technology the decision trees don't cover. That's where RAG comes in.</p>
+<h3 id="what-rag-means-here">What RAG means here</h3>
+<p>RAG stands for Retrieval-Augmented Generation. In red-run, it means the orchestrator can search the skill library by describing what it needs in plain English, instead of knowing the exact skill name in advance.</p>
+<p>Here's how it works under the hood:</p>
+<ol>
+<li>
+<p><strong>Indexing</strong> — When you run <code>install.sh</code>, the indexer (<code>tools/skill-router/indexer.py</code>) reads every <code>SKILL.md</code> file and extracts structured YAML frontmatter: the skill's description, keywords, tool names, and OPSEC rating. It builds a text document from these fields and computes a vector embedding using <code>all-MiniLM-L6-v2</code>, a sentence-transformer model that converts text into 384-dimensional vectors. These vectors are stored in ChromaDB, a local vector database at <code>tools/skill-router/.chromadb/</code>.</p>
+</li>
+<li>
+<p><strong>Searching</strong> — When the orchestrator calls <code>search_skills("AJP connector on port 8009")</code>, the skill-router converts that query into a vector using the same model and finds the closest matches by cosine similarity. The <code>ajp-ghostcat</code> skill's frontmatter mentions "AJP", "port 8009", "CVE-2020-1938", and "Ghostcat" — its vector is close to the query vector, so it ranks high. Results below 0.4 similarity are filtered out automatically.</p>
+</li>
+<li>
+<p><strong>Loading</strong> — The orchestrator reviews the search results (each includes the skill's description and OPSEC rating), picks the best match, and tells the agent to load it via <code>get_skill("ajp-ghostcat")</code>. The agent gets the full <code>SKILL.md</code> content — methodology, payloads, troubleshooting — injected into its context.</p>
+</li>
+</ol>
+<p>The "augmented generation" part is that Claude doesn't rely on its training data to know how to exploit AJP Ghostcat. Instead, the skill's methodology is retrieved from the local library and injected into the prompt, giving the agent precise, tested instructions rather than general knowledge.</p>
+<h3 id="hardcoded-vs-dynamic-routing">Hardcoded vs dynamic routing</h3>
+<p>Most routing is hardcoded. Discovery skills have decision trees that cover common scenarios, and the orchestrator has a routing table that maps ~60 skill names to their agents. RAG is the fallback for everything else:</p>
+<ul>
+<li><strong>Hardcoded</strong>: "Web discovery found SQL injection" → route to <code>sql-injection-union</code> via <code>web-exploit-agent</code></li>
+<li><strong>Dynamic (RAG)</strong>: "Nmap found AJP on port 8009" → <code>search_skills("AJP connector")</code> → finds <code>ajp-ghostcat</code> → route via <code>web-exploit-agent</code></li>
+</ul>
+<p>The orchestrator validates search results before loading — a high similarity score doesn't guarantee relevance. The embedding model can confuse adjacent techniques (SSRF vs CSRF, IDOR vs ACL-abuse), so the orchestrator reads each result's description to confirm it matches the situation. If nothing fits, it proceeds with general methodology and notes the coverage gap.</p>
+<h3 id="context-passing">Context passing</h3>
+<p>When the orchestrator spawns an agent, it passes engagement context in the task prompt:</p>
+<ul>
+<li>Injection point details (URL, parameter, method)</li>
+<li>Target technology (framework, database, OS version)</li>
+<li>Working payloads from previous skills</li>
+<li>Credentials and access levels</li>
+</ul>
+<p>See <a href="../agents/">Agents</a> for the full agent model and routing table.</p>
+<h2 id="hard-stops">Hard Stops</h2>
+<p>The orchestrator has several points where it <strong>must</strong> pause for operator input:</p>
+<table>
+<thead>
+<tr>
+<th>Hard Stop</th>
+<th>When</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Scan type</strong></td>
+<td>Before reconnaissance</td>
+<td>Operator controls scan intensity and stealth</td>
+</tr>
+<tr>
+<td><strong>Hostname resolution</strong></td>
+<td>New hostnames discovered</td>
+<td><code>/etc/hosts</code> changes require sudo</td>
+</tr>
+<tr>
+<td><strong>Password spray intensity</strong></td>
+<td>New usernames discovered</td>
+<td>Spray intensity affects account lockout risk</td>
+</tr>
+<tr>
+<td><strong>Vhost resolution</strong></td>
+<td>Web discovery finds virtual hosts</td>
+<td>Same as hostname resolution</td>
+</tr>
+</tbody>
+</table>
+<p>Hard stops prevent the orchestrator from making high-impact decisions autonomously. The operator always controls scan intensity, credential spraying risk, and system-level changes.</p>
+<h2 id="chaining-logic">Chaining Logic</h2>
+<p>After each skill completes, the orchestrator runs a <strong>chaining analysis</strong> using <code>get_state_summary()</code>. It walks this decision tree:</p>
+<ol>
+<li><strong>Unexploited vulnerabilities?</strong> → Route to the matching technique skill</li>
+<li><strong>Shell access without root/admin?</strong> → Route to host discovery (Linux or Windows)</li>
+<li><strong>Untested credentials?</strong> → Test against all known services</li>
+<li><strong>Uncracked hashes?</strong> → Route to credential-cracking (inline)</li>
+<li><strong>Pivot paths available?</strong> → Route to the skill that exploits the pivot</li>
+<li><strong>Objectives met?</strong> → Post-exploitation and wrap-up</li>
+</ol>
+<p>This loop continues until objectives are met or all paths are exhausted. The pivot map in state tracks "what leads where" — a SQL injection that yields database credentials, credentials that work on a different host, a privilege escalation that enables DCSync.</p>
+<h2 id="recovery-paths">Recovery Paths</h2>
+<p>When agents hit obstacles, the orchestrator has structured recovery:</p>
+<h3 id="avedr-blocked">AV/EDR Blocked</h3>
+<p>When a payload is caught by antivirus:</p>
+<ol>
+<li>The technique agent stops and returns structured AV-blocked context</li>
+<li>The orchestrator spawns the <code>evasion-agent</code> with <code>av-edr-evasion</code></li>
+<li>The evasion agent builds a bypass payload (custom compilation, AMSI bypass, LOLBins)</li>
+<li>The orchestrator re-invokes the original skill with the AV-safe payload</li>
+<li>If no bypass works, the technique is recorded as blocked and the orchestrator moves to the next vector</li>
+</ol>
+<h3 id="clock-skew">Clock Skew</h3>
+<p>Kerberos authentication fails when clock skew exceeds 5 minutes:</p>
+<ol>
+<li>The orchestrator writes a <code>clock-sync.sh</code> script</li>
+<li>Pauses for the operator to sync clocks</li>
+<li>Re-invokes the skill after confirmation</li>
+</ol>
+<h3 id="dns-resolution-failure">DNS Resolution Failure</h3>
+<p>When tools fail on hostname resolution, the orchestrator follows the same hostname resolution hard stop pattern.</p>
+<h2 id="monitoring-during-engagement">Monitoring During Engagement</h2>
+<h3 id="dashboard">Dashboard</h3>
+<p>The <a href="../dashboard-and-monitoring/">agent dashboard</a> provides real-time visibility into what agents are doing. Run it in a separate terminal:</p>
+<div class="highlight"><pre><span></span><code>bash<span class="w"> </span>tools/agent-dashboard/dashboard.sh
+</code></pre></div>
+<h3 id="event-watcher">Event Watcher</h3>
+<p>The orchestrator spawns an event watcher (<code>tools/hooks/event-watcher.sh</code>) in the background to poll <code>state_events</code> for real-time findings from discovery agents. When a discovery agent writes a credential or vulnerability mid-run, the event watcher detects it and notifies the orchestrator.</p>
+<p>See <a href="../dashboard-and-monitoring/">Dashboard and Monitoring</a> for full details.</p>
+<h2 id="post-engagement">Post-Engagement</h2>
+<p>When objectives are met (or all paths exhausted), the orchestrator:</p>
+<ol>
+<li><strong>Collects evidence</strong> — ensures all findings are in <code>engagement/evidence/</code></li>
+<li><strong>Updates state</strong> — marks vulnerabilities as <code>done</code>, verifies access records</li>
+<li><strong>Verifies objectives</strong> — confirms flags captured, access achieved</li>
+<li><strong>Summarizes</strong> — produces an engagement summary with key findings</li>
+</ol>
+<h3 id="retrospective">Retrospective</h3>
+<p>The <code>retrospective</code> skill is how red-run gets better for <em>you</em> over time. After an engagement, it reads through everything that happened — the activity log, engagement state, findings, and the raw JSONL transcripts from every agent — and produces a structured analysis of what worked, what didn't, and what to fix.</p>
+<p>It evaluates five things:</p>
+<ol>
+<li>
+<p><strong>Skill routing</strong> — Did the orchestrator pick the right skills? Were any skills skipped that should have been used? Was anything executed inline (without loading a skill) that a skill already covers? This produces a routing ledger showing every decision and whether it was correct.</p>
+</li>
+<li>
+<p><strong>Knowledge gaps</strong> — For each skill that was used, did it have the right payloads? Did the target hit edge cases the skill didn't cover? Were tool commands correct or did the agent have to improvise? Each gap becomes a specific edit to make.</p>
+</li>
+<li>
+<p><strong>Missing skills</strong> — Were techniques used manually that should be skills? It cross-references against the full skill inventory via <code>search_skills()</code> to distinguish actual coverage gaps from routing gaps (skill exists but wasn't used).</p>
+</li>
+<li>
+<p><strong>Operational review</strong> — Were OPSEC ratings respected? Were there unnecessary detours? Did the orchestrator chain vulnerabilities efficiently or miss shortcuts?</p>
+</li>
+<li>
+<p><strong>Critical path</strong> — Maps the actual kill chain and identifies bottlenecks where the engagement stalled.</p>
+</li>
+</ol>
+<p>The output is <code>engagement/retrospective.md</code> with a priority-ordered list of actionable items: skill updates, new skills to write, routing fixes, and template changes. After you review and pick which items to prioritize, the retrospective skill makes the edits directly — updating skill files, creating new skills from the template, fixing routing tables — and re-indexes the skill library so changes take effect immediately.</p>
+<p>This is the feedback loop that makes the skill library adapt to your targets and methodology. Skills ship as baseline templates; retrospectives refine them based on what you actually encounter.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "content.code.copy", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
