@@ -430,7 +430,7 @@ const TABLE_DEFS = [
     fmt: { ports: r => (r.ports||[]).map(p=>`${p.port}/${p.protocol} ${p.service}`).join(', ') }},
   { id: 'credentials', title: 'Credentials', key: 'credentials',
     cols: ['domain','username','secret_type','secret','cracked','source','tested'],
-    fmt: { secret: r => r.secret ? (r.secret.length > 24 ? r.secret.slice(0,24)+'...' : r.secret) : '',
+    fmt: { secret: r => r.secret || '',
            cracked: r => r.cracked ? 'yes' : '',
            tested: r => (r.tested_against||[]).map(t=>`${t.host}/${t.service}:${t.works?'OK':'FAIL'}`).join(', ') }},
   { id: 'access', title: 'Access', key: 'access',
@@ -439,7 +439,7 @@ const TABLE_DEFS = [
   { id: 'vulns', title: 'Vulns', key: 'vulns',
     cols: ['title','severity','status','host','endpoint','vuln_type','details'],
     fmt: { severity: r => `<span class="badge sev-${r.severity}">${r.severity}</span>`,
-           details: r => r.details ? (r.details.length > 60 ? r.details.slice(0,60)+'...' : r.details) : '' }},
+           details: r => r.details || '' }},
   { id: 'pivot_map', title: 'Pivot Map', key: 'pivot_map',
     cols: ['source','destination','method','status'],
     fmt: { status: r => `<span class="status-${r.status}">${r.status}</span>` }},
@@ -503,19 +503,20 @@ function renderTables() {
   container.innerHTML = html;
 }
 
-// Show tooltip only when cell content is clipped by line-clamp
+// Show tooltip when cell content is clipped (by line-clamp or JS truncation)
 document.addEventListener('mouseenter', e => {
   const cell = e.target.closest('.cell[data-tip]');
   if (!cell) return;
   const td = cell.parentElement;
-  // Temporarily remove clamp to measure true height
-  const origDisplay = cell.style.display;
-  const origClamp = cell.style.webkitLineClamp;
+  const tip = cell.dataset.tip;
+  const visible = cell.textContent;
+  // Check 1: JS formatter truncated the text (tip is longer than displayed)
+  if (tip.length > visible.length + 3) { td.title = tip; return; }
+  // Check 2: CSS line-clamp is hiding lines
   cell.style.webkitLineClamp = 'unset';
   const full = cell.scrollHeight;
-  cell.style.webkitLineClamp = origClamp || '';
-  const clamped = cell.clientHeight;
-  td.title = (full > clamped + 2) ? cell.dataset.tip : '';
+  cell.style.webkitLineClamp = '';
+  td.title = (full > cell.clientHeight + 2) ? tip : '';
 }, true);
 
 function getCellValue(row, col, def) {
