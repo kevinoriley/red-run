@@ -578,12 +578,14 @@ function renderGraph() {
 
   // Credentials — pre-provided creds link from Attacker
   const providedPattern = /\b(provided|scope|pre-engagement|given|initial|pentest)\b/i;
+  const providedCredIds = new Set(); // cred IDs that are pre-provided
   for (const c of state.credentials) {
     const label = c.domain ? `${c.domain}\\${c.username}` : c.username;
     const sub = c.secret_type + (c.cracked ? ' (cracked)' : '');
     addNode(`cred:${c.id}`, 'cred', label, sub, `${c.secret_type}${c.cracked?' (cracked)':''}\nsource: ${c.source}`);
     if (c.source && providedPattern.test(c.source)) {
       edges.push({ from: 'attacker', to: `cred:${c.id}`, style: 'confirmed' });
+      providedCredIds.add(c.id);
       continue;
     }
     let linked = false;
@@ -605,7 +607,7 @@ function renderGraph() {
   }
 
   // Access
-  const credLinkedAccess = []; // track access nodes linked via creds for host bridging
+  const hostsViaProvidedCred = new Set(); // hosts reached via provided creds
   for (const a of state.access) {
     const label = `${a.username}@${a.host}`;
     const sub = `${a.access_type} | ${a.privilege}`;
@@ -613,10 +615,17 @@ function renderGraph() {
     let linked = false;
     for (const c of state.credentials) {
       const cLabel = c.domain ? `${c.domain}\\${c.username}` : c.username;
-      if (a.username && (a.username === c.username || a.username === cLabel)) {
+      if (a.username && (a.username === c.username || a.username === cLabel ||
+          a.method && a.method.toLowerCase().includes(c.username.toLowerCase()))) {
         edges.push({ from: `cred:${c.id}`, to: `access:${a.id}`, style: a.active ? 'confirmed' : 'blocked' });
         linked = true;
-        credLinkedAccess.push({ accessId: `access:${a.id}`, host: a.host });
+        // Track provided-cred chain: access -> host bridge needed
+        if (providedCredIds.has(c.id)) {
+          hostsViaProvidedCred.add(a.host);
+          if (nodeMap[`host:${a.host}`]) {
+            edges.push({ from: `access:${a.id}`, to: `host:${a.host}`, style: 'confirmed' });
+          }
+        }
         break;
       }
     }
@@ -631,13 +640,6 @@ function renderGraph() {
       if (!vlinked) {
         edges.push({ from: `host:${a.host}`, to: `access:${a.id}`, style: a.active ? 'confirmed' : 'blocked' });
       }
-    }
-  }
-  // Bridge: cred-linked access -> host, so downstream nodes (vulns, pivots,
-  // blocked) that hang off the host node remain connected in the chain
-  for (const { accessId, host } of credLinkedAccess) {
-    if (nodeMap[`host:${host}`]) {
-      edges.push({ from: accessId, to: `host:${host}`, style: 'confirmed' });
     }
   }
 
@@ -661,24 +663,7 @@ function renderGraph() {
   // Blocked — tables only, not in graph
 
   // Connect attacker to initial targets (no inbound pivots)
-  // Skip hosts already reachable via provided-cred chain (attacker->cred->access on host)
-  const hostsViaProvidedCred = new Set();
-  for (const e of edges) {
-    if (e.from === 'attacker' && e.to.startsWith('cred:')) {
-      // Find access nodes this cred leads to
-      const credId = e.to;
-      for (const e2 of edges) {
-        if (e2.from === credId && e2.to.startsWith('access:')) {
-          // Find which host this access is on
-          const accNode = nodeMap[e2.to];
-          if (accNode) {
-            const atHost = accNode.label.split('@')[1];
-            if (atHost) hostsViaProvidedCred.add(atHost);
-          }
-        }
-      }
-    }
-  }
+  // Skip hosts already reachable via provided-cred chain
   for (const t of state.targets) {
     if (!pivotDests.has(t.host) && !hostsViaProvidedCred.has(t.host)) {
       edges.push({ from: 'attacker', to: `host:${t.host}`, style: 'confirmed' });
@@ -746,6 +731,14 @@ function renderGraph() {
   const nodeW = 180, nodeH = 44, layerGap = 230, rowGap = 60, padX = 60, padY = 40;
   const positions = {};
 
+  // Build reverse adjacency for barycenter ordering
+  const radj = {};
+  for (const n of nodes) radj[n.id] = [];
+  for (const e of edges) {
+    if (radj[e.to]) radj[e.to].push(e.from);
+  }
+
+  // First pass: assign initial positions
   for (let l = 0; l <= maxLayer; l++) {
     const group = layers[l] || [];
     const x = padX + l * layerGap;
@@ -754,6 +747,29 @@ function renderGraph() {
     group.forEach((n, i) => {
       positions[n.id] = { x, y: startY + i * rowGap, w: nodeW, h: nodeH };
     });
+  }
+
+  // Barycenter ordering: sort nodes in each layer by average Y of neighbors
+  // in previous layer to reduce edge crossings. Run 3 passes.
+  for (let pass = 0; pass < 3; pass++) {
+    for (let l = 1; l <= maxLayer; l++) {
+      const group = layers[l] || [];
+      group.forEach(n => {
+        const parents = (radj[n.id] || []).filter(pid => positions[pid]);
+        if (parents.length) {
+          n._bary = parents.reduce((s, pid) => s + positions[pid].y, 0) / parents.length;
+        } else {
+          n._bary = positions[n.id].y;
+        }
+      });
+      group.sort((a, b) => a._bary - b._bary);
+      const x = padX + l * layerGap;
+      const totalH = group.length * rowGap;
+      const startY = padY + Math.max(0, (300 - totalH) / 2);
+      group.forEach((n, i) => {
+        positions[n.id].y = startY + i * rowGap;
+      });
+    }
   }
 
   const svgW = padX * 2 + (maxLayer + 1) * layerGap;
