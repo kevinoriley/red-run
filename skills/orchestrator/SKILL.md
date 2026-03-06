@@ -836,7 +836,7 @@ Two safety checks before any agent spawns in pentest mode:
 
 #### 1. Permission Mode Check
 
-Ask the operator to confirm they are NOT in yolo mode:
+Soft check — Claude cannot detect its own permission mode. Ask the operator:
 
 ```
 [orchestrator] Pentest mode requires normal permissions (not --dangerously-skip-permissions).
