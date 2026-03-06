@@ -420,21 +420,13 @@ outbound internet traffic:
 ```bash
 ping -c 1 -W 2 1.1.1.1
 ```
-- **Ping fails** (exit code non-zero) → firewall is active, proceed
-- **Ping succeeds** (exit code 0) → firewall is DOWN, hard stop:
+- **Ping fails** → firewall is active, proceed
+- **Ping succeeds** → firewall is DOWN, hard stop:
 ```
-[orchestrator] HARD STOP — engagement firewall is down (pentest mode)
-
-Outbound internet access detected (ping 1.1.1.1 succeeded). The nftables
-firewall is not active. This can happen after a reboot or manual teardown.
+[orchestrator] HARD STOP — firewall down
 
 Re-activate: sudo bash tools/firewall/firewall.sh
-
-Confirm when active.
 ```
-
-This catches the firewall going down mid-engagement. One command, near-zero
-tokens.
 
 #### Orchestrator Loop
 
@@ -856,34 +848,24 @@ with `claude` or switch to CTF mode.
 
 #### 2. Firewall Check
 
-The engagement firewall must be active. Check by pinging an external IP:
-
 ```bash
 ping -c 1 -W 2 1.1.1.1
 ```
 
-- **Ping fails** → firewall is active, proceed
-- **Ping succeeds** → firewall is DOWN, hard stop:
-
+- **Ping fails** → firewall active, proceed
+- **Ping succeeds** → hard stop:
 ```
-[orchestrator] HARD STOP — engagement firewall required (pentest mode)
+[orchestrator] HARD STOP — firewall not active
 
-Outbound internet access detected (ping 1.1.1.1 succeeded). The engagement
-firewall must be active before proceeding.
-
-Edit scope targets in: tools/firewall/firewall.sh
-Then run: sudo bash tools/firewall/firewall.sh
-
-Confirm when active.
+Edit scope in tools/firewall/firewall.sh, then:
+sudo bash tools/firewall/firewall.sh
 ```
 
-Do NOT spawn any agents or continue the engagement until the operator
-confirms the firewall is active. After confirmation, re-run the ping check
-to verify it now fails. Log to `engagement/activity.md`:
+After operator confirms, re-run ping to verify. Log to `activity.md`:
 ```
 ### [YYYY-MM-DD HH:MM:SS] orchestrator → pentest gates verified
-- Permission mode: normal (not yolo)
-- Engagement firewall active
+- Permission mode: normal
+- Firewall active
 ```
 
 ## Step 2: Reconnaissance
