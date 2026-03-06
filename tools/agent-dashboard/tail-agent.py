@@ -33,6 +33,35 @@ DIM = "\033[2m"
 RESET = "\033[0m"
 
 
+# ---------------------------------------------------------------------------
+# Firewall probe — ping 1.1.1.1 to check if outbound is blocked
+# ---------------------------------------------------------------------------
+
+import subprocess
+
+# Shared state: True = firewall active (ping blocked), False = firewall down (ping succeeded), None = unknown
+_firewall_ok: bool | None = None
+_firewall_lock = threading.Lock()
+
+
+def _firewall_probe_thread(stop_event: threading.Event) -> None:
+    """Ping 1.1.1.1 every 5s. If ping succeeds, firewall is DOWN (bad)."""
+    global _firewall_ok
+    while not stop_event.is_set():
+        try:
+            ret = subprocess.run(
+                ["ping", "-c", "1", "-W", "2", "1.1.1.1"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                timeout=4,
+            )
+            with _firewall_lock:
+                _firewall_ok = ret.returncode != 0  # ping failed = firewall blocking = good
+        except (subprocess.TimeoutExpired, OSError):
+            with _firewall_lock:
+                _firewall_ok = True  # timeout = blocked = good
+        stop_event.wait(5.0)
+
+
 def format_tool(name: str, inp: dict) -> tuple[str, str]:
     """Format a tool_use call into a compact one-liner."""
     if name == "mcp__shell-server__send_command":
@@ -589,6 +618,11 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
         threads.append(t)
         pane_map[pane.filepath] = (pane, t)
 
+    # Start firewall probe (always-on — operator can enable/disable firewall anytime)
+    fw_thread = threading.Thread(target=_firewall_probe_thread, args=(stop_event,), daemon=True)
+    fw_thread.start()
+    threads.append(fw_thread)
+
     # Track agents file mtime for hot-reload
     last_mtime: float = 0.0
     if agents_file:
@@ -1000,6 +1034,25 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                             pass
 
             # --- Status bar ---
+            # Firewall indicator — drawn first, status text offset after it
+            fw_offset = 0
+            with _firewall_lock:
+                fw_state = _firewall_ok
+            if fw_state is None:
+                fw_text = " ?? FW "
+                fw_attr = curses.A_REVERSE | curses.A_DIM
+            elif fw_state:
+                fw_text = " \u25cf FW "
+                fw_attr = curses.color_pair(color_pairs["result"]) | curses.A_BOLD | curses.A_REVERSE
+            else:
+                fw_text = " \u25cf FW "
+                fw_attr = curses.color_pair(color_pairs["stopped"]) | curses.A_BOLD | curses.A_REVERSE
+            try:
+                stdscr.addnstr(max_y - 1, 0, fw_text, max_x - 1, fw_attr)
+                fw_offset = len(fw_text)
+            except curses.error:
+                pass
+
             if browser_open:
                 n = len(browser_items)
                 status = f" Agent Browser: {n} agent{'s' if n != 1 else ''}  |  ● = in dashboard  |  Space: toggle  j/k: navigate  b/Esc: close  q: quit "
@@ -1019,10 +1072,14 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                 status = " No panes  |  b: browse agents  q: quit "
                 status_attr = curses.A_REVERSE
 
-            status = status[:max_x - 1]
+            remaining = max_x - 1 - fw_offset - len(fw_text)
+            status = status[:remaining]
             try:
-                stdscr.addnstr(max_y - 1, 0, status.ljust(max_x - 1), max_x - 1,
+                stdscr.addnstr(max_y - 1, fw_offset, status.ljust(remaining), remaining,
                                status_attr)
+                # Right-side firewall indicator (mirror)
+                right_x = fw_offset + remaining
+                stdscr.addnstr(max_y - 1, right_x, fw_text, len(fw_text), fw_attr)
             except curses.error:
                 pass
 
