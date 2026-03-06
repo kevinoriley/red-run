@@ -49,7 +49,7 @@ See also: [ARCHITECTURE.md](ARCHITECTURE.md) for Mermaid diagrams, [SKILLS.md](S
 
 The installer sets up the orchestrator, agents, and MCP servers, and indexes `skills/` into ChromaDB for semantic retrieval. The repo must stay in place — skill-router reads from `skills/` at runtime.
 
-Run from a VM or dedicated pentesting machine. See [Installation docs](https://blacklanternsecurity.github.io/red-run/installation/) for sandbox configuration and troubleshooting.
+Run from a VM or dedicated pentesting machine. See [Installation docs](https://blacklanternsecurity.github.io/red-run/installation/) for firewall setup and troubleshooting.
 
 ## State Viewer
 
@@ -71,9 +71,12 @@ See `tools/state-viewer/README.md` for details.
 
 ## Permission Mode
 
-red-run **requires** `claude --dangerously-skip-permissions` (yolo mode). Subagents work autonomously — running shell commands, MCP tool calls, and network operations as part of each skill invocation. In regular permission mode, background agents cannot surface permission prompts to the operator; tool calls are silently denied and agents stall.
+red-run supports two engagement modes:
 
-The orchestrator presents every routing decision for operator approval before spawning agents. You choose what to run — agents handle execution.
+- **Pentest mode** (`claude`) — Technique skills run inline with normal permission prompts. Discovery skills delegate to autonomous agents. Engagement firewall required.
+- **CTF mode** (`claude --dangerously-skip-permissions`) — All skills delegate to autonomous agents. No firewall required. The orchestrator still presents routing decisions for operator approval.
+
+The orchestrator asks which mode to use when initializing a new engagement.
 
 red-run is a **proof of concept** tested only in CTF environments. Do not use it in production engagements. Run from an isolated VM or dedicated pentesting machine. You are responsible for containing Claude on your systems and for any legal consequences under the CFAA or equivalent legislation.
 

@@ -211,10 +211,7 @@ The orchestrator reads this summary and makes the next routing decision.
 
 - Run `date '+%Y-%m-%d %H:%M:%S'` for real timestamps — never write placeholder
   text.
-- When running Bash commands against network targets, always use
-  `dangerouslyDisableSandbox: true` — the bwrap sandbox blocks network sockets.
-- MCP tool calls (get_skill) do NOT need the sandbox flag.
-- Before `git clone` or `pip install`, check if the tool exists locally: `which <tool>` or `find /opt /usr/share /usr/local -name '<tool>' -type f`. Only download if genuinely missing.
+- **NEVER download, clone, or install tools.** If a required tool is not installed on the attackbox, STOP immediately. Return with: which tool is missing, what it's needed for, and the install command for the operator. Do not attempt workarounds — the operator's toolset is the only toolset.
 - **Share spidering**: Use `manspider` for content search (keyword matching,
   regex, file type filtering). It's installed on the attackbox
   (`~/.local/bin/manspider`) and runs via Bash. Use `nxc smb --shares` for

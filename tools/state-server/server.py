@@ -119,6 +119,11 @@ def register_read_tools(mcp: FastMCP) -> None:
 
         sections: list[str] = ["# Engagement State\n"]
 
+        # Engagement metadata
+        eng = conn.execute("SELECT name, status, created_at, mode FROM engagement WHERE id = 1").fetchone()
+        if eng:
+            sections.append(f"**Mode: {eng['mode']}** | Status: {eng['status']} | Created: {eng['created_at']}\n")
+
         # Targets
         sections.append("## Targets\n")
         targets = conn.execute(
@@ -594,7 +599,7 @@ def register_write_tools(mcp: FastMCP) -> None:
     """Register write tools on the MCP server (orchestrator only)."""
 
     @mcp.tool()
-    def init_engagement(name: str = "") -> str:
+    def init_engagement(name: str = "", mode: str = "ctf") -> str:
         """Initialize the engagement state database.
 
         Creates engagement/state.db with the full schema. Safe to call
@@ -602,7 +607,10 @@ def register_write_tools(mcp: FastMCP) -> None:
 
         Args:
             name: Optional engagement name.
+            mode: Engagement mode — 'ctf' (default) or 'pentest'.
         """
+        if mode not in ("ctf", "pentest"):
+            return json.dumps({"error": f"Invalid mode '{mode}'. Must be 'ctf' or 'pentest'."})
         DB_PATH.parent.mkdir(parents=True, exist_ok=True)
         conn = init_db(DB_PATH)
         # Insert singleton engagement row if not exists
@@ -611,13 +619,18 @@ def register_write_tools(mcp: FastMCP) -> None:
         ).fetchone()
         if not existing:
             conn.execute(
-                "INSERT INTO engagement (id, name) VALUES (1, ?)",
-                (name,),
+                "INSERT INTO engagement (id, name, mode) VALUES (1, ?, ?)",
+                (name, mode),
             )
-        elif name:
+        else:
+            updates = ["mode = ?"]
+            params: list[str] = [mode]
+            if name:
+                updates.append("name = ?")
+                params.append(name)
             conn.execute(
-                "UPDATE engagement SET name = ? WHERE id = 1",
-                (name,),
+                f"UPDATE engagement SET {', '.join(updates)} WHERE id = 1",
+                params,
             )
         conn.commit()
         conn.close()
@@ -625,6 +638,7 @@ def register_write_tools(mcp: FastMCP) -> None:
             "status": "initialized",
             "db_path": str(DB_PATH),
             "name": name,
+            "mode": mode,
         }, indent=2)
 
     @mcp.tool()

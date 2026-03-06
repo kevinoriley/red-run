@@ -150,9 +150,4 @@ skill with your payload.
 
 - Run `date '+%Y-%m-%d %H:%M:%S'` for real timestamps — never write placeholder
   text.
-- Compilation commands run locally on the attackbox — use the default Bash
-  sandbox (no `dangerouslyDisableSandbox` needed for local compilation).
-- When transferring payloads to target or using network tools, use
-  `dangerouslyDisableSandbox: true` — the bwrap sandbox blocks network sockets.
-- MCP tool calls (get_skill, send_command) do NOT need the sandbox flag.
-- Before `git clone` or `pip install`, check if the tool exists locally: `which <tool>` or `find /opt /usr/share /usr/local -name '<tool>' -type f`. Only download if genuinely missing.
+- **NEVER download, clone, or install tools.** If a required tool is not installed on the attackbox, STOP immediately. Return with: which tool is missing, what it's needed for, and the install command for the operator. Do not attempt workarounds — the operator's toolset is the only toolset.

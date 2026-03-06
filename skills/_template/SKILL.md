@@ -69,26 +69,37 @@ and records state changes. Your return summary must include:
 - Pivot paths identified (what leads where)
 - Blocked items (what failed and why, whether retryable)
 
-## Tool Discovery (Local-First)
+## Tool Requirements (Local-Only)
 
-Before downloading, cloning, or installing any tool, **check if it already
-exists on the attackbox.** Pentest distros (Kali, Parrot, BlackArch) and
-manually-installed toolkits often have everything you need.
+**NEVER download, clone, install, or build tools.** The operator's attackbox
+has a curated toolset — do not modify it. This is an OPSEC requirement:
+downloading tools mid-engagement triggers traffic inspection alerts and burns
+the operation.
 
-```bash
-# Check if a tool is already installed
-which dnstool.py 2>/dev/null || find /opt /usr/share /usr/local -name 'dnstool.py' -type f 2>/dev/null | head -3
-```
+Prohibited actions:
+- `git clone` — any repository, any source
+- `pip install` / `pipx install` / `pip3 install` — any package
+- `npm install` / `go install` / `cargo install` — any package
+- `wget` / `curl -o` / `curl -O` — downloading files from the internet
+- `apt install` / `apt-get install` — system packages
+- Building tools from source that aren't already on the attackbox
 
-**Search order:**
-1. `which <tool>` or `command -v <tool>` — checks $PATH
-2. `find /opt /usr/share /usr/local -name '<tool>' -type f` — common install locations
-3. `pip show <package>` or `pipx list` — Python packages
-4. `/home/*/.local/bin/`, `/usr/share/doc/python3-*/examples/` — pip/distro installs
+If a tool required by this skill is not installed:
+1. **STOP immediately** — do not attempt workarounds or alternative tools
+2. Return to the orchestrator with:
+   - Which tool is missing
+   - What it's needed for
+   - The command that would install it (so the operator can review and run it)
+3. The orchestrator presents this to the operator as a hard stop
 
-**Only clone or download if the tool is genuinely not present.** Every
-unnecessary `git clone` wastes time, burns tokens, and may clone a different
-version than what's already installed and tested.
+**Check if a tool exists before reporting it missing:**
+
+    which <tool> 2>/dev/null || find /opt /usr/share /usr/local ~/.local/bin \
+        -name '<tool>' -type f 2>/dev/null | head -3
+
+Tools provided via MCP (nmap, shell-server commands) and tools inside the
+red-run Docker containers (evil-winrm, impacket, Responder, etc.) are always
+available — do not check for these.
 
 ## Exploit and Tool Transfer
 

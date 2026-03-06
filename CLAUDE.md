@@ -241,16 +241,26 @@ The MCP indexer builds embedding documents from these structured fields. `descri
 
 ## Permission Mode
 
-red-run requires `--dangerously-skip-permissions` (yolo mode). Subagents work
-autonomously — running shell commands and MCP calls as part of each skill
-invocation. In regular permission mode, background agents cannot surface
-permission prompts to the operator; tool calls are silently denied and agents
-stall. The orchestrator's approval gates (operator confirms every routing
-decision before agent spawn) provide the human-in-the-loop control.
+red-run supports two permission modes depending on engagement type:
 
-## Sandbox
+- **Pentest mode** — Run `claude` (normal permission mode). Technique skills
+  execute inline in the main thread with standard permission prompts — the
+  operator approves every command. Discovery skills are delegated to agents
+  with `mode: "bypassPermissions"` (they need autonomy for enumeration).
+- **CTF mode** — Run `claude --dangerously-skip-permissions`. All skills are
+  delegated to autonomous agents. The orchestrator's approval gates (operator
+  confirms every routing decision before agent spawn) provide human-in-the-loop
+  control.
 
-The bwrap sandbox blocks network socket creation. Users must configure their global `~/.claude/CLAUDE.md` to disable sandbox for network tools — see README.md "Sandbox and network commands" for the setup.
+Agent spawns always set `mode: "bypassPermissions"` explicitly on the Agent
+tool call, decoupling agent autonomy from the main session's permission mode.
+
+## Engagement Firewall
+
+In pentest mode, the orchestrator requires an active nftables firewall that
+restricts outbound traffic to Anthropic API + scope targets. Static scripts
+live in `tools/engagement-firewall/`. The operator edits scope and runs with
+sudo. See `tools/engagement-firewall/README.md` and docs/architecture.md.
 
 ## Installation
 

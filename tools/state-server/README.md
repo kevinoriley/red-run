@@ -95,7 +95,7 @@ write conflicts with the orchestrator are prevented by the busy timeout.
 
 | Tool | Parameters | Description |
 |------|-----------|-------------|
-| `init_engagement` | `name` (optional) | Create state.db with full schema |
+| `init_engagement` | `name` (optional), `mode` (optional, default 'ctf') | Create state.db with full schema |
 | `close_engagement` | (none) | Mark engagement as closed |
 | `add_target` | `host` (required), `os`, `role`, `notes`, `ports` (JSON) | Add or update a target host (upserts on host) |
 | `update_target` | `host` (required), `os`, `role`, `notes` | Update fields on an existing target |
@@ -119,7 +119,7 @@ The database has 10 tables:
 
 | Table | Purpose |
 |-------|---------|
-| `engagement` | Singleton row — engagement name, status, timestamps |
+| `engagement` | Singleton row — engagement name, status, mode (`ctf` or `pentest`), timestamps |
 | `targets` | Host IPs/hostnames, OS, role |
 | `ports` | Per-target ports, services, banners (1:many from targets) |
 | `credentials` | Username/secret pairs with type (password, ntlm_hash, ssh_key, etc.) |

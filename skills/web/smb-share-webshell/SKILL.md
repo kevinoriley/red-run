@@ -89,14 +89,24 @@ and records state changes. Your return summary must include:
 - Pivot paths identified (what leads where)
 - Blocked items (what failed and why, whether retryable)
 
-## Tool Discovery (Local-First)
+## Tool Requirements (Local-Only)
 
-Before downloading, cloning, or installing any tool, **check if it already
-exists on the attackbox.**
+**NEVER download, clone, install, or build tools.** The operator's attackbox
+has a curated toolset — do not modify it.
 
-```bash
-which smbclient 2>/dev/null || find /opt /usr/share /usr/local -name 'smbclient' -type f 2>/dev/null | head -3
-```
+If a tool required by this skill is not installed:
+1. **STOP immediately** — do not attempt workarounds or alternative tools
+2. Return to the orchestrator with: which tool is missing, what it's needed
+   for, and the install command for the operator
+
+**Check if a tool exists before reporting it missing:**
+
+    which <tool> 2>/dev/null || find /opt /usr/share /usr/local ~/.local/bin \
+        -name '<tool>' -type f 2>/dev/null | head -3
+
+Tools provided via MCP (nmap, shell-server commands) and tools inside the
+red-run Docker containers (evil-winrm, impacket, Responder, etc.) are always
+available — do not check for these.
 
 ## Prerequisites
 

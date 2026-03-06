@@ -11,6 +11,7 @@ red-run requires the following installed:
 | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | CLI host for skills, agents, and MCP servers | `npm install -g @anthropic-ai/claude-code` |
 | [uv](https://docs.astral.sh/uv/) | Python package manager for MCP servers | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | [Docker](https://docs.docker.com/engine/install/) | Containerized nmap and pentest toolbox | See Docker docs |
+| [nftables](https://wiki.nftables.org/) | Engagement network firewall (pentest mode) | Ubuntu/Debian/Kali: `sudo apt install nftables` — Arch: `sudo pacman -S nftables` |
 
 
 ## Install
@@ -53,22 +54,6 @@ Symlink mode is recommended for development — changes to skills and agents in 
 
 > **Repo must stay in place:** Regardless of install mode, the repo directory must remain accessible. The skill-router MCP server reads skill files from `skills/` at runtime, and all MCP servers are launched from the `tools/` directory via `.mcp.json`.
 
-## Sandbox configuration
-
-Claude Code's bwrap sandbox blocks network socket creation. Since pentesting tools need network access, add a sandbox exception to your global `~/.claude/CLAUDE.md`:
-
-```markdown
-## Sandbox
-
-Always use `dangerouslyDisableSandbox: true` for commands that make network
-connections: nmap, ping, netexec, curl, wget, sqlmap, impacket-*, certipy,
-bloodyAD, ffuf, nuclei, httpx, responder, tcpdump, ssh, smbclient, ldapsearch,
-crackmapexec, gobuster, hydra, chisel, ligolo, socat, nc, python3 -m http.server.
-
-For everything else (file reads, writes, local processing, hash cracking),
-keep sandbox enabled.
-```
-
 ### Hardening with permission denies
 
 red-run is [designed so Claude never needs sudo](architecture.md#privilege-boundaries) — nmap and Responder run inside Docker containers, and system changes like `/etc/hosts` are hard stops that require operator action. You can enforce this by denying `sudo` in `~/.claude/settings.json`:
@@ -89,20 +74,41 @@ red-run is [designed so Claude never needs sudo](architecture.md#privilege-bound
 
 The `Bash(sudo *)` rule makes Claude Code refuse any Bash command starting with `sudo`. The other rules block common destructive commands. See the [Trail of Bits Claude Code hardening guide](https://blog.trailofbits.com/2025/07/10/securing-claude-code/) for the full recommended configuration.
 
+## Engagement firewall
+
+In pentest mode, the orchestrator requires an active nftables firewall before spawning agents. The firewall restricts outbound traffic to Anthropic API endpoints and in-scope targets — everything else is blocked at the OS level.
+
+Edit the scope and activate:
+
+    sudo bash tools/engagement-firewall/firewall.sh
+
+See `tools/engagement-firewall/README.md` for details and live target additions.
+
 ## Running
 
 Start Claude Code from the red-run repo directory:
+
+**Pentest mode** (recommended for client work):
 
 ```bash
 cd red-run
 claude
 ```
 
+Technique skills run inline with normal permission prompts — the operator approves every command. Discovery skills are delegated to autonomous agents. The engagement firewall must be active (see above).
+
+**CTF mode** (labs, CTFs, authorized testing):
+
+```bash
+cd red-run
+claude --dangerously-skip-permissions
+```
+
+All skills are delegated to autonomous agents. No firewall required. The orchestrator still presents routing decisions for operator approval before spawning each agent.
+
 The MCP servers start automatically via `.mcp.json`. Give the orchestrator a target:
 
 > "Scan and attack 10.10.10.5"
-
-> **Required:** Run with `claude --dangerously-skip-permissions` (yolo mode). Subagents work autonomously and cannot surface permission prompts in regular mode — tool calls are silently denied and agents stall. The orchestrator still requires operator approval before spawning each agent, but does not require approval for every agent tool invocation.
 
 ## Uninstall
 

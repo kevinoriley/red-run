@@ -134,15 +134,6 @@ The orchestrator reads this summary and makes the next routing decision.
 
 - Run `date '+%Y-%m-%d %H:%M:%S'` for real timestamps — never write placeholder
   text.
-- **Sandbox and file access**: The Claude Code sandbox may block reading system
-  paths like `/usr/share/wordlists/`, `/usr/share/seclists/`, `/opt/`, and
-  running hashcat/john. **Always use `dangerouslyDisableSandbox: true`** for:
-  - Listing or reading wordlists (`ls /usr/share/wordlists/`, `wc -l rockyou.txt`)
-  - Running hashcat or john (they read wordlists and write session/pot files)
-  - Running `*2john` extraction tools
-  - Any `find` or `locate` commands searching for system files
-  This is safe because all cracking operations are local — no network traffic.
-- MCP tool calls (get_skill, get_state_summary) do NOT need the sandbox flag.
-- Before `git clone` or `pip install`, check if the tool exists locally: `which <tool>` or `find /opt /usr/share /usr/local -name '<tool>' -type f`. Only download if genuinely missing.
+- **NEVER download, clone, or install tools.** If a required tool is not installed on the attackbox, STOP immediately. Return with: which tool is missing, what it's needed for, and the install command for the operator. Do not attempt workarounds — the operator's toolset is the only toolset.
 - hashcat session files may need `$TMPDIR` as the working directory if the
   default session path is not writable.

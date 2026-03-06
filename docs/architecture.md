@@ -189,6 +189,7 @@ The tools that require elevated privileges are isolated behind MCP servers and D
 | Responder, mitm6, tcpdump | shell-server's `privileged=True` runs commands in the `red-run-shell` Docker container with `NET_RAW`/`NET_ADMIN` capabilities | These daemons need raw sockets for poisoning/sniffing, but the privilege stays inside the container |
 | `/etc/hosts` changes | Orchestrator hits a **hard stop** — presents the hostnames and asks the operator to add them manually | DNS resolution changes affect the entire system, not just the engagement |
 | Clock skew correction | Orchestrator hits a **hard stop** — shows the required `ntpdate` or `faketime` command for the operator to run | System clock changes affect every process on the machine |
+| Outbound network access | Engagement firewall (`tools/engagement-firewall/`) blocks all outbound except Anthropic API + scope targets via nftables. Orchestrator verifies before every agent spawn in pentest mode | Internet access from the attackbox could leak engagement data or trigger non-scope traffic |
 
 The pattern is consistent: if something needs elevated privilege, either it runs inside a container that has the specific capability, or the orchestrator stops and asks the operator to do it. Claude never runs `sudo` itself.
 
@@ -207,3 +208,23 @@ You can enforce this at the Claude Code level by adding `Bash(sudo *)` to the de
 ```
 
 This comes from the [Trail of Bits Claude Code hardening guide](https://blog.trailofbits.com/2025/07/10/securing-claude-code/), which has other useful deny rules for destructive commands (`rm -rf`, `git push --force`, `dd`, etc.). See [Installation](installation.md) for the recommended setup.
+
+## Network Isolation
+
+In pentest mode, the orchestrator enforces an OS-level network firewall before spawning any agents. The firewall uses nftables to restrict outbound traffic:
+
+| Allowed | Why |
+|---------|-----|
+| Loopback (`lo`) | MCP servers, local listeners, inter-process communication |
+| Established/related | Return traffic for accepted connections |
+| DNS (system resolver) | Name resolution for scope targets |
+| Anthropic API (`160.79.104.0/23`, `2607:6bc0::/48`) | Claude Code functionality |
+| Scope targets (operator-defined) | Engagement targets only |
+
+Everything else is dropped. This prevents agents from reaching the internet — no tool downloads, no data exfiltration, no out-of-scope traffic.
+
+The firewall is a static nftables ruleset in `tools/engagement-firewall/`. The operator edits the scope array and runs with sudo. The orchestrator checks for the `inet redrun` table before every agent spawn — if the firewall goes down mid-engagement (reboot, manual teardown), the orchestrator stops.
+
+Anthropic API IPs are published at the [Anthropic IP addresses page](https://docs.anthropic.com/en/api/ip-addresses) and are stable ("will not change without notice").
+
+In CTF mode, the firewall is not required — the orchestrator skips the check.

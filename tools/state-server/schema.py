@@ -9,7 +9,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 SCHEMA_SQL = """\
 PRAGMA journal_mode=WAL;
@@ -21,7 +21,9 @@ CREATE TABLE IF NOT EXISTS engagement (
     created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     closed_at   TEXT,
     status      TEXT NOT NULL DEFAULT 'active'
-                CHECK (status IN ('active', 'closed'))
+                CHECK (status IN ('active', 'closed')),
+    mode        TEXT NOT NULL DEFAULT 'ctf'
+                CHECK (mode IN ('ctf', 'pentest'))
 );
 
 CREATE TABLE IF NOT EXISTS targets (
@@ -216,6 +218,16 @@ def _migrate_v2_to_v3(conn: sqlite3.Connection) -> None:
         """)
 
 
+def _migrate_v4_to_v5(conn: sqlite3.Connection) -> None:
+    """Migrate schema from v4 to v5: add mode column to engagement."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(engagement)").fetchall()]
+    if "mode" not in cols:
+        conn.execute(
+            "ALTER TABLE engagement ADD COLUMN mode TEXT NOT NULL DEFAULT 'ctf'"
+        )
+    conn.commit()
+
+
 def _migrate_v3_to_v4(conn: sqlite3.Connection) -> None:
     """Migrate schema from v3 to v4: add via_access_id to credentials and vulns.
 
@@ -248,6 +260,8 @@ def init_db(db_path: str | Path) -> sqlite3.Connection:
         _migrate_v2_to_v3(conn)
     if current_version <= 3:
         _migrate_v3_to_v4(conn)
+    if current_version <= 4:
+        _migrate_v4_to_v5(conn)
 
     conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     conn.commit()
