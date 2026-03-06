@@ -318,6 +318,10 @@ marker polygon { stroke: none; }
 .tooltip { position: absolute; background: var(--bg3); border: 1px solid var(--border);
   border-radius: 4px; padding: 6px 10px; font-size: 11px; pointer-events: none;
   display: none; z-index: 10; max-width: 300px; white-space: pre-wrap; }
+.refresh-btn { background: var(--bg3); color: var(--dim); border: 1px solid var(--border);
+  border-radius: 4px; padding: 3px 10px; font-family: inherit; font-size: 11px;
+  cursor: pointer; vertical-align: middle; }
+.refresh-btn:hover { color: var(--accent); border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -328,7 +332,7 @@ marker polygon { stroke: none; }
 <div class="cards" id="summary-cards"></div>
 
 <div class="section">
-  <h2 onclick="toggleSection('graph')">Kill-Chain Graph</h2>
+  <h2 onclick="toggleSection('graph')">Kill-Chain Graph <button class="refresh-btn" onclick="event.stopPropagation(); refreshAll()">Refresh</button></h2>
   <div id="graph-body" class="section-body">
     <div id="graph-container"><svg id="graph"></svg></div>
     <div class="tooltip" id="tooltip"></div>
@@ -337,6 +341,7 @@ marker polygon { stroke: none; }
 
 <div class="filter-bar">
   <input type="text" id="filter" placeholder="Filter across all tables..." oninput="applyFilter()">
+  <button class="refresh-btn" onclick="refreshAll()" style="margin-left:8px">Refresh</button>
 </div>
 
 <div id="tables"></div>
@@ -347,19 +352,29 @@ marker polygon { stroke: none; }
 let state = null;
 let sortState = {}; // tableId -> { col, asc }
 
+let graphDirty = false; // true when state updated via SSE but graph not yet redrawn
+
 const evtSource = new EventSource('/api/stream');
 evtSource.onmessage = (e) => {
   const data = JSON.parse(e.data);
-  if (data.type === 'state') { state = data.payload; render(); }
-  else if (data.type === 'events' && data.payload.length && state) {
-    // Merge new events at front
+  if (data.type === 'state') {
+    state = data.payload;
+    renderLight(); // cards + tables only, no graph rebuild
+    graphDirty = true;
+  } else if (data.type === 'events' && data.payload.length && state) {
     const ids = new Set(state.events.map(e => e.id));
     for (const ev of data.payload) { if (!ids.has(ev.id)) state.events.unshift(ev); }
     state.events = state.events.slice(0, 200);
+    renderLight();
+    graphDirty = true;
   }
   setConn(true);
 };
 evtSource.onerror = () => setConn(false);
+
+function refreshAll() {
+  fetch('/api/state').then(r=>r.json()).then(d => { state = d; render(); graphDirty = false; });
+}
 
 function setConn(ok) {
   const el = document.getElementById('conn');
@@ -368,13 +383,21 @@ function setConn(ok) {
 }
 
 // --- Rendering ---
-function render() {
+function showContent() {
   if (!state) return;
   const hasData = state.targets.length || state.vulns.length || state.credentials.length;
   document.getElementById('banner').style.display = (state.engagement || hasData) ? 'none' : 'block';
   document.getElementById('content').style.display = (state.engagement || hasData) ? '' : 'none';
+}
+function render() {
+  showContent();
   renderCards();
   renderGraph();
+  renderTables();
+}
+function renderLight() {
+  showContent();
+  renderCards();
   renderTables();
 }
 
@@ -511,31 +534,45 @@ function renderGraph() {
   }
 
   // Build nodes and edges
-  const nodes = []; // { id, type, label, detail, layer }
+  const nodes = []; // { id, type, label, sub, detail, layer }
   const edges = []; // { from, to, style }
   const nodeMap = {};
 
-  function addNode(id, type, label, detail) {
+  function addNode(id, type, label, sub, detail) {
     if (nodeMap[id]) return;
-    nodeMap[id] = { id, type, label, detail: detail||'', layer: 0 };
+    nodeMap[id] = { id, type, label, sub: sub||'', detail: detail||'', layer: 0 };
     nodes.push(nodeMap[id]);
   }
 
+  // Build a hostname lookup: IP -> role/notes for subtitle
+  const hostInfo = {};
+  for (const t of state.targets) {
+    const parts = [];
+    if (t.role) parts.push(t.role);
+    else if (t.os) parts.push(t.os);
+    hostInfo[t.host] = parts.join(' ');
+  }
+
   // Root attacker node
-  addNode('attacker', 'attacker', 'Attacker', '');
+  addNode('attacker', 'attacker', 'Attacker', '', '');
   nodeMap['attacker'].layer = 0;
 
   // Targets (hosts)
   const pivotDests = new Set(state.pivot_map.map(p => p.destination));
   for (const t of state.targets) {
     const ports = (t.ports||[]).map(p=>`${p.port}/${p.service||p.protocol}`).join(', ');
-    addNode(`host:${t.host}`, 'host', t.host, `${t.os} ${t.role}\n${ports}`.trim());
+    const sub = t.role || t.os || '';
+    addNode(`host:${t.host}`, 'host', t.host, sub, `${t.os} ${t.role}\n${ports}`.trim());
   }
 
   // Vulns
+  const sevColors = { critical:'#f85149', high:'#d29922', medium:'#e3b341', low:'#58a6ff', info:'#8b949e' };
   for (const v of state.vulns) {
     const host = v.host || 'unknown';
-    addNode(`vuln:${v.id}`, 'vuln', v.title, `${v.severity} | ${v.status}\n${v.endpoint}\n${v.details||''}`.trim());
+    const sub = v.severity.toUpperCase();
+    addNode(`vuln:${v.id}`, 'vuln', v.title, sub, `${v.severity} | ${v.status}\n${v.endpoint}\n${v.details||''}`.trim());
+    // Store severity for coloring
+    nodeMap[`vuln:${v.id}`].severity = v.severity;
     if (nodeMap[`host:${host}`]) {
       edges.push({ from: `host:${host}`, to: `vuln:${v.id}`, style: 'pending' });
     }
@@ -544,8 +581,8 @@ function renderGraph() {
   // Credentials
   for (const c of state.credentials) {
     const label = c.domain ? `${c.domain}\\${c.username}` : c.username;
-    addNode(`cred:${c.id}`, 'cred', label, `${c.secret_type}${c.cracked?' (cracked)':''}\n${c.source}`);
-    // Link vuln -> cred if source mentions a vuln
+    const sub = c.secret_type + (c.cracked ? ' (cracked)' : '');
+    addNode(`cred:${c.id}`, 'cred', label, sub, `${c.secret_type}${c.cracked?' (cracked)':''}\n${c.source}`);
     let linked = false;
     for (const v of state.vulns) {
       if (c.source && (c.source.toLowerCase().includes(v.vuln_type.toLowerCase()) ||
@@ -555,7 +592,6 @@ function renderGraph() {
       }
     }
     if (!linked) {
-      // Link to first host that matches tested_against
       for (const ta of (c.tested_against||[])) {
         if (ta.works && nodeMap[`host:${ta.host}`]) {
           edges.push({ from: `host:${ta.host}`, to: `cred:${c.id}`, style: 'confirmed' });
@@ -568,8 +604,8 @@ function renderGraph() {
   // Access
   for (const a of state.access) {
     const label = `${a.username}@${a.host}`;
-    addNode(`access:${a.id}`, 'access', label, `${a.access_type} | ${a.privilege}\n${a.method}`);
-    // cred -> access
+    const sub = `${a.access_type} | ${a.privilege}`;
+    addNode(`access:${a.id}`, 'access', label, sub, `${a.access_type} | ${a.privilege}\n${a.method}`);
     let linked = false;
     for (const c of state.credentials) {
       const cLabel = c.domain ? `${c.domain}\\${c.username}` : c.username;
@@ -579,7 +615,6 @@ function renderGraph() {
       }
     }
     if (!linked && nodeMap[`host:${a.host}`]) {
-      // vuln -> access
       let vlinked = false;
       for (const v of state.vulns) {
         if (v.host === a.host && a.method && a.method.toLowerCase().includes(v.vuln_type.toLowerCase().slice(0,8))) {
@@ -593,10 +628,11 @@ function renderGraph() {
     }
   }
 
-  // Pivots
+  // Pivots — label with method, subtitle with src->dest
   for (const p of state.pivot_map) {
-    addNode(`pivot:${p.id}`, 'pivot', `pivot`, `${p.source} \u2192 ${p.destination}\n${p.method}`);
-    // access on source -> pivot
+    const label = p.method || 'pivot';
+    const sub = `${p.source} \u2192 ${p.destination}`;
+    addNode(`pivot:${p.id}`, 'pivot', label, sub, `${p.source} \u2192 ${p.destination}\n${p.method}\n${p.status}`);
     let srcLinked = false;
     for (const a of state.access) {
       if (a.host === p.source && a.active) {
@@ -607,16 +643,16 @@ function renderGraph() {
     if (!srcLinked && nodeMap[`host:${p.source}`]) {
       edges.push({ from: `host:${p.source}`, to: `pivot:${p.id}`, style: 'pending' });
     }
-    // pivot -> destination host
     if (nodeMap[`host:${p.destination}`]) {
       edges.push({ from: `pivot:${p.id}`, to: `host:${p.destination}`, style: p.status === 'exploited' ? 'confirmed' : 'pending' });
     }
   }
 
-  // Blocked
+  // Blocked — subtitle with reason (truncated)
   for (const b of state.blocked) {
     const host = b.host || 'unknown';
-    addNode(`blocked:${b.id}`, 'blocked', b.technique, `${b.reason}\nretry: ${b.retry}`);
+    const sub = b.reason.length > 20 ? b.reason.slice(0,18)+'..' : b.reason;
+    addNode(`blocked:${b.id}`, 'blocked', b.technique, sub, `${b.reason}\nretry: ${b.retry}`);
     if (nodeMap[`host:${host}`]) {
       edges.push({ from: `host:${host}`, to: `blocked:${b.id}`, style: 'blocked' });
     }
@@ -667,7 +703,7 @@ function renderGraph() {
   }
   const maxLayer = Math.max(...Object.keys(layers).map(Number));
 
-  const nodeW = 130, nodeH = 36, layerGap = 180, rowGap = 52, padX = 60, padY = 40;
+  const nodeW = 150, nodeH = 44, layerGap = 200, rowGap = 60, padX = 60, padY = 40;
   const positions = {};
 
   for (let l = 0; l <= maxLayer; l++) {
@@ -717,45 +753,114 @@ function renderGraph() {
     blocked: { fill: '#3d0d0d', stroke: '#f85149' },
   };
 
+  function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+  function escAttr(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+  function trunc(s, max) { return s.length > max ? s.slice(0, max-2)+'..' : s; }
+
   for (const n of nodes) {
     const p = positions[n.id];
     if (!p) continue;
     const c = colors[n.type] || colors.host;
-    const truncLabel = n.label.length > 18 ? n.label.slice(0,16)+'..' : n.label;
-    const escaped = truncLabel.replace(/&/g,'&amp;').replace(/</g,'&lt;');
-    const detailEsc = n.detail.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+    const label = esc(trunc(n.label, 20));
+    const sub = n.sub ? esc(trunc(n.sub, 24)) : '';
+    const detailEsc = escAttr(n.detail);
+    const hasSub = !!sub;
+    // Text Y positions: single line centered, two lines offset
+    const labelY = hasSub ? p.y + p.h/2 - 2 : p.y + p.h/2 + 4;
+    const subY = p.y + p.h/2 + 10;
+
+    // Severity-aware stroke for vulns
+    let stroke = c.stroke;
+    if (n.type === 'vuln' && n.severity && sevColors[n.severity]) {
+      stroke = sevColors[n.severity];
+    }
+    // Sub-label color
+    let subColor = '#8b949e';
+    if (n.type === 'vuln' && n.severity && sevColors[n.severity]) {
+      subColor = sevColors[n.severity];
+    }
 
     let shape;
     if (n.type === 'vuln') {
-      // Diamond
       const cx = p.x + p.w/2, cy = p.y + p.h/2, rx = p.w/2, ry = p.h/2;
-      shape = `<polygon points="${cx},${cy-ry} ${cx+rx},${cy} ${cx},${cy+ry} ${cx-rx},${cy}" fill="${c.fill}" stroke="${c.stroke}"/>`;
+      shape = `<polygon points="${cx},${cy-ry} ${cx+rx},${cy} ${cx},${cy+ry} ${cx-rx},${cy}" fill="${c.fill}" stroke="${stroke}"/>`;
     } else if (n.type === 'blocked') {
-      shape = `<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="3" fill="${c.fill}" stroke="${c.stroke}"/>`;
-      // X mark
-      const x1=p.x+2, y1=p.y+2, x2=p.x+p.h-2, y2=p.y+p.h-2;
-      shape += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c.stroke}" stroke-width="1.5"/>`;
-      shape += `<line x1="${x2}" y1="${y1}" x2="${x1}" y2="${y2}" stroke="${c.stroke}" stroke-width="1.5"/>`;
+      shape = `<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="3" fill="${c.fill}" stroke="${stroke}"/>`;
+      const x1=p.x+4, y1=p.y+4, x2=p.x+14, y2=p.y+14;
+      shape += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="2"/>`;
+      shape += `<line x1="${x2}" y1="${y1}" x2="${x1}" y2="${y2}" stroke="${stroke}" stroke-width="2"/>`;
     } else if (n.type === 'access') {
-      // Double border rect
-      shape = `<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="4" fill="${c.fill}" stroke="${c.stroke}"/>`;
-      shape += `<rect x="${p.x+3}" y="${p.y+3}" width="${p.w-6}" height="${p.h-6}" rx="2" fill="none" stroke="${c.stroke}" stroke-width="0.5"/>`;
+      shape = `<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="4" fill="${c.fill}" stroke="${stroke}"/>`;
+      shape += `<rect x="${p.x+3}" y="${p.y+3}" width="${p.w-6}" height="${p.h-6}" rx="2" fill="none" stroke="${stroke}" stroke-width="0.5"/>`;
     } else if (n.type === 'cred') {
-      // Hexagon approximation
-      const x=p.x, y=p.y, w=p.w, h=p.h, inset=12;
-      shape = `<polygon points="${x+inset},${y} ${x+w-inset},${y} ${x+w},${y+h/2} ${x+w-inset},${y+h} ${x+inset},${y+h} ${x},${y+h/2}" fill="${c.fill}" stroke="${c.stroke}"/>`;
+      const x=p.x, y=p.y, w=p.w, h=p.h, inset=14;
+      shape = `<polygon points="${x+inset},${y} ${x+w-inset},${y} ${x+w},${y+h/2} ${x+w-inset},${y+h} ${x+inset},${y+h} ${x},${y+h/2}" fill="${c.fill}" stroke="${stroke}"/>`;
     } else {
-      shape = `<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="6" fill="${c.fill}" stroke="${c.stroke}"/>`;
+      shape = `<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="6" fill="${c.fill}" stroke="${stroke}"/>`;
     }
 
     svgHtml += `<g class="node node-new" data-detail="${detailEsc}" onmouseenter="showTip(evt)" onmouseleave="hideTip()">`;
     svgHtml += shape;
-    svgHtml += `<text x="${p.x + p.w/2}" y="${p.y + p.h/2 + 4}" text-anchor="middle">${escaped}</text>`;
+    svgHtml += `<text x="${p.x + p.w/2}" y="${labelY}" text-anchor="middle">${label}</text>`;
+    if (hasSub) {
+      svgHtml += `<text x="${p.x + p.w/2}" y="${subY}" text-anchor="middle" font-size="9" fill="${subColor}">${sub}</text>`;
+    }
     svgHtml += `</g>`;
   }
 
-  svg.setAttribute('width', svgW);
-  svg.setAttribute('height', svgH);
+  // --- Legend ---
+  const legendY = svgH;
+  const legendItems = [
+    { shape: 'rect', fill: '#0d2240', stroke: '#58a6ff', label: 'Host' },
+    { shape: 'diamond', fill: '#3d1f00', stroke: '#d29922', label: 'Vuln' },
+    { shape: 'hex', fill: '#1f0d3d', stroke: '#bc8cff', label: 'Credential' },
+    { shape: 'dblrect', fill: '#0d3d0d', stroke: '#3fb950', label: 'Access' },
+    { shape: 'rect', fill: '#21262d', stroke: '#58a6ff', label: 'Pivot' },
+    { shape: 'xrect', fill: '#3d0d0d', stroke: '#f85149', label: 'Blocked' },
+  ];
+  const edgeLegend = [
+    { cls: 'edge-confirmed', label: 'Confirmed' },
+    { cls: 'edge-pending', label: 'Pending' },
+    { cls: 'edge-blocked', label: 'Blocked' },
+  ];
+  const legendH = 36;
+  let lx = padX;
+  svgHtml += `<g class="legend">`;
+  svgHtml += `<text x="${lx}" y="${legendY + 14}" font-size="10" fill="#8b949e" font-weight="600">LEGEND</text>`;
+  lx += 58;
+  for (const item of legendItems) {
+    const iy = legendY + 4, iw = 16, ih = 14;
+    if (item.shape === 'diamond') {
+      const cx = lx+iw/2, cy = iy+ih/2;
+      svgHtml += `<polygon points="${cx},${iy} ${lx+iw},${cy} ${cx},${iy+ih} ${lx},${cy}" fill="${item.fill}" stroke="${item.stroke}" stroke-width="1.5"/>`;
+    } else if (item.shape === 'hex') {
+      const ins = 4;
+      svgHtml += `<polygon points="${lx+ins},${iy} ${lx+iw-ins},${iy} ${lx+iw},${iy+ih/2} ${lx+iw-ins},${iy+ih} ${lx+ins},${iy+ih} ${lx},${iy+ih/2}" fill="${item.fill}" stroke="${item.stroke}" stroke-width="1.5"/>`;
+    } else if (item.shape === 'dblrect') {
+      svgHtml += `<rect x="${lx}" y="${iy}" width="${iw}" height="${ih}" rx="2" fill="${item.fill}" stroke="${item.stroke}" stroke-width="1.5"/>`;
+      svgHtml += `<rect x="${lx+2}" y="${iy+2}" width="${iw-4}" height="${ih-4}" rx="1" fill="none" stroke="${item.stroke}" stroke-width="0.5"/>`;
+    } else if (item.shape === 'xrect') {
+      svgHtml += `<rect x="${lx}" y="${iy}" width="${iw}" height="${ih}" rx="2" fill="${item.fill}" stroke="${item.stroke}" stroke-width="1.5"/>`;
+      svgHtml += `<line x1="${lx+3}" y1="${iy+3}" x2="${lx+iw-3}" y2="${iy+ih-3}" stroke="${item.stroke}" stroke-width="1.5"/>`;
+      svgHtml += `<line x1="${lx+iw-3}" y1="${iy+3}" x2="${lx+3}" y2="${iy+ih-3}" stroke="${item.stroke}" stroke-width="1.5"/>`;
+    } else {
+      svgHtml += `<rect x="${lx}" y="${iy}" width="${iw}" height="${ih}" rx="3" fill="${item.fill}" stroke="${item.stroke}" stroke-width="1.5"/>`;
+    }
+    svgHtml += `<text x="${lx+iw+5}" y="${iy+ih-2}" font-size="10" fill="#c9d1d9">${item.label}</text>`;
+    lx += iw + 8 + item.label.length * 6.5 + 12;
+  }
+  // Edge legend
+  lx += 8;
+  for (const item of edgeLegend) {
+    const iy = legendY + 11;
+    svgHtml += `<line x1="${lx}" y1="${iy}" x2="${lx+20}" y2="${iy}" class="edge ${item.cls}" stroke-width="2"/>`;
+    svgHtml += `<text x="${lx+25}" y="${iy+4}" font-size="10" fill="#c9d1d9">${item.label}</text>`;
+    lx += 30 + item.label.length * 6.5 + 10;
+  }
+  svgHtml += `</g>`;
+
+  svg.setAttribute('width', Math.max(svgW, lx + padX));
+  svg.setAttribute('height', svgH + legendH);
   svg.innerHTML = svgHtml;
 }
 
