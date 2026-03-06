@@ -329,7 +329,7 @@ def _extract_label(filepath: str) -> str:
     - Plain text first line (built-in agents): identify type from keywords
     - Falls back to agent ID from filename
     """
-    basename = os.path.basename(filepath).replace(".output", "")
+    basename = os.path.basename(filepath).replace(".output", "").replace(".jsonl", "")
     try:
         with open(filepath) as f:
             first_line = f.readline()
@@ -398,7 +398,7 @@ def _extract_label(filepath: str) -> str:
 def _is_agent_active(filepath: str) -> bool:
     """Check if an agent is still running.
 
-    For JSONL agent transcripts (symlinks), two checks:
+    For JSONL agent transcripts (symlinks or direct .jsonl files):
     1. If the last line is a completion message (assistant with
        stop_reason != "tool_use") AND mtime > 5s ago → stopped.
        The 5s debounce prevents flicker between turns.
@@ -409,19 +409,27 @@ def _is_agent_active(filepath: str) -> bool:
     Fallback: mtime threshold for non-JSONL files (bash background tasks).
     """
     try:
+        # Resolve to the actual JSONL file
+        jsonl_path = None
         if os.path.islink(filepath):
             target = os.readlink(filepath)
             if target.endswith(".jsonl") and os.path.exists(target):
-                mtime = os.path.getmtime(target)
-                age = time.time() - mtime
-                # Clean completion: JSONL signal + 5s debounce
-                if age > 5.0 and _jsonl_has_final_message(target):
-                    return False
-                # Killed/crashed: no writes in 30s = dead
-                if age > 30.0:
-                    return False
-                return True
-        # Fallback for non-symlinks (bash background tasks)
+                jsonl_path = target
+        elif filepath.endswith(".jsonl") and os.path.exists(filepath):
+            jsonl_path = filepath
+
+        if jsonl_path:
+            mtime = os.path.getmtime(jsonl_path)
+            age = time.time() - mtime
+            # Clean completion: JSONL signal + 5s debounce
+            if age > 5.0 and _jsonl_has_final_message(jsonl_path):
+                return False
+            # Killed/crashed: no writes in 30s = dead
+            if age > 30.0:
+                return False
+            return True
+
+        # Fallback for non-JSONL files (bash background tasks)
         mtime = os.path.getmtime(filepath)
         return (time.time() - mtime) < 120.0
     except OSError:
@@ -462,24 +470,51 @@ def _jsonl_has_final_message(filepath: str) -> bool:
 def _discover_agents(tasks_dir: str, displayed_paths: set[str]) -> list[tuple[str, str, float, bool]]:
     """Discover agent output files, returning (label, path, mtime, in_dashboard) sorted newest-first.
 
-    Only includes symlinks (agent JSONL transcripts). Non-symlinks are Bash tool
-    outputs and event watcher results. All agents are returned — those already
-    displayed in the dashboard are marked with in_dashboard=True.
+    Searches two locations:
+    1. tasks_dir — symlinks or JSONL files from Claude Code's task system
+    2. ~/.claude/projects/<project>/<session>/subagents/ — direct JSONL transcripts
+
+    The subagents path is the reliable source (always created). The tasks_dir
+    path is a fallback for compatibility.
     """
+    seen: set[str] = set()  # dedupe by resolved path
     results = []
-    if not tasks_dir or not os.path.isdir(tasks_dir):
-        return results
-    for filepath in _glob.glob(os.path.join(tasks_dir, "*.output")):
-        # Only include symlinks (agent JSONL transcripts)
-        if not os.path.islink(filepath):
-            continue
-        try:
-            mtime = os.path.getmtime(filepath)
-        except OSError:
-            continue
-        label = _extract_label(filepath)
-        in_dashboard = filepath in displayed_paths
-        results.append((label, filepath, mtime, in_dashboard))
+    cutoff = time.time() - 86400  # only show agents from last 24 hours
+
+    # Source 1: tasks dir (symlinks to agent JSONL transcripts only)
+    if tasks_dir and os.path.isdir(tasks_dir):
+        for filepath in _glob.glob(os.path.join(tasks_dir, "*.output")):
+            if not os.path.islink(filepath):
+                continue  # skip non-symlinks (bash tasks, event watchers)
+            resolved = os.path.realpath(filepath)
+            seen.add(resolved)
+            try:
+                mtime = os.path.getmtime(filepath)
+            except OSError:
+                continue
+            if mtime < cutoff:
+                continue
+            label = _extract_label(filepath)
+            in_dashboard = filepath in displayed_paths or resolved in displayed_paths
+            results.append((label, filepath, mtime, in_dashboard))
+
+    # Source 2: subagent JSONL directories (reliable, always created)
+    for subdir in _find_subagent_dirs():
+        for filepath in _glob.glob(os.path.join(subdir, "agent-*.jsonl")):
+            resolved = os.path.realpath(filepath)
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            try:
+                mtime = os.path.getmtime(filepath)
+            except OSError:
+                continue
+            if mtime < cutoff:
+                continue
+            in_dashboard = filepath in displayed_paths or resolved in displayed_paths
+            label = _extract_label(filepath)
+            results.append((label, filepath, mtime, in_dashboard))
+
     results.sort(key=lambda x: x[2], reverse=True)  # newest first
     return results
 
@@ -495,6 +530,29 @@ def _infer_tasks_dir(panes: list[AgentPane]) -> str:
     if candidates:
         return max(candidates, key=os.path.getmtime)
     return ""
+
+
+def _find_subagent_dirs() -> list[str]:
+    """Find Claude Code subagent JSONL directories for the current project.
+
+    Searches ~/.claude/projects/<project>/<session>/subagents/ for all
+    sessions. Returns directories sorted newest-first.
+    """
+    # Find the project dir from cwd
+    cwd = os.getcwd().replace("/", "-").lstrip("-")
+    project_base = os.path.expanduser(f"~/.claude/projects/-{cwd}")
+    if not os.path.isdir(project_base):
+        return []
+    results = []
+    for session_dir in _glob.glob(os.path.join(project_base, "*/subagents")):
+        if os.path.isdir(session_dir):
+            try:
+                mtime = os.path.getmtime(session_dir)
+                results.append((mtime, session_dir))
+            except OSError:
+                continue
+    results.sort(reverse=True)  # newest session first
+    return [d for _, d in results]
 
 
 def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
@@ -593,11 +651,17 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                                 if old_pane in panes:
                                     panes.remove(old_pane)
 
-                # Auto-discover new agents from tasks directory
+                # Auto-discover new agents from tasks directory and subagent dirs
                 if tasks_dir:
-                    displayed = set(pane_map.keys())
+                    # Resolve symlinks so .output symlinks and direct JSONL paths dedup
+                    displayed = set(pane_map.keys()) | {
+                        os.path.realpath(p) for p in pane_map}
                     for label, path, mtime, in_dash in _discover_agents(tasks_dir, displayed):
                         if not in_dash and path not in dismissed_paths and path not in completed_paths:
+                            # Skip stale agents (>5 min old) unless in .dashboard file
+                            if time.time() - mtime > 300:
+                                completed_paths.add(path)
+                                continue
                             if _is_agent_active(path):
                                 p = AgentPane(label, path, len(panes) % len(PANE_COLORS))
                                 t = _start_pane(p)
@@ -845,7 +909,7 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                         else:
                             attr = curses.color_pair(color_pairs["dim"]) | curses.A_DIM
                         try:
-                            stdscr.addnstr(row, x_off, wline, col_width, attr)
+                            stdscr.addnstr(row, x_off, wline.replace("\x00", ""), col_width, attr)
                         except curses.error:
                             pass
 

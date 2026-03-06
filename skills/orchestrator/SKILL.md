@@ -238,8 +238,21 @@ The agent will:
 4. Return a summary of findings and routing recommendations
 
 **Operator live-tail.** After spawning any background agent, append its
-label and output path to the dashboard file (one `label:path` per line),
-then print a short hint.
+label and JSONL transcript path to the dashboard file (one `label:path`
+per line), then print a short hint.
+
+**Path selection:** The Agent tool returns an `output_file` path, but this
+symlink is not always created. Instead, construct the JSONL path from the
+returned `agentId`:
+
+```
+~/.claude/projects/-<cwd-with-slashes-replaced-by-dashes>/<session-id>/subagents/agent-<agentId>.jsonl
+```
+
+To find the session ID, check an existing agent's JSONL path or run:
+`ls -t ~/.claude/projects/-$(pwd | tr / - | sed 's/^-//')/*/subagents/ 2>/dev/null | head -1`
+
+If the JSONL path cannot be determined, fall back to `output_file`.
 
 **Dashboard file write rules — ALWAYS APPEND (`>>`) unless safe to truncate.**
 
@@ -262,12 +275,12 @@ a missing entry hides the agent's output from the operator.
 
 ```bash
 # SAFE — always works (append)
-echo "web-discovery:/tmp/.../output" >> tools/agent-dashboard/.dashboard
+echo "web-discovery:~/.claude/projects/.../subagents/agent-<id>.jsonl" >> tools/agent-dashboard/.dashboard
 
 # ONLY when ALL prior agents are done — start fresh
-echo "ad-discovery:/tmp/.../output" > tools/agent-dashboard/.dashboard
+echo "ad-discovery:~/.claude/projects/.../subagents/agent-<id>.jsonl" > tools/agent-dashboard/.dashboard
 # Then append subsequent agents in the same batch
-echo "web-discovery:/tmp/.../output" >> tools/agent-dashboard/.dashboard
+echo "web-discovery:~/.claude/projects/.../subagents/agent-<id>.jsonl" >> tools/agent-dashboard/.dashboard
 ```
 
 After writing, always print this hint:

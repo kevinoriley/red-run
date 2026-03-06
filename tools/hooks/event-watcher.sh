@@ -8,7 +8,7 @@ CURSOR=${1:?usage: event-watcher.sh <cursor> <db_path>}
 DB=${2:?usage: event-watcher.sh <cursor> <db_path>}
 DEBOUNCE=5   # seconds to wait after detecting events (batch coalescing)
 POLL=5       # seconds between polls
-TIMEOUT=600  # max lifetime (10 min) — prevents zombie watchers
+TIMEOUT=1800 # max lifetime (30 min) — long technique chains can take 15-25 min
 
 elapsed=0
 while [ "$elapsed" -lt "$TIMEOUT" ]; do

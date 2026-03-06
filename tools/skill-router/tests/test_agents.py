@@ -7,6 +7,7 @@ tool lists. No network or MCP server required — reads agent files directly.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -17,6 +18,7 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 AGENTS_DIR = REPO_ROOT / "agents"
 MCP_CONFIG = REPO_ROOT / ".mcp.json"
+PROJECT_SETTINGS = REPO_ROOT / ".claude" / "settings.json"
 
 REQUIRED_FIELDS = {"name", "description", "tools", "mcpServers"}
 VALID_MODELS = {"haiku", "sonnet", "opus"}
@@ -192,4 +194,35 @@ class TestAgentBody:
         content = agent_file.read_text()
         assert "Do not load a second skill" in content, (
             f"{agent_file.name}: missing 'Do not load a second skill' boundary"
+        )
+
+
+class TestSubagentStopHook:
+    """Ensure every agent is covered by the SubagentStop hook in project settings."""
+
+    def test_all_agents_matched_by_hook(self):
+        if not PROJECT_SETTINGS.exists():
+            pytest.skip(".claude/settings.json not found")
+
+        settings = json.loads(PROJECT_SETTINGS.read_text())
+        hooks = settings.get("hooks", {}).get("SubagentStop", [])
+        assert hooks, ".claude/settings.json: no SubagentStop hooks defined"
+
+        # Collect all matcher patterns
+        patterns = [h["matcher"] for h in hooks if "matcher" in h]
+        assert patterns, "SubagentStop hooks have no matchers"
+
+        # Build a combined regex from all matchers
+        combined = "|".join(f"(?:{p})" for p in patterns)
+
+        agent_names = [p.stem for p in _get_agent_files()]
+        assert agent_names, "No agent files found in agents/"
+
+        unmatched = [
+            name for name in agent_names
+            if not re.fullmatch(combined, name)
+        ]
+        assert not unmatched, (
+            f"Agents not covered by SubagentStop hook: {unmatched}. "
+            f"Update the matcher in .claude/settings.json to include them."
         )
