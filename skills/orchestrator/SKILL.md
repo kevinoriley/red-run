@@ -259,7 +259,7 @@ agents spawned before it. Always resolve from the `agentId`.
 
 **Dashboard file write rules — ALWAYS APPEND (`>>`) unless safe to truncate.**
 
-The dashboard file lives at `tools/agent-dashboard/.dashboard` (relative to
+The dashboard file lives at `operator/agent-dashboard/.dashboard` (relative to
 repo root).
 
 - **Append (`>>`)** — the default. Use for EVERY new agent spawn.
@@ -278,18 +278,18 @@ a missing entry hides the agent's output from the operator.
 
 ```bash
 # SAFE — always works (append)
-echo "web-discovery:~/.claude/projects/.../subagents/agent-<id>.jsonl" >> tools/agent-dashboard/.dashboard
+echo "web-discovery:~/.claude/projects/.../subagents/agent-<id>.jsonl" >> operator/agent-dashboard/.dashboard
 
 # ONLY when ALL prior agents are done — start fresh
-echo "ad-discovery:~/.claude/projects/.../subagents/agent-<id>.jsonl" > tools/agent-dashboard/.dashboard
+echo "ad-discovery:~/.claude/projects/.../subagents/agent-<id>.jsonl" > operator/agent-dashboard/.dashboard
 # Then append subsequent agents in the same batch
-echo "web-discovery:~/.claude/projects/.../subagents/agent-<id>.jsonl" >> tools/agent-dashboard/.dashboard
+echo "web-discovery:~/.claude/projects/.../subagents/agent-<id>.jsonl" >> operator/agent-dashboard/.dashboard
 ```
 
 After writing, always print this hint:
 
 ```
-Watch live: bash tools/agent-dashboard/dashboard.sh
+Watch live: bash operator/agent-dashboard/dashboard.sh
 ```
 
 The dashboard reads the dashboard file and tails all listed agent
@@ -425,7 +425,7 @@ ping -c 1 -W 2 1.1.1.1
 ```
 [orchestrator] HARD STOP — firewall down
 
-Re-activate: sudo bash tools/firewall/firewall.sh
+Re-activate: sudo bash operator/engagement-firewall/firewall.sh
 ```
 
 #### Orchestrator Loop
@@ -857,8 +857,8 @@ ping -c 1 -W 2 1.1.1.1
 ```
 [orchestrator] HARD STOP — firewall not active
 
-Edit scope in tools/firewall/firewall.sh, then:
-sudo bash tools/firewall/firewall.sh
+Edit scope in operator/engagement-firewall/firewall.sh, then:
+sudo bash operator/engagement-firewall/firewall.sh
 ```
 
 After operator confirms, re-run ping to verify. Log to `activity.md`:

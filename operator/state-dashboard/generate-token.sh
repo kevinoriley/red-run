@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Generate an authentication token for the state-viewer dashboard.
+# Generate an authentication token for the state dashboard.
 #
 # When a token exists, the server binds to 0.0.0.0 (accessible from host
 # machine) and requires the token to access any page or API endpoint.
 #
 # Usage:
-#   bash tools/state-viewer/generate-token.sh
+#   bash operator/state-dashboard/generate-token.sh
 #   # Token is written to ~/.config/red-run/viewer-token
 #   # Copy the printed token and paste it into the browser login page.
 
@@ -27,5 +27,5 @@ echo "Token written to: $TOKEN_FILE"
 echo ""
 echo "  $TOKEN"
 echo ""
-echo "Paste this into the state-viewer login page."
+echo "Paste this into the state dashboard login page."
 echo "The server will bind to 0.0.0.0 when a token file is present."

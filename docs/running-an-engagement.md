@@ -303,7 +303,7 @@ When tools fail on hostname resolution, the orchestrator follows the same hostna
 The [agent dashboard](dashboard-and-monitoring.md) provides real-time visibility into what agents are doing. Run it in a separate terminal:
 
 ```bash
-bash tools/agent-dashboard/dashboard.sh
+bash operator/agent-dashboard/dashboard.sh
 ```
 
 ### Event Watcher

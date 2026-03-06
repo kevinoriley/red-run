@@ -5,7 +5,7 @@ set -euo pipefail
 # EDIT THIS — add all in-scope targets (IPs, CIDRs)
 # ============================================================
 SCOPE=(
-     "10.10.10.5"
+    # "10.10.10.1"
     # "10.10.10.0/24"
 )
 

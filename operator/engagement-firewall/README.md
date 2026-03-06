@@ -30,7 +30,7 @@ SCOPE=(
 ### 2. Activate
 
 ```bash
-sudo bash tools/firewall/firewall.sh
+sudo bash operator/engagement-firewall/firewall.sh
 ```
 
 ### 3. Add targets live (no restart needed)
@@ -43,7 +43,7 @@ sudo nft add element inet redrun scope '{ 172.16.0.0/16 }'
 ### 4. Teardown
 
 ```bash
-sudo bash tools/firewall/teardown.sh
+sudo bash operator/engagement-firewall/teardown.sh
 ```
 
 This removes the `inet redrun` table entirely, restoring normal outbound traffic.

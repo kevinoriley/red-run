@@ -4,19 +4,19 @@ red-run provides real-time visibility into agent execution through a multi-pane 
 
 ## Agent Dashboard
 
-The dashboard (`tools/agent-dashboard/tail-agent.py`) parses Claude Code's raw JSONL transcripts and displays agent activity with color-coded formatting.
+The dashboard (`operator/agent-dashboard/tail-agent.py`) parses Claude Code's raw JSONL transcripts and displays agent activity with color-coded formatting.
 
 ### Single-Agent Modes
 
 ```bash
 # One-shot — print formatted output and exit
-python3 tools/agent-dashboard/tail-agent.py <output_file>
+python3 operator/agent-dashboard/tail-agent.py <output_file>
 
 # Follow — live-tail like tail -f (Ctrl-C to stop)
-python3 tools/agent-dashboard/tail-agent.py -f <output_file>
+python3 operator/agent-dashboard/tail-agent.py -f <output_file>
 
 # Pipe — read from stdin
-tail -f <output_file> | python3 tools/agent-dashboard/tail-agent.py
+tail -f <output_file> | python3 operator/agent-dashboard/tail-agent.py
 ```
 
 ### Multi-Agent Dashboard
@@ -25,13 +25,13 @@ The curses-based dashboard shows multiple agents side by side in a split-pane te
 
 ```bash
 # Explicit label:path pairs
-python3 tools/agent-dashboard/tail-agent.py --dashboard web:path1 ad:path2
+python3 operator/agent-dashboard/tail-agent.py --dashboard web:path1 ad:path2
 
 # From a .dashboard file (hot-reloaded)
-python3 tools/agent-dashboard/tail-agent.py --dashboard --from .dashboard
+python3 operator/agent-dashboard/tail-agent.py --dashboard --from .dashboard
 
-# Wrapper script (reads from tools/agent-dashboard/.dashboard)
-bash tools/agent-dashboard/dashboard.sh
+# Wrapper script (reads from operator/agent-dashboard/.dashboard)
+bash operator/agent-dashboard/dashboard.sh
 ```
 
 The orchestrator writes the `.dashboard` file when launching parallel background agents.

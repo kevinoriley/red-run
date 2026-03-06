@@ -1,4 +1,4 @@
-# state-viewer
+# State Dashboard
 
 Read-only web dashboard for engagement state (`state.db`). Single-file Python
 stdlib HTTP server — no dependencies beyond Python 3.10+.
@@ -6,7 +6,7 @@ stdlib HTTP server — no dependencies beyond Python 3.10+.
 ## Usage
 
 ```bash
-python3 tools/state-viewer/server.py [--port 8099] [--db engagement/state.db]
+python3 operator/state-dashboard/server.py [--port 8099] [--db engagement/state.db]
 ```
 
 ### Options
@@ -23,7 +23,7 @@ local-only access. To access from a host machine (e.g., when red-run is in a
 VM), generate a token:
 
 ```bash
-bash tools/state-viewer/generate-token.sh
+bash operator/state-dashboard/generate-token.sh
 ```
 
 This writes a random 64-character token to `~/.config/red-run/viewer-token`.

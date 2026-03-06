@@ -6,7 +6,7 @@ Usage:
     python3 tools/tail-agent.py -f <output_file>           # live follow (like tail -f)
     tail -f <output_file> | python3 tools/tail-agent.py    # pipe mode
     python3 tools/tail-agent.py --dashboard label1:path1 label2:path2  # multi-agent dashboard
-    bash tools/agent-dashboard/dashboard.sh                                            # dashboard from /tmp/red-run.dashboard
+    bash operator/agent-dashboard/dashboard.sh                                            # dashboard from /tmp/red-run.dashboard
 
 Shows:
     Cyan    - agent reasoning text

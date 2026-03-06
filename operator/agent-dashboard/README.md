@@ -16,13 +16,13 @@ shell commands, and tool calls with color-coded formatting.
 
 ```bash
 # One-shot: print formatted output and exit
-python3 tools/agent-dashboard/tail-agent.py <output_file>
+python3 operator/agent-dashboard/tail-agent.py <output_file>
 
 # Follow: live-tail like tail -f (Ctrl-C to stop)
-python3 tools/agent-dashboard/tail-agent.py -f <output_file>
+python3 operator/agent-dashboard/tail-agent.py -f <output_file>
 
 # Pipe: read from stdin
-tail -f <output_file> | python3 tools/agent-dashboard/tail-agent.py
+tail -f <output_file> | python3 operator/agent-dashboard/tail-agent.py
 ```
 
 ### Multi-agent dashboard mode
@@ -35,24 +35,24 @@ If no agents are active, the dashboard sits idle until one spawns.
 
 ```bash
 # Explicit label:path pairs
-python3 tools/agent-dashboard/tail-agent.py --dashboard web:path1 ad:path2
+python3 operator/agent-dashboard/tail-agent.py --dashboard web:path1 ad:path2
 
 # From a .dashboard file (hot-reloaded)
-python3 tools/agent-dashboard/tail-agent.py --dashboard --from .dashboard
+python3 operator/agent-dashboard/tail-agent.py --dashboard --from .dashboard
 
 # Mix both — file + extra agents
-python3 tools/agent-dashboard/tail-agent.py --dashboard --from .dashboard extra:path
+python3 operator/agent-dashboard/tail-agent.py --dashboard --from .dashboard extra:path
 ```
 
 ### Dashboard wrapper script
 
-`dashboard.sh` reads from `tools/agent-dashboard/.dashboard` by default:
+`dashboard.sh` reads from `operator/agent-dashboard/.dashboard` by default:
 
 ```bash
-bash tools/agent-dashboard/dashboard.sh
+bash operator/agent-dashboard/dashboard.sh
 
 # With extra agents appended
-bash tools/agent-dashboard/dashboard.sh extra-label:/tmp/.../extra.output
+bash operator/agent-dashboard/dashboard.sh extra-label:/tmp/.../extra.output
 ```
 
 The orchestrator writes the `.dashboard` file when launching parallel
