@@ -278,8 +278,10 @@ table { width: 100%; border-collapse: collapse; margin: 4px 0 16px; }
 th { text-align: left; color: var(--dim); font-size: 11px; text-transform: uppercase;
   padding: 6px 8px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
 th:hover { color: var(--accent); }
-td { padding: 6px 8px; border-bottom: 1px solid var(--bg3); white-space: nowrap;
-  overflow: hidden; text-overflow: ellipsis; max-width: 300px; }
+td { padding: 6px 8px; border-bottom: 1px solid var(--bg3); max-width: 400px;
+  word-break: break-word; cursor: default; vertical-align: top; }
+td .cell { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden; }
 tr:hover td { background: var(--bg2); }
 .badge { display: inline-block; padding: 1px 6px; border-radius: 3px;
   font-size: 11px; font-weight: 600; }
@@ -489,7 +491,8 @@ function renderTables() {
       for (const col of def.cols) {
         const fmt = def.fmt[col];
         const val = fmt ? fmt(row) : (row[col] ?? '');
-        html += `<td>${val}</td>`;
+        const plain = String(val).replace(/<[^>]*>/g, '');
+        html += `<td title="${plain.replace(/"/g,'&quot;')}"><div class="cell">${val}</div></td>`;
       }
       html += '</tr>';
     }
@@ -558,7 +561,7 @@ function renderGraph() {
   nodeMap['attacker'].layer = 0;
 
   // Targets (hosts)
-  const pivotDests = new Set(state.pivot_map.map(p => p.destination));
+  const pivotDestHosts = new Set(); // populated during pivot edge rendering
   for (const t of state.targets) {
     const ports = (t.ports||[]).map(p=>`${p.port}/${p.service||p.protocol}`).join(', ');
     const sub = t.role || t.os || '';
@@ -658,18 +661,43 @@ function renderGraph() {
 
   // Pivots — rendered as labeled edges, not nodes
   const pivotStyles = { exploited: 'confirmed', identified: 'pending', blocked: 'blocked' };
+  const targetHosts = state.targets.map(t => t.host);
   for (const p of state.pivot_map) {
     const style = pivotStyles[p.status] || 'pending';
-    const label = (p.method || 'pivot') + (p.status !== 'exploited' ? ` (${p.status})` : '');
+    const methodShort = (p.method || 'pivot').split(/[.\-,]/)[0].trim().slice(0, 40);
+    const label = methodShort + (p.status !== 'exploited' ? ` (${p.status})` : '');
     // Find best source: active access on source host, or the host itself
+    // Source text may be descriptive (e.g. "DC01.pirate.htb (10.129.244.95) - gMSA...")
     let fromId = null;
     for (const a of state.access) {
-      if (a.host === p.source && a.active) { fromId = `access:${a.id}`; break; }
+      if (a.active && (a.host === p.source || p.source.includes(a.host))) {
+        fromId = `access:${a.id}`; break;
+      }
     }
-    if (!fromId && nodeMap[`host:${p.source}`]) fromId = `host:${p.source}`;
-    const toId = nodeMap[`host:${p.destination}`] ? `host:${p.destination}` : null;
+    if (!fromId) {
+      if (nodeMap[`host:${p.source}`]) fromId = `host:${p.source}`;
+      else {
+        for (const h of targetHosts) {
+          if (p.source.includes(h) && nodeMap[`host:${h}`]) { fromId = `host:${h}`; break; }
+        }
+      }
+    }
+    // Match destination to a target host (exact match, IP substring, or subnet prefix)
+    let destHost = null;
+    if (nodeMap[`host:${p.destination}`]) {
+      destHost = p.destination;
+    } else {
+      for (const h of targetHosts) {
+        if (p.destination.includes(h)) { destHost = h; break; }
+        // Match subnet references (e.g. "192.168.100.0/24" matches host "192.168.100.2")
+        const prefix = h.split('.').slice(0,3).join('.');
+        if (p.destination.includes(prefix + '.')) { destHost = h; break; }
+      }
+    }
+    const toId = destHost ? `host:${destHost}` : null;
     if (fromId && toId) {
       edges.push({ from: fromId, to: toId, style, label });
+      pivotDestHosts.add(destHost);
     }
   }
 
@@ -678,7 +706,7 @@ function renderGraph() {
   // Connect attacker to initial targets (no inbound pivots)
   // Skip hosts already reachable via provided-cred chain
   for (const t of state.targets) {
-    if (!pivotDests.has(t.host) && !hostsViaProvidedCred.has(t.host)) {
+    if (!pivotDestHosts.has(t.host) && !hostsViaProvidedCred.has(t.host)) {
       edges.push({ from: 'attacker', to: `host:${t.host}`, style: 'confirmed' });
     }
   }
