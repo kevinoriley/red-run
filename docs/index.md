@@ -77,6 +77,7 @@ See [Architecture](architecture.md) for the full design and [Agents](agents.md) 
 | Page | Contents |
 |------|----------|
 | [Installation](installation.md) | Prerequisites, setup, sandbox config |
+| [Dependencies](dependencies.md) | Attackbox tool inventory — everything skills need pre-installed |
 | [Architecture](architecture.md) | Orchestrator, agents, skill lifecycle |
 | [MCP Servers](mcp-servers.md) | The 5 MCP servers and their tools |
 | [Agents](agents.md) | Domain agent model and routing |

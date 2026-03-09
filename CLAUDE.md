@@ -120,7 +120,7 @@ when making changes.
 | Component | Documentation | Rule |
 |-----------|--------------|------|
 | Repo root | `README.md` | Update when architecture, installation, or user-facing behavior changes |
-| Docs site | `docs/*.md` | Human-facing reference. Update when features, architecture, or workflows change |
+| Docs site | `docs/*.md` | Human-facing reference. Update when features, architecture, or workflows change. `docs/dependencies.md` tracks all external tool dependencies referenced by skills. |
 | MCP servers (`tools/*/`) | `README.md` per server | **Required.** Update when tools, parameters, behavior, or prerequisites change |
 | Skills (`skills/*/`) | `SKILL.md` | Self-contained — no separate README |
 | Agents (`agents/`) | `<agent-name>.md` | Self-contained — no separate README |
