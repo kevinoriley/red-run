@@ -31,7 +31,7 @@ The orchestrator contract is simple: read state, pick a skill, spawn an agent, r
 ## Architecture Overview
 
 <p align="center">
-  <img src="architecture.svg" width="700" alt="Architecture diagram: Operator → Orchestrator → Agents → MCP Servers → engagement/">
+  <img src="../architecture.svg" width="700" alt="Architecture diagram: Operator → Orchestrator → Agents → MCP Servers → engagement/">
 </p>
 
 ## Prompt Architecture
@@ -74,7 +74,7 @@ See [Agents](agents.md) for the full agent model and routing table.
 What happens inside a single agent invocation:
 
 <p align="center">
-  <img src="lifecycle.svg" width="700" alt="Skill invocation lifecycle: Orchestrator → Agent execution → Orchestrator post-skill, with loop">
+  <img src="../lifecycle.svg" width="700" alt="Skill invocation lifecycle: Orchestrator → Agent execution → Orchestrator post-skill, with loop">
 </p>
 
 1. **Orchestrator picks** a skill and the correct agent from the routing table

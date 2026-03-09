@@ -44,7 +44,7 @@ It initializes `state.db` via `init_engagement()` and writes the scope to `scope
 The orchestrator follows this decision flow from target to objective:
 
 <p align="center">
-  <img src="workflow.svg" width="700" alt="Engagement workflow: Scope → Recon → Attack Surface → Discovery & Exploitation → Chaining → Complete">
+  <img src="../workflow.svg" width="700" alt="Engagement workflow: Scope → Recon → Attack Surface → Discovery & Exploitation → Chaining → Complete">
 </p>
 
 ## Reconnaissance
