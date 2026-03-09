@@ -131,7 +131,7 @@ if ! command -v uv &>/dev/null; then
 fi
 
 # Skill-router (ChromaDB + embeddings)
-echo "  [skill-router] Installing Python dependencies..."
+echo "  [skill-router] Installing Python dependencies. This could take a while..."
 uv sync --directory "${MCP_SKILL_ROUTER}" --quiet
 
 echo "  [skill-router] Indexing skills into ChromaDB (downloads embedding model on first run)..."
