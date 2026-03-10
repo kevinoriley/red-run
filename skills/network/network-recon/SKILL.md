@@ -104,7 +104,6 @@ should be the equivalent of nmap with `--script safe` — observing, not acting.
 **Acceptable in recon scope:**
 - Validating orchestrator-provided credentials work against SMB (confirms creds
   are usable, not testing new creds)
-- `kerbrute userenum` (user enumeration only — does NOT request tickets)
 - `smb-vuln*` NSE scripts (vulnerability detection, not exploitation)
 - Anonymous/guest access checks (null session, guest share listing)
 
@@ -554,14 +553,8 @@ inline.
 
 ### Kerberos — Port 88
 
-```bash
-nmap -sV -p88 --script krb5-enum-users TARGET_IP
+DO NOT enumerate users. Orchestrator will decide whether username enumeration is necessary.
 
-# Enumerate valid usernames (enumeration only — does NOT request tickets)
-kerbrute userenum -d DOMAIN --dc TARGET_IP /usr/share/seclists/Usernames/xato-net-10-million-usernames.txt
-```
-
-**Quick wins:** Valid username enumeration via Kerberos pre-auth responses.
 → STOP. Return to orchestrator recommending **ad-discovery**. Pass: DC IP,
 domain name, any creds. Do not execute AD enumeration commands inline.
 Do not request Kerberos tickets (AS-REP or TGS) — that is **kerberos-roasting**.

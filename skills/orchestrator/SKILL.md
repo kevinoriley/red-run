@@ -454,11 +454,11 @@ while objectives_not_met:
     # - User messages → respond, poll_events() as supplementary check
 ```
 
-Each iteration is normally one skill invocation. Sequential execution is the
-default because it keeps state simple. However, when the orchestrator detects
-**convergent independent paths** (multiple skills targeting the same
-intermediate goal with no shared dependencies), it may race them in parallel.
-See **Parallel Fork Execution** below for mechanics. Forks are always presented
+Each iteration is normally one skill invocation. However, when the orchestrator 
+detects either **convergent independent paths** (multiple skills targeting the same
+intermediate goal with no shared dependencies) or **divergent independent paths** 
+(multiple skills targeting disparate intermediate goals with no shared dependencies), 
+it may suggest running multiple agents in parallel. Agent spawns are always presented
 to the operator for approval.
 
 #### Built-in Task Sub-Agents (Warning)

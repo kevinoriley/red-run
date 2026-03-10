@@ -476,6 +476,22 @@ check_target_tools() {
 
     if p=$(find_pipx wesng wes || find_cmd wes); then pass "WES-NG" "$p"
     else warn "WES-NG" "pipx install wesng"; fi
+
+    # Potato privesc binaries (SeImpersonate → SYSTEM)
+    local potato_dir="/usr/share/windows-binaries/potatoes"
+    local potato_missing=0
+    for name in GodPotato-NET4.exe PrintSpoofer64.exe JuicyPotatoNG.exe SigmaPotato.exe; do
+        short="${name%%.*}"
+        if [[ -f "${potato_dir}/${name}" ]]; then
+            pass "$short" "${potato_dir}/${name}"
+        else
+            warn "$short" "download to ${potato_dir}/${name}"
+            potato_missing=$((potato_missing + 1))
+        fi
+    done
+    if [[ $potato_missing -gt 0 ]]; then
+        $JSON_MODE || printf "  ${DIM}   hint: see docs/dependencies.md for download URLs${RESET}\n"
+    fi
 }
 
 # ── Category map ────────────────────────────────────────────────────────────
