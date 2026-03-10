@@ -113,6 +113,8 @@ triggers a hosts-file update check.
 The orchestrator manages those. Still report all findings in your return summary —
 interim writes supplement it, they don't replace it.
 
+**Do NOT send interim writes if you are near your scope boundary and will be returning to the orchestrator imminently.** 
+
 Your return summary must include:
 - New targets/hosts discovered (with ports and services)
 - New credentials or tokens found
@@ -152,7 +154,8 @@ Find hidden endpoints, directories, and files.
 **Wordlist priority:** Start with `quickhits.txt` for fast coverage of common
 high-value paths (admin panels, config files, backup files, known endpoints).
 Fall back to `raft-small-words.txt` only if quickhits returns nothing
-interesting. Use `raft-medium-*` for thorough sweeps when time allows.
+interesting. NEVER use `raft-medium-*` or any medium to large wordlist without
+explicit prompts from the orchestrator or operator.
 
 ```bash
 # Quick high-value path check (run first)
