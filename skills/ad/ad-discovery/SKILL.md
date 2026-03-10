@@ -757,9 +757,13 @@ When routing to a technique skill, pass along:
 
 - **KRB_AP_ERR_SKEW**: Clock out of sync (> 5 minutes from DC). This is a
   **Clock Skew Interrupt** — stop immediately and return to the orchestrator.
-  Do not retry or fall back to NTLM. Fix requires root: `sudo ntpdate DC_IP`
-- **KDC cannot find the name**: Use FQDN hostnames, not IP addresses. Ensure
-  DNS resolves to the DC or add entries to `/etc/hosts`
+  Do not retry or fall back to NTLM. Return to orchestrator — clock sync
+  requires sudo which subagents cannot run.
+- **KDC cannot find the name**: Use FQDN hostnames, not IP addresses. If
+  hostnames don't resolve, return to orchestrator with the hostnames and IPs
+  — the orchestrator handles `/etc/hosts` updates (requires sudo).
+- **Do NOT run `sudo` or modify `/etc/hosts`** — subagents lack sudo. Report
+  unresolvable hostnames in your return summary.
 
 ### NetExec Connection Issues
 
@@ -795,9 +799,14 @@ Impacket tools may be installed under different names depending on the system:
 | `impacket-GetNPUsers` | `GetNPUsers.py` | Same tool |
 | `impacket-secretsdump` | `secretsdump.py` | Same tool |
 
-If one form is not found, try the other. The `.py` form is more common on
-manually-installed Impacket; the `impacket-` prefix form comes from pip/apt
-package installations.
+Check which form is available before use:
+
+```bash
+which getTGT.py 2>/dev/null || which impacket-getTGT 2>/dev/null
+```
+
+The `.py` form is common on manually-installed Impacket; the `impacket-` prefix
+comes from pip/apt packages.
 
 ### No Credentials Available
 
