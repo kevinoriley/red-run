@@ -74,23 +74,6 @@ find_cmd() {
     return 1
 }
 
-# Check common locations for git-cloned repos
-find_repo() {
-    local name="$1"
-    local dirs=(
-        "$HOME/tools/$name"
-        "$HOME/Tools/$name"
-        "/opt/$name"
-        "/usr/share/$name"
-        "$HOME/$name"
-        "$HOME/git/$name"
-    )
-    for d in "${dirs[@]}"; do
-        [[ -d "$d" ]] && echo "$d" && return 0
-    done
-    return 1
-}
-
 # Check for a pipx-installed package
 find_pipx() {
     local name="$1"
@@ -220,14 +203,14 @@ check_web_testing() {
     if p=$(find_go dalfox); then pass "dalfox" "$p"
     else warn "dalfox" "go install github.com/hahwul/dalfox/v2@latest"; fi
 
-    if p=$(find_repo XSStrike); then pass "XSStrike" "$p"
-    else warn "XSStrike" "git clone https://github.com/s0md3v/XSStrike.git"; fi
+    if p=$(find_cmd xsstrike || find_cmd xsstrike.py); then pass "XSStrike" "$p"
+    else warn "XSStrike" "install and add xsstrike to PATH"; fi
 
     if p=$(find_pipx sstimap); then pass "sstimap" "$p"
     else warn "sstimap" "pipx install sstimap"; fi
 
-    if p=$(find_repo tplmap); then pass "tplmap" "$p"
-    else warn "tplmap" "git clone https://github.com/epinna/tplmap.git"; fi
+    if p=$(find_cmd tplmap || find_cmd tplmap.py); then pass "tplmap" "$p"
+    else warn "tplmap" "install and add tplmap to PATH"; fi
 
     if p=$(find_go TInjA); then pass "TInjA" "$p"
     else warn "TInjA" "go install github.com/Hackmanit/TInjA@latest"; fi
@@ -235,11 +218,11 @@ check_web_testing() {
     if p=$(find_pipx fenjing); then pass "fenjing" "$p"
     else warn "fenjing" "pipx install fenjing"; fi
 
-    if p=$(find_repo SSRFmap); then pass "SSRFmap" "$p"
-    else warn "SSRFmap" "git clone https://github.com/swisskyrepo/SSRFmap.git"; fi
+    if p=$(find_cmd ssrfmap || find_cmd ssrfmap.py); then pass "SSRFmap" "$p"
+    else warn "SSRFmap" "install and add ssrfmap to PATH"; fi
 
-    if p=$(find_repo Gopherus || find_repo gopherus); then pass "gopherus" "$p"
-    else warn "gopherus" "git clone https://github.com/tarunkant/Gopherus.git"; fi
+    if p=$(find_cmd gopherus || find_cmd gopherus.py); then pass "gopherus" "$p"
+    else warn "gopherus" "install and add gopherus to PATH"; fi
 
     if p=$(find_go interactsh-client); then pass "interactsh-client" "$p"
     else warn "interactsh-client" "go install github.com/projectdiscovery/interactsh/cmd/interactsh-client@latest"; fi
@@ -247,8 +230,8 @@ check_web_testing() {
     if p=$(find_go xxeserv); then pass "xxeserv" "$p"
     else warn "xxeserv" "go install github.com/staaldraad/xxeserv@latest"; fi
 
-    if p=$(find_repo XXEinjector); then pass "XXEinjector" "$p"
-    else warn "XXEinjector" "git clone https://github.com/enjoiz/XXEinjector.git"; fi
+    if p=$(find_cmd XXEinjector.rb); then pass "XXEinjector" "$p"
+    else warn "XXEinjector" "install and add XXEinjector.rb to PATH"; fi
 
     if p=$(find_pipx jwt_tool jwt_tool); then pass "jwt-tool" "$p"
     elif p=$(find_cmd jwt_tool); then pass "jwt-tool" "$p"
@@ -257,30 +240,25 @@ check_web_testing() {
     if p=$(find_cmd domdig); then pass "domdig" "$p"
     else warn "domdig" "npm install -g domdig"; fi
 
-    if p=$(find_repo php_filter_chain_generator); then pass "php_filter_chain_gen" "$p"
-    else warn "php_filter_chain_gen" "git clone https://github.com/synacktiv/php_filter_chain_generator.git"; fi
+    if p=$(find_cmd php_filter_chain_generator.py); then pass "php_filter_chain_gen" "$p"
+    else warn "php_filter_chain_gen" "install and add php_filter_chain_generator.py to PATH"; fi
 }
 
 check_deserialization() {
     section "Deserialization"
 
     local p
-    # ysoserial — check for JAR file
-    if compgen -G "$HOME/tools/**/ysoserial*.jar" >/dev/null 2>&1 ||
-       compgen -G "/opt/**/ysoserial*.jar" >/dev/null 2>&1 ||
-       compgen -G "/usr/share/**/ysoserial*.jar" >/dev/null 2>&1; then
-        pass "ysoserial (Java)" "found .jar"
-    else warn "ysoserial (Java)" "download JAR from https://github.com/frohoff/ysoserial"; fi
+    if p=$(find_cmd ysoserial || find_cmd ysoserial.jar); then pass "ysoserial (Java)" "$p"
+    else warn "ysoserial (Java)" "download JAR and add to PATH"; fi
 
-    if p=$(find_repo marshalsec); then pass "marshalsec" "$p"
-    else warn "marshalsec" "git clone + mvn package"; fi
+    if p=$(find_cmd marshalsec || find_cmd marshalsec.jar); then pass "marshalsec" "$p"
+    else warn "marshalsec" "build JAR and add to PATH"; fi
 
-    if p=$(find_repo phpggc); then pass "phpggc" "$p"
-    elif p=$(find_cmd phpggc); then pass "phpggc" "$p"
-    else warn "phpggc" "git clone https://github.com/ambionics/phpggc.git"; fi
+    if p=$(find_cmd phpggc); then pass "phpggc" "$p"
+    else warn "phpggc" "install and add phpggc to PATH"; fi
 
-    if p=$(find_repo jexboss); then pass "jexboss" "$p"
-    else warn "jexboss" "git clone https://github.com/joaomatosf/jexboss.git"; fi
+    if p=$(find_cmd jexboss || find_cmd jexboss.py); then pass "jexboss" "$p"
+    else warn "jexboss" "install and add jexboss to PATH"; fi
 
     if p=$(find_pipx badsecrets); then pass "badsecrets" "$p"
     else warn "badsecrets" "pipx install badsecrets"; fi
@@ -294,8 +272,8 @@ check_active_directory() {
         pass "BloodHound CE (collector)" "$p"
     else fail "BloodHound CE" "pipx install bloodhound"; fi
 
-    if p=$(find_cmd rusthound || find_repo RustHound-CE); then pass "rusthound-ce" "$p"
-    else warn "rusthound-ce" "download from GitHub releases"; fi
+    if p=$(find_cmd rusthound); then pass "rusthound-ce" "$p"
+    else warn "rusthound-ce" "download from GitHub releases and add to PATH"; fi
 
     if p=$(find_pipx certipy-ad certipy); then pass "certipy" "$p"
     elif p=$(find_cmd certipy); then pass "certipy" "$p"
@@ -310,29 +288,29 @@ check_active_directory() {
     if p=$(find_pipx pywhisker); then pass "pywhisker" "$p"
     else warn "pywhisker" "pipx install pywhisker"; fi
 
-    if p=$(find_repo targetedKerberoast); then pass "targetedKerberoast" "$p"
-    else warn "targetedKerberoast" "git clone https://github.com/ShutdownRepo/targetedKerberoast"; fi
+    if p=$(find_cmd targetedKerberoast.py); then pass "targetedKerberoast" "$p"
+    else warn "targetedKerberoast" "install and add targetedKerberoast.py to PATH"; fi
 
-    if p=$(find_repo krbrelayx); then pass "krbrelayx" "$p"
-    else fail "krbrelayx" "git clone https://github.com/dirkjanm/krbrelayx"; fi
+    if p=$(find_cmd krbrelayx.py); then pass "krbrelayx" "$p"
+    else fail "krbrelayx" "install and add krbrelayx.py to PATH"; fi
 
-    if p=$(find_repo PetitPotam); then pass "PetitPotam" "$p"
-    else warn "PetitPotam" "git clone https://github.com/topotam/PetitPotam"; fi
+    if p=$(find_cmd PetitPotam.py); then pass "PetitPotam" "$p"
+    else warn "PetitPotam" "install and add PetitPotam.py to PATH"; fi
 
-    if p=$(find_repo DFSCoerce); then pass "DFSCoerce" "$p"
-    else warn "DFSCoerce" "git clone https://github.com/Wh04m1001/DFSCoerce"; fi
+    if p=$(find_cmd dfscoerce.py || find_cmd DFSCoerce.py); then pass "DFSCoerce" "$p"
+    else warn "DFSCoerce" "install and add DFSCoerce.py to PATH"; fi
 
-    if p=$(find_repo ShadowCoerce); then pass "ShadowCoerce" "$p"
-    else warn "ShadowCoerce" "git clone https://github.com/ShutdownRepo/ShadowCoerce"; fi
+    if p=$(find_cmd shadowcoerce.py || find_cmd ShadowCoerce.py); then pass "ShadowCoerce" "$p"
+    else warn "ShadowCoerce" "install and add ShadowCoerce.py to PATH"; fi
 
-    if p=$(find_repo PKINITtools); then pass "PKINITtools" "$p"
-    else fail "PKINITtools" "git clone https://github.com/dirkjanm/PKINITtools"; fi
+    if p=$(find_cmd gettgtpkinit.py); then pass "PKINITtools" "$p"
+    else fail "PKINITtools" "install and add gettgtpkinit.py to PATH"; fi
 
-    if p=$(find_repo modifyCertTemplate); then pass "modifyCertTemplate" "$p"
-    else warn "modifyCertTemplate" "git clone https://github.com/fortalice/modifyCertTemplate"; fi
+    if p=$(find_cmd modifyCertTemplate.py); then pass "modifyCertTemplate" "$p"
+    else warn "modifyCertTemplate" "install and add modifyCertTemplate.py to PATH"; fi
 
-    if p=$(find_repo gMSADumper); then pass "gMSADumper" "$p"
-    else warn "gMSADumper" "git clone https://github.com/micahvandeusen/gMSADumper"; fi
+    if p=$(find_cmd gMSADumper.py); then pass "gMSADumper" "$p"
+    else warn "gMSADumper" "install and add gMSADumper.py to PATH"; fi
 
     if p=$(find_pipx impacket); then pass "impacket (local)" "$p"
     elif p=$(find_cmd secretsdump.py); then pass "impacket (local)" "$p"
@@ -346,11 +324,11 @@ check_sccm_gpo() {
     if p=$(find_pipx sccmhunter); then pass "sccmhunter" "$p"
     else warn "sccmhunter" "pipx install sccmhunter"; fi
 
-    if p=$(find_repo PXEThief || find_repo pxethiefy); then pass "pxethiefy" "$p"
-    else warn "pxethiefy" "git clone https://github.com/MWR-CyberSec/PXEThief"; fi
+    if p=$(find_cmd pxethiefy.py || find_cmd pxethiefy); then pass "pxethiefy" "$p"
+    else warn "pxethiefy" "install and add pxethiefy to PATH"; fi
 
-    if p=$(find_repo pyGPOAbuse); then pass "pyGPOAbuse" "$p"
-    else warn "pyGPOAbuse" "git clone https://github.com/Hackndo/pyGPOAbuse"; fi
+    if p=$(find_cmd pygpoabuse.py || find_cmd pyGPOAbuse.py); then pass "pyGPOAbuse" "$p"
+    else warn "pyGPOAbuse" "install and add pyGPOAbuse.py to PATH"; fi
 
     if p=$(find_pipx gpohound || find_cmd gpohound); then pass "GPOHound" "$p"
     else warn "GPOHound" "pipx install gpohound"; fi
@@ -440,19 +418,16 @@ check_general() {
 check_wordlists() {
     section "Wordlists"
 
+    # Skills reference /usr/share/seclists/ paths directly
     if [[ -d /usr/share/seclists ]]; then
         pass "SecLists" "/usr/share/seclists"
     elif [[ -d /usr/share/SecLists ]]; then
         pass "SecLists" "/usr/share/SecLists"
-    elif [[ -d "$HOME/SecLists" || -d "$HOME/tools/SecLists" || -d "$HOME/wordlists/SecLists" ]]; then
-        local d
-        for d in "$HOME/SecLists" "$HOME/tools/SecLists" "$HOME/wordlists/SecLists"; do
-            [[ -d "$d" ]] && pass "SecLists" "$d" && break
-        done
     else
-        fail "SecLists" "sudo apt install seclists  OR  git clone to /usr/share/seclists/"
+        fail "SecLists" "sudo apt install seclists"
     fi
 
+    # Skills reference /usr/share/wordlists/rockyou.txt directly
     if [[ -f /usr/share/wordlists/rockyou.txt ]]; then
         pass "rockyou.txt" "/usr/share/wordlists/rockyou.txt"
     elif [[ -f /usr/share/wordlists/rockyou.txt.gz ]]; then
@@ -461,46 +436,41 @@ check_wordlists() {
         fail "rockyou.txt" "expected at /usr/share/wordlists/rockyou.txt"
     fi
 
-    if p=$(find_repo jwt-secrets); then pass "jwt-secrets" "$p"
-    else warn "jwt-secrets" "git clone https://github.com/wallarm/jwt-secrets"; fi
+    if p=$(find_cmd jwt-secrets); then pass "jwt-secrets" "$p"
+    else warn "jwt-secrets" "install and add to PATH"; fi
 }
 
 check_target_tools() {
     section "Target-side tools (pre-staged on attackbox)"
 
-    local found=false p
+    local p
 
     # Linux
     for name in linpeas.sh lse.sh pspy64 pspy32 linux-exploit-suggester.sh deepce.sh; do
         short="${name%%.*}"
-        if compgen -G "$HOME/tools/**/$name" >/dev/null 2>&1 ||
-           compgen -G "/opt/**/$name" >/dev/null 2>&1 ||
-           compgen -G "$HOME/tools/bin/$name" >/dev/null 2>&1; then
-            pass "$short" "found"
+        if p=$(find_cmd "$name"); then
+            pass "$short" "$p"
         else
-            warn "$short" "download and stage in ~/tools/"
+            warn "$short" "download and add $name to PATH"
         fi
     done
 
     # Windows
     for name in winpeas.exe mimikatz.exe Rubeus.exe; do
         short="${name%%.*}"
-        if compgen -G "$HOME/tools/**/$name" >/dev/null 2>&1 ||
-           compgen -G "/opt/**/$name" >/dev/null 2>&1 ||
-           compgen -G "$HOME/tools/bin/$name" >/dev/null 2>&1; then
-            pass "$short" "found"
+        if p=$(find_cmd "$name"); then
+            pass "$short" "$p"
         else
-            warn "$short" "download and stage in ~/tools/"
+            warn "$short" "download and add $name to PATH"
         fi
     done
 
     # Tunnel agents (Linux + Windows builds)
     for name in chisel ligolo-agent; do
-        if compgen -G "$HOME/tools/**/$name*" >/dev/null 2>&1 ||
-           compgen -G "/opt/**/$name*" >/dev/null 2>&1; then
-            pass "$name (agent builds)" "found"
+        if p=$(find_cmd "$name"); then
+            pass "$name (agent builds)" "$p"
         else
-            warn "$name (agent builds)" "download from GitHub releases"
+            warn "$name (agent builds)" "download and add to PATH"
         fi
     done
 

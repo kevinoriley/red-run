@@ -26,6 +26,10 @@ These are installed automatically. No operator action needed.
 Tools that run on the attackbox (Linux). Organized by category with installation
 commands for Kali/Debian-based systems. Many are pre-installed on Kali.
 
+**All tools must be in `$PATH`.** Agents find tools via `command -v` / `which`.
+For git-cloned repos, symlink the main script into `~/.local/bin/` or wherever
+your PATH points. Run `bash preflight.sh` to verify.
+
 ### Network scanning and enumeration
 
 | Tool | Skills | Install |
@@ -187,8 +191,8 @@ Key SecLists paths used by skills:
 
 ## Target-side tools (not installed on attackbox)
 
-These are transferred to targets during engagements. The operator should
-download them to the attackbox ahead of time so they're ready to serve.
+These are transferred to targets during engagements. Download them to the
+attackbox ahead of time and ensure they're in `$PATH` so agents can find them.
 Agents will not download these — they expect them pre-staged.
 
 ### Linux target tools
@@ -271,8 +275,8 @@ sudo apt install -y seclists mingw-w64 golang-go hashcat john hydra \
     sshuttle proxychains4 autossh iodine tmux jq ldap-utils \
     libimage-exiftool-perl default-jdk exploitdb
 
-# Git repos (clone to ~/tools/)
-mkdir -p ~/tools && cd ~/tools
+# Git repos — clone wherever you like, then add scripts to $PATH
+# (e.g., symlink main scripts into ~/.local/bin/)
 git clone https://github.com/dirkjanm/krbrelayx
 git clone https://github.com/dirkjanm/PKINITtools
 git clone https://github.com/topotam/PetitPotam
@@ -291,8 +295,7 @@ git clone https://github.com/s0md3v/XSStrike
 git clone https://github.com/epinna/tplmap
 git clone https://github.com/wallarm/jwt-secrets
 
-# Download binary releases to ~/tools/bin/
-mkdir -p ~/tools/bin
+# Download binary releases and add to $PATH
 # kerbrute, pspy, linpeas, winpeas, chisel (agent builds),
 # ligolo-ng (agent builds), GodPotato, PrintSpoofer, JuicyPotato,
 # CDK, deepce — download from their GitHub releases pages
