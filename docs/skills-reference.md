@@ -23,7 +23,7 @@ Discovery skills run in agents with **state-interim** access, allowing them to w
 
 **Technique skills** exploit specific vulnerability classes. Each covers one technique thoroughly — assessment, confirmation, exploitation, and escalation/pivot routing. There are 62 technique skills across all categories.
 
-Technique skills run in agents with **state-reader** access (read-only). They report findings in their return summary.
+Technique skills run in agents with **state-interim** access. They write critical discoveries (captured hashes, credentials, confirmed vulns) mid-run and report all findings in their return summary.
 
 ## OPSEC Ratings
 

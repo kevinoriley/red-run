@@ -36,16 +36,16 @@ The orchestrator spawns domain-specific subagents for each skill invocation:
 | `network-recon-agent` | Network | skill-router, nmap-server, shell-server, state-interim | network-recon, smb-exploitation (haiku) |
 | `pivoting-agent` | Pivoting | skill-router, shell-server, state-interim | pivoting-tunneling (sonnet) |
 | `web-discovery-agent` | Web discovery | skill-router, shell-server, browser-server, state-interim | web-discovery |
-| `web-exploit-agent` | Web exploitation | skill-router, shell-server, browser-server, state-reader | All web technique skills |
+| `web-exploit-agent` | Web exploitation | skill-router, shell-server, browser-server, state-interim | All web technique skills |
 | `ad-discovery-agent` | AD discovery | skill-router, shell-server, state-interim | ad-discovery |
-| `ad-exploit-agent` | AD exploitation | skill-router, shell-server, state-reader | All AD technique skills |
-| `password-spray-agent` | Credential spraying | skill-router, shell-server, state-reader | password-spraying (haiku) |
+| `ad-exploit-agent` | AD exploitation | skill-router, shell-server, state-interim | All AD technique skills |
+| `password-spray-agent` | Credential spraying | skill-router, shell-server, state-interim | password-spraying (haiku) |
 | `linux-privesc-agent` | Linux privesc | skill-router, shell-server, state-interim | Linux discovery + privesc + container escapes |
 | `windows-privesc-agent` | Windows privesc | skill-router, shell-server, state-interim | Windows discovery + privesc |
-| `evasion-agent` | AV/EDR evasion | skill-router, shell-server, state-reader | av-edr-evasion |
-| `credential-cracking-agent` | Credential cracking | skill-router, state-reader | credential-cracking (haiku, local-only) |
+| `evasion-agent` | AV/EDR evasion | skill-router, shell-server, state-interim | av-edr-evasion |
+| `credential-cracking-agent` | Credential cracking | skill-router, state-interim | credential-cracking (haiku, local-only) |
 
-Each invocation: agent loads one skill via `get_skill()`, executes methodology, saves evidence, and returns findings. The orchestrator parses the return summary, records state changes via the state-writer MCP, and makes the next routing decision. Discovery agents and the pivoting-agent use state-interim for mid-run writes; technique agents are read-only.
+Each invocation: agent loads one skill via `get_skill()`, executes methodology, saves evidence, and returns findings. The orchestrator parses the return summary, records state changes via the state-writer MCP, and makes the next routing decision. All agents use state-interim for mid-run writes of critical discoveries (credentials, vulns, pivots, blocked). The orchestrator deduplicates interim writes against return summaries.
 
 **Inline fallback**: If subagents aren't installed, the orchestrator **DOES NOT** load skills inline via `get_skill()` in the main thread. STOP and have the operator fix the issue. Skills are only loaded inline in pentest mode during exploitation activity (see ## Permission Mode) or when explicitly requested by the operator.
 
@@ -58,13 +58,13 @@ Agent source files live in `agents/` (version controlled), installed to `~/.clau
 | skill-router | `tools/skill-router/` | Semantic skill discovery and loading (ChromaDB + embeddings) |
 | nmap-server | `tools/nmap-server/` | Dockerized nmap scanning with input validation |
 | shell-server | `tools/shell-server/` | TCP listener, reverse shell, local interactive process manager, privileged Docker execution |
-| state-reader | `tools/state-server/` | Read-only engagement state queries (technique agents) |
-| state-interim | `tools/state-server/` | Read + 5 add-only writes (discovery agents + pivoting-agent) |
+| state-reader | `tools/state-server/` | Read-only engagement state queries (retained for fallback) |
+| state-interim | `tools/state-server/` | Read + 5 add-only writes (all agents) |
 | state-writer | `tools/state-server/` | Full engagement state management (orchestrator only) |
 | browser-server | `tools/browser-server/` | Headless browser automation (web agents) |
 | state-dashboard | `operator/state-dashboard/` | Read-only web dashboard for state.db (operator use, not MCP) |
 
-The state-reader, state-interim, and state-writer are three instances of the same server running in different modes. Discovery agents use state-interim to write actionable findings mid-run. Technique agents use state-reader (read-only). The orchestrator uses state-writer for full read/write access. See each server's `README.md` for tool details.
+The state-reader, state-interim, and state-writer are three instances of the same server running in different modes. All agents use state-interim to write critical discoveries (credentials, vulns, pivots, blocked) mid-run. The orchestrator uses state-writer for full read/write access. See each server's `README.md` for tool details.
 
 ### Skill Types
 - **Orchestrator** (`skills/orchestrator/`): Takes a target, runs recon, routes to discovery skills
@@ -99,7 +99,7 @@ engagement/
 
 **Orchestrator responsibility:** Creates engagement directory, initializes state.db, is the **sole writer** of state/activity.md/findings.md, parses subagent returns, chains vulns toward impact.
 
-**Subagent responsibility:** Read state via `get_state_summary()`, save evidence to `engagement/evidence/`, report all findings in return summary. Discovery agents (state-interim) also write actionable findings mid-run. Technique agents (state-reader) are read-only.
+**Subagent responsibility:** Read state via `get_state_summary()`, save evidence to `engagement/evidence/`, report all findings in return summary. All agents write critical discoveries mid-run via state-interim (credentials, vulns, pivots, blocked). The orchestrator deduplicates interim writes against return summaries.
 
 ### State Management
 
@@ -108,7 +108,7 @@ Engagement state lives in `engagement/state.db` (SQLite, managed by state-server
 **Rules:**
 - `get_state_summary()` produces a compact markdown summary (~200 lines) for subagent consumption
 - Subagents call `get_state_summary()` on activation, report findings in their return summary
-- Discovery agents (state-interim) write actionable findings mid-run; each write emits a `state_events` row
+- All agents write critical discoveries mid-run via state-interim; each write emits a `state_events` row
 - Orchestrator polls `poll_events()` for real-time visibility, parses returns, deduplicates interim writes
 - Orchestrator uses state summary + pivot map to chain vulns toward impact
 

@@ -16,7 +16,7 @@ tools:
 mcpServers:
   - skill-router
   - shell-server
-  - state-reader
+  - state-interim
 model: haiku
 ---
 
@@ -33,6 +33,18 @@ do NOT pass them as command-line arguments. Use the Write tool to create a
 password file, then reference it: `PASS=$(cat /tmp/claude-1000/cred.txt)`.
 This is the only reliable approach — do not attempt `\!`, single quotes,
 `set +H`, or `printf`.
+
+## Target Knowledge Ethics
+
+You may apply general penetration testing methodology and techniques learned
+from any source — including writeups, courses, and CTF solutions for OTHER
+targets. However, you MUST NOT use specific knowledge of the current target.
+If you recognize the target (from a CTF writeup, HackTheBox walkthrough, or
+similar), do NOT use that knowledge to skip steps, guess passwords, jump to
+known paths, or shortcut the methodology. Follow the loaded skill's
+methodology step by step as if you have never seen this target before. The
+skill contains everything you need — your job is to execute it faithfully,
+not to recall solutions.
 
 ## Your Role
 
@@ -91,10 +103,12 @@ is to spray and return, not establish shells.
 
 ## Engagement Files
 
-- **State**: Call `get_state_summary()` from the state-reader MCP to read
-  current engagement state. **Do NOT write engagement state.** Report all
-  findings in your return summary — the orchestrator updates state on your
-  behalf.
+- **State**: Call `get_state_summary()` from the state-interim MCP to read
+  current engagement state.
+- **Interim writes**: Write valid credentials immediately when found:
+  `add_credential()` for each confirmed valid login. This lets the
+  orchestrator act on creds while spraying continues. Also use `add_blocked()`
+  for failed spray attempts. Still report ALL findings in your return summary.
 - **Activity and Findings**: Do NOT write to activity.md or findings.md.
   The orchestrator maintains these files based on your return summary.
 - **Evidence**: Save raw output to `engagement/evidence/` with descriptive

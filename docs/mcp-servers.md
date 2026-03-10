@@ -189,8 +189,8 @@ SQLite-backed engagement state management. The same server runs as three instanc
 
 | Mode | Instance | Used By | Access |
 |------|----------|---------|--------|
-| `read` | state-reader | Technique agents | 8 read-only tools |
-| `interim` | state-interim | Discovery agents | 8 read + 4 add-only writes |
+| `read` | state-reader | (retained for fallback) | 8 read-only tools |
+| `interim` | state-interim | All agents | 8 read + 5 add-only writes |
 | `write` | state-writer | Orchestrator | 8 read + all write/update tools |
 
 All three instances open the same `engagement/state.db`. SQLite WAL mode + `busy_timeout=5000` handles concurrency safely.

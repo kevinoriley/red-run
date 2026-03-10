@@ -88,7 +88,7 @@ current engagement state.
 
 Skills read state to avoid re-testing confirmed vulnerabilities, leverage existing credentials, and check what's been tried.
 
-> **Discovery vs technique state access:** Technique skills use `state-reader` (read-only). Discovery skills use `state-interim` (read + 4 add-only writes). Update this section to match the skill type.
+> **State access:** All agents use `state-interim` (read + 5 add-only writes). Skills should include interim write guidance for critical discoveries (credentials, vulns, pivots, blocked items).
 
 #### 5. Tool Discovery
 

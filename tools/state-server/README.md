@@ -35,15 +35,16 @@ uv run --directory tools/state-server python server.py --mode write
 
 | Mode | Instance | Agents | Write Access |
 |------|----------|--------|-------------|
-| `read` | state-reader | Technique agents (web-exploit, ad-exploit, etc.) | None |
-| `interim` | state-interim | Discovery agents (network-recon, web-discovery, ad-discovery, linux-privesc, windows-privesc) + pivoting-agent | 5 add-only tools: `add_credential`, `add_vuln`, `add_pivot`, `add_blocked`, `add_tunnel` |
+| `read` | state-reader | Retained for fallback | None |
+| `interim` | state-interim | All agents | 5 add-only tools: `add_credential`, `add_vuln`, `add_pivot`, `add_blocked`, `add_tunnel` |
 | `write` | state-writer | Orchestrator only | All read + write tools |
 
-**Why interim mode?** Discovery agents run for 5-15 minutes. Without interim
-writes, credentials found at minute 2 aren't visible to concurrent agents
-until the discovery agent returns. Interim mode lets discovery agents write
-actionable findings immediately so the orchestrator and concurrent agents can
-see them mid-run.
+**Why interim mode?** Agents run for 5-15 minutes. Without interim writes,
+credentials captured at minute 2 aren't visible to the orchestrator until the
+agent returns. Interim mode lets all agents write critical discoveries
+immediately so the orchestrator can act via the event watcher mid-run. This is
+especially important for technique agents that capture hashes during
+exploitation.
 
 **Why only 5 tools?** These are add-only (INSERT), never update existing
 records, and represent findings that other agents can act on immediately:

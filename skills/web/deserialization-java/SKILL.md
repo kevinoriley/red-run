@@ -376,7 +376,7 @@ execution and note the limitation in the engagement state.
 - **SSRF via JNDI**: Route to **ssrf** for internal network exploitation
 - **Log4Shell in multiple services**: Enumerate all services logging
   attacker-controlled input, exploit each
-- **Need to crack hashes found**: Route to hash cracking
+- **Need to crack hashes found**: Route to **credential-cracking**
 
 Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
 

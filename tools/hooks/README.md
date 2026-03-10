@@ -34,7 +34,7 @@ are filtered by agent type naming.
 
 Background poller for the `state_events` table in engagement state. Spawned
 by the orchestrator with `run_in_background: true` to get real-time
-notifications when discovery agents write interim findings.
+notifications when agents write interim findings.
 
 **Usage:**
 

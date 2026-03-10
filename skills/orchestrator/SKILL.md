@@ -211,14 +211,14 @@ every routing decision.
 | `network-recon-agent` | Network | skill-router, nmap-server, shell-server, state-interim | network-recon, smb-exploitation (haiku) |
 | `pivoting-agent` | Pivoting | skill-router, shell-server, state-interim | pivoting-tunneling (sonnet) |
 | `web-discovery-agent` | Web discovery | skill-router, shell-server, browser-server, state-interim | web-discovery |
-| `web-exploit-agent` | Web exploitation | skill-router, shell-server, browser-server, state-reader | All web technique skills |
+| `web-exploit-agent` | Web exploitation | skill-router, shell-server, browser-server, state-interim | All web technique skills |
 | `ad-discovery-agent` | AD discovery | skill-router, shell-server, state-interim | ad-discovery |
-| `ad-exploit-agent` | AD exploitation | skill-router, shell-server, state-reader | All AD technique skills |
-| `password-spray-agent` | Credential spraying | skill-router, shell-server, state-reader | password-spraying (haiku) |
+| `ad-exploit-agent` | AD exploitation | skill-router, shell-server, state-interim | All AD technique skills |
+| `password-spray-agent` | Credential spraying | skill-router, shell-server, state-interim | password-spraying (haiku) |
 | `linux-privesc-agent` | Linux privesc | skill-router, shell-server, state-interim | Linux discovery + technique skills, container escapes |
 | `windows-privesc-agent` | Windows privesc | skill-router, shell-server, state-interim | Windows discovery + technique skills |
-| `evasion-agent` | AV/EDR evasion | skill-router, shell-server, state-reader | AV bypass payload generation |
-| `credential-cracking-agent` | Credential cracking | skill-router, state-reader | credential-cracking (haiku, local-only) |
+| `evasion-agent` | AV/EDR evasion | skill-router, shell-server, state-interim | AV bypass payload generation |
+| `credential-cracking-agent` | Credential cracking | skill-router, state-interim | credential-cracking (haiku, local-only) |
 
 **How to delegate:**
 
@@ -486,9 +486,9 @@ Before every skill invocation, append to
 
 ### Event Monitoring
 
-Discovery agents write findings mid-run via state-interim MCP tools. Each
-interim write (credential, vuln, pivot, blocked) also emits a row to the
-`state_events` table. The orchestrator uses a **background event watcher** to
+All agents write critical discoveries mid-run via state-interim MCP tools. Each
+interim write (credential, vuln, pivot, blocked, tunnel) also emits a row to
+the `state_events` table. The orchestrator uses a **background event watcher** to
 get push notifications when agents find something — zero context burn, and the
 user stays free to interact while agents work.
 
@@ -618,14 +618,12 @@ When a skill completes and returns control to the orchestrator:
 0. **Poll events:** Call `poll_events(since_id=<event_cursor>)` and display any
    new findings as a timeline (see Event Monitoring above). Update the cursor.
 1. Parse the subagent's return summary for new findings
-2. **Deduplicate interim writes**: Discovery agents (network-recon, web-discovery,
-   ad-discovery, linux-privesc, windows-privesc) use state-interim MCP and may
+2. **Deduplicate interim writes**: All agents use state-interim MCP and may
    have already written credentials, vulns, pivots, or blocked entries mid-run.
    Before calling `add_credential()`, `add_vuln()`, `add_pivot()`, or
    `add_blocked()`, call `get_state_summary()` and check if the finding already
    exists in state. Skip writes that would duplicate what the agent already
-   recorded. Technique agents (web-exploit, ad-exploit, etc.) use state-reader
-   and never write — no dedup needed for their returns.
+   recorded.
 3. Call structured write tools to record state changes:
    - New hosts/ports → `add_target()` / `add_port()`
    - New credentials → `add_credential()`
@@ -1406,15 +1404,14 @@ Multiple agents achieve the goal (rare but possible).
 
 #### 5. State Consistency Rules
 
-- **Discovery agents** (network-recon, web-discovery, ad-discovery,
-  linux-privesc, windows-privesc) and the **pivoting-agent** use state-interim
-  MCP and can write 5 add-only tables mid-run: credentials, vulns, pivots,
-  blocked, tunnels.
-- **Technique agents** (web-exploit, ad-exploit, etc.) use state-reader
-  MCP and are fully read-only.
+- **All agents** use state-interim MCP and can write 5 add-only tables
+  mid-run: credentials, vulns, pivots, blocked, tunnels. This ensures
+  critical discoveries (captured hashes, confirmed vulns, new pivot paths)
+  reach the orchestrator immediately via event watcher — not just at agent
+  return.
 - The orchestrator processes agent returns **one at a time**, even when agents
-  ran in parallel. It deduplicates findings that discovery agents already
-  wrote via interim before recording remaining state changes.
+  ran in parallel. It deduplicates findings that agents already wrote via
+  interim before recording remaining state changes.
 - Evidence filenames are skill-prefixed (e.g., `kerberoasting-tgs-hashes.txt`,
   `acl-abuse-dacl-modify.log`) — no collision risk from parallel agents.
 - SQLite WAL mode + busy_timeout handles concurrent readers and interim
@@ -1982,7 +1979,7 @@ exhausted or objectives are met.
 ### State Management for Multiple Targets
 
 The engagement state database tracks all targets in structured tables. Use the
-state-reader MCP tools to query across targets:
+state-interim MCP tools to query across targets:
 
 - `get_state_summary()` — full overview of all targets, access, credentials,
   vulns, and pivot paths in one view

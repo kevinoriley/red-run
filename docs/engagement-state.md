@@ -65,31 +65,30 @@ The state-server runs as three MCP instances from the same codebase, each with d
 ```mermaid
 graph LR
     Orch[Orchestrator] -->|full read/write| SW[(state-writer)]
-    Disc[Discovery Agents] -->|read + 4 adds| SI[(state-interim)]
-    Tech[Technique Agents] -->|read-only| SR[(state-reader)]
+    Agents[All Agents] -->|read + 5 adds| SI[(state-interim)]
     SW --> DB[(state.db)]
     SI --> DB
-    SR --> DB
 ```
 
 | Mode | Instance | Agents | Write Access |
 |------|----------|--------|--------------|
-| `read` | state-reader | web-exploit, ad-exploit, evasion | None — read only |
-| `interim` | state-interim | network-recon, web-discovery, ad-discovery, linux-privesc, windows-privesc | 4 add-only tools |
+| `read` | state-reader | (retained for fallback) | None — read only |
+| `interim` | state-interim | All agents | 5 add-only tools |
 | `write` | state-writer | Orchestrator only | All read + write + update tools |
 
 ### Why interim mode exists
 
-Discovery agents run for 5-15 minutes. Without interim writes, credentials found at minute 2 aren't visible to concurrent agents until the discovery agent finishes and the orchestrator parses its return summary. Interim mode solves this by letting discovery agents write actionable findings immediately.
+Agents run for 5-15 minutes. Without interim writes, credentials captured at minute 2 aren't visible to concurrent agents or the orchestrator until the agent finishes and the orchestrator parses its return summary. Interim mode solves this by letting all agents write critical discoveries immediately — especially important for technique agents that capture hashes or credentials during exploitation.
 
-The four interim tools are all **add-only** (INSERT, never UPDATE):
+The five interim tools are all **add-only** (INSERT, never UPDATE):
 
 | Tool | What it records | Why it's actionable |
 |------|----------------|-------------------|
-| `add_credential` | Passwords, hashes, keys, tokens | Other agents can spray/test immediately |
+| `add_credential` | Passwords, hashes, keys, tokens | Orchestrator can route cracking or spray immediately |
 | `add_vuln` | Confirmed vulnerabilities | Orchestrator can route exploitation |
 | `add_pivot` | What leads where | Orchestrator can plan chains |
 | `add_blocked` | Failed techniques | Prevents other agents from retrying |
+| `add_tunnel` | Established tunnels | Orchestrator can route through new network paths |
 
 Target/port/access management and all UPDATE operations remain orchestrator-only to prevent contention.
 

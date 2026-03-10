@@ -45,27 +45,27 @@ red-run controls agent behavior through layered prompts, not code. Each layer ad
 | **Skill** | `skills/<cat>/<name>/SKILL.md` | `get_skill()` call | Technique methodology, payloads, troubleshooting, inter-skill routing |
 | **Dynamic** | Orchestrator's task prompt | Each agent invocation | Target info, state summary, previous findings, engagement-specific context |
 
-The project layer sets universal rules (always load skills via `get_skill()`, never write state directly). The agent layer constrains to a domain (web-exploit-agent only does web techniques, only accesses state-reader). The skill layer provides technique depth (exact payloads, variant detection, troubleshooting). The dynamic prompt carries live engagement state (what's been found, what to focus on, what's failed).
+The project layer sets universal rules (always load skills via `get_skill()`, never write state directly). The agent layer constrains to a domain (web-exploit-agent only does web techniques, uses state-interim for critical mid-run writes). The skill layer provides technique depth (exact payloads, variant detection, troubleshooting). The dynamic prompt carries live engagement state (what's been found, what to focus on, what's failed).
 
 Understanding this stack is essential for extending red-run — whether writing new orchestrators, agents, or skills.
 
 ## Agent → MCP Access
 
-Each agent has access to specific MCP servers. Discovery agents use **state-interim** (read + 4 add-only writes) so they can record findings mid-run. Technique agents use **state-reader** (read-only).
+Each agent has access to specific MCP servers. All agents use **state-interim** (read + 5 add-only writes) so they can record critical discoveries mid-run.
 
 | Agent | MCP Servers |
 |-------|-------------|
 | orchestrator | skill-router, state-reader, state-writer |
 | network-recon | skill-router, nmap-server, shell-server, state-interim |
 | web-discovery | skill-router, shell-server, browser-server, state-interim |
-| web-exploit | skill-router, shell-server, browser-server, state-reader |
+| web-exploit | skill-router, shell-server, browser-server, state-interim |
 | ad-discovery | skill-router, shell-server, state-interim |
-| ad-exploit | skill-router, shell-server, state-reader |
+| ad-exploit | skill-router, shell-server, state-interim |
 | linux-privesc | skill-router, shell-server, state-interim |
 | windows-privesc | skill-router, shell-server, state-interim |
-| password-spray | skill-router, shell-server, state-reader |
-| evasion | skill-router, shell-server, state-reader |
-| credential-cracking | skill-router, state-reader |
+| password-spray | skill-router, shell-server, state-interim |
+| evasion | skill-router, shell-server, state-interim |
+| credential-cracking | skill-router, state-interim |
 
 See [Agents](agents.md) for the full agent model and routing table.
 
@@ -106,7 +106,7 @@ See [Engagement State](engagement-state.md) for the database schema and [Running
 State flows through the system in one direction:
 
 1. **Agents discover** findings (vulns, credentials, pivot paths) during skill execution
-2. **Discovery agents** write urgent findings mid-run via state-interim (4 add-only tools)
+2. **All agents** write critical discoveries mid-run via state-interim (5 add-only tools)
 3. **All agents** report findings in their return summary
 4. **Orchestrator parses** returns, deduplicates interim writes, records remaining state changes via state-writer
 5. **Orchestrator reads** updated state summary to make the next routing decision

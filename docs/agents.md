@@ -46,38 +46,42 @@ The orchestrator uses this table to match skills to agents. Each agent has acces
 |-------|--------|-------------|--------|
 | `network-recon-agent` | Network | skill-router, nmap-server, shell-server, **state-interim** | network-recon, smb-exploitation, pivoting-tunneling |
 | `web-discovery-agent` | Web discovery | skill-router, shell-server, browser-server, **state-interim** | web-discovery |
-| `web-exploit-agent` | Web exploitation | skill-router, shell-server, browser-server, state-reader | All web technique skills (32) |
+| `web-exploit-agent` | Web exploitation | skill-router, shell-server, browser-server, **state-interim** | All web technique skills (32) |
 | `ad-discovery-agent` | AD discovery | skill-router, shell-server, **state-interim** | ad-discovery |
-| `ad-exploit-agent` | AD exploitation | skill-router, shell-server, state-reader | All AD technique skills (15) |
+| `ad-exploit-agent` | AD exploitation | skill-router, shell-server, **state-interim** | All AD technique skills (15) |
 | `linux-privesc-agent` | Linux privesc | skill-router, shell-server, **state-interim** | linux-discovery + 4 technique skills, container-escapes |
 | `windows-privesc-agent` | Windows privesc | skill-router, shell-server, **state-interim** | windows-discovery + 5 technique skills |
-| `password-spray-agent` | Credential spraying | skill-router, shell-server, state-reader | password-spraying |
-| `evasion-agent` | AV/EDR evasion | skill-router, shell-server, state-reader | av-edr-evasion |
-| `credential-cracking-agent` | Credential cracking | skill-router, state-reader | credential-cracking |
+| `password-spray-agent` | Credential spraying | skill-router, shell-server, **state-interim** | password-spraying |
+| `evasion-agent` | AV/EDR evasion | skill-router, shell-server, **state-interim** | av-edr-evasion |
+| `credential-cracking-agent` | Credential cracking | skill-router, **state-interim** | credential-cracking |
 
-> **Note:** Discovery agents (network-recon, web-discovery, ad-discovery, linux-privesc, windows-privesc) use the **state-interim** MCP server, which gives them read access plus four add-only write tools. Technique agents use **state-reader** (fully read-only).
+> **Note:** All agents use the **state-interim** MCP server, which gives them read access plus five add-only write tools (`add_credential`, `add_vuln`, `add_pivot`, `add_blocked`, `add_tunnel`). This ensures critical discoveries (captured hashes, confirmed vulns, new pivot paths) reach the orchestrator immediately via event watcher.
 
 ## Discovery vs Technique Agents
 
-Agents fall into two categories with different state access and responsibilities.
+Agents fall into two categories with different responsibilities, but all share the same state access level (state-interim).
 
 ### Discovery Agents
 
-Discovery agents **enumerate attack surface** and identify vulnerabilities. They return findings and recommended next skills to the orchestrator — they never invoke technique skills themselves. They use the **state-interim** MCP server, giving them:
-
-- Full read access to engagement state
-- Four add-only write tools: `add_credential()`, `add_vuln()`, `add_pivot()`, `add_blocked()`
-- Each write emits a `state_events` row for real-time monitoring
-
-Discovery agents write findings mid-run so concurrent agents and the orchestrator can see them immediately, without waiting for the agent to finish.
+Discovery agents **enumerate attack surface** and identify vulnerabilities. They return findings and recommended next skills to the orchestrator — they never invoke technique skills themselves.
 
 **Discovery agents:** `network-recon-agent`, `web-discovery-agent`, `ad-discovery-agent`, `linux-privesc-agent`, `windows-privesc-agent`
 
 ### Technique Agents
 
-Technique agents **exploit specific vulnerabilities**. They use the **state-reader** MCP server (fully read-only). All findings are reported in their return summary — the orchestrator parses the summary and writes state changes.
+Technique agents **exploit specific vulnerabilities**. All findings are reported in their return summary — the orchestrator parses the summary and writes state changes.
 
 **Technique agents:** `web-exploit-agent`, `ad-exploit-agent`, `password-spray-agent`, `evasion-agent`, `credential-cracking-agent`
+
+### Shared State Access
+
+All agents use the **state-interim** MCP server, giving them:
+
+- Full read access to engagement state
+- Five add-only write tools: `add_credential()`, `add_vuln()`, `add_pivot()`, `add_blocked()`, `add_tunnel()`
+- Each write emits a `state_events` row for real-time monitoring
+
+Agents write critical discoveries mid-run so the orchestrator can act on them immediately via the event watcher — without waiting for the agent to finish. This is especially important for technique agents that capture hashes or credentials during exploitation.
 
 ## Model Selection
 
@@ -96,21 +100,17 @@ All other agents use the default model, which handles complex exploitation reaso
 ```mermaid
 graph LR
     O[Orchestrator] -->|read + write| SW[(state-writer)]
-    D[Discovery Agents] -->|read + 4 adds| SI[(state-interim)]
-    T[Technique Agents] -->|read only| SR[(state-reader)]
+    A[All Agents] -->|read + 5 adds| SI[(state-interim)]
 
     SW --> DB[(state.db)]
     SI --> DB
-    SR --> DB
 ```
 
-All three MCP server modes access the same SQLite database. WAL mode and `busy_timeout=5000` handle concurrent access safely.
+Both MCP server modes access the same SQLite database. WAL mode and `busy_timeout=5000` handle concurrent access safely.
 
 **Orchestrator** (state-writer): Full read/write access. Creates targets, records access, updates vulnerabilities. The sole authority for engagement state.
 
-**Discovery agents** (state-interim): Read everything, write actionable findings immediately. When a discovery agent finds credentials or confirms a vulnerability mid-run, it writes them so other agents and the orchestrator can act on them without waiting.
-
-**Technique agents** (state-reader): Read-only. Report all findings in their return summary. The orchestrator deduplicates against any interim writes and records the rest.
+**All agents** (state-interim): Read everything, write critical discoveries immediately. When any agent finds credentials, captures hashes, or confirms a vulnerability mid-run, it writes them so the orchestrator can act via the event watcher without waiting for agent completion. The orchestrator deduplicates interim writes against return summaries.
 
 ## Tool Execution: Bash vs Shell-Server
 

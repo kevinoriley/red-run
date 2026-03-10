@@ -557,8 +557,8 @@ def register_read_tools(mcp: FastMCP) -> None:
     def poll_events(since_id: int = 0, limit: int = 50) -> str:
         """Poll for state events since a checkpoint.
 
-        Returns new events written by interim-mode discovery agents plus a
-        cursor for the next call.  Use this for real-time monitoring of
+        Returns new events written by interim-mode agents plus a cursor for
+        the next call.  Use this for real-time monitoring of
         findings as they happen — call repeatedly with the returned cursor.
 
         Args:
@@ -1339,16 +1339,16 @@ def register_write_tools(mcp: FastMCP) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Interim tools (registered only in interim mode — discovery agents)
+# Interim tools (registered only in interim mode — all agents)
 # ---------------------------------------------------------------------------
 
 def register_interim_tools(mcp: FastMCP) -> None:
-    """Register add-only write tools for discovery agents.
+    """Register add-only write tools for agents.
 
-    Interim mode gives discovery agents the ability to record actionable
-    findings (credentials, vulns, pivot paths, blocked techniques, tunnels)
-    mid-run so concurrent agents and the orchestrator can see them immediately
-    — without waiting for the discovery agent's full return summary.
+    Interim mode gives agents the ability to record actionable findings
+    (credentials, vulns, pivot paths, blocked techniques, tunnels) mid-run
+    so the orchestrator can see them immediately via the event watcher —
+    without waiting for the agent's full return summary.
 
     Only 5 add-only tools are exposed. No update tools, no target/port/access
     management, no lifecycle tools. The orchestrator remains the authoritative
@@ -1636,7 +1636,7 @@ def create_server(mode: str) -> FastMCP:
     # Read tools always registered
     register_read_tools(mcp)
 
-    # Interim tools for discovery agents
+    # Interim tools for agents
     if mode == "interim":
         register_interim_tools(mcp)
 
