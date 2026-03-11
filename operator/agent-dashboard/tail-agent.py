@@ -299,12 +299,18 @@ def _init_colors() -> dict[str, int]:
     # Pair for border
     curses.init_pair(len(cmap) + 2, curses.COLOR_WHITE, -1)
     pairs["border"] = len(cmap) + 2
-    # Pair for stopped indicator
-    curses.init_pair(len(cmap) + 3, curses.COLOR_RED, -1)
-    pairs["stopped"] = len(cmap) + 3
+    # Idle severity: yellow → orange → red over time
+    curses.init_pair(len(cmap) + 3, 178, -1)  # 256-color muted gold
+    pairs["idle_warn"] = len(cmap) + 3
+    curses.init_pair(len(cmap) + 4, 208, -1)  # 256-color orange
+    pairs["idle_stale"] = len(cmap) + 4
+    curses.init_pair(len(cmap) + 5, curses.COLOR_RED, -1)
+    pairs["idle_dead"] = len(cmap) + 5
+    # Legacy alias used by firewall indicator
+    pairs["stopped"] = pairs["idle_dead"]
     # Pair for tool results (green)
-    curses.init_pair(len(cmap) + 4, curses.COLOR_GREEN, -1)
-    pairs["result"] = len(cmap) + 4
+    curses.init_pair(len(cmap) + 6, curses.COLOR_GREEN, -1)
+    pairs["result"] = len(cmap) + 6
     return pairs
 
 
@@ -343,6 +349,8 @@ def _format_age(seconds: float) -> str:
     s = int(max(0, seconds))
     if s < 60:
         return f"{s}s ago"
+    elif s < 300:
+        return f"{s // 60}m {s % 60}s ago"
     elif s < 3600:
         return f"{s // 60}m ago"
     elif s < 86400:
@@ -464,6 +472,19 @@ def _is_agent_active(filepath: str) -> bool:
         return (time.time() - mtime) < 120.0
     except OSError:
         return False
+
+
+def _get_idle_seconds(filepath: str) -> float:
+    """Return seconds since the file was last modified."""
+    try:
+        resolved = filepath
+        if os.path.islink(filepath):
+            target = os.readlink(filepath)
+            if os.path.exists(target):
+                resolved = target
+        return max(0.0, time.time() - os.path.getmtime(resolved))
+    except OSError:
+        return 0.0
 
 
 def _jsonl_has_final_message(filepath: str) -> bool:
@@ -720,12 +741,6 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                                 pane_map[path] = (p, t)
                                 completed_paths.discard(path)
 
-                        # Remove panes no longer in .dashboard file
-                        for path in old_paths - new_paths:
-                            if path in pane_map:
-                                old_pane, _ = pane_map.pop(path)
-                                if old_pane in panes:
-                                    panes.remove(old_pane)
 
                 # Auto-discover new agents from tasks directory and subagent dirs
                 if tasks_dir:
@@ -926,27 +941,42 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                     pane_color_name = PANE_COLORS[pane.color_idx]
                     pane_pair = color_pairs[pane_color_name]
 
-                    # Draw header — highlight focused pane, show stopped indicator
-                    is_active = _is_agent_active(pane.filepath)
-                    if is_active:
+                    # Draw header — spinner while thinking, idle text when stale
+                    idle_secs = _get_idle_seconds(pane.filepath)
+                    show_idle = idle_secs >= 5.0
+                    idle_tag = ""
+                    idle_color = None
+                    if show_idle:
+                        if idle_secs < 120:
+                            # Spinner + elapsed time until red
+                            _spin = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+                            frame = _spin[int(time.time() * 4) % len(_spin)]
+                            idle_tag = f"{frame} {_format_age(idle_secs).removesuffix(' ago')}"
+                            if idle_secs >= 60:
+                                idle_color = "idle_stale"
+                            elif idle_secs >= 30:
+                                idle_color = "idle_warn"
+                        else:
+                            # Red: show idle duration
+                            idle_tag = f"idle {_format_age(idle_secs).removesuffix(' ago')}"
+                            idle_color = "idle_dead"
+                    if not show_idle:
                         header = pane.label.center(col_width)[:col_width]
                     else:
-                        header_text = f"{pane.label}  *stopped*"
+                        header_text = f"{pane.label}  {idle_tag}"
                         header = header_text.center(col_width)[:col_width]
                     hdr_attr = curses.color_pair(pane_pair) | curses.A_BOLD
                     if pi == focused:
                         hdr_attr |= curses.A_REVERSE
                     try:
                         stdscr.addnstr(0, x_off, header, col_width, hdr_attr)
-                        # Overlay *stopped* in red
-                        if not is_active:
-                            stop_tag = "*stopped*"
-                            tag_pos = header.find(stop_tag)
+                        if show_idle and idle_tag and idle_color:
+                            tag_pos = header.find(idle_tag)
                             if tag_pos >= 0:
-                                stop_attr = curses.color_pair(color_pairs["stopped"]) | curses.A_BOLD
+                                idle_attr = curses.color_pair(color_pairs[idle_color]) | curses.A_BOLD
                                 if pi == focused:
-                                    stop_attr |= curses.A_REVERSE
-                                stdscr.addnstr(0, x_off + tag_pos, stop_tag, col_width - tag_pos, stop_attr)
+                                    idle_attr |= curses.A_REVERSE
+                                stdscr.addnstr(0, x_off + tag_pos, idle_tag, col_width - tag_pos, idle_attr)
                     except curses.error:
                         pass
 
@@ -1038,7 +1068,7 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                     pass
 
                 # Column headers
-                hdr = f"     {'Agent':<26s} {'Age':>8s}"
+                hdr = f"     {'Agent':<26s} {'Last active':>11s}"
                 hdr = hdr[:overlay_w - 2]
                 try:
                     stdscr.addnstr(overlay_y + 1, overlay_x + 1, hdr.ljust(overlay_w - 2),
@@ -1070,7 +1100,7 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                         label, path, mtime, in_dash = browser_items[idx]
                         age = _format_age(now - mtime)
                         marker = " ●" if in_dash else "  "
-                        line_text = f"{marker} {label:<26s} {age:>8s}"
+                        line_text = f"{marker} {label:<26s} {age:>11s}"
                         line_text = line_text[:overlay_w - 2]
 
                         row = overlay_y + 2 + i
