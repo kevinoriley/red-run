@@ -51,6 +51,7 @@ your PATH points. Run `bash preflight.sh` to verify.
 | Burp Suite | web-discovery, most web exploitation skills | Optional but recommended for proxy capture; install from PortSwigger packages or tarball |
 | sqlmap | sql-injection-union, sql-injection-error, sql-injection-blind, sql-injection-stacked | `sudo apt install sqlmap` |
 | wpscan | web-discovery | `sudo gem install wpscan` |
+| git-dumper | web-discovery, command-injection | `pipx install git-dumper` |
 | arjun | web-discovery | `pipx install arjun` |
 | paramspider | web-discovery | `pipx install paramspider` |
 | commix | command-injection | `sudo apt install commix` or git clone |
@@ -281,6 +282,7 @@ pipx install netexec
 pipx install certipy-ad
 pipx install bloodyad
 pipx install manspider
+pipx install git-dumper
 pipx install sccmhunter
 pipx install badsecrets
 pipx install sstimap

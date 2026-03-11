@@ -41,6 +41,16 @@ The installer runs five steps:
 
 **7. Config verification** — Checks that `.mcp.json` and `.claude/settings.json` are properly configured.
 
+### Attackbox dependencies
+
+The installer sets up red-run itself, but skills also depend on standard pentesting tools installed on the attackbox (nmap, ffuf, sqlmap, hashcat, impacket, git-dumper, etc.). After installing, run the preflight check:
+
+```bash
+bash preflight.sh
+```
+
+Preflight verifies that required tools are in `$PATH` and reports missing ones with install commands. See [dependencies](dependencies.md) for the full list organized by category.
+
 ### Symlink vs copy mode
 
 ```bash

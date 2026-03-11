@@ -49,7 +49,13 @@ See also: [ARCHITECTURE.md](ARCHITECTURE.md) for Mermaid diagrams, [SKILLS.md](S
 
 The installer sets up the orchestrator, agents, and MCP servers, and indexes `skills/` into ChromaDB for semantic retrieval. The repo must stay in place — skill-router reads from `skills/` at runtime.
 
-Run from a VM or dedicated pentesting machine. See [Installation docs](https://blacklanternsecurity.github.io/red-run/installation/) for firewall setup and troubleshooting.
+After installing, run the preflight check to verify attackbox dependencies (nmap, ffuf, sqlmap, hashcat, impacket, etc.):
+
+```bash
+bash preflight.sh
+```
+
+See [dependencies](docs/dependencies.md) for the full list of required tools and [Installation docs](https://blacklanternsecurity.github.io/red-run/installation/) for firewall setup and troubleshooting.
 
 ## State Dashboard
 
@@ -79,8 +85,13 @@ claude --dangerously-skip-permissions
 
 The orchestrator still presents routing decisions for operator approval before spawning each agent. An optional nftables firewall is available in `operator/engagement-firewall/` for operators who want OS-level network isolation.
 
-red-run is a **proof of concept** tested only in CTF environments. Do not use it in production engagements. Run from an isolated VM or dedicated pentesting machine. You are responsible for containing Claude on your systems and for any legal consequences under the CFAA or equivalent legislation.
+Run from an isolated VM or dedicated pentesting machine. You are responsible for containing Claude on your systems and for any legal consequences under the CFAA or equivalent legislation.
 
 ## Disclaimer
 
-For use in **authorized security testing and educational contexts only**. Do not use against systems without explicit written permission. Skills are baseline templates — expect gaps and techniques that need validation against real targets. While skills include OPSEC notes where relevant, do not trust red-run to maintain OPSEC in production environments without dedicated review and testing.
+**By using red-run you accept full responsibility for its actions.** This tool runs fully autonomous AI agents that execute offensive security techniques — port scanning, vulnerability exploitation, credential attacks, privilege escalation, and lateral movement — against targets you specify.
+
+- **Authorization required.** Do not use against systems without explicit written permission. Unauthorized access to computer systems is illegal under the CFAA (18 U.S.C. § 1030) and equivalent laws in other jurisdictions.
+- **CTF and lab use only.** The current version of the orchestrator is a CTF solver — it runs fully autonomous agents with no OPSEC considerations. Skills are baseline templates built by AI and have not been thoroughly reviewed by human eyes. Expect gaps, false positives, and techniques that need validation before use on real infrastructure. See the [architecture plans](https://blacklanternsecurity.github.io/red-run/architecture/) for the production engagement roadmap.
+- **No OPSEC guarantees.** Agents run with no stealth considerations. Assume all activity is logged and detectable. Do not rely on red-run for covert operations.
+- **No warranty.** red-run is provided as-is. The authors are not liable for any damage, data loss, legal consequences, or other harm resulting from its use.

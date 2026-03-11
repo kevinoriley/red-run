@@ -194,6 +194,9 @@ check_web_testing() {
     if p=$(find_cmd wpscan); then pass "wpscan" "$p"
     else warn "wpscan" "sudo gem install wpscan"; fi
 
+    if p=$(find_pipx git-dumper); then pass "git-dumper" "$p"
+    else warn "git-dumper" "pipx install git-dumper"; fi
+
     if p=$(find_pipx arjun); then pass "arjun" "$p"
     else warn "arjun" "pipx install arjun"; fi
 
