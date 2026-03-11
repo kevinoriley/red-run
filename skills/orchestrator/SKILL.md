@@ -648,23 +648,29 @@ When a skill completes and returns control to the orchestrator:
      technique is blocked. Mark `retry: "no"` only when a **technique
      agent** (web-exploit, ad-exploit, linux-privesc, windows-privesc)
      exhausts its skill's methodology and still fails.
-4. Append to `engagement/activity.md` with skill outcome
-5. Append to `engagement/findings.md` if vulnerabilities were confirmed
-6. **Check for new usernames** — if the skill returned usernames not
+4. **Record tool workarounds**: If the agent's return summary mentions a
+   tool-specific workaround (e.g., MSF encoder fix, proxy setting, auth
+   flag), append it to the target's notes via `update_target(notes=...)`.
+   This propagates automatically — all subsequent agents see target notes
+   in `get_state_summary()`. Keep it to one line (e.g., "MSF: set
+   ReverseAllowProxy true + encoder cmd/echo for cmd payloads").
+5. Append to `engagement/activity.md` with skill outcome
+6. Append to `engagement/findings.md` if vulnerabilities were confirmed
+7. **Check for new usernames** — if the skill returned usernames not
    previously in state, trigger the **Usernames Found** hard stop before
    continuing. This applies to ANY skill that discovers users: network-recon
    (RPC/LDAP null session), web-discovery (user enumeration), ad-discovery
    (BloodHound/LDAP), SQLi (user table dump), credential-dumping (SAM/LSASS),
    or any other source.
-7. Call `get_state_summary()` for routing decision
-8. Run the Step 5 decision logic
-9. Route to the next skill based on updated state
+8. Call `get_state_summary()` for routing decision
+9. Run the Step 5 decision logic
+10. Route to the next skill based on updated state
 
 #### Parallel Path Returns
 
 When a returning agent was part of a parallel run (see **Parallel Execution**),
-steps 1–5 above still apply — parse findings, record state, log activity, log
-findings. Steps 5–8 are replaced by the **Race Resolution** procedure. Do not
+steps 1–6 above still apply — parse findings, record state, record workarounds,
+log activity, log findings. Steps 7–10 are replaced by the **Race Resolution** procedure. Do not
 run decision logic or route to the next skill until all parallel agents have
 completed or been killed.
 
@@ -1386,8 +1392,8 @@ watcher after processing each notification.
 
 #### 4. Race Resolution
 
-When an agent returns, apply the standard Post-Skill Checkpoint steps 0–4
-(poll events, parse, record state, log activity, log findings). Then resolve:
+When an agent returns, apply the standard Post-Skill Checkpoint steps 0–6
+(poll events, parse, dedup, record state, record workarounds, log activity, log findings). Then resolve:
 
 **Case 1 — Succeeded:**
 The returning agent achieved its goal (credential obtained, access gained,
