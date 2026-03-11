@@ -133,7 +133,6 @@ The only commands the orchestrator may execute directly are:
 - State-writer MCP tools (`init_engagement`, `add_target`, `add_credential`, `add_access`, `add_vuln`, `add_pivot`, `add_blocked`, `add_tunnel`, `update_tunnel`, and their update variants) — engagement state
 - State-reader MCP tools (`get_state_summary`, `get_targets`, `get_credentials`, `get_access`, `get_vulns`, `get_pivot_map`, `get_blocked`, `get_tunnels`, `poll_events`) — state queries
 - Skill-router MCP tools (`get_skill`, `search_skills`, `list_skills`) — skill routing
-- `ping -c 1 -W 2 1.1.1.1` — firewall check (pentest mode only, ping succeeding = firewall DOWN)
 - `getent hosts <hostname>` — hostname resolution verification (local-only, no network traffic)
 - `ldapsearch -x -H ldap://TARGET -b "DC=..." -s base lockoutThreshold lockOutObservationWindow lockoutDuration minPwdLength pwdProperties` — lockout policy query (safety-critical pre-spray check, single base-scope read, not enumeration)
 - `ps aux | grep <tool>`, `kill <pid>` — subprocess cleanup after `TaskStop` (see Subprocess Cleanup below)
@@ -230,7 +229,7 @@ Spawn the appropriate domain agent via the Agent tool with
 Agent(
     subagent_type="network-recon-agent",
     mode="bypassPermissions",
-    prompt="Load skill 'network-recon'. Target: 10.10.10.5. Mode: ctf. No credentials provided.",
+    prompt="Load skill 'network-recon'. Target: 10.10.10.5. No credentials provided.",
     description="Network recon on 10.10.10.5"
 )
 ```
@@ -335,9 +334,8 @@ never load a second skill or route to other skills — when the skill text says
 "Route to X", that's the agent's cue to report findings and stop.
 
 **Inline fallback:** If a custom subagent is not available (agent files not
-installed), fall back to loading the skill inline via `get_skill()` and
-executing the methodology in the main thread. The subagent model is the
-preferred path, but the inline model still works.
+installed), **STOP** and have the operator fix the issue. Skills are only
+loaded inline when explicitly requested by the operator.
 
 #### Skill-to-Agent Routing Table
 
@@ -376,36 +374,11 @@ Use this table to pick the right agent for each skill:
 | credential-cracking | credential-cracking-agent | Local-only cracking, parallelizable with other technique skills (haiku) |
 | retrospective | _(inline — no agent needed)_ | Post-engagement, no target interaction |
 
-#### Mode-Aware Delegation
+#### Agent Spawning
 
-The engagement mode (from `get_state_summary()` header or scope.md) controls
-how skills execute:
+All skills (discovery and technique) are delegated to domain agents. All
+agent spawns use `mode: "bypassPermissions"`:
 
-**CTF mode:**
-- All skills (discovery and technique) delegated to domain agents
-- All agent spawns use `mode: "bypassPermissions"` on the Agent tool call
-- Operator runs `claude --dangerously-skip-permissions`
-- No firewall check
-
-**Pentest mode:**
-- **Discovery skills** → delegated to domain agents with
-  `mode: "bypassPermissions"` (autonomous enumeration)
-- **Technique skills** → loaded **inline** via `get_skill()` in the main
-  thread. The operator sees every command via normal Claude Code permission
-  prompts.
-- Operator runs `claude` (normal permission mode — NOT yolo)
-- Firewall check before every agent spawn (see below)
-
-**Inline technique execution (pentest mode):**
-
-When the decision logic selects a technique skill in pentest mode:
-1. Present the routing decision to the operator (same approval gate as always)
-2. Call `get_skill("skill-name")` to load the full skill
-3. Follow the methodology step-by-step in the main thread
-4. Record findings via state-writer MCP tools as normal
-5. Run the Post-Skill Checkpoint
-
-**Agent spawns in both modes** explicitly set `mode: "bypassPermissions"`:
 ```
 Agent(
     subagent_type="<agent>",
@@ -413,23 +386,6 @@ Agent(
     prompt="Load skill '<skill>'. Target: <IP>. ...",
     description="<description>"
 )
-```
-This decouples agent autonomy from the main session's permission mode —
-agents work regardless of whether the operator launched with yolo or not.
-
-**Pre-spawn firewall check (pentest mode only):**
-
-Before EVERY agent spawn in pentest mode, verify the firewall is blocking
-outbound internet traffic:
-```bash
-ping -c 1 -W 2 1.1.1.1
-```
-- **Ping fails** → firewall is active, proceed
-- **Ping succeeds** → firewall is DOWN, hard stop:
-```
-[orchestrator] HARD STOP — firewall down
-
-Re-activate: sudo bash operator/engagement-firewall/firewall.sh
 ```
 
 #### Orchestrator Loop
@@ -737,19 +693,15 @@ If `engagement/state.db` already exists (the user said "resume", "continue",
    section). If a web proxy decision already exists, ensure the helper files
    `engagement/web-proxy.json` and `engagement/web-proxy.sh` match that
    decision before any web agent is spawned.
-3. Read the engagement mode from the summary header (`**Mode: ctf**` or
-   `**Mode: pentest**`). Do NOT re-ask mode selection — it's stored in state.
-4. **If pentest mode**: run the Pentest Mode Gates (permission mode check +
-   firewall check) — same as Step 1. Hard stop on yolo mode or firewall down.
-5. Print a concise status briefing for the operator: mode, targets, current
+3. Print a concise status briefing for the operator: targets, current
    access, key vulns, active tunnels, blocked paths.
-6. Append to `activity.md`:
+4. Append to `activity.md`:
    ```
    ### [YYYY-MM-DD HH:MM:SS] orchestrator → resumed
-   - Engagement resumed (mode: <ctf|pentest>). State loaded from state.db.
+   - Engagement resumed. State loaded from state.db.
    ```
-7. Run the **Step 5 decision logic** to determine the next action.
-8. Present the recommended next action to the operator and wait for approval
+5. Run the **Step 5 decision logic** to determine the next action.
+6. Present the recommended next action to the operator and wait for approval
    before spawning any agents.
 
 Do NOT re-initialize scope, re-create the engagement directory, or re-run
@@ -768,19 +720,20 @@ Gather from the user:
 - **Objectives**: What does success look like? Domain admin? Data exfil proof?
   Specific system access?
 
-### Engagement Mode
+### CTF Acknowledgement
 
-**Hard stop** — the operator must select the engagement mode before proceeding.
+**Hard stop** — the operator must acknowledge before proceeding.
 
 Use `AskUserQuestion`:
 
-**Question — Engagement mode** (single-select):
-- Header: "Engagement mode"
-- Options (THIS EXACT ORDER — pentest first):
-  1. Pentest mode — Technique skills inline with permission prompts, firewall required
-  2. CTF mode — Full autonomous execution, no firewall required
+**Question — CTF disclaimer** (single-select):
+- Header: "Disclaimer"
+- Question: "This orchestrator is a CTF solver. It runs fully autonomous agents with no OPSEC considerations. Skills have not been thoroughly reviewed by human eyes. By continuing, you accept responsibility for ensuring you have authorization to test the target and for this tool's actions. Confirm to proceed."
+- Options:
+  1. Confirm — Proceed with engagement
+  2. Cancel — Abort
 
-Record the selection. Pass it to `init_engagement()` in the next step.
+If the operator selects Cancel, stop immediately.
 
 ### Initialize Engagement Directory
 
@@ -814,19 +767,10 @@ mkdir -p engagement/evidence/logs
 - undecided until the first HTTP/HTTPS service is discovered
 ```
 
-**engagement/scope.md** — record mode under scope:
-
-Add a `## Mode` heading after the scope content:
-```markdown
-## Mode
-- <ctf|pentest>
-```
-
 **engagement/state.db** — initialize via state-writer MCP:
 
-Call `init_engagement(name="<engagement name>", mode="<ctf|pentest>")` to
-create the SQLite state database. The mode is stored in the engagement table
-and appears in every `get_state_summary()` response.
+Call `init_engagement(name="<engagement name>")` to create the SQLite state
+database.
 
 **engagement/activity.md** — start the activity log:
 
@@ -838,46 +782,6 @@ and appears in every `get_state_summary()` response.
 
 ```markdown
 # Findings
-```
-
-### Pentest Mode Gates
-
-**Skip this section entirely in CTF mode.**
-
-Two safety checks before any agent spawns in pentest mode:
-
-#### 1. Permission Mode Check
-
-Soft check — Claude cannot detect its own permission mode. Ask the operator:
-
-```
-[orchestrator] Pentest mode requires normal permissions (not --dangerously-skip-permissions).
-Confirm you are NOT in yolo mode.
-```
-
-If confirmed, proceed. If they are in yolo mode, hard stop — restart
-with `claude` or switch to CTF mode.
-
-#### 2. Firewall Check
-
-```bash
-ping -c 1 -W 2 1.1.1.1
-```
-
-- **Ping fails** → firewall active, proceed
-- **Ping succeeds** → hard stop:
-```
-[orchestrator] HARD STOP — firewall not active
-
-Edit scope in operator/engagement-firewall/firewall.sh, then:
-sudo bash operator/engagement-firewall/firewall.sh
-```
-
-After operator confirms, re-run ping to verify. Log to `activity.md`:
-```
-### [YYYY-MM-DD HH:MM:SS] orchestrator → pentest gates verified
-- Permission mode: normal
-- Firewall active
 ```
 
 ## Step 2: Reconnaissance
@@ -909,7 +813,7 @@ options via `AskUserQuestion`. The operator always chooses the scan type.
   Agent(
       subagent_type="network-recon-agent",
       mode="bypassPermissions",
-      prompt="Load skill 'network-recon'. Target: <IP/range>. Mode: <ctf|pentest>. Credentials: <creds or 'none'>. Scan type: <quick|full>.",
+      prompt="Load skill 'network-recon'. Target: <IP/range>. Credentials: <creds or 'none'>. Scan type: <quick|full>.",
       description="Network recon on <target>"
   )
   ```
@@ -934,7 +838,7 @@ options via `AskUserQuestion`. The operator always chooses the scan type.
   Agent(
       subagent_type="network-recon-agent",
       mode="bypassPermissions",
-      prompt="Load skill 'network-recon'. Target: <IP/range>. Mode: <ctf|pentest>. Credentials: <creds or 'none'>. Custom scan request: <operator's description>.",
+      prompt="Load skill 'network-recon'. Target: <IP/range>. Credentials: <creds or 'none'>. Custom scan request: <operator's description>.",
       description="Network recon on <target>"
   )
   ```
@@ -966,7 +870,7 @@ skill `web-discovery`:
 Agent(
     subagent_type="web-discovery-agent",
     mode="bypassPermissions",
-    prompt="Load skill 'web-discovery'. Target: <URL>. Tech stack: <from recon>. Mode: <ctf|pentest>. Web proxy: <http://IP:PORT or 'disabled by operator'>. Source engagement/web-proxy.sh before every Bash-driven HTTP(S) command. If a proxy is configured, route all attackbox-originated HTTP(S) traffic through it, pass the same value to browser_open(proxy=...) or rely on engagement/web-proxy.json, and do not send direct requests outside the proxy.",
+    prompt="Load skill 'web-discovery'. Target: <URL>. Tech stack: <from recon>. Web proxy: <http://IP:PORT or 'disabled by operator'>. Source engagement/web-proxy.sh before every Bash-driven HTTP(S) command. If a proxy is configured, route all attackbox-originated HTTP(S) traffic through it, pass the same value to browser_open(proxy=...) or rely on engagement/web-proxy.json, and do not send direct requests outside the proxy.",
     description="Web discovery on <target>"
 )
 ```
@@ -981,7 +885,7 @@ STOP. Spawn **ad-discovery-agent** with skill `ad-discovery`:
 Agent(
     subagent_type="ad-discovery-agent",
     mode="bypassPermissions",
-    prompt="Load skill 'ad-discovery'. DC: <IP>. Domain: <name>. Credentials: <creds>. Mode: <ctf|pentest>.",
+    prompt="Load skill 'ad-discovery'. DC: <IP>. Domain: <name>. Credentials: <creds>.",
     description="AD discovery on <domain>"
 )
 ```
@@ -1272,7 +1176,7 @@ When reading the state summary (via `get_state_summary()`), the orchestrator sho
       Agent(
           subagent_type="pivoting-agent",
           mode="bypassPermissions",
-          prompt="Load skill 'pivoting-tunneling'. Pivot host: <host>. Target subnet: <subnet>. Access: <ssh/shell/winrm + user + creds>. Mode: <ctf|pentest>. Tool preference: SSH > sshuttle > ligolo > chisel.",
+          prompt="Load skill 'pivoting-tunneling'. Pivot host: <host>. Target subnet: <subnet>. Access: <ssh/shell/winrm + user + creds>. Tool preference: SSH > sshuttle > ligolo > chisel.",
           description="Pivoting to <subnet> via <host>"
       )
       ```
@@ -1585,7 +1489,7 @@ When a technique agent returns with an "AV/EDR Blocked" section in its summary:
        mode="bypassPermissions",
        prompt="Load skill 'av-edr-evasion'. Context: <paste AV-blocked section
        from agent return>. Build an AV-safe payload that meets the requirements.
-       Target: <IP>. Mode: <ctf|pentest>.",
+       Target: <IP>.",
        description="AV evasion for <technique> on <target>"
    )
    ```
@@ -1597,8 +1501,7 @@ When a technique agent returns with an "AV/EDR Blocked" section in its summary:
      Agent(
          subagent_type="<original-agent>",
          mode="bypassPermissions",
-         prompt="Load skill '<original-skill>'. Target: <IP>. Mode: <ctf|pentest>.
-         IMPORTANT: Your previous payload was caught by AV. Use this AV-safe
+         prompt="Load skill '<original-skill>'. Target: <IP>. IMPORTANT: Your previous payload was caught by AV. Use this AV-safe
          payload instead: <artifact path>. Method: <bypass method>.
          Runtime prerequisites: <if any, e.g., AMSI bypass command>.
          Do NOT generate a new payload — use the provided one.",
@@ -1978,7 +1881,7 @@ Agent(
     mode="bypassPermissions",
     run_in_background=true,
     prompt="Load skill 'password-spraying'. Spray tier: <light/medium/heavy/custom>.
-Target: <IP>. Mode: <ctf|pentest>. Services: <only operator-selected services, e.g. 'SMB 445, WinRM 5985'>.
+Target: <IP>. Services: <only operator-selected services, e.g. 'SMB 445, WinRM 5985'>.
 Domain: <domain or 'N/A'>. Hostname: <hostname>.
 Usernames: <list or path to file>.
 Lockout policy: <threshold/window/duration if known, or 'unknown — enumerate first'>.

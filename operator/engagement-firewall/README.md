@@ -48,10 +48,9 @@ sudo bash operator/engagement-firewall/teardown.sh
 
 This removes the `inet redrun` table entirely, restoring normal outbound traffic.
 
-## Engagement modes
+## When to use
 
-- **Pentest mode**: Required. Prevents accidental out-of-scope traffic.
-- **CTF mode**: Optional. CTF targets are isolated by design, but the firewall adds an extra safety layer.
+The firewall is an optional safety tool the operator can activate independently for any engagement. It prevents accidental out-of-scope traffic regardless of engagement type.
 
 ## Anthropic IP addresses
 

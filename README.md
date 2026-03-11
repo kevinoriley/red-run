@@ -69,14 +69,15 @@ bash operator/state-dashboard/generate-token.sh
 
 See `operator/state-dashboard/README.md` for details.
 
-## Permission Mode
+## Running
 
-red-run supports two engagement modes:
+All skills delegate to autonomous agents with `bypassPermissions`. Run with:
 
-- **Pentest mode** (`claude`) — Technique skills run inline with normal permission prompts. Discovery skills delegate to autonomous agents. Engagement firewall required.
-- **CTF mode** (`claude --dangerously-skip-permissions`) — All skills delegate to autonomous agents. No firewall required. The orchestrator still presents routing decisions for operator approval.
+```bash
+claude --dangerously-skip-permissions
+```
 
-The orchestrator asks which mode to use when initializing a new engagement.
+The orchestrator still presents routing decisions for operator approval before spawning each agent. An optional nftables firewall is available in `operator/engagement-firewall/` for operators who want OS-level network isolation.
 
 red-run is a **proof of concept** tested only in CTF environments. Do not use it in production engagements. Run from an isolated VM or dedicated pentesting machine. You are responsible for containing Claude on your systems and for any legal consequences under the CFAA or equivalent legislation.
 

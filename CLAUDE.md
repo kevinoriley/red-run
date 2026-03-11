@@ -47,7 +47,7 @@ The orchestrator spawns domain-specific subagents for each skill invocation:
 
 Each invocation: agent loads one skill via `get_skill()`, executes methodology, saves evidence, and returns findings. The orchestrator parses the return summary, records state changes via the state-writer MCP, and makes the next routing decision. All agents use state-interim for mid-run writes of critical discoveries (credentials, vulns, pivots, blocked). The orchestrator deduplicates interim writes against return summaries.
 
-**Inline fallback**: If subagents aren't installed, the orchestrator **DOES NOT** load skills inline via `get_skill()` in the main thread. STOP and have the operator fix the issue. Skills are only loaded inline in pentest mode during exploitation activity (see ## Permission Mode) or when explicitly requested by the operator.
+**Inline fallback**: If subagents aren't installed, the orchestrator **DOES NOT** load skills inline via `get_skill()` in the main thread. STOP and have the operator fix the issue. Skills are only loaded inline when explicitly requested by the operator.
 
 Agent source files live in `agents/` (version controlled), installed to `~/.claude/agents/` by install.sh.
 
@@ -251,26 +251,16 @@ The MCP indexer builds embedding documents from these structured fields. `descri
 
 ## Permission Mode
 
-red-run supports two permission modes depending on engagement type:
+All skills delegate to autonomous agents with `mode: "bypassPermissions"`. Run
+`claude --dangerously-skip-permissions` for full autonomous operation. The
+orchestrator's approval gates (operator confirms every routing decision before
+agent spawn) provide human-in-the-loop control.
 
-- **Pentest mode** — Run `claude` (normal permission mode). Technique skills
-  execute inline in the main thread with standard permission prompts — the
-  operator approves every command. Discovery skills are delegated to agents
-  with `mode: "bypassPermissions"` (they need autonomy for enumeration).
-- **CTF mode** — Run `claude --dangerously-skip-permissions`. All skills are
-  delegated to autonomous agents. The orchestrator's approval gates (operator
-  confirms every routing decision before agent spawn) provide human-in-the-loop
-  control.
+## Engagement Firewall (Optional)
 
-Agent spawns always set `mode: "bypassPermissions"` explicitly on the Agent
-tool call, decoupling agent autonomy from the main session's permission mode.
-
-## Engagement Firewall
-
-In pentest mode, the orchestrator requires an active nftables firewall that
-restricts outbound traffic to Anthropic API + scope targets. Static scripts
-live in `operator/engagement-firewall/`. The operator edits scope and runs with
-sudo. See `operator/engagement-firewall/README.md` and docs/architecture.md.
+An nftables firewall is available in `operator/engagement-firewall/` for
+operators who want OS-level network isolation restricting outbound traffic to
+Anthropic API + scope targets. See `operator/engagement-firewall/README.md`.
 
 ## Installation
 

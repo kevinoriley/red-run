@@ -11,8 +11,6 @@ red-run requires the following installed:
 | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | CLI host for skills, agents, and MCP servers | `npm install -g @anthropic-ai/claude-code` |
 | [uv](https://docs.astral.sh/uv/) | Python package manager for MCP servers | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | [Docker](https://docs.docker.com/engine/install/) | Containerized nmap and pentest toolbox | See Docker docs |
-| [nftables](https://wiki.nftables.org/) | Engagement network firewall (pentest mode) | Ubuntu/Debian/Kali: `sudo apt install nftables` — Arch: `sudo pacman -S nftables` |
-
 
 ## Install
 
@@ -74,39 +72,20 @@ red-run is [designed so Claude never needs sudo](architecture.md#privilege-bound
 
 The `Bash(sudo *)` rule makes Claude Code refuse any Bash command starting with `sudo`. The other rules block common destructive commands. See the [Trail of Bits Claude Code hardening guide](https://blog.trailofbits.com/2025/07/10/securing-claude-code/) for the full recommended configuration.
 
-## Engagement firewall
+## Engagement firewall (optional)
 
-In pentest mode, the orchestrator requires an active nftables firewall before spawning agents. The firewall restricts outbound traffic to Anthropic API endpoints and in-scope targets — everything else is blocked at the OS level.
-
-Edit the scope and activate:
-
-    sudo bash operator/engagement-firewall/firewall.sh
-
-See `operator/engagement-firewall/README.md` for details and live target additions.
+An nftables firewall is available in `operator/engagement-firewall/` for operators who want OS-level network isolation. It restricts outbound traffic to Anthropic API endpoints and in-scope targets. See `operator/engagement-firewall/README.md` for setup and live target additions.
 
 ## Running
 
 Start Claude Code from the red-run repo directory:
-
-**Pentest mode** (recommended for client work):
-
-```bash
-cd red-run
-claude
-```
-
-Technique skills run inline with normal permission prompts — the operator approves every command. Discovery skills are delegated to autonomous agents. The engagement firewall must be active (see above).
-
-**CTF mode** (labs, CTFs, authorized testing):
 
 ```bash
 cd red-run
 claude --dangerously-skip-permissions
 ```
 
-All skills are delegated to autonomous agents. No firewall required. The orchestrator still presents routing decisions for operator approval before spawning each agent.
-
-The MCP servers start automatically via `.mcp.json`. Give the orchestrator a target:
+All skills delegate to autonomous agents. The orchestrator still presents routing decisions for operator approval before spawning each agent. MCP servers start automatically via `.mcp.json`. Give the orchestrator a target:
 
 > "Scan and attack 10.10.10.5"
 
