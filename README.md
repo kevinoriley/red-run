@@ -12,7 +12,7 @@ The orchestrator presents the attack surface, chain analysis, and available path
 
 ## Skills
 
-67 skills across 7 categories — see [SKILLS.md](SKILLS.md) for the full inventory.
+67 skills across 7 categories — see [Skills Inventory](docs/skills-inventory.md) for the full inventory.
 
 | Category | Count | Coverage |
 |----------|-------|----------|
@@ -35,7 +35,7 @@ Full documentation is available at the [docs site](https://blacklanternsecurity.
 - [MCP Servers](https://blacklanternsecurity.github.io/red-run/mcp-servers/) — nmap, shell, browser, state, skill-router
 - [Writing Skills](https://blacklanternsecurity.github.io/red-run/writing-skills/) — contributor guide for new skills
 
-See also: [ARCHITECTURE.md](ARCHITECTURE.md) for Mermaid diagrams, [SKILLS.md](SKILLS.md) for the full skill inventory.
+See also: [ARCHITECTURE.md](ARCHITECTURE.md) for Mermaid diagrams, [Skills Inventory](docs/skills-inventory.md) for the full skill inventory.
 
 ## Installation
 
