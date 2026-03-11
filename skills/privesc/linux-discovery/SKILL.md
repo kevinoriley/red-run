@@ -178,7 +178,7 @@ This is the highest-priority check — sudo misconfigurations are the most commo
 privilege escalation vector.
 
 ```bash
-sudo -l 2>/dev/null
+sudo -n -l 2>/dev/null  # -n prevents password prompt from hanging the shell
 sudo -V 2>/dev/null | head -1  # Sudo version for CVE matching
 ```
 
