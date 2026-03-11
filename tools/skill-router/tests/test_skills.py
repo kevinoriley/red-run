@@ -202,7 +202,7 @@ class TestSkillRouting:
         """Every get_skill('X') reference must point to an existing skill."""
         known = _get_all_skill_names()
         # Documentation examples use placeholder names — skip them
-        placeholder_refs = {"skill-name"}
+        placeholder_refs = {"skill-name", "<name>"}
         ref_pattern = re.compile(r'get_skill\(["\']([^"\']+)["\']\)')
         invalid = []
 
