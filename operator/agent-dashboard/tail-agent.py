@@ -91,8 +91,6 @@ def format_tool(name: str, inp: dict) -> tuple[str, str]:
     # Built-in Claude Code tools
     if name == "Bash":
         cmd = inp.get("command", "")
-        if len(cmd) > 200:
-            cmd = cmd[:200] + "…"
         desc = inp.get("description", "")
         if desc:
             return ("shell", f"BASH ({desc}) {cmd}")
