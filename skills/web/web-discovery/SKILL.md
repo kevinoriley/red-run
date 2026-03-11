@@ -113,6 +113,8 @@ triggers a hosts-file update check.
 The orchestrator manages those. Still report all findings in your return summary —
 interim writes supplement it, they don't replace it.
 
+**Do NOT send interim writes if you are near your scope boundary and will be returning to the orchestrator imminently.** 
+
 Your return summary must include:
 - New targets/hosts discovered (with ports and services)
 - New credentials or tokens found
@@ -152,7 +154,8 @@ Find hidden endpoints, directories, and files.
 **Wordlist priority:** Start with `quickhits.txt` for fast coverage of common
 high-value paths (admin panels, config files, backup files, known endpoints).
 Fall back to `raft-small-words.txt` only if quickhits returns nothing
-interesting. Use `raft-medium-*` for thorough sweeps when time allows.
+interesting. NEVER use `raft-medium-*` or any medium to large wordlist without
+explicit prompts from the orchestrator or operator.
 
 ```bash
 # Quick high-value path check (run first)
@@ -224,6 +227,33 @@ wpscan --url https://TARGET/ -U users.txt -P /usr/share/wordlists/rockyou.txt
 **Drupal/Joomla:** No dedicated scanner in the standard toolkit. Use `nuclei`
 with CMS-specific templates and continue with standard parameter/injection
 testing.
+
+## Step 1c: Post-Authentication Settings Enumeration
+
+After gaining any CMS access — self-registration, discovered credentials,
+default credentials, even low-privilege roles — enumerate settings and
+configuration pages for stored secrets. CMS platforms frequently store
+third-party service credentials in admin or settings panels accessible to
+authenticated users.
+
+**What to look for:**
+- Object storage credentials (access keys, secret keys, bucket names)
+- SMTP/mail server credentials
+- API tokens and keys (payment gateways, analytics, integrations)
+- Database connection strings
+- OAuth client secrets
+- Backup configuration (paths, remote storage credentials)
+
+**Common CMS settings paths:**
+- `/admin/settings`, `/admin/config`, `/dashboard/settings`
+- WordPress: `/wp-admin/options-general.php`, `/wp-admin/options.php`
+- Drupal: `/admin/config`, `/admin/config/system`
+- Joomla: `/administrator/index.php?option=com_config`
+
+**Interim write:** If service credentials are found, write immediately:
+`add_credential(username=..., secret=..., credential_type="api_key",
+source="CMS settings page on <target>")`. These often unlock additional
+attack surface (hidden storage buckets, internal services, backup archives).
 
 ## Step 2: Parameter Discovery
 

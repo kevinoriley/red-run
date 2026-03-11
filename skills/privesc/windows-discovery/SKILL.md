@@ -280,9 +280,10 @@ wmic process list full
 Get-Process | Select-Object Name, Id, Path | Where-Object {$_.Path -notlike "C:\Windows\System32\*"} | Sort-Object Path
 ```
 
-**Interim writes:** Unquoted service paths or writable service binaries found →
-`add_vuln(title="Unquoted service path: <service>", host="<host>", vuln_type="service-misconfig", severity="medium")`.
-Writable service configuration → `add_vuln(title="Modifiable service: <service>", host="<host>", vuln_type="service-misconfig", severity="high")`.
+**STOP — write interim findings NOW.** Before continuing to Step 4, call
+`add_vuln()` for EACH finding above:
+- Unquoted service paths → `add_vuln(title="Unquoted service path: <service>", host="<host>", vuln_type="service-misconfig", severity="medium")`
+- Writable service binaries/config → `add_vuln(title="Modifiable service: <service>", host="<host>", vuln_type="service-misconfig", severity="high")`
 
 Any finding here → STOP. Return to orchestrator recommending
 **windows-service-dll-abuse**. Pass: hostname, current user, specific findings
@@ -342,9 +343,10 @@ netstat -ano | findstr LISTENING | findstr 127.0.0.1
 
 Look for: databases (3306/5432/1433), web interfaces (8080/8443), management (5985/5986).
 
-**Interim writes after network enumeration:**
-- Additional NIC found via `ipconfig /all` → `add_pivot(source="<host> <adapter>", destination="<subnet>", method="Additional NIC — pivot candidate")`
-- New hosts from `arp -a` → `add_pivot(source="<host> ARP table", destination="<new_host>", method="ARP neighbor discovery")`
+**STOP — write interim findings NOW.** Before continuing with SNMP/WiFi/firewall checks:
+- Additional NIC found via `ipconfig /all` → call `add_pivot()` NOW
+- New hosts from `arp -a` → call `add_pivot()` NOW
+- Root/SYSTEM-owned services on localhost → call `add_vuln()` NOW
 
 **SNMP community strings:**
 
@@ -425,9 +427,10 @@ icacls C:\Windows\System32\config\SAM
 
 If `BUILTIN\Users:(I)(RX)` appears → SAM readable by non-admin users.
 
-**Interim writes:** Any cleartext credentials found in registry, unattend files,
-PowerShell history, or config files — write immediately:
-`add_credential(username=..., secret=..., source="<location> on <host>")`.
+**STOP — write interim findings NOW.** Before continuing, call
+`add_credential()` for EACH credential found above (registry, unattend files,
+PowerShell history, config files, WiFi passwords, SNMP strings). One call per
+credential. The orchestrator reacts to these in real time via event watcher.
 
 Any credentials found → STOP. Return to orchestrator recommending
 **windows-credential-harvesting**. Pass: hostname, current user, credential

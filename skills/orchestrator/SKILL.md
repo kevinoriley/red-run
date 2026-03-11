@@ -103,9 +103,10 @@ When you need a skill but don't know the exact name:
 - `list_skills(category="web")` — browse all skills in a category
 
 **Relevance validation**: Search results are ranked by embedding similarity, not
-guaranteed relevance. Before loading a search result with `get_skill()`, verify
-the returned description actually matches your scenario. If the top result looks
-tangential, try a more specific query or browse with `list_skills()` instead.
+guaranteed relevance. Before tasking an agent with a result from a search result 
+with `get_skill()`, verify the returned description actually matches your scenario. 
+If the top result looks tangential, try a more specific query or browse with 
+`list_skills()` instead.
 
 ### If the MCP Skill Router Is Unavailable
 
@@ -186,7 +187,7 @@ kill <pid1> <pid2> ...
 ps aux | grep -E '<tool>' | grep -v grep
 ```
 
-Do this for EVERY `TaskStop` — fork resolution kills, manual agent kills,
+Do this for EVERY `TaskStop` — parallel resolution kills, manual agent kills,
 and cleanup kills. The one-liner pattern:
 
 ```bash
@@ -372,7 +373,7 @@ Use this table to pick the right agent for each skill:
 | windows-token-impersonation, windows-service-dll-abuse, windows-uac-bypass | windows-privesc-agent | Windows privesc |
 | windows-credential-harvesting, windows-kernel-exploits | windows-privesc-agent | Windows privesc |
 | av-edr-evasion | evasion-agent | AV/EDR bypass payload generation |
-| credential-cracking | credential-cracking-agent | Local-only cracking, forkable for parallel races (haiku) |
+| credential-cracking | credential-cracking-agent | Local-only cracking, parallelizable with other technique skills (haiku) |
 | retrospective | _(inline — no agent needed)_ | Post-engagement, no target interaction |
 
 #### Mode-Aware Delegation
@@ -454,12 +455,10 @@ while objectives_not_met:
     # - User messages → respond, poll_events() as supplementary check
 ```
 
-Each iteration is normally one skill invocation. Sequential execution is the
-default because it keeps state simple. However, when the orchestrator detects
-**convergent independent paths** (multiple skills targeting the same
-intermediate goal with no shared dependencies), it may race them in parallel.
-See **Parallel Fork Execution** below for mechanics. Forks are always presented
-to the operator for approval.
+Each iteration is normally one skill invocation. However, when 2+ viable paths
+exist, the orchestrator **always suggests running them in parallel** (see
+Parallel Path Selection). Agent spawns are always presented to the operator for
+approval.
 
 #### Built-in Task Sub-Agents (Warning)
 
@@ -649,40 +648,44 @@ When a skill completes and returns control to the orchestrator:
      technique is blocked. Mark `retry: "no"` only when a **technique
      agent** (web-exploit, ad-exploit, linux-privesc, windows-privesc)
      exhausts its skill's methodology and still fails.
-4. Append to `engagement/activity.md` with skill outcome
-5. Append to `engagement/findings.md` if vulnerabilities were confirmed
-6. **Check for new usernames** — if the skill returned usernames not
+4. **Record tool workarounds**: If the agent's return summary mentions a
+   tool-specific workaround (e.g., MSF encoder fix, proxy setting, auth
+   flag), append it to the target's notes via `update_target(notes=...)`.
+   This propagates automatically — all subsequent agents see target notes
+   in `get_state_summary()`. Keep it to one line (e.g., "MSF: set
+   ReverseAllowProxy true + encoder cmd/echo for cmd payloads").
+5. Append to `engagement/activity.md` with skill outcome
+6. Append to `engagement/findings.md` if vulnerabilities were confirmed
+7. **Check for new usernames** — if the skill returned usernames not
    previously in state, trigger the **Usernames Found** hard stop before
    continuing. This applies to ANY skill that discovers users: network-recon
    (RPC/LDAP null session), web-discovery (user enumeration), ad-discovery
    (BloodHound/LDAP), SQLi (user table dump), credential-dumping (SAM/LSASS),
    or any other source.
-7. Call `get_state_summary()` for routing decision
-8. Run the Step 5 decision logic
-9. Route to the next skill based on updated state
+8. Call `get_state_summary()` for routing decision
+9. Run the Step 5 decision logic
+10. Route to the next skill based on updated state
 
-#### Parallel Fork Returns
+#### Parallel Path Returns
 
-When a returning agent was part of a parallel fork (see **Parallel Fork
-Execution**), steps 1–5 above still apply — parse findings, record state, log
-activity, log findings. Steps 5–8 are replaced by the **Race Resolution**
-procedure. Do not run decision logic or route to the next skill until the fork
-is fully resolved.
+When a returning agent was part of a parallel run (see **Parallel Execution**),
+steps 1–6 above still apply — parse findings, record state, record workarounds,
+log activity, log findings. Steps 7–10 are replaced by the **Race Resolution** procedure. Do not
+run decision logic or route to the next skill until all parallel agents have
+completed or been killed.
 
 Skills should NOT chain directly into other skills' scope areas. If a discovery
 skill finds something outside its scope, it reports findings and returns — the
 orchestrator records state changes and decides what to invoke next.
 
-### Fork Presentation
+### Parallel Path Presentation
 
-When **Fork Detection** (see Decision Logic) identifies convergent independent
-paths, present the fork to the operator.
+When presenting parallel paths, show the operator a concise table and
+default to parallel execution.
 
 **Format:**
 ```
-**Fork detected** — <N> independent paths converge on the same goal:
-
-**Goal:** <what all paths are trying to achieve>
+**<N> viable paths** — recommend parallel:
 
 | Path | Skill | Confidence | OPSEC | Notes |
 |------|-------|------------|-------|-------|
@@ -691,13 +694,13 @@ paths, present the fork to the operator.
 ```
 
 Then use `AskUserQuestion` with a single-select question:
-- **"Run all in parallel (Recommended)"** — first to achieve goal wins, others killed
+- **"Run in parallel (Recommended)"** — first to succeed wins, others killed
 - **"Path A only — \<skill-name\>"**
 - **"Path B only — \<skill-name\>"**
 - (additional paths if more than 2)
 - **"Run sequentially"** — try each in order, stop when one succeeds
 
-If the operator selects parallel, execute the **Parallel Fork Execution**
+If the operator selects parallel, execute the **Parallel Execution**
 procedure. Otherwise, run the selected path(s) sequentially using the normal
 orchestrator loop.
 
@@ -1195,7 +1198,31 @@ Common chains that produce shell access on a host:
 When reading the state summary (via `get_state_summary()`), the orchestrator should:
 
 1. **Check for unexploited vulns** — spawn the appropriate agent with the
-   technique skill (look up in Skill-to-Agent Routing Table)
+   technique skill (look up in Skill-to-Agent Routing Table).
+
+   **CVE verification gate:** When a discovery agent returns a specific CVE
+   identifier as part of its routing recommendation, do NOT blindly trust the
+   vulnerability class label. Before routing to a technique skill, spawn a
+   general-purpose research agent (Opus model) to confirm the CVE's actual
+   vulnerability class:
+   ```
+   Agent(
+       prompt="Research CVE-XXXX-XXXXX. What is the exact vulnerability class
+       (SSRF, file write, path traversal, deserialization, injection, etc.)?
+       What component/parameter is affected? Is there a public PoC? Return:
+       vulnerability class, affected endpoint, and exploitation methodology.",
+       description="CVE research: CVE-XXXX-XXXXX",
+       model="opus"
+   )
+   ```
+   If the research confirms the class matches the discovery agent's label →
+   route normally. If the class is different → route to the correct technique
+   skill. This adds ~1-2 minutes but prevents misrouting entire agent
+   invocations to the wrong skill.
+
+   This is a normal routing decision — include it in parallelization
+   opportunities. The research agent can run alongside other independent
+   paths (e.g., password spray, other discovery phases)
 2. **Check for shell access without root/SYSTEM** — if the Access section shows
    a non-root shell on Linux or non-SYSTEM/non-admin shell on Windows, route to
    the appropriate discovery agent. Do not enumerate privilege escalation vectors
@@ -1227,11 +1254,14 @@ When reading the state summary (via `get_state_summary()`), the orchestrator sho
    services?
 5. **Check for uncracked hashes** — if the Credentials section contains hashes
    without plaintext (NTLM, Kerberos TGS, shadow, etc.) or the engagement has
-   encrypted files (ZIP, Office, KeePass, SSH key), trigger the **Hashes
-   Found** hard stop (see below). Cracked passwords unlock new testing against
-   all services. The cracking agent is forkable — if another technique skill
-   targets the same credential goal (e.g., ACL abuse toward the same account),
-   race them in parallel via the fork mechanism.
+   encrypted files (ZIP, Office, KeePass, SSH keys, password-protected
+   archives), trigger the **Hashes Found** hard stop (see below). This
+   includes encrypted SSH private keys discovered in file shares, buckets, or
+   backups — these are cracking problems and the operator may prefer an
+   external rig with GPU acceleration. Cracked passwords unlock new testing
+   against all services. The cracking agent runs in parallel with other
+   technique skills when possible (e.g., cracking + ACL abuse toward the same
+   account).
 6. **Check pivot map** — are there identified paths not yet followed?
    For pivots with `status: "identified"` and method containing "pivot candidate"
    or "Additional NIC":
@@ -1294,131 +1324,113 @@ When reading the state summary (via `get_state_summary()`), the orchestrator sho
    d. If no search result is relevant, proceed with general methodology and
       note the coverage gap in `engagement/activity.md`.
 
-### Fork Detection
+### Parallel Path Selection (Default)
 
-Before selecting a single next skill, check whether the current state presents
-**convergent independent paths** — multiple skills that target the same
-intermediate goal with no dependencies between them. If so, these paths can be
-presented as a fork to the operator.
+**Parallelization is the default, not the exception.** When 2+ viable paths
+exist at any decision point — initial foothold, lateral movement, privilege
+escalation, credential acquisition — always suggest running the top paths in
+parallel. Present them via the **Parallel Path Presentation** format with
+"Run in parallel" as the recommended option.
 
-**Fork criteria — ALL must hold:**
+No hard limit on parallel agents — run as many viable paths as exist. In
+practice this is typically 2–3. The only constraint is independence.
 
-1. **Convergent goal** — all paths target the same intermediate objective
-   (a specific credential, access level, or foothold). "Get `management_svc`
-   creds" is convergent. "Enumerate web" and "enumerate AD" are not — those are
-   independent phases, not convergent paths.
-2. **Independence** — no shared writes, no resource contention between paths.
-   Safe: Kerberoasting + ACL-based credential theft (read-only queries to
-   different services). Unsafe: two skills that both modify the same AD object,
-   two web exploits that both need the same authenticated session, or two
-   attacks that both bind the same port.
-3. **Both worth attempting** — neither path is blocked or already exhausted.
-   Ideal: one high-confidence path + one lower-confidence path (race covers
-   both). Acceptable: two medium-confidence paths. Pointless: one clearly
-   dominant path with no reason to race.
-4. **Same target** — all paths operate on the same target host or AD domain.
-   Cross-target parallelism uses **Phase-Based Cycling** (Step 7) instead.
+**Only go sequential when forced:**
+- Single viable path — nothing else to run
+- Hard dependency — path B needs output from path A
+- Resource contention — same authenticated session, same port binding, same
+  AD object mutation (two agents writing to the same DACL, two exploits
+  binding the same port, etc.)
 
-No hard limit on parallel agents — fork as many convergent independent paths
-as exist. In practice this is typically 2–3. If 4+ paths converge on the same
-goal, spawn them all. The real constraint is independence, not count.
-
-**When NOT to fork (stay sequential):**
-- Single actionable path — nothing to race against
-- Dependency chain — path B needs results from path A
-- Resource contention — same AD object, same port, same web session
-- Clearly dominant path — high confidence + fast, no reason to race
+Everything else runs in parallel. Don't overthink it — if two things can
+run at the same time without stepping on each other, suggest parallel.
 
 **Examples:**
 
-| Scenario | Forkable? | Why |
+| Scenario | Parallel? | Why |
 |----------|-----------|-----|
-| Kerberoast cracking (credential-cracking-agent) + ACL abuse (ad-exploit-agent) → both target `management_svc` creds | Yes | Convergent goal, independent (local cracking vs LDAP/Kerberos), no resource contention |
-| ADCS ESC1 + ADCS ESC4 → both target DA certificate | Yes | Convergent goal, different CAs/templates, independent |
-| SQLi data extraction + SSRF to internal service | No | Different goals (data vs access), not convergent |
-| Two SQLi payloads against the same parameter | No | Same resource (web session/parameter), not independent |
-| Kerberoasting (needs results) → then pass-the-hash with cracked cred | No | Dependency chain — path B requires path A output |
-| Web shell upload + deserialization RCE → both target initial foothold | Yes | Convergent goal (shell on web server), independent vectors |
+| Kerberoast cracking + ACL abuse → both target `management_svc` creds | Yes | Independent (local cracking vs LDAP/Kerberos) |
+| ADCS ESC1 + ADCS ESC4 → both target DA certificate | Yes | Different CAs/templates, independent |
+| File upload bypass + SSRF → both target initial foothold | Yes | Different vectors, no shared resources |
+| SQLi data extraction + SSRF to internal service | Yes | Different goals, no shared resources |
+| Web shell upload + deserialization RCE → both target shell | Yes | Independent vectors |
+| Two SQLi payloads against the same parameter | No | Same resource (web session/parameter) |
+| Kerberoasting → then pass-the-hash with cracked cred | No | Dependency chain — path B requires path A output |
 
-When a fork is detected, present it to the operator via the **Fork Presentation**
+Present viable paths to the operator via the **Parallel Path Presentation**
 format above.
 
-### Parallel Fork Execution
+### Parallel Execution
 
-When fork detection identifies valid convergent paths, execute them in parallel
-using background agents.
+When running multiple paths in parallel, use background agents.
 
-#### 1. Log the Fork Decision
+#### 1. Log the Decision
 
 Append to `engagement/activity.md`:
 ```
-### [YYYY-MM-DD HH:MM:SS] orchestrator → PARALLEL FORK
-- Goal: <convergent objective>
+### [YYYY-MM-DD HH:MM:SS] orchestrator → PARALLEL
 - Path A: <skill-name> (confidence: <high/medium/low>, OPSEC: <low/medium/high>)
 - Path B: <skill-name> (confidence: <high/medium/low>, OPSEC: <low/medium/high>)
-- Reason: <why these paths are independent and convergent>
+- Reason: <brief rationale>
 ```
 
-#### 2. Spawn All Fork Agents
+#### 2. Spawn All Agents
 
-Use the Agent tool with `run_in_background: true` for each fork path. **Spawn
+Use the Agent tool with `run_in_background: true` for each path. **Spawn
 all agents in a single message** — this ensures true parallel execution.
 
-- Prefix each agent's description with `[FORK-A]`, `[FORK-B]`, `[FORK-C]`, etc.
-- Include a note in each agent's prompt: *"Note: other independent paths toward
-  the same goal are being pursued in parallel. This is informational only — do
-  not coordinate with or wait for other agents."*
 - Pass normal context: skill name, target info, mode, relevant state summary.
 
 #### 3. Wait for First Return
 
 Background agents auto-notify on completion. The event watcher runs alongside
-fork agents — if the watcher fires with actionable findings before any fork
+parallel agents — if the watcher fires with actionable findings before any
 agent completes, the orchestrator can act on them (spawn follow-up agents, ask
-the operator). However, **watcher notifications do NOT resolve
-the fork** — fork resolution still requires an agent to complete and return.
-Spawn a new watcher after processing each notification.
+the operator). However, **watcher notifications do NOT resolve the parallel
+run** — resolution still requires an agent to complete and return. Spawn a new
+watcher after processing each notification.
 
 #### 4. Race Resolution
 
-When an agent returns, apply the standard Post-Skill Checkpoint steps 0–4
-(poll events, parse, record state, log activity, log findings). Then resolve the fork:
+When an agent returns, apply the standard Post-Skill Checkpoint steps 0–6
+(poll events, parse, dedup, record state, record workarounds, log activity, log findings). Then resolve:
 
-**Case 1 — Goal achieved (winner):**
-The returning agent achieved the convergent goal (credential obtained, access
-gained, foothold established).
+**Case 1 — Succeeded:**
+The returning agent achieved its goal (credential obtained, access gained,
+foothold established).
 1. Record all findings via state-writer MCP tools.
-2. `TaskStop` the other running agent(s).
+2. `TaskStop` the other running agent(s) pursuing the same goal.
 3. Check the killed agent's partial output (via `TaskOutput` with
    `block: false`) for bonus findings — credentials, hosts, or vulns discovered
    before termination. Record any useful partial findings.
 4. Log to `engagement/activity.md`:
    ```
-   ### [YYYY-MM-DD HH:MM:SS] orchestrator → FORK RESOLVED
+   ### [YYYY-MM-DD HH:MM:SS] orchestrator → PARALLEL RESOLVED
    - Winner: Path <X> (<skill-name>)
-   - Goal achieved: <what was obtained>
+   - Result: <what was obtained>
    - Killed: Path <Y> (<skill-name>) — partial findings: <none | brief summary>
    ```
 5. Resume the normal orchestrator loop (call `get_state_summary()`, run
    decision logic, route to next skill).
 
 **Case 2 — No winner yet:**
-The returning agent completed but did NOT achieve the convergent goal (e.g.,
+The returning agent completed but did NOT achieve its goal (e.g.,
 Kerberoasting returned no crackable hashes).
 1. Record any findings from the completed agent.
 2. Let the other agent(s) continue — do not kill them.
-3. Block on the next agent's return (it is now the only hope for this goal).
-4. Log `FORK PARTIAL` to activity.md with what was learned.
+3. Block on the next agent's return.
+4. Log `PARALLEL PARTIAL` to activity.md with what was learned.
 5. When the last agent returns, resolve normally — if the goal is achieved,
-   log `FORK RESOLVED`. If all paths failed, log `FORK FAILED` and fall
-   through to the decision logic to find an alternative approach.
+   log `PARALLEL RESOLVED`. If all paths failed, log `PARALLEL FAILED` and
+   fall through to the decision logic to find an alternative approach.
 
-**Case 3 — Both succeed:**
+**Case 3 — Multiple succeed:**
 Multiple agents achieve the goal (rare but possible).
 1. Record findings from both agents.
 2. Use the more advantageous result: prefer reusable credentials over one-time
    access, prefer higher privilege over lower, prefer quieter over noisier.
-3. Log `FORK RESOLVED (both succeeded)` with which result was preferred and why.
+3. Log `PARALLEL RESOLVED (multiple succeeded)` with which result was preferred
+   and why.
 4. Resume the normal orchestrator loop.
 
 #### 5. State Consistency Rules
@@ -1982,9 +1994,9 @@ Custom wordlist: <path if custom, omit otherwise>.",
    contention. Run the Step 5 decision logic and route to the next discovery
    skill (ad-discovery, web-discovery, etc.) without waiting for spray results.
 
-   This is NOT a parallel fork (convergent goals). This is **independent phase
-   parallelization** — spray and discovery have different goals (credential
-   finding vs attack surface mapping) and can overlap safely.
+   Spray and discovery are independent phases — spray tests credentials
+   against services while discovery enumerates attack surface via different
+   channels. No resource contention, so they overlap safely.
 
    The event watcher is already running (or spawn one if not). If the spray
    agent writes valid credentials via state-interim, the watcher catches them
@@ -2142,9 +2154,9 @@ exhausted or objectives are met.
 - **Do not go deep on one target while ignoring others.** If you're stuck on
   privesc for target A, move to target B. Fresh targets often yield quick wins
   that unlock progress elsewhere.
-- **Cross-target parallelism is not supported.** Parallel Fork Execution is
-  for convergent paths on the **same target** (e.g., Kerberoasting + ACL abuse
-  both targeting the same credential). For multi-target work, use Phase-Based
+- **Cross-target parallelism is not supported.** Parallel Execution is for
+  multiple paths on the **same target** (e.g., Kerberoasting + ACL abuse both
+  targeting the same credential). For multi-target work, use Phase-Based
   Cycling — work one target at a time and cycle between them.
 
 ### State Management for Multiple Targets

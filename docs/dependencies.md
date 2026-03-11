@@ -228,13 +228,29 @@ Agents will not download these — they expect them pre-staged.
 | SharpSCCM | sccm-exploitation | [GitHub](https://github.com/Mayyhem/SharpSCCM) (compile with VS) |
 | Certify | adcs-template-abuse, adcs-access-and-relay | [GitHub](https://github.com/GhostPack/Certify) (compile with VS) |
 | ForgeCert | ad-persistence, adcs-persistence | [GitHub](https://github.com/GhostPack/ForgeCert) (compile with VS) |
-| JuicyPotato | windows-token-impersonation | [GitHub releases](https://github.com/ohpe/juicy-potato) |
-| PrintSpoofer | windows-token-impersonation | [GitHub](https://github.com/itm4n/PrintSpoofer) |
-| GodPotato | windows-token-impersonation | [GitHub releases](https://github.com/BeichenDream/GodPotato) |
-| EfsPotato | windows-token-impersonation | [GitHub](https://github.com/zcgonvh/EfsPotato) |
-| SigmaPotato | windows-token-impersonation | [GitHub](https://github.com/tylerdotrar/SigmaPotato) |
+| JuicyPotato | windows-token-impersonation | [GitHub releases](https://github.com/ohpe/juicy-potato) (x64 only) |
+| JuicyPotatoNG | windows-token-impersonation | [GitHub releases](https://github.com/antonioCoco/JuicyPotatoNG) |
+| PrintSpoofer | windows-token-impersonation | [GitHub releases](https://github.com/itm4n/PrintSpoofer) (x64 + x86) |
+| GodPotato | windows-token-impersonation | [GitHub releases](https://github.com/BeichenDream/GodPotato) (NET4 + NET35) |
+| EfsPotato | windows-token-impersonation | [GitHub](https://github.com/zcgonvh/EfsPotato) (compile from source) |
+| SigmaPotato | windows-token-impersonation | [GitHub releases](https://github.com/tylerdotrar/SigmaPotato) |
+| PrintNotifyPotato | windows-token-impersonation | [GitHub releases](https://github.com/BeichenDream/PrintNotifyPotato) (when Spooler disabled) |
 | RoguePotato | windows-token-impersonation | [GitHub](https://github.com/antonioCoco/RoguePotato) |
 | FullPowers | windows-token-impersonation | [GitHub](https://github.com/itm4n/FullPowers) |
+
+**Potato binaries staging:** Pre-download to `/usr/share/windows-binaries/potatoes/` so agents
+can find and transfer them during engagements. Run `bash preflight.sh --target-tools` to check.
+
+```bash
+sudo mkdir -p /usr/share/windows-binaries/potatoes && cd /usr/share/windows-binaries/potatoes
+sudo curl -sLO https://github.com/BeichenDream/GodPotato/releases/download/V1.20/GodPotato-NET4.exe
+sudo curl -sLO https://github.com/BeichenDream/GodPotato/releases/download/V1.20/GodPotato-NET35.exe
+sudo curl -sLO https://github.com/itm4n/PrintSpoofer/releases/download/v1.0/PrintSpoofer64.exe
+sudo curl -sLO https://github.com/itm4n/PrintSpoofer/releases/download/v1.0/PrintSpoofer32.exe
+sudo curl -sLO https://github.com/antonioCoco/JuicyPotatoNG/releases/download/v1.1/JuicyPotatoNG.zip && sudo unzip -o JuicyPotatoNG.zip && sudo rm JuicyPotatoNG.zip
+sudo curl -sLO https://github.com/tylerdotrar/SigmaPotato/releases/download/v1.2.6/SigmaPotato.exe
+sudo curl -sLO https://github.com/BeichenDream/PrintNotifyPotato/releases/download/v1.00/PrintNotifyPotato-NET46.exe
+```
 | Watson | windows-kernel-exploits, windows-discovery | [GitHub](https://github.com/rasta-mouse/Watson) (compile with VS) |
 | WES-NG | windows-kernel-exploits, windows-discovery | `pipx install wesng` (runs on attackbox, analyzes systeminfo output) |
 | SpoolSample | kerberos-delegation, auth-coercion-relay | [GitHub](https://github.com/leechristensen/SpoolSample) (compile with VS) |

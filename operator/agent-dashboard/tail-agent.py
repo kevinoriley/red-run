@@ -259,6 +259,7 @@ class AgentPane:
         self.queue: queue.Queue = queue.Queue()
         self.scroll_offset: int = 0  # 0 = bottom (auto-follow), >0 = scrolled up
         self.auto_follow: bool = True  # snap to bottom on new content
+        self._prev_wrapped_total: int = 0  # tracks wrapped line count for scroll anchoring
         self.pending: dict = {}  # tool_use_id -> tool_name for result tracking
 
 
@@ -822,6 +823,7 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                             fp.scroll_offset = max(0, fp.scroll_offset - 1)
                             if fp.scroll_offset == 0:
                                 fp.auto_follow = True
+                                fp._prev_wrapped_total = 0
                         elif key == curses.KEY_PPAGE:  # Page Up
                             max_y, _ = stdscr.getmaxyx()
                             fp.scroll_offset += max(1, max_y - 2)
@@ -831,9 +833,11 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                             fp.scroll_offset = max(0, fp.scroll_offset - max(1, max_y - 2))
                             if fp.scroll_offset == 0:
                                 fp.auto_follow = True
+                                fp._prev_wrapped_total = 0
                         elif key == curses.KEY_END or key == ord("G"):
                             fp.scroll_offset = 0
                             fp.auto_follow = True
+                            fp._prev_wrapped_total = 0
                         elif key == curses.KEY_HOME or key == ord("g"):
                             fp.auto_follow = False
                             fp.scroll_offset = 999999
@@ -963,8 +967,15 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                             for cl in (cont_lines or [""]):
                                 wrapped.append((kind, "  " + cl))
 
-                    # Clamp scroll offset
+                    # Anchor viewport when scrolled up: absorb new lines into offset
                     total = len(wrapped)
+                    if not pane.auto_follow and pane._prev_wrapped_total > 0:
+                        new_lines = total - pane._prev_wrapped_total
+                        if new_lines > 0:
+                            pane.scroll_offset += new_lines
+                    pane._prev_wrapped_total = total
+
+                    # Clamp scroll offset
                     max_scroll = max(0, total - content_height)
                     pane.scroll_offset = min(pane.scroll_offset, max_scroll)
 
