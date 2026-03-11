@@ -33,7 +33,7 @@ The orchestrator spawns domain-specific subagents for each skill invocation:
 
 | Agent | Domain | MCP Servers | Skills |
 |-------|--------|-------------|--------|
-| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, state-interim | network-recon, smb-exploitation (haiku) |
+| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, state-interim | network-recon, smb-enumeration, database-enumeration, remote-access-enumeration, infrastructure-enumeration, smb-exploitation (haiku) |
 | `pivoting-agent` | Pivoting | skill-router, shell-server, state-interim | pivoting-tunneling (sonnet) |
 | `web-discovery-agent` | Web discovery | skill-router, shell-server, browser-server, state-interim | web-discovery |
 | `web-exploit-agent` | Web exploitation | skill-router, shell-server, browser-server, state-interim | All web technique skills |
@@ -68,12 +68,14 @@ The state-reader, state-interim, and state-writer are three instances of the sam
 
 ### Skill Types
 - **Orchestrator** (`skills/orchestrator/`): Takes a target, runs recon, routes to discovery skills
+- **Recon** (`skills/network/network-recon/`): Host discovery, port scanning, OS fingerprinting — produces a port/service map
+- **Enumeration** (`skills/network/*-enumeration/`): Per-service deep enumeration (SMB, databases, remote access, infrastructure)
 - **Discovery** (`skills/<category>/*-discovery/`): Identifies vulnerabilities, recommends technique skills via decision tree (orchestrator does the actual routing)
 - **Technique** (`skills/<category>/<technique>/`): Exploits a specific vulnerability class
 
 ### Inter-Skill Routing
 
-The orchestrator makes every routing decision. When a skill says "Route to **skill-name**", the orchestrator looks up the correct agent in the Skill-to-Agent Routing Table and spawns it with that skill. Context (injection point, target technology, working payloads) is passed in the Task prompt.
+The orchestrator makes every routing decision. When a skill says "Route to **skill-name**", the orchestrator derives the correct agent from the skill's category using the **domain→agent map** and spawns it with that skill. Context (injection point, target technology, working payloads) is passed in the Task prompt.
 
 **Mandatory skill loading**: When a skill says "Route to **skill-name**", that skill MUST be loaded via `get_skill()` — either by a subagent or inline. Never execute a technique without loading the matching skill. Skills contain methodology, edge cases, payloads, and troubleshooting that general knowledge does not. Always load skills via `get_skill()` — never execute techniques without loading the matching skill.
 
