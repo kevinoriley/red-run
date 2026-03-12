@@ -377,7 +377,7 @@ execution and note the limitation in the engagement state.
 - **JSON.NET in API**: Test all API endpoints accepting JSON for
   TypeNameHandling exploitation
 
-Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
+Report in your return summary: any new credentials, access, vulns, or pivot paths discovered.
 
 When routing, pass along: confirmed formatter/gadget, target framework,
 machine keys if obtained, and any payloads that succeeded.

@@ -272,7 +272,7 @@ execution and note the limitation in the engagement state.
   hostname, current user, shell session ID, access method.
 - **Extracted credentials**: Test against other services, document findings
 
-Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
+Report in your return summary: any new credentials, access, vulns, or pivot paths discovered.
 
 When routing, pass along: injection point, DBMS, stacking confirmation, privileges confirmed.
 

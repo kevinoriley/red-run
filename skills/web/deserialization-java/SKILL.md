@@ -372,7 +372,7 @@ execution and note the limitation in the engagement state.
   attacker-controlled input, exploit each
 - **Need to crack hashes found**: Route to **credential-cracking**
 
-Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
+Report in your return summary: any new credentials, access, vulns, or pivot paths discovered.
 
 When routing, pass along: confirmed gadget chain, target framework/version,
 and any payloads that already succeeded.

@@ -478,7 +478,7 @@ After confirming smuggling:
 - **Found CRLF injection**: Route to **xss-reflected** for header injection
   to XSS escalation.
 
-Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
+Report in your return summary: any new credentials, access, vulns, or pivot paths discovered.
 
 When routing, pass along: confirmed desync type (CL.TE/TE.CL/H2), working
 payload, and front-end/back-end stack identified.

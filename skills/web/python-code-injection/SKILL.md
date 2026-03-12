@@ -554,7 +554,7 @@ variables, database connection strings), write a handoff for the operator:
 
 1. Save discovered credentials to `engagement/evidence/`
 2. Write connection commands the operator can run
-3. Update `engagement/state.md` with credentials and Pivot Map entry
+3. Report in your return summary: credentials and Pivot Map entry
 4. Tell the operator: "Credentials found. SSH handoff ready — connect from
    your terminal."
 
@@ -577,7 +577,7 @@ If credentials aren't found but command execution is confirmed:
   (injection-based RCE or reverse shell).
 - **Shell as non-admin on Windows** → STOP. Return to orchestrator recommending
   **windows-discovery**. Pass: hostname, current user, access method.
-- **Found credentials** → update state.md, test against SSH/RDP/WinRM/other
+- **Found credentials** → report credentials, test against SSH/RDP/WinRM/other
   services. Return to orchestrator recommending the appropriate discovery skill.
 - **Blind injection only, no shell** → extract credentials via DNS/HTTP
   exfiltration (file reads: config files, .env, .git/config, SSH keys), then

@@ -413,7 +413,7 @@ After catching a shell as the Tomcat service user:
 - **Other web apps on same Tomcat**: Check for additional applications with
   credentials or data. Read `conf/server.xml` for database connection strings.
 
-Update `engagement/state.md` with any new credentials, access, vulns, or pivot
+Report in your return summary: any new credentials, access, vulns, or pivot
 paths discovered.
 
 When routing, pass along: target hostname/IP, current user, shell session ID,

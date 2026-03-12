@@ -824,7 +824,7 @@ execute exploitation commands inline — even if the technique seems simple.
 | Exposed Chrome DevTools / remote debugging port (9222, 9229) | **browser-exploitation** (CDP abuse) |
 | Browser installed on compromised host with saved profiles | **browser-exploitation** (profile extraction) |
 
-Update `engagement/state.md` with any new targets, confirmed vulns, or blocked
+Report in your return summary: any new targets, confirmed vulns, or blocked
 techniques before routing.
 
 When returning to the orchestrator, pass along: the confirmed injection point

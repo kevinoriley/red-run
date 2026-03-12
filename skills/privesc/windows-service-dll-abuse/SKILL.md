@@ -506,7 +506,7 @@ After achieving elevated access via service or DLL abuse:
 When routing, pass along: hostname, access level achieved, exploitation method used,
 OS version.
 
-Update `engagement/state.md` with escalation results.
+Report in your return summary: escalation results.
 
 ## Stall Detection
 

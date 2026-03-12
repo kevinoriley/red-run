@@ -481,7 +481,7 @@ After confirming LDAP injection:
 - **Directory dump achieved**: Search for service accounts, shared passwords
   in description fields, SSH keys.
 
-Update `engagement/state.md` with any new credentials, access, vulns, or
+Report in your return summary: any new credentials, access, vulns, or
 pivot paths discovered.
 
 When routing, pass along: confirmed injection point, filter context (AND/OR),

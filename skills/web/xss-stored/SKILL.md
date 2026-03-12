@@ -255,7 +255,7 @@ exploitable:
 - **Got admin cookie/session**: Access admin panel, look for further vulns
 - **Admin XSS leads to RCE**: Check for admin functionality (file upload, plugin install, config edit)
 
-Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
+Report in your return summary: any new credentials, access, vulns, or pivot paths discovered.
 
 When routing, pass along: storage point, render context, working payload, and CSP (if any).
 

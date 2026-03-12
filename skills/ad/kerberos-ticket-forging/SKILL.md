@@ -390,7 +390,7 @@ After successful ticket forging:
 
 When routing, pass: ticket type, impersonated user, key material available.
 
-Update `engagement/state.md` with forged ticket details and access obtained.
+Report in your return summary: forged ticket details and access obtained.
 
 ## Stall Detection
 

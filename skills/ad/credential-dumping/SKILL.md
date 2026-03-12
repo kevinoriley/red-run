@@ -727,7 +727,7 @@ After extracting credentials:
 When routing, pass: extracted credentials (user:hash pairs), source
 method, target hosts, access level, and mode.
 
-Update `engagement/state.md` with all extracted credentials and access.
+Report in your return summary: all extracted credentials and access.
 
 ## Stall Detection
 

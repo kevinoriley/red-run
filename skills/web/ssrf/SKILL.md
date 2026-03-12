@@ -473,7 +473,7 @@ Where `xss.svg` contains:
 - **Found SQLi on internal service**: Route to **sql-injection-error** or
   **sql-injection-union**
 
-Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
+Report in your return summary: any new credentials, access, vulns, or pivot paths discovered.
 
 When routing, pass along: SSRF endpoint, protocols supported, bypass technique
 used, what's accessible internally.

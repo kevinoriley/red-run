@@ -485,7 +485,7 @@ If multiple services trust the same JWT issuer:
 - **Credentials found in JWT claims**: Check for password hashes, API keys,
   connection strings in token payload
 
-Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
+Report in your return summary: any new credentials, access, vulns, or pivot paths discovered.
 
 When routing, pass along: the forged token, confirmed attack type, target
 algorithm, and any secrets recovered.

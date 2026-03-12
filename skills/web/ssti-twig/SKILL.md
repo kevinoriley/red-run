@@ -298,7 +298,7 @@ execution and note the limitation in the engagement state.
 - **PDF generation endpoint**: Try SSTI in PDF context (wkhtmltopdf, Puppeteer)
 - **Email template**: Blind SSTI — use OOB callback to confirm execution
 
-Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
+Report in your return summary: any new credentials, access, vulns, or pivot paths discovered.
 
 When routing, pass along: confirmed engine + version, injection point, working
 payload, and filter restrictions.

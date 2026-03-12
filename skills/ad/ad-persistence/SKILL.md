@@ -514,7 +514,7 @@ After establishing persistence:
 - **Engagement complete**: Document all persistence mechanisms and
   cleanup steps in findings
 
-Update `engagement/state.md` with:
+Report in your return summary::
 - Persistence mechanisms deployed (type, target, cleanup steps)
 - Persistence credentials (cert PFX, SAML key, skeleton password)
 - Cleanup requirements for report

@@ -487,7 +487,7 @@ execution and note the limitation in the engagement state.
 - **Found SSRF indicators**: Route to **ssrf** for internal service exploitation.
 - **Found deserialization** (PHAR, Java): Route to deserialization skills.
 
-Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
+Report in your return summary: any new credentials, access, vulns, or pivot paths discovered.
 
 When routing, pass along: platform, language, confirmed traversal depth, working
 and bypass technique.

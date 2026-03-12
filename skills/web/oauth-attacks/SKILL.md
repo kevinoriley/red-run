@@ -548,7 +548,7 @@ After confirming OAuth vulnerabilities:
 - **2FA bypass via ROPC**: Document as separate finding — complete auth
   bypass.
 
-Update `engagement/state.md` with any new credentials, tokens, access, vulns,
+Report in your return summary: any new credentials, tokens, access, vulns,
 or pivot paths discovered.
 
 When routing, pass along: OAuth flow type, IdP identified, working bypass

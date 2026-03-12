@@ -451,7 +451,7 @@ whoami /priv → SeImpersonate or SeAssignPrimaryToken?
 │
 └─ ALL METHODS FAILED? (wrong arch, no binary, service disabled, blocked)
    └─ STOP. Do NOT attempt kernel exploits inline.
-     Update state.md with: what was tried, why it failed, OS version, arch.
+     Report in your return summary: what was tried, why it failed, OS version, arch.
      Return to orchestrator for re-routing to **windows-kernel-exploits**.
 ```
 
@@ -637,7 +637,7 @@ After achieving SYSTEM:
 When routing, pass along: hostname, SYSTEM access confirmed, OS version, domain
 membership.
 
-Update `engagement/state.md` with SYSTEM access achieved.
+Report in your return summary: SYSTEM access achieved.
 
 ## Stall Detection
 
@@ -750,7 +750,7 @@ accounts, the privileges shown by `whoami /priv` are the actual privileges avail
 
 ### All Potato variants failed — no working binary for this OS/arch
 Do NOT fall back to kernel exploits inline. This skill's scope is token
-privilege abuse, not kernel exploitation. Update `engagement/state.md` with
+privilege abuse, not kernel exploitation. Report in your return summary:
 what was tried and why it failed, then return to the orchestrator. The
 orchestrator will re-route to **windows-kernel-exploits** which has systematic
 exploit suggestion (WES-NG/Watson), architecture-aware binary sourcing, and

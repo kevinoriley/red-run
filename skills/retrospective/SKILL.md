@@ -330,7 +330,7 @@ Top token consumers:
 2. <agent/skill — what consumed tokens, relative impact, proposed fix>
 3. <agent/skill — what consumed tokens, relative impact, proposed fix>
 ### State Management
-- <quality of state.md flow, stale reads, missing updates>
+- <quality of state management flow, stale reads, missing updates>
 
 ## Actionable Items
 Priority-ordered list:

@@ -436,7 +436,7 @@ After confirming NoSQL injection:
 - **Found SSRF indicators**: Route to **ssrf** if internal URLs are stored
   in database fields.
 
-Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
+Report in your return summary: any new credentials, access, vulns, or pivot paths discovered.
 
 When routing, pass along: confirmed injection point, operator format
 (URL-encoded vs JSON), database identified, and working payloads.

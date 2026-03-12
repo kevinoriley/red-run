@@ -417,7 +417,7 @@ execution and note the limitation in the engagement state.
 - **Blind only, no OOB**: Try error-based via local DTD (Step 5), try XInclude
   (Step 6), or pivot to other injection types
 
-Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
+Report in your return summary: any new credentials, access, vulns, or pivot paths discovered.
 
 When routing, pass along: parser technology, working payload format, blind vs
 reflected, OOB channel availability.

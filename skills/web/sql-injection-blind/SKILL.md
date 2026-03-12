@@ -243,7 +243,7 @@ After extracting credentials or key data:
 - **Need command execution**: Route to **sql-injection-stacked**
 - **Extracted credentials**: Test against other services, document findings
 
-Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
+Report in your return summary: any new credentials, access, vulns, or pivot paths discovered.
 
 When routing, pass along: injection point, DBMS, confirmed blind technique, and payloads that worked.
 

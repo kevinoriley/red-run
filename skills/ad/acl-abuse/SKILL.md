@@ -511,7 +511,7 @@ After successful ACL abuse:
 When routing, pass: credentials/tickets obtained, escalation path used, cleanup
 status.
 
-Update `engagement/state.md` with ACL findings, obtained access, and cleanup notes.
+Report in your return summary: ACL findings, obtained access, and cleanup notes.
 
 ## Stall Detection
 

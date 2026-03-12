@@ -454,7 +454,7 @@ After confirming password reset vulnerabilities:
 - **XSS on reset page**: Route to **xss-reflected** or **xss-dom** to
   steal tokens from the reset page.
 
-Update `engagement/state.md` with any new credentials, access, vulns, or pivot
+Report in your return summary: any new credentials, access, vulns, or pivot
 paths discovered.
 
 When routing, pass along: confirmed technique, token format, affected endpoint,

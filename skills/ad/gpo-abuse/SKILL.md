@@ -493,7 +493,7 @@ After GPO-based code execution:
 When routing, pass: GPO name, affected scope, execution context
 (SYSTEM/user), credentials obtained, and mode.
 
-Update `engagement/state.md` with GPO-based access and credentials.
+Report in your return summary: GPO-based access and credentials.
 
 ## Stall Detection
 

@@ -601,7 +601,7 @@ execution and note the limitation in the engagement state.
   files, source code — pivot to direct exploitation
 - **Server-side XSS via SVG upload**: Route to **xss-stored**
 
-Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
+Report in your return summary: any new credentials, access, vulns, or pivot paths discovered.
 
 When routing, pass along: server technology, validated bypass technique,
 and upload location.

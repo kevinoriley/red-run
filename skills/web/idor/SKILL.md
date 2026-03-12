@@ -471,7 +471,7 @@ After confirming IDOR:
   range to determine total records exposed. If tokens or session IDs found,
   route to **oauth-attacks** or attempt session hijacking.
 - **Credentials or API keys found**: Try credential reuse across services.
-  Update `engagement/state.md` with new credentials.
+  Report in your return summary: new credentials.
 - **Write IDOR confirmed (can modify other users)**: Test account takeover —
   change email, reset password, modify roles. Route to **csrf** if
   state-changing requests lack anti-CSRF tokens.
@@ -482,7 +482,7 @@ After confirming IDOR:
 - **Admin access achieved**: Route to privilege escalation skills or explore
   admin functionality for further vulnerabilities.
 
-Update `engagement/state.md` with any new credentials, access, vulns, or pivot
+Report in your return summary: any new credentials, access, vulns, or pivot
 paths discovered.
 
 When routing, pass along: confirmed IDOR endpoint, ID format, working bypass

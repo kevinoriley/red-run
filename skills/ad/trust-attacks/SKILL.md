@@ -390,7 +390,7 @@ After successful trust exploitation:
 - **Post-compromise persistence**: Route to **ad-persistence** (golden
   certificate, DCShadow, ADFS)
 
-Update `engagement/state.md` with:
+Report in your return summary::
 - New domain/forest access
 - Trust keys extracted
 - Cross-domain credentials

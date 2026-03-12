@@ -442,7 +442,7 @@ After successful lateral movement:
   persistence.
 - **Need domain persistence**: Route to **ad-persistence** or
   **kerberos-ticket-forging** (Golden Ticket).
-- **Access to additional subnets**: Update state.md and route to
+- **Access to additional subnets**: Report findings and route to
   **ad-discovery** for new scope.
 
 When routing, pass: current credentials/tickets, target host, access level,

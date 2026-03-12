@@ -472,7 +472,7 @@ execution and note the limitation in the engagement state.
 - **Found additional web vulns** during exploitation: Route to **sql-injection-error**,
   **lfi**, **ssrf**, etc.
 
-Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
+Report in your return summary: any new credentials, access, vulns, or pivot paths discovered.
 
 When routing, pass along: confirmed platform, working injection operator, bypass
 technique used, blind vs visible output.
@@ -490,7 +490,7 @@ Instead, immediately write a handoff script for the operator:
 
 1. Save discovered credentials to `engagement/evidence/`
 2. Write connection commands the operator can run
-3. Update `engagement/state.md` with credentials and Pivot Map entry
+3. Report in your return summary: credentials and Pivot Map entry
 4. Tell the operator: "Credentials found. SSH handoff ready — connect from
    your terminal."
 

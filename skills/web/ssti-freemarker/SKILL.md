@@ -350,7 +350,7 @@ execution and note the limitation in the engagement state.
 - **XWiki/Wiki context**: Extract `hibernate.cfg.xml` for DB credentials, pivot via SSH
 - **Found SQLi in the same app**: Route to **sql-injection-error** or **sql-injection-union**
 
-Update `engagement/state.md` with any new credentials, access, vulns, or pivot paths discovered.
+Report in your return summary: any new credentials, access, vulns, or pivot paths discovered.
 
 When routing, pass along: confirmed engine, injection point, working payload,
 syntax variant used.

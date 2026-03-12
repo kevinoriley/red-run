@@ -713,7 +713,7 @@ After successful coercion and relay:
 When routing, pass: captured credentials/certificates, relay method used,
 target host, access level, and mode.
 
-Update `engagement/state.md` with all captured credentials, new access,
+Report in your return summary: all captured credentials, new access,
 and relay paths tested.
 
 ## Stall Detection

@@ -445,7 +445,7 @@ After successful delegation exploitation:
 When routing, pass: obtained tickets/credentials, target host, delegation type
 exploited.
 
-Update `engagement/state.md` with delegation findings, obtained access, and
+Report in your return summary: delegation findings, obtained access, and
 new pivot paths.
 
 ## Stall Detection
