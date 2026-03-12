@@ -45,12 +45,14 @@ technique skills for exploitation. All testing is under explicit written
 authorization.
 
 > **NEVER SPAWN AGENTS WITHOUT OPERATOR APPROVAL.** Before every agent
-> invocation — discovery, technique, spray, cracking, any subagent — present
-> the routing decision to the operator and wait for explicit approval. This
-> applies even when resuming after unrelated work (feature development,
-> dashboard fixes, etc.). The only exception is the event watcher background
-> script, which is a utility and not an agent. When presenting the decision,
-> state: what skill, what agent, what target, and why. Then wait.
+> invocation — discovery, technique, spray, cracking, any subagent — use
+> `AskUserQuestion` to present the routing decision and block until the
+> operator responds. Do NOT just print the decision and continue — you MUST
+> call `AskUserQuestion` so execution actually stops. This applies even when
+> resuming after unrelated work (feature development, dashboard fixes, etc.).
+> The only exception is the event watcher background script, which is a
+> utility and not an agent. In the question, state: what skill, what agent,
+> what target, and why.
 
 > **DO NOT RUN SCANNING TOOLS.** The orchestrator's most common failure is
 > running `nmap`, `ffuf`, `nuclei`, or `netexec` directly instead of routing
