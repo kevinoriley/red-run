@@ -88,8 +88,8 @@ start_process(command="chisel server --reverse --port 8080", privileged=True)
 start_process(command="ligolo-proxy -selfcert", privileged=True)
 
 # Raw socket daemons
-start_process(command="Responder.py -I tun0", privileged=True)
-start_process(command="mitm6 -d intelligence.htb", privileged=True)
+start_process(command="python3 -u /opt/Responder/Responder.py -I tun0 -v", privileged=True)
+start_process(command="mitm6 -d target.local", privileged=True)
 
 # Host tools (no Docker needed)
 start_process(command="ssh user@target")
@@ -128,6 +128,22 @@ start_process(command="msfconsole -q")
 **VPN note:** `--network=host` shares the host's full network namespace
 including tun0. Responder and mitm6 should work over VPN, but this needs
 empirical verification per environment.
+
+**Responder in Docker:** Python buffers stdout when not connected to a TTY,
+causing `read_output` to return nothing even when Responder has captured
+hashes. Always use `python3 -u` (unbuffered) when launching Responder:
+```python
+start_process(command="python3 -u /opt/Responder/Responder.py -I tun0 -v", privileged=True)
+```
+Alternatively, run Responder in the background and poll its log file instead
+of reading stdout — logs are written to `/opt/Responder/logs/` inside the
+container:
+```python
+# Start Responder backgrounded, then check logs
+start_process(command="python3 /opt/Responder/Responder.py -I tun0 -v", privileged=True)
+send_command(session_id="...", command="ls /opt/Responder/logs/")
+send_command(session_id="...", command="cat /opt/Responder/logs/Responder-Session.log")
+```
 
 ## Shell stabilization
 

@@ -628,16 +628,29 @@ nxc smb 10.10.10.0/24 -u 'Administrator' \
 
 ### Verify Access Level
 
+**Pwn3d! means different things per protocol.** Report the correct privilege:
+
+| Protocol | Pwn3d! means | Privilege to report |
+|----------|-------------|---------------------|
+| SMB | Local admin (can write to ADMIN$) | `admin` |
+| WinRM | Can connect (Remote Management Users) | `user` |
+| RDP | Can log in (Remote Desktop Users) | `user` |
+| MSSQL | Can authenticate | `user` |
+| LDAP | Can bind | `user` |
+
+Only SMB Pwn3d! confirms local admin. WinRM Pwn3d! does NOT mean admin — it
+means the user is in Remote Management Users or equivalent. Do not report
+`privilege: admin` from WinRM Pwn3d! alone.
+
 ```bash
-# Check SMB access and admin status
+# Check SMB access — Pwn3d! here = local admin
 nxc smb DC01.DOMAIN.LOCAL -u 'valid_user' -p 'CrackedPass' -d DOMAIN.LOCAL
-# (Pwn3d!) = local admin
 
 # Check shares
 nxc smb DC01.DOMAIN.LOCAL -u 'valid_user' -p 'CrackedPass' \
   -d DOMAIN.LOCAL --shares
 
-# Verify WinRM access
+# Check WinRM access — Pwn3d! here = can connect, NOT admin
 nxc winrm DC01.DOMAIN.LOCAL -u 'valid_user' -p 'CrackedPass' \
   -d DOMAIN.LOCAL -x "whoami"
 

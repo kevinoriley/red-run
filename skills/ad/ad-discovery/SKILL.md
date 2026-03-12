@@ -474,6 +474,38 @@ found → high-value target (stores cleartext AD sync credentials). If
 nonsecure DNS updates allowed → note for **auth-coercion-relay** (ADIDNS
 poisoning enables MITM/coercion without LLMNR).
 
+#### ADIDNS Zone ACL Check
+
+**Standard in most AD environments.** Authenticated Users have CreateChild on
+AD-Integrated DNS zones by default, allowing any domain user to create new A
+records. This enables ADIDNS poisoning: redirect hostnames that don't have DNS
+records (or that you can overwrite) to the attackbox for credential capture.
+
+```bash
+# Check zone ACL — look for Authenticated Users with CreateChild
+# Use dacledit to read the ACL on the DNS zone object
+dacledit.py -action read -target-dn \
+  'DC=DOMAIN.LOCAL,CN=MicrosoftDNS,DC=DomainDnsZones,DC=DOMAIN,DC=LOCAL' \
+  'DOMAIN/user:Password123@DC01.DOMAIN.LOCAL'
+
+# List existing DNS records (look for gaps — hostnames referenced but missing)
+# dnstool.py is from krbrelayx toolkit
+python3 /opt/krbrelayx/dnstool.py -u 'DOMAIN\user' -p 'Password123' \
+  -r '*' --action query DC01.DOMAIN.LOCAL
+```
+
+**Cross-reference with engagement state:** Check for unreachable hostnames in
+the pivot map or blocked items — linked server data sources, SPN hostnames,
+or service references that resolved to nothing. If an expected hostname has no
+DNS A record and Authenticated Users can create records, this is a high-value
+pivot: create an A record pointing to the attackbox, then capture credentials
+when the service authenticates.
+
+**Interim writes:** ADIDNS CreateChild confirmed →
+`add_vuln(title="ADIDNS: Authenticated Users can create DNS records", host="<DC>", vuln_type="adidns-poisoning", severity="critical")`.
+Cross-reference with unreachable hostnames →
+`add_pivot(source="ADIDNS poisoning", destination="<hostname> → attackbox for credential capture", method="Create A record for <hostname> pointing to attackbox, trigger service authentication, capture with Responder")`.
+
 ### SPN Enumeration (Kerberoasting Targets)
 
 ```bash
