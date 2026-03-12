@@ -98,7 +98,8 @@ return summary. Use these tools as you discover findings:
 - `add_blocked()` — techniques attempted and failed (so orchestrator doesn't re-route)
 
 Write vhost discoveries as `add_vuln(vuln_type="info")` so the orchestrator
-triggers a hosts-file update check.
+triggers a hosts-file update check. **Do NOT enumerate discovered vhosts** —
+the orchestrator spawns a new agent per vhost.
 **Do NOT send interim writes if you are near your scope boundary and will be returning to the orchestrator imminently.**
 
 Your return summary must include:
@@ -170,9 +171,12 @@ ffuf -c -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt \
   -u https://TARGET -H "Host: FUZZ.TARGET" -mc all -fs <default-response-size>
 ```
 
-**Interim writes:** Vhosts discovered via `Host:` header fuzzing →
-`add_vuln(title="Vhost discovered: <vhost>", host="<target>", vuln_type="info", severity="info")`
-so the orchestrator triggers a hosts-file update check.
+**Vhost handling:** Vhosts discovered via `Host:` header fuzzing →
+`add_vuln(title="Vhost discovered: <vhost>", host="<target>", vuln_type="info", severity="info")`.
+**Do NOT enumerate discovered vhosts.** Treat them as out of scope for this
+invocation — skip them in all subsequent fuzzing, parameter discovery, and
+injection testing. The orchestrator spawns a separate web-discovery agent per
+vhost after updating `/etc/hosts`.
 
 ## Step 1b: CMS Detection
 

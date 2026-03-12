@@ -341,6 +341,7 @@ Cleanup when all agents complete. One watcher suffices for concurrent agents.
 | vuln w/ "FLAG:" | Always — immediate | Prominent callout (see Flag Capture) |
 | credential | Always | Authenticated enum or spray |
 | vuln (high/critical) | When technique skill exists | Spawn technique agent |
+| vuln w/ "Vhost discovered:" | Always — immediate | Hosts-file update → spawn new web-discovery agent |
 | vuln (medium/low/info) | Display only | Note for later |
 | pivot | When destination actionable | Spawn appropriate agent |
 | blocked | Display only | Note for later |
@@ -703,15 +704,18 @@ skill. Many tools (Kerberos, LDAP, ffuf vhost scanning) fail silently or
 with confusing errors when hostnames don't resolve — catching this early
 prevents wasted agent invocations.
 
-### Post-Web-Discovery Resolution Check
+### Vhost Discovery Routing
 
-After web-discovery returns, if vhosts were found (e.g., `dev.target.htb`,
-`admin.target.htb`), check whether each discovered hostname resolves:
+When web-discovery (or any agent) reports discovered vhosts — via interim event
+or return summary — the orchestrator owns routing. Agents do NOT enumerate
+discovered vhosts themselves.
 
-1. Collect vhost names from the web-discovery return summary.
+1. Collect vhost names from the agent's return or interim events.
 2. For each vhost, run `getent hosts <hostname>`.
-3. If ANY vhost does not resolve, trigger the **Hosts File Update** hard
-   stop before routing to web technique skills.
+3. If ANY vhost does not resolve, trigger the **Hosts File Update** hard stop.
+4. After hosts resolve, spawn a **new web-discovery-agent** per vhost with the
+   vhost as the target URL. These are independent targets — present as parallel
+   paths when multiple vhosts are found.
 
 ## Step 3: Vulnerability Discovery & Exploitation
 
@@ -1315,17 +1319,7 @@ places:
 
    - **Loopback listener** or **Dedicated proxy IP**:
      - Build the listener URL as `http://<ip>:<port>`
-     - Present a confirmation hard stop:
-       ```
-       [orchestrator] HARD STOP — start Burp listener
-
-       Configure Burp Suite Proxy → Options → Proxy listeners to listen on:
-         http://<ip>:<port>
-
-       Confirm when the listener is up. No web agent will be spawned until the
-       Burp listener is ready.
-       ```
-     - Wait for explicit operator confirmation
+     - Print: `Ensure Burp Suite is listening on http://<ip>:<port> before web traffic begins.`
      - Update `engagement/scope.md`:
        ```markdown
        ## Web Proxy
