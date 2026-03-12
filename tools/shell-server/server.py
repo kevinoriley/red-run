@@ -573,8 +573,7 @@ def create_server() -> FastMCP:
                     f"{' [privileged/Docker]' if privileged else ''}. "
                     f"Use send_command() to interact and close_session() to terminate."
                     + (
-                        " Tip: Append live_log path to operator/agent-dashboard/.dashboard"
-                        " for operator visibility."
+                        " Tip: The live_log is visible in the agent dashboard automatically."
                         if live_log_path
                         else ""
                     )

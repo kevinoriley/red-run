@@ -21,35 +21,17 @@ tail -f <output_file> | python3 operator/agent-dashboard/tail-agent.py
 
 ### Multi-Agent Dashboard
 
-The curses-based dashboard shows multiple agents side by side in a split-pane terminal view:
+The curses-based dashboard shows multiple agents side by side in a split-pane terminal view. It auto-discovers new agents from Claude Code's tasks directory and subagent JSONL directories:
 
 ```bash
+# Auto-discover agents (recommended)
+bash operator/agent-dashboard/dashboard.sh
+
 # Explicit label:path pairs
 python3 operator/agent-dashboard/tail-agent.py --dashboard web:path1 ad:path2
-
-# From a .dashboard file (hot-reloaded)
-python3 operator/agent-dashboard/tail-agent.py --dashboard --from .dashboard
-
-# Wrapper script (reads from operator/agent-dashboard/.dashboard)
-bash operator/agent-dashboard/dashboard.sh
 ```
 
-The orchestrator writes the `.dashboard` file when launching parallel background agents.
-
-### .dashboard File Format
-
-One agent per line as `label:path`. Blank lines and `#` comments are ignored:
-
-```
-# Discovery agents
-web-discovery:/tmp/claude-1000/web-discovery.output
-network-recon:/tmp/claude-1000/network-recon.output
-
-# Exploit agents
-ad-exploit:/tmp/claude-1000/ad-exploit.output
-```
-
-The dashboard hot-reloads this file every ~1 second — panes are added and removed dynamically as entries change. Starts with "Waiting for agents..." if the file is empty or doesn't exist yet.
+The dashboard starts with "Waiting for agents..." and picks up new agents automatically as they spawn.
 
 ### Keybindings
 

@@ -45,12 +45,14 @@ technique skills for exploitation. All testing is under explicit written
 authorization.
 
 > **NEVER SPAWN AGENTS WITHOUT OPERATOR APPROVAL.** Before every agent
-> invocation — discovery, technique, spray, cracking, any subagent — present
-> the routing decision to the operator and wait for explicit approval. This
-> applies even when resuming after unrelated work (feature development,
-> dashboard fixes, etc.). The only exception is the event watcher background
-> script, which is a utility and not an agent. When presenting the decision,
-> state: what skill, what agent, what target, and why. Then wait.
+> invocation — discovery, technique, spray, cracking, any subagent — use
+> `AskUserQuestion` to present the routing decision and block until the
+> operator responds. Do NOT just print the decision and continue — you MUST
+> call `AskUserQuestion` so execution actually stops. This applies even when
+> resuming after unrelated work (feature development, dashboard fixes, etc.).
+> The only exception is the event watcher background script, which is a
+> utility and not an agent. In the question, state: what skill, what agent,
+> what target, and why.
 
 > **DO NOT RUN SCANNING TOOLS.** The orchestrator's most common failure is
 > running `nmap`, `ffuf`, `nuclei`, or `netexec` directly instead of routing
@@ -214,9 +216,8 @@ JSONL transcript (do NOT cache the session directory — compactions change it):
 find ~/.claude/projects/-$(pwd | tr / - | sed 's/^-//')/*/subagents/ \
   -name "agent-<agentId>.jsonl" 2>/dev/null
 ```
-Append `label:path` to `operator/agent-dashboard/.dashboard`. Always append
-(`>>`); only truncate (`>`) when ALL prior agents are done. Print:
-`Watch live: bash operator/agent-dashboard/dashboard.sh`
+The agent dashboard auto-discovers spawned agents — no manual registration needed.
+Print: `Watch live: bash operator/agent-dashboard/dashboard.sh`
 
 **Context passing — do NOT override skill methodology.** When routing to a
 technique agent, pass discovery-phase findings as **informational context**,
@@ -1157,6 +1158,8 @@ Multiple agents achieve the goal (rare but possible).
 - SQLite WAL mode + busy_timeout handles concurrent readers and interim
   writers safely. No write conflicts are possible because interim agents
   only INSERT (never UPDATE) and the orchestrator serializes its writes.
+
+**When writing `.sh` scripts** (temp scripts, proxy snippets, etc.), always `chmod +x` the file after creating it.
 
 ### Clock Skew Recovery
 

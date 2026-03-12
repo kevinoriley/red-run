@@ -1,8 +1,10 @@
 # Agent Dashboard
 
-Live-tail and multi-pane dashboard for monitoring red-run agent JSONL output.
+Live-tail and multi-pane dashboard for monitoring Claude Code agent JSONL output.
 Parses Claude Code's raw JSONL transcript format and displays agent reasoning,
 shell commands, and tool calls with color-coded formatting.
+
+Also available as a standalone tool: [claude-agent-dashboard](https://github.com/kevinoriley/claude-agent-dashboard)
 
 ## Prerequisites
 
@@ -28,25 +30,23 @@ tail -f <output_file> | python3 operator/agent-dashboard/tail-agent.py
 ### Multi-agent dashboard mode
 
 Curses-based split-pane view showing multiple agents side by side.
-Only active agents (output file written within the last 60 seconds) are
-displayed. When an agent completes, its pane is automatically removed.
-Completed agents are still accessible via the agent browser (`b`).
-If no agents are active, the dashboard sits idle until one spawns.
+The dashboard auto-discovers new agents from Claude Code's tasks directory
+and subagent JSONL directories. When an agent completes, its pane shows
+a "stopped" indicator. Completed agents are accessible via the agent
+browser (`b`). If no agents are active, the dashboard shows "Waiting for
+agents..." until one spawns.
 
 ```bash
+# Auto-discover agents (recommended)
+python3 operator/agent-dashboard/tail-agent.py --dashboard
+
 # Explicit label:path pairs
 python3 operator/agent-dashboard/tail-agent.py --dashboard web:path1 ad:path2
-
-# From a .dashboard file (hot-reloaded)
-python3 operator/agent-dashboard/tail-agent.py --dashboard --from .dashboard
-
-# Mix both — file + extra agents
-python3 operator/agent-dashboard/tail-agent.py --dashboard --from .dashboard extra:path
 ```
 
 ### Dashboard wrapper script
 
-`dashboard.sh` reads from `operator/agent-dashboard/.dashboard` by default:
+`dashboard.sh` auto-detects the tasks directory for the current project:
 
 ```bash
 bash operator/agent-dashboard/dashboard.sh
@@ -54,26 +54,6 @@ bash operator/agent-dashboard/dashboard.sh
 # With extra agents appended
 bash operator/agent-dashboard/dashboard.sh extra-label:/tmp/.../extra.output
 ```
-
-The orchestrator writes the `.dashboard` file when launching parallel
-background agents.
-
-## .dashboard file format
-
-One agent per line as `label:path`. Blank lines and `#` comments are ignored.
-
-```
-# Discovery agents
-web-discovery:/tmp/claude-1000/web-discovery.output
-network-recon:/tmp/claude-1000/network-recon.output
-
-# Exploit agents
-ad-exploit:/tmp/claude-1000/ad-exploit.output
-```
-
-The dashboard hot-reloads this file every ~1 second — panes are added and
-removed dynamically as entries change. The dashboard stays open even when the
-file is empty, showing "Waiting for agents..." until entries appear.
 
 ## Keybindings
 
@@ -94,14 +74,6 @@ file is empty, showing "Waiting for agents..." until entries appear.
 The status bar shows `LIVE` when auto-following or `scrolled +N` when
 scrolled up. Scrolling to the bottom re-enables live follow.
 
-### Firewall indicator
-
-The status bar shows an `FW` indicator on both ends. A background thread
-pings `1.1.1.1` every 5 seconds — if the ping is blocked, the firewall is
-active (green). If the ping succeeds, the firewall is down (red). Unknown
-state shows as dim `??`. This runs in all modes regardless of engagement
-type, so the operator always has visibility into network isolation state.
-
 ### Agent browser
 
 Press `b` to open a modal overlay listing all agent output files from the
@@ -119,14 +91,17 @@ This lets you review completed agents that have already left the dashboard,
 or re-add dismissed panes. The `--tasks-dir` flag (auto-set by `dashboard.sh`)
 controls where the browser looks for output files.
 
-To clear the agent browser list, remove the subagent JSONL transcripts that
-the browser discovers. These live under `~/.claude/projects/` in per-session
-`subagents/` directories (the primary source), plus symlinks in the tasks
-directory. Stop the dashboard and run from the project root:
+### Purging agent history
+
+To wipe all agent transcripts for the current project so they no longer
+appear in the dashboard or browser:
 
 ```bash
-rm -rf ~/.claude/projects/-"$(pwd | tr / - | sed 's/^-//')"/*/subagents
+bash dashboard.sh --purge
 ```
+
+This deletes all `subagents/` directories under `~/.claude/projects/` for
+the current project. Prompts for confirmation before deleting.
 
 ## Color coding
 

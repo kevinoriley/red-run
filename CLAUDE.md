@@ -131,6 +131,18 @@ when making changes.
 **When modifying a tool server:** If you change tools, parameters, behavior, or
 dependencies in a `tools/*/` server, update its `README.md` in the same commit.
 
+## Subtrees
+
+`operator/agent-dashboard/` is a git subtree from [claude-agent-dashboard](https://github.com/kevinoriley/claude-agent-dashboard).
+
+```bash
+# Pull upstream changes
+git subtree pull --prefix=operator/agent-dashboard git@github.com:kevinoriley/claude-agent-dashboard.git main --squash
+
+# Push local changes upstream
+git subtree push --prefix=operator/agent-dashboard git@github.com:kevinoriley/claude-agent-dashboard.git main
+```
+
 ## Directory Layout
 
 ```
