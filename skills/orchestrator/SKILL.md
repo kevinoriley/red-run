@@ -241,7 +241,8 @@ of routing to the skill in the first place.
 1. Parse the agent's return summary for new targets, creds, access, vulns, pivots, blocked items
 2. Call structured write tools to record findings (`add_target`, `add_credential`, `add_vuln`, etc.)
 3. Call `get_state_summary()` and run the Step 4 decision logic
-4. Spawn the next agent with the appropriate skill
+4. Present the next action(s) to the operator — if 2+ independent paths
+   exist, use Parallel Path Presentation format
 
 **Each invocation = one skill.** Discovery skills find things and return.
 The orchestrator decides which technique skill to invoke next. Subagents
@@ -411,9 +412,10 @@ When a skill completes and returns control to the orchestrator:
    (RPC/LDAP null session), web-discovery (user enumeration), ad-discovery
    (BloodHound/LDAP), SQLi (user table dump), credential-dumping (SAM/LSASS),
    or any other source.
-7. Call `get_state_summary()` for routing decision
-8. Run the Step 4 decision logic
-9. Route to the next skill based on updated state
+7. Call `get_state_summary()` and run Step 4 decision logic
+8. Present the next action(s) to the operator via `AskUserQuestion` — always
+   proactively recommend; never wait for the operator to ask "what's next."
+   If 2+ independent paths exist, use Parallel Path Presentation format.
 
 #### Parallel Path Returns
 
@@ -907,7 +909,9 @@ Higher privileges unlock flag paths that were unreadable before (e.g.,
 
 ### Decision Logic
 
-When reading the state summary (via `get_state_summary()`), the orchestrator should:
+When reading the state summary (via `get_state_summary()`), the orchestrator
+walks ALL items below, collects every actionable finding, then presents them
+to the operator (using Parallel Path Presentation when 2+ are independent):
 
 1. **Check for unexploited vulns** — spawn the appropriate agent with the
    technique skill (look up in domain→agent map).
