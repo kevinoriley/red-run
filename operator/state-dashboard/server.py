@@ -98,6 +98,7 @@ def _get_local_ips() -> list[str]:
 # SQLite helpers
 # ---------------------------------------------------------------------------
 
+
 def _get_db(db_path: Path) -> sqlite3.Connection | None:
     """Open read-only connection. Returns None if DB doesn't exist."""
     if not db_path.exists():
@@ -1001,6 +1002,7 @@ fetch('/api/state').then(r=>r.json()).then(d => { state = d; render(); });
 # HTTP Handler
 # ---------------------------------------------------------------------------
 
+
 class Handler(BaseHTTPRequestHandler):
     db_path: Path = _DEFAULT_DB
     auth_token: str | None = None  # None = no auth required
@@ -1111,7 +1113,9 @@ class Handler(BaseHTTPRequestHandler):
                     now = time.time()
                     if now - last_full >= 10:
                         data = _build_state(self.db_path)
-                        self.wfile.write(f"data: {json.dumps({'type': 'state', 'payload': data}, default=str)}\n\n".encode())
+                        self.wfile.write(
+                            f"data: {json.dumps({'type': 'state', 'payload': data}, default=str)}\n\n".encode()
+                        )
                         self.wfile.flush()
                         last_full = now
                         if data["events"]:
@@ -1120,7 +1124,9 @@ class Handler(BaseHTTPRequestHandler):
                         events = _get_events_since(self.db_path, last_event_id)
                         if events:
                             last_event_id = max(e["id"] for e in events)
-                            self.wfile.write(f"data: {json.dumps({'type': 'events', 'payload': events}, default=str)}\n\n".encode())
+                            self.wfile.write(
+                                f"data: {json.dumps({'type': 'events', 'payload': events}, default=str)}\n\n".encode()
+                            )
                             self.wfile.flush()
                     time.sleep(2)
             except (BrokenPipeError, ConnectionResetError):
@@ -1167,7 +1173,9 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     parser = argparse.ArgumentParser(description="red-run state viewer")
-    parser.add_argument("--port", type=int, default=8099, help="Listen port (default: 8099)")
+    parser.add_argument(
+        "--port", type=int, default=8099, help="Listen port (default: 8099)"
+    )
     parser.add_argument("--db", type=str, default=None, help="Path to state.db")
     args = parser.parse_args()
 
@@ -1189,8 +1197,12 @@ def main():
     if bind_addr == "0.0.0.0":
         for ip in _get_local_ips():
             print(f"  remote:     http://{ip}:{args.port}")
-        print(f"\nIf your VM uses NAT, access via http://localhost:{args.port} on the host")
-        print(f"after adding a port forwarding rule (host {args.port} -> guest {args.port}).")
+        print(
+            f"\nIf your VM uses NAT, access via http://localhost:{args.port} on the host"
+        )
+        print(
+            f"after adding a port forwarding rule (host {args.port} -> guest {args.port})."
+        )
     print(f"database: {db_path}")
     try:
         server.serve_forever()

@@ -218,10 +218,7 @@ class TestSubagentStopHook:
         agent_names = [p.stem for p in _get_agent_files()]
         assert agent_names, "No agent files found in agents/"
 
-        unmatched = [
-            name for name in agent_names
-            if not re.fullmatch(combined, name)
-        ]
+        unmatched = [name for name in agent_names if not re.fullmatch(combined, name)]
         assert not unmatched, (
             f"Agents not covered by SubagentStop hook: {unmatched}. "
             f"Update the matcher in .claude/settings.json to include them."

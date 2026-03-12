@@ -115,7 +115,9 @@ class TestConfiguredProxy:
 
     def test_disabled_config_returns_none(self, monkeypatch, tmp_path):
         config = tmp_path / "web-proxy.json"
-        config.write_text(json.dumps({"enabled": False, "proxy_url": "http://127.0.0.1:8080"}))
+        config.write_text(
+            json.dumps({"enabled": False, "proxy_url": "http://127.0.0.1:8080"})
+        )
         monkeypatch.setattr("server._PROXY_CONFIG_PATH", config)
         assert _load_configured_proxy_url() is None
 

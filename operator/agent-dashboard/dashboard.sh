@@ -11,7 +11,7 @@ AGENTS_FILE="$SCRIPT_DIR/.dashboard"
 
 # Derive tasks directory for agent browser
 PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-ENCODED="$(echo "$PROJECT_DIR" | sed 's|/|-|g')"
+ENCODED="${PROJECT_DIR//\//-}"
 TASKS_DIR="/tmp/claude-$(id -u)/${ENCODED}/tasks"
 
 exec python3 "$SCRIPT_DIR/tail-agent.py" --dashboard --from "$AGENTS_FILE" --tasks-dir "$TASKS_DIR" "$@"

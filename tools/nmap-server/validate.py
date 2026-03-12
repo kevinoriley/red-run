@@ -14,19 +14,36 @@ from pathlib import Path
 # --- Blocked nmap flags ---
 
 # Flags that read arbitrary files from the filesystem
-_FILE_READ_FLAGS = frozenset({
-    "-iL", "--excludefile", "--resume", "--servicedb", "--versiondb",
-})
+_FILE_READ_FLAGS = frozenset(
+    {
+        "-iL",
+        "--excludefile",
+        "--resume",
+        "--servicedb",
+        "--versiondb",
+    }
+)
 
 # Flags that write files (we control output via -oX -)
-_FILE_WRITE_FLAGS = frozenset({
-    "-oN", "-oG", "-oX", "-oA", "--append-output",
-})
+_FILE_WRITE_FLAGS = frozenset(
+    {
+        "-oN",
+        "-oG",
+        "-oX",
+        "-oA",
+        "--append-output",
+    }
+)
 
 # Flags that override data/script paths
-_PATH_OVERRIDE_FLAGS = frozenset({
-    "--datadir", "--script-updatedb", "--script-path", "--script-args-file",
-})
+_PATH_OVERRIDE_FLAGS = frozenset(
+    {
+        "--datadir",
+        "--script-updatedb",
+        "--script-path",
+        "--script-args-file",
+    }
+)
 
 _ALL_BLOCKED_FLAGS = _FILE_READ_FLAGS | _FILE_WRITE_FLAGS | _PATH_OVERRIDE_FLAGS
 

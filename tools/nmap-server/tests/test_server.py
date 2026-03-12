@@ -130,7 +130,9 @@ class TestSaveEvidence:
         monkeypatch.setattr(server_mod, "_PROJECT_ROOT", tmp_path)
         evidence_dir = tmp_path / "engagement" / "evidence"
         evidence_dir.mkdir(parents=True)
-        result = _save_evidence("<xml/>", "10.10.10.5", "engagement/evidence/custom.xml")
+        result = _save_evidence(
+            "<xml/>", "10.10.10.5", "engagement/evidence/custom.xml"
+        )
         assert result is not None
         assert result == str(evidence_dir / "custom.xml")
         assert (evidence_dir / "custom.xml").read_text() == "<xml/>"

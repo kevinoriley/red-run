@@ -32,15 +32,13 @@ def parse_frontmatter(content: str) -> tuple[dict, str, str]:
     match = re.match(r"^(---\s*\n)(.*?)(\n---\n?)", content, re.DOTALL)
     if not match:
         return {}, "", content
-    opener = match.group(1)
     raw = match.group(2)
-    closer = match.group(3)
-    body = content[match.end():]
+    body = content[match.end() :]
     try:
         data = yaml.safe_load(raw) or {}
     except yaml.YAMLError:
         data = {}
-    return data, content[:match.end()], body
+    return data, content[: match.end()], body
 
 
 def extract_keywords_from_triggers(text: str) -> list[str]:
@@ -111,7 +109,11 @@ def extract_core_description(text: str) -> str:
 def extract_use_when_keywords(text: str) -> list[str]:
     """Extract meaningful terms from 'Use when/Use this skill when' clauses."""
     keywords = []
-    match = re.search(r"Use (?:this skill )?when\s+(.*?)(?:\.\s*(?:Also|Triggers|OPSEC|Tools|Do NOT)|$)", text, re.DOTALL | re.IGNORECASE)
+    match = re.search(
+        r"Use (?:this skill )?when\s+(.*?)(?:\.\s*(?:Also|Triggers|OPSEC|Tools|Do NOT)|$)",
+        text,
+        re.DOTALL | re.IGNORECASE,
+    )
     if not match:
         return keywords
 
@@ -186,7 +188,10 @@ def convert_skill(skill_path: Path) -> tuple[bool, str]:
     new_content = "\n".join(new_fm_lines) + body
     skill_path.write_text(new_content)
 
-    return True, f"converted ({len(all_keywords)} keywords, {len(tools)} tools, opsec={opsec})"
+    return (
+        True,
+        f"converted ({len(all_keywords)} keywords, {len(tools)} tools, opsec={opsec})",
+    )
 
 
 def wrap_yaml_text(text: str, indent: int = 2, width: int = 78) -> list[str]:
@@ -213,7 +218,9 @@ def wrap_yaml_text(text: str, indent: int = 2, width: int = 78) -> list[str]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Convert skill frontmatter to structured format")
+    parser = argparse.ArgumentParser(
+        description="Convert skill frontmatter to structured format"
+    )
     parser.add_argument(
         "--skills-dir",
         type=Path,
@@ -259,7 +266,9 @@ def main() -> None:
                 opsec = extract_opsec(old_desc)
                 print(f"  WOULD {relative}:")
                 print(f"         desc: {core[:80]}...")
-                print(f"         keywords: {len(triggers)}, tools: {len(tools)}, opsec: {opsec}")
+                print(
+                    f"         keywords: {len(triggers)}, tools: {len(tools)}, opsec: {opsec}"
+                )
             else:
                 print(f"  SKIP  {relative} (no description)")
                 skipped += 1

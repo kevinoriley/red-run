@@ -171,10 +171,12 @@ class TestCrudLifecycle:
         assert targets[0]["os"] == "Linux"
 
     def test_add_target_with_ports(self, write_server):
-        ports_json = json.dumps([
-            {"port": 80, "service": "http"},
-            {"port": 443, "service": "https"},
-        ])
+        ports_json = json.dumps(
+            [
+                {"port": 80, "service": "http"},
+                {"port": 443, "service": "https"},
+            ]
+        )
         self._call_tool(
             write_server,
             "add_target",
@@ -221,17 +223,13 @@ class TestCrudLifecycle:
         assert data["username"] == "admin"
         assert "credential_id" in data
 
-        creds = json.loads(
-            self._call_tool(write_server, "get_credentials", {})
-        )
+        creds = json.loads(self._call_tool(write_server, "get_credentials", {}))
         assert len(creds) == 1
         assert creds[0]["username"] == "admin"
 
     def test_test_credential(self, write_server):
         # Create target and credential first
-        self._call_tool(
-            write_server, "add_target", {"host": "10.10.10.8"}
-        )
+        self._call_tool(write_server, "add_target", {"host": "10.10.10.8"})
         cred_result = json.loads(
             self._call_tool(
                 write_server,
@@ -254,16 +252,12 @@ class TestCrudLifecycle:
         data = json.loads(result)
         assert data["works"] is True
 
-        creds = json.loads(
-            self._call_tool(write_server, "get_credentials", {})
-        )
+        creds = json.loads(self._call_tool(write_server, "get_credentials", {}))
         assert len(creds[0]["tested_against"]) == 1
         assert creds[0]["tested_against"][0]["works"] == 1
 
     def test_add_and_get_access(self, write_server):
-        self._call_tool(
-            write_server, "add_target", {"host": "10.10.10.9"}
-        )
+        self._call_tool(write_server, "add_target", {"host": "10.10.10.9"})
         result = self._call_tool(
             write_server,
             "add_access",
@@ -277,16 +271,12 @@ class TestCrudLifecycle:
         data = json.loads(result)
         assert data["access_type"] == "shell"
 
-        access = json.loads(
-            self._call_tool(write_server, "get_access", {})
-        )
+        access = json.loads(self._call_tool(write_server, "get_access", {}))
         assert len(access) == 1
         assert access[0]["username"] == "www-data"
 
     def test_update_access_revoke(self, write_server):
-        self._call_tool(
-            write_server, "add_target", {"host": "10.10.10.10"}
-        )
+        self._call_tool(write_server, "add_target", {"host": "10.10.10.10"})
         result = json.loads(
             self._call_tool(
                 write_server,
@@ -304,17 +294,13 @@ class TestCrudLifecycle:
 
         # active_only=True should exclude revoked access
         active = json.loads(
-            self._call_tool(
-                write_server, "get_access", {"active_only": True}
-            )
+            self._call_tool(write_server, "get_access", {"active_only": True})
         )
         assert len(active) == 0
 
         # active_only=False should include it
         all_access = json.loads(
-            self._call_tool(
-                write_server, "get_access", {"active_only": False}
-            )
+            self._call_tool(write_server, "get_access", {"active_only": False})
         )
         assert len(all_access) == 1
 
@@ -331,9 +317,7 @@ class TestCrudLifecycle:
         data = json.loads(result)
         assert data["title"] == "SQLi in /search"
 
-        vulns = json.loads(
-            self._call_tool(write_server, "get_vulns", {})
-        )
+        vulns = json.loads(self._call_tool(write_server, "get_vulns", {}))
         assert len(vulns) == 1
         assert vulns[0]["severity"] == "high"
 
@@ -350,9 +334,7 @@ class TestCrudLifecycle:
         data = json.loads(result)
         assert data["source"] == "SQLi on 10.10.10.5"
 
-        pivots = json.loads(
-            self._call_tool(write_server, "get_pivot_map", {})
-        )
+        pivots = json.loads(self._call_tool(write_server, "get_pivot_map", {}))
         assert len(pivots) == 1
 
     def test_add_and_get_blocked(self, write_server):
@@ -367,9 +349,7 @@ class TestCrudLifecycle:
         data = json.loads(result)
         assert data["technique"] == "kerberoasting"
 
-        blocked = json.loads(
-            self._call_tool(write_server, "get_blocked", {})
-        )
+        blocked = json.loads(self._call_tool(write_server, "get_blocked", {}))
         assert len(blocked) == 1
         assert blocked[0]["reason"] == "No SPNs found"
 
@@ -386,16 +366,12 @@ class TestCrudLifecycle:
             {"title": "Test vuln", "severity": "high"},
         )
 
-        summary = self._call_tool(
-            write_server, "get_state_summary", {}
-        )
+        summary = self._call_tool(write_server, "get_state_summary", {})
         assert "Engagement State" in summary
         assert "10.10.10.20" in summary
         assert "Test vuln" in summary
 
     def test_state_summary_empty(self, write_server):
-        summary = self._call_tool(
-            write_server, "get_state_summary", {}
-        )
+        summary = self._call_tool(write_server, "get_state_summary", {})
         assert "Engagement State" in summary
         assert "_(none)_" in summary

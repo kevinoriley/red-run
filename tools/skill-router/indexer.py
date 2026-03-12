@@ -28,9 +28,9 @@ os.environ.setdefault("SAFETENSORS_FAST_GPU", "0")
 warnings.filterwarnings("ignore", message=".*unauthenticated.*")
 warnings.filterwarnings("ignore", message=".*UNEXPECTED.*")
 
-import chromadb
-import yaml
-from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+import chromadb  # noqa: E402 — must follow warnings.filterwarnings
+import yaml  # noqa: E402
+from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction  # noqa: E402
 
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 COLLECTION_NAME = "red-run-skills"

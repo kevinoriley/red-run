@@ -15,12 +15,14 @@ Shows:
     Green   - tool output (Bash results, shell-server responses)
     Dim     - skill loads, state queries, file reads/writes, other MCP tool calls
 """
+
 import curses
 import glob as _glob
 import json
 import os
 import queue
 import re
+import subprocess
 import sys
 import textwrap
 import threading
@@ -37,8 +39,6 @@ RESET = "\033[0m"
 # Firewall probe — ping 1.1.1.1 to check if outbound is blocked
 # ---------------------------------------------------------------------------
 
-import subprocess
-
 # Shared state: True = firewall active (ping blocked), False = firewall down (ping succeeded), None = unknown
 _firewall_ok: bool | None = None
 _firewall_lock = threading.Lock()
@@ -51,11 +51,14 @@ def _firewall_probe_thread(stop_event: threading.Event) -> None:
         try:
             ret = subprocess.run(
                 ["ping", "-c", "1", "-W", "2", "1.1.1.1"],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
                 timeout=4,
             )
             with _firewall_lock:
-                _firewall_ok = ret.returncode != 0  # ping failed = firewall blocking = good
+                _firewall_ok = (
+                    ret.returncode != 0
+                )  # ping failed = firewall blocking = good
         except (subprocess.TimeoutExpired, OSError):
             with _firewall_lock:
                 _firewall_ok = True  # timeout = blocked = good
@@ -69,7 +72,10 @@ def format_tool(name: str, inp: dict) -> tuple[str, str]:
         cmd = inp.get("command", "")
         return ("shell", f"SHELL[{sid}] {cmd}")
     if name == "mcp__shell-server__start_listener":
-        return ("shell", f"LISTEN port={inp.get('port', '')} label={inp.get('label', '')}")
+        return (
+            "shell",
+            f"LISTEN port={inp.get('port', '')} label={inp.get('label', '')}",
+        )
     if name == "mcp__shell-server__start_process":
         return ("shell", f"PROC {inp.get('command', '')}")
     if name == "mcp__shell-server__read_output":
@@ -116,10 +122,13 @@ def format_tool(name: str, inp: dict) -> tuple[str, str]:
 
 
 # Tool IDs whose results should be rendered (Bash, shell-server commands)
-_SHOW_RESULT_TOOLS = {"Bash", "mcp__shell-server__send_command",
-                       "mcp__shell-server__read_output",
-                       "mcp__shell-server__start_process",
-                       "mcp__shell-server__stabilize_shell"}
+_SHOW_RESULT_TOOLS = {
+    "Bash",
+    "mcp__shell-server__send_command",
+    "mcp__shell-server__read_output",
+    "mcp__shell-server__start_process",
+    "mcp__shell-server__stabilize_shell",
+}
 
 # Regex to strip ANSI escape sequences (CSI sequences, cursor control, etc.)
 _ANSI_RE = re.compile(r"\x1b\[[\x20-\x3f]*[\x40-\x7e]|\x1b[()][0-9A-B]|\x01|\x02")
@@ -236,6 +245,7 @@ def process_line(line: str) -> None:
 # Colors cycled per agent pane
 PANE_COLORS = ["cyan", "green", "magenta", "yellow"]
 
+
 def _curses_color_map() -> dict[str, int]:
     """Return color name -> curses constant map. Must be called after initscr."""
     return {
@@ -257,7 +267,9 @@ class AgentPane:
         self.queue: queue.Queue = queue.Queue()
         self.scroll_offset: int = 0  # 0 = bottom (auto-follow), >0 = scrolled up
         self.auto_follow: bool = True  # snap to bottom on new content
-        self._prev_wrapped_total: int = 0  # tracks wrapped line count for scroll anchoring
+        self._prev_wrapped_total: int = (
+            0  # tracks wrapped line count for scroll anchoring
+        )
         self.pending: dict = {}  # tool_use_id -> tool_name for result tracking
 
 
@@ -395,12 +407,22 @@ def _extract_label(filepath: str) -> str:
                         return m.group(1)
                     # Built-in agent type detection from prompt content
                     text_lower = content.strip().lower()
-                    if any(kw in text_lower for kw in ("plan", "design", "architect",
-                                                        "implementation")):
+                    if any(
+                        kw in text_lower
+                        for kw in ("plan", "design", "architect", "implementation")
+                    ):
                         return "Plan agent"
-                    if any(kw in text_lower for kw in ("explore", "search for",
-                                                        "find files", "find the",
-                                                        "look for", "codebase")):
+                    if any(
+                        kw in text_lower
+                        for kw in (
+                            "explore",
+                            "search for",
+                            "find files",
+                            "find the",
+                            "look for",
+                            "codebase",
+                        )
+                    ):
                         return "Explore agent"
                     # Summarize first line of prompt
                     summary = content.strip().split("\n")[0]
@@ -417,8 +439,17 @@ def _extract_label(filepath: str) -> str:
         text = first_line.strip().lower()
         if any(kw in text for kw in ("plan", "design", "architect", "implementation")):
             return "Plan agent"
-        if any(kw in text for kw in ("explore", "search for", "find files",
-                                      "find the", "look for", "codebase")):
+        if any(
+            kw in text
+            for kw in (
+                "explore",
+                "search for",
+                "find files",
+                "find the",
+                "look for",
+                "codebase",
+            )
+        ):
             return "Explore agent"
         # General-purpose or unknown — summarize
         summary = first_line.strip().split("\n")[0]
@@ -516,7 +547,9 @@ def _jsonl_has_final_message(filepath: str) -> bool:
         return False
 
 
-def _discover_agents(tasks_dir: str, displayed_paths: set[str]) -> list[tuple[str, str, float, bool]]:
+def _discover_agents(
+    tasks_dir: str, displayed_paths: set[str]
+) -> list[tuple[str, str, float, bool]]:
     """Discover agent output files, returning (label, path, mtime, in_dashboard) sorted newest-first.
 
     Searches two locations:
@@ -646,8 +679,9 @@ def _find_subagent_dirs() -> list[str]:
     return [d for _, d in results]
 
 
-def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
-              tasks_dir: str = "") -> None:
+def dashboard(
+    agents: list[tuple[str, str]], agents_file: str = "", tasks_dir: str = ""
+) -> None:
     """Curses main loop: layout panes, drain queues, redraw.
 
     If agents_file is set, the file is re-read periodically and panes are
@@ -658,7 +692,8 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
     panes: list[AgentPane] = [
         AgentPane(label, path, i % len(PANE_COLORS))
         for i, (label, path) in enumerate(agents)
-        if os.path.exists(path) or (os.path.islink(path) and os.path.exists(os.readlink(path)))
+        if os.path.exists(path)
+        or (os.path.islink(path) and os.path.exists(os.readlink(path)))
     ]
 
     stop_event = threading.Event()
@@ -681,7 +716,9 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
         pane_map[pane.filepath] = (pane, t)
 
     # Start firewall probe (always-on — operator can enable/disable firewall anytime)
-    fw_thread = threading.Thread(target=_firewall_probe_thread, args=(stop_event,), daemon=True)
+    fw_thread = threading.Thread(
+        target=_firewall_probe_thread, args=(stop_event,), daemon=True
+    )
     fw_thread.start()
     threads.append(fw_thread)
 
@@ -707,7 +744,9 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
 
         # Agent browser state
         browser_open = False
-        browser_items: list[tuple[str, str, float, bool]] = []  # (label, path, mtime, in_dashboard)
+        browser_items: list[
+            tuple[str, str, float, bool]
+        ] = []  # (label, path, mtime, in_dashboard)
         browser_cursor = 0
         browser_scroll = 0
 
@@ -726,33 +765,42 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                     if mtime != last_mtime:
                         last_mtime = mtime
                         new_agents = _read_agents_file(agents_file)
-                        new_paths = {path for _, path in new_agents}
                         old_paths = set(pane_map.keys())
 
                         # Add new panes from .dashboard (active or completed, not dismissed)
                         for label, path in new_agents:
                             if path not in old_paths and path not in dismissed_paths:
-                                p = AgentPane(label, path, len(panes) % len(PANE_COLORS))
+                                p = AgentPane(
+                                    label, path, len(panes) % len(PANE_COLORS)
+                                )
                                 t = _start_pane(p)
                                 panes.append(p)
                                 threads.append(t)
                                 pane_map[path] = (p, t)
                                 completed_paths.discard(path)
 
-
                 # Auto-discover new agents from tasks directory and subagent dirs
                 if tasks_dir:
                     # Resolve symlinks so .output symlinks and direct JSONL paths dedup
                     displayed = set(pane_map.keys()) | {
-                        os.path.realpath(p) for p in pane_map}
-                    for label, path, mtime, in_dash in _discover_agents(tasks_dir, displayed):
-                        if not in_dash and path not in dismissed_paths and path not in completed_paths:
+                        os.path.realpath(p) for p in pane_map
+                    }
+                    for label, path, mtime, in_dash in _discover_agents(
+                        tasks_dir, displayed
+                    ):
+                        if (
+                            not in_dash
+                            and path not in dismissed_paths
+                            and path not in completed_paths
+                        ):
                             # Skip stale agents (>5 min old) unless in .dashboard file
                             if time.time() - mtime > 300:
                                 completed_paths.add(path)
                                 continue
                             if _is_agent_active(path):
-                                p = AgentPane(label, path, len(panes) % len(PANE_COLORS))
+                                p = AgentPane(
+                                    label, path, len(panes) % len(PANE_COLORS)
+                                )
                                 t = _start_pane(p)
                                 panes.append(p)
                                 threads.append(t)
@@ -788,13 +836,28 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                             browser_cursor = max(0, browser_cursor - 1)
                         elif key == curses.KEY_DOWN or key == ord("j"):
                             if browser_items:
-                                browser_cursor = min(len(browser_items) - 1, browser_cursor + 1)
-                        elif key == ord(" ") or key == ord("a") or key == 10 or key == curses.KEY_ENTER:  # Space/a/Enter to toggle
+                                browser_cursor = min(
+                                    len(browser_items) - 1, browser_cursor + 1
+                                )
+                        elif (
+                            key == ord(" ")
+                            or key == ord("a")
+                            or key == 10
+                            or key == curses.KEY_ENTER
+                        ):  # Space/a/Enter to toggle
                             if browser_items and browser_cursor < len(browser_items):
                                 label, path, _, in_dash = browser_items[browser_cursor]
                                 # Resolve path for pane_map lookup (browser may have .output symlink, pane_map has .jsonl)
                                 resolved_path = os.path.realpath(path)
-                                pane_key = path if path in pane_map else (resolved_path if resolved_path in pane_map else None)
+                                pane_key = (
+                                    path
+                                    if path in pane_map
+                                    else (
+                                        resolved_path
+                                        if resolved_path in pane_map
+                                        else None
+                                    )
+                                )
                                 if in_dash and pane_key is not None:
                                     # Remove from dashboard
                                     old_pane, _ = pane_map.pop(pane_key)
@@ -802,14 +865,21 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                                         panes.remove(old_pane)
                                     dismissed_paths.add(path)
                                     dismissed_paths.add(resolved_path)
-                                    browser_items[browser_cursor] = (label, path, browser_items[browser_cursor][2], False)
+                                    browser_items[browser_cursor] = (
+                                        label,
+                                        path,
+                                        browser_items[browser_cursor][2],
+                                        False,
+                                    )
                                     if panes:
                                         focused = min(focused, len(panes) - 1)
                                     else:
                                         focused = 0
                                 elif not in_dash:
                                     # Add to dashboard
-                                    p = AgentPane(label, path, len(panes) % len(PANE_COLORS))
+                                    p = AgentPane(
+                                        label, path, len(panes) % len(PANE_COLORS)
+                                    )
                                     t = _start_pane(p)
                                     panes.append(p)
                                     threads.append(t)
@@ -819,7 +889,12 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                                     completed_paths.discard(path)
                                     completed_paths.discard(resolved_path)
                                     focused = len(panes) - 1
-                                    browser_items[browser_cursor] = (label, path, browser_items[browser_cursor][2], True)
+                                    browser_items[browser_cursor] = (
+                                        label,
+                                        path,
+                                        browser_items[browser_cursor][2],
+                                        True,
+                                    )
                     elif panes:
                         # --- Normal pane key handling ---
                         fp = panes[focused]
@@ -843,7 +918,9 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                             fp.auto_follow = False
                         elif key == curses.KEY_NPAGE:  # Page Down
                             max_y, _ = stdscr.getmaxyx()
-                            fp.scroll_offset = max(0, fp.scroll_offset - max(1, max_y - 2))
+                            fp.scroll_offset = max(
+                                0, fp.scroll_offset - max(1, max_y - 2)
+                            )
                             if fp.scroll_offset == 0:
                                 fp.auto_follow = True
                                 fp._prev_wrapped_total = 0
@@ -876,7 +953,8 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                                 tasks_dir = _infer_tasks_dir(panes)
                             displayed = set(p.filepath for p in panes)
                             browser_items = _build_browser_list(
-                                tasks_dir, displayed, panes, agents_file)
+                                tasks_dir, displayed, panes, agents_file
+                            )
                             browser_cursor = 0
                             browser_scroll = 0
                             browser_open = True
@@ -888,7 +966,8 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                                 tasks_dir = _infer_tasks_dir(panes)
                             displayed = set(p.filepath for p in panes)
                             browser_items = _build_browser_list(
-                                tasks_dir, displayed, panes, agents_file)
+                                tasks_dir, displayed, panes, agents_file
+                            )
                             browser_cursor = 0
                             browser_scroll = 0
                             browser_open = True
@@ -918,11 +997,21 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                 # No agents — show waiting message (status bar still drawn below)
                 msg = "Waiting for agents..."
                 try:
-                    stdscr.addnstr(max_y // 2, max(0, (max_x - len(msg)) // 2),
-                                   msg, max_x, curses.A_DIM)
+                    stdscr.addnstr(
+                        max_y // 2,
+                        max(0, (max_x - len(msg)) // 2),
+                        msg,
+                        max_x,
+                        curses.A_DIM,
+                    )
                     hint = "b: browse agents  q: quit"
-                    stdscr.addnstr(max_y // 2 + 1, max(0, (max_x - len(hint)) // 2),
-                                   hint, max_x, curses.A_DIM)
+                    stdscr.addnstr(
+                        max_y // 2 + 1,
+                        max(0, (max_x - len(hint)) // 2),
+                        hint,
+                        max_x,
+                        curses.A_DIM,
+                    )
                 except curses.error:
                     pass
 
@@ -949,14 +1038,18 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                             # Spinner + elapsed time until red
                             _spin = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
                             frame = _spin[int(time.time() * 4) % len(_spin)]
-                            idle_tag = f"{frame} {_format_age(idle_secs).removesuffix(' ago')}"
+                            idle_tag = (
+                                f"{frame} {_format_age(idle_secs).removesuffix(' ago')}"
+                            )
                             if idle_secs >= 60:
                                 idle_color = "idle_stale"
                             elif idle_secs >= 30:
                                 idle_color = "idle_warn"
                         else:
                             # Red: show idle duration
-                            idle_tag = f"idle {_format_age(idle_secs).removesuffix(' ago')}"
+                            idle_tag = (
+                                f"idle {_format_age(idle_secs).removesuffix(' ago')}"
+                            )
                             idle_color = "idle_dead"
                     if not show_idle:
                         header = pane.label.center(col_width)[:col_width]
@@ -971,10 +1064,19 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                         if show_idle and idle_tag and idle_color:
                             tag_pos = header.find(idle_tag)
                             if tag_pos >= 0:
-                                idle_attr = curses.color_pair(color_pairs[idle_color]) | curses.A_BOLD
+                                idle_attr = (
+                                    curses.color_pair(color_pairs[idle_color])
+                                    | curses.A_BOLD
+                                )
                                 if pi == focused:
                                     idle_attr |= curses.A_REVERSE
-                                stdscr.addnstr(0, x_off + tag_pos, idle_tag, col_width - tag_pos, idle_attr)
+                                stdscr.addnstr(
+                                    0,
+                                    x_off + tag_pos,
+                                    idle_tag,
+                                    col_width - tag_pos,
+                                    idle_attr,
+                                )
                     except curses.error:
                         pass
 
@@ -992,7 +1094,7 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                         wrapped.append((kind, prefix + lines_w[0]))
                         for continuation in lines_w[1:]:
                             cont_lines = _wrap_text(continuation, display_width)
-                            for cl in (cont_lines or [""]):
+                            for cl in cont_lines or [""]:
                                 wrapped.append((kind, "  " + cl))
 
                     # Anchor viewport when scrolled up: absorb new lines into offset
@@ -1022,13 +1124,17 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                         if kind == "text":
                             attr = curses.color_pair(color_pairs["cyan"])
                         elif kind == "shell":
-                            attr = curses.color_pair(color_pairs["yellow"]) | curses.A_BOLD
+                            attr = (
+                                curses.color_pair(color_pairs["yellow"]) | curses.A_BOLD
+                            )
                         elif kind == "result":
                             attr = curses.color_pair(color_pairs["result"])
                         else:
                             attr = curses.color_pair(color_pairs["dim"]) | curses.A_DIM
                         try:
-                            stdscr.addnstr(row, x_off, wline.replace("\x00", ""), col_width, attr)
+                            stdscr.addnstr(
+                                row, x_off, wline.replace("\x00", ""), col_width, attr
+                            )
                         except curses.error:
                             pass
 
@@ -1037,8 +1143,13 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                         border_x = x_off + col_width
                         for row in range(max_y):
                             try:
-                                stdscr.addch(row, border_x, "│",
-                                             curses.color_pair(color_pairs["border"]) | curses.A_DIM)
+                                stdscr.addch(
+                                    row,
+                                    border_x,
+                                    "│",
+                                    curses.color_pair(color_pairs["border"])
+                                    | curses.A_DIM,
+                                )
                             except curses.error:
                                 pass
 
@@ -1052,34 +1163,49 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                 # Draw background
                 for row in range(overlay_y, overlay_y + overlay_h):
                     try:
-                        stdscr.addnstr(row, overlay_x, " " * overlay_w, overlay_w,
-                                       curses.A_REVERSE)
+                        stdscr.addnstr(
+                            row, overlay_x, " " * overlay_w, overlay_w, curses.A_REVERSE
+                        )
                     except curses.error:
                         pass
 
                 # Title bar
                 title = f" Agent Browser ({len(browser_items)}) "
                 try:
-                    stdscr.addnstr(overlay_y, overlay_x + (overlay_w - len(title)) // 2,
-                                   title, overlay_w, curses.A_BOLD | curses.A_REVERSE)
+                    stdscr.addnstr(
+                        overlay_y,
+                        overlay_x + (overlay_w - len(title)) // 2,
+                        title,
+                        overlay_w,
+                        curses.A_BOLD | curses.A_REVERSE,
+                    )
                 except curses.error:
                     pass
 
                 # Column headers
                 hdr = f"     {'Agent':<26s} {'Last active':>11s}"
-                hdr = hdr[:overlay_w - 2]
+                hdr = hdr[: overlay_w - 2]
                 try:
-                    stdscr.addnstr(overlay_y + 1, overlay_x + 1, hdr.ljust(overlay_w - 2),
-                                   overlay_w - 2,
-                                   curses.A_REVERSE | curses.A_BOLD | curses.A_UNDERLINE)
+                    stdscr.addnstr(
+                        overlay_y + 1,
+                        overlay_x + 1,
+                        hdr.ljust(overlay_w - 2),
+                        overlay_w - 2,
+                        curses.A_REVERSE | curses.A_BOLD | curses.A_UNDERLINE,
+                    )
                 except curses.error:
                     pass
 
                 if not browser_items:
                     msg = "No other agent outputs found"
                     try:
-                        stdscr.addnstr(overlay_y + 3, overlay_x + 2, msg, overlay_w - 4,
-                                       curses.A_DIM | curses.A_REVERSE)
+                        stdscr.addnstr(
+                            overlay_y + 3,
+                            overlay_x + 2,
+                            msg,
+                            overlay_w - 4,
+                            curses.A_DIM | curses.A_REVERSE,
+                        )
                     except curses.error:
                         pass
                 else:
@@ -1099,20 +1225,27 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                         age = _format_age(now - mtime)
                         marker = " ●" if in_dash else "  "
                         line_text = f"{marker} {label:<26s} {age:>11s}"
-                        line_text = line_text[:overlay_w - 2]
+                        line_text = line_text[: overlay_w - 2]
 
                         row = overlay_y + 2 + i
                         if idx == browser_cursor:
                             # Focused item: bold highlight
-                            attr = curses.color_pair(color_pairs["cyan"]) | curses.A_BOLD
+                            attr = (
+                                curses.color_pair(color_pairs["cyan"]) | curses.A_BOLD
+                            )
                         else:
                             # Non-focused: reverse video (visible on overlay bg)
                             attr = curses.A_REVERSE
                             if in_dash:
                                 attr |= curses.A_BOLD
                         try:
-                            stdscr.addnstr(row, overlay_x + 1, line_text.ljust(overlay_w - 2),
-                                           overlay_w - 2, attr)
+                            stdscr.addnstr(
+                                row,
+                                overlay_x + 1,
+                                line_text.ljust(overlay_w - 2),
+                                overlay_w - 2,
+                                attr,
+                            )
                         except curses.error:
                             pass
 
@@ -1126,10 +1259,18 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                 fw_attr = curses.A_REVERSE | curses.A_DIM
             elif fw_state:
                 fw_text = " \u25cf FW "
-                fw_attr = curses.color_pair(color_pairs["result"]) | curses.A_BOLD | curses.A_REVERSE
+                fw_attr = (
+                    curses.color_pair(color_pairs["result"])
+                    | curses.A_BOLD
+                    | curses.A_REVERSE
+                )
             else:
                 fw_text = " \u25cf FW "
-                fw_attr = curses.color_pair(color_pairs["stopped"]) | curses.A_BOLD | curses.A_REVERSE
+                fw_attr = (
+                    curses.color_pair(color_pairs["stopped"])
+                    | curses.A_BOLD
+                    | curses.A_REVERSE
+                )
             try:
                 stdscr.addnstr(max_y - 1, 0, fw_text, max_x - 1, fw_attr)
                 fw_offset = len(fw_text)
@@ -1144,7 +1285,11 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
                 fp = panes[focused]
                 if dismiss_pending:
                     status = f" [{fp.label}] tap d again to dismiss  |  Tab: switch  b: browse agents  q: quit "
-                    status_attr = curses.color_pair(color_pairs["yellow"]) | curses.A_BOLD | curses.A_REVERSE
+                    status_attr = (
+                        curses.color_pair(color_pairs["yellow"])
+                        | curses.A_BOLD
+                        | curses.A_REVERSE
+                    )
                 elif fp.auto_follow:
                     status = f" [{fp.label}] LIVE ↓  |  Tab: switch  ↑↓/jk: scroll  d: dismiss  b: browse  q: quit "
                     status_attr = curses.A_REVERSE
@@ -1158,8 +1303,13 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
             remaining = max_x - 1 - fw_offset - len(fw_text)
             status = status[:remaining]
             try:
-                stdscr.addnstr(max_y - 1, fw_offset, status.ljust(remaining), remaining,
-                               status_attr)
+                stdscr.addnstr(
+                    max_y - 1,
+                    fw_offset,
+                    status.ljust(remaining),
+                    remaining,
+                    status_attr,
+                )
                 # Right-side firewall indicator (mirror)
                 right_x = fw_offset + remaining
                 stdscr.addnstr(max_y - 1, right_x, fw_text, len(fw_text), fw_attr)
@@ -1174,8 +1324,10 @@ def dashboard(agents: list[tuple[str, str]], agents_file: str = "",
     except KeyboardInterrupt:
         pass
     except curses.error:
-        print("Error: dashboard requires a terminal (not a pipe or non-interactive shell).",
-              file=sys.stderr)
+        print(
+            "Error: dashboard requires a terminal (not a pipe or non-interactive shell).",
+            file=sys.stderr,
+        )
     finally:
         stop_event.set()
         for t in threads:
@@ -1222,8 +1374,10 @@ def main() -> None:
 
         # With --from, allow starting with no agents (file will be watched)
         if not agents and not agents_file:
-            print("Usage: tail-agent.py --dashboard [--from agents_file] [--tasks-dir DIR] [label:path ...]",
-                  file=sys.stderr)
+            print(
+                "Usage: tail-agent.py --dashboard [--from agents_file] [--tasks-dir DIR] [label:path ...]",
+                file=sys.stderr,
+            )
             sys.exit(1)
         dashboard(agents, agents_file=agents_file, tasks_dir=tasks_dir)
         return

@@ -50,12 +50,8 @@ _DIRECT_BROWSER_KEY = "__direct__"
 def _html_to_markdown(html: str) -> str:
     """Convert HTML to markdown, stripping script/style tags first."""
     # Strip <script> and <style> blocks before conversion
-    cleaned = re.sub(
-        r"<script[^>]*>[\s\S]*?</script>", "", html, flags=re.IGNORECASE
-    )
-    cleaned = re.sub(
-        r"<style[^>]*>[\s\S]*?</style>", "", cleaned, flags=re.IGNORECASE
-    )
+    cleaned = re.sub(r"<script[^>]*>[\s\S]*?</script>", "", html, flags=re.IGNORECASE)
+    cleaned = re.sub(r"<style[^>]*>[\s\S]*?</style>", "", cleaned, flags=re.IGNORECASE)
     md = markdownify(cleaned, heading_style="ATX", strip=["img"])
     # Collapse excessive whitespace
     md = re.sub(r"\n{3,}", "\n\n", md).strip()
@@ -113,12 +109,12 @@ def _load_configured_proxy_url() -> str | None:
     try:
         data = json.loads(_PROXY_CONFIG_PATH.read_text())
     except json.JSONDecodeError as exc:
-        raise ValueError(
-            f"invalid JSON in {_PROXY_CONFIG_PATH}: {exc.msg}"
-        ) from exc
+        raise ValueError(f"invalid JSON in {_PROXY_CONFIG_PATH}: {exc.msg}") from exc
 
     if not isinstance(data, dict):
-        raise ValueError(f"invalid proxy config in {_PROXY_CONFIG_PATH}: expected object")
+        raise ValueError(
+            f"invalid proxy config in {_PROXY_CONFIG_PATH}: expected object"
+        )
 
     if not data.get("enabled"):
         return None
@@ -254,14 +250,17 @@ def create_server() -> FastMCP:
                 "browser_key": browser_key,
             }
 
-            return json.dumps({
-                "session_id": session_id,
-                "url": page.url,
-                "title": title,
-                "status": response.status if response else None,
-                "proxy": effective_proxy,
-                "content": md,
-            }, indent=2)
+            return json.dumps(
+                {
+                    "session_id": session_id,
+                    "url": page.url,
+                    "title": title,
+                    "status": response.status if response else None,
+                    "proxy": effective_proxy,
+                    "content": md,
+                },
+                indent=2,
+            )
 
         except Exception as e:
             # Clean up on failure
@@ -298,12 +297,15 @@ def create_server() -> FastMCP:
             md = _html_to_markdown(content)
             title = await page.title()
 
-            return json.dumps({
-                "url": page.url,
-                "title": title,
-                "status": response.status if response else None,
-                "content": md,
-            }, indent=2)
+            return json.dumps(
+                {
+                    "url": page.url,
+                    "title": title,
+                    "status": response.status if response else None,
+                    "content": md,
+                },
+                indent=2,
+            )
 
         except Exception as e:
             return f"ERROR: Navigation failed — {e}"
@@ -341,12 +343,15 @@ def create_server() -> FastMCP:
             md = _html_to_markdown(html)
             title = await page.title()
 
-            return json.dumps({
-                "url": page.url,
-                "title": title,
-                "selector": selector or "(full page)",
-                "content": md,
-            }, indent=2)
+            return json.dumps(
+                {
+                    "url": page.url,
+                    "title": title,
+                    "selector": selector or "(full page)",
+                    "content": md,
+                },
+                indent=2,
+            )
 
         except Exception as e:
             return f"ERROR: Failed to read page — {e}"
@@ -397,12 +402,15 @@ def create_server() -> FastMCP:
             md = _html_to_markdown(content)
             title = await page.title()
 
-            return json.dumps({
-                "url": page.url,
-                "title": title,
-                "clicked": selector,
-                "content": md,
-            }, indent=2)
+            return json.dumps(
+                {
+                    "url": page.url,
+                    "title": title,
+                    "clicked": selector,
+                    "content": md,
+                },
+                indent=2,
+            )
 
         except Exception as e:
             return f"ERROR: Failed to read page after click — {e}"
@@ -433,11 +441,14 @@ def create_server() -> FastMCP:
 
         try:
             await page.fill(selector, value, timeout=5000)
-            return json.dumps({
-                "filled": selector,
-                "value_length": len(value),
-                "message": f"Filled '{selector}' with {len(value)} chars.",
-            }, indent=2)
+            return json.dumps(
+                {
+                    "filled": selector,
+                    "value_length": len(value),
+                    "message": f"Filled '{selector}' with {len(value)} chars.",
+                },
+                indent=2,
+            )
 
         except Exception as e:
             return f"ERROR: Fill failed — {e}"
@@ -466,11 +477,14 @@ def create_server() -> FastMCP:
 
         try:
             selected = await page.select_option(selector, value, timeout=5000)
-            return json.dumps({
-                "selected": selector,
-                "value": value,
-                "result": selected,
-            }, indent=2)
+            return json.dumps(
+                {
+                    "selected": selector,
+                    "value": value,
+                    "result": selected,
+                },
+                indent=2,
+            )
 
         except Exception as e:
             return f"ERROR: Select failed — {e}"
@@ -510,11 +524,14 @@ def create_server() -> FastMCP:
             path.parent.mkdir(parents=True, exist_ok=True)
             await page.screenshot(path=str(path), full_page=True)
 
-            return json.dumps({
-                "screenshot": str(path),
-                "url": page.url,
-                "message": f"Screenshot saved to {path}",
-            }, indent=2)
+            return json.dumps(
+                {
+                    "screenshot": str(path),
+                    "url": page.url,
+                    "message": f"Screenshot saved to {path}",
+                },
+                indent=2,
+            )
 
         except Exception as e:
             return f"ERROR: Screenshot failed — {e}"
@@ -539,10 +556,13 @@ def create_server() -> FastMCP:
 
         try:
             cookies = await context.cookies()
-            return json.dumps({
-                "cookie_count": len(cookies),
-                "cookies": cookies,
-            }, indent=2)
+            return json.dumps(
+                {
+                    "cookie_count": len(cookies),
+                    "cookies": cookies,
+                },
+                indent=2,
+            )
 
         except Exception as e:
             return f"ERROR: Failed to get cookies — {e}"
@@ -571,10 +591,13 @@ def create_server() -> FastMCP:
 
         try:
             result = await page.evaluate(expression)
-            return json.dumps({
-                "expression": expression,
-                "result": result,
-            }, indent=2)
+            return json.dumps(
+                {
+                    "expression": expression,
+                    "result": result,
+                },
+                indent=2,
+            )
 
         except Exception as e:
             return f"ERROR: JS evaluation failed — {e}"
@@ -610,11 +633,14 @@ def create_server() -> FastMCP:
                 except Exception:
                     pass
 
-        return json.dumps({
-            "status": "closed",
-            "session_id": session_id,
-            "message": "Browser session closed.",
-        }, indent=2)
+        return json.dumps(
+            {
+                "status": "closed",
+                "session_id": session_id,
+                "message": "Browser session closed.",
+            },
+            indent=2,
+        )
 
     @mcp.tool()
     async def list_browser_sessions() -> str:
@@ -635,14 +661,16 @@ def create_server() -> FastMCP:
                 url = "(page closed)"
                 title = ""
 
-            result.append({
-                "session_id": sid,
-                "url": url,
-                "title": title,
-                "created_at": session["created_at"],
-                "ignore_tls": session["ignore_tls"],
-                "proxy": session.get("proxy") or None,
-            })
+            result.append(
+                {
+                    "session_id": sid,
+                    "url": url,
+                    "title": title,
+                    "created_at": session["created_at"],
+                    "ignore_tls": session["ignore_tls"],
+                    "proxy": session.get("proxy") or None,
+                }
+            )
 
         return json.dumps({"sessions": result}, indent=2)
 

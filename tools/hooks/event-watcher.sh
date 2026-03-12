@@ -37,5 +37,5 @@ conn.close()
     elapsed=$((elapsed + POLL))
 done
 
-echo '{"timeout": true, "cursor": '$CURSOR'}'
+echo '{"timeout": true, "cursor": '"$CURSOR"'}'
 exit 0

@@ -36,7 +36,7 @@ def update_routing_refs(content: str) -> str:
     content = re.sub(
         r"(?<!re-)Invoke\s+\*\*([^*]+?)\*\*\s+via\s+(?:the\s+)?Skill\s+[Tt]ool",
         lambda m: (
-            f'Route to **{m.group(1).strip()}** — call '
+            f"Route to **{m.group(1).strip()}** — call "
             f'`get_skill("{m.group(1).strip()}")` and follow its instructions'
         ),
         content,
@@ -46,7 +46,7 @@ def update_routing_refs(content: str) -> str:
     content = re.sub(
         r"(?<!re-)invoke\s+\*\*([^*]+?)\*\*\s+via\s+(?:the\s+)?Skill\s+[Tt]ool",
         lambda m: (
-            f'route to **{m.group(1).strip()}** — call '
+            f"route to **{m.group(1).strip()}** — call "
             f'`get_skill("{m.group(1).strip()}")` and follow its instructions'
         ),
         content,
@@ -56,7 +56,7 @@ def update_routing_refs(content: str) -> str:
     content = re.sub(
         r"re-invoke\s+\*\*([^*]+?)\*\*\s+via\s+(?:the\s+)?Skill\s+[Tt]ool",
         lambda m: (
-            f'route to **{m.group(1).strip()}** again — call '
+            f"route to **{m.group(1).strip()}** again — call "
             f'`get_skill("{m.group(1).strip()}")`'
         ),
         content,
@@ -134,7 +134,9 @@ def main():
                         print(f"  {line}")
                     elif line.startswith("+"):
                         print(f"  {line}")
-                print(f"  (orig: {len(orig_lines)} lines → new: {len(new_lines)} lines)")
+                print(
+                    f"  (orig: {len(orig_lines)} lines → new: {len(new_lines)} lines)"
+                )
             else:
                 skill_path.write_text(updated)
                 print(f"Updated: {skill_path}")

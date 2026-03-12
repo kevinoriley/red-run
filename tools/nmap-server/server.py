@@ -218,7 +218,9 @@ def create_server() -> FastMCP:
 
         # Build Docker command
         cmd = [
-            "docker", "run", "--rm",
+            "docker",
+            "run",
+            "--rm",
             "--network=host",
             "--cap-drop=ALL",
             "--cap-add=NET_RAW",

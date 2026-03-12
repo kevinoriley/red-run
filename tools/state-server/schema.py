@@ -237,7 +237,9 @@ def _migrate_v3_to_v4(conn: sqlite3.Connection) -> None:
     for table in ("credentials", "vulns"):
         cols = [r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
         if "via_access_id" not in cols:
-            conn.execute(f"ALTER TABLE {table} ADD COLUMN via_access_id INTEGER REFERENCES access(id) ON DELETE SET NULL")
+            conn.execute(
+                f"ALTER TABLE {table} ADD COLUMN via_access_id INTEGER REFERENCES access(id) ON DELETE SET NULL"
+            )
     conn.commit()
 
 

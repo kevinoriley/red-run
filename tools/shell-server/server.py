@@ -68,7 +68,7 @@ _docker_shell_available: bool | None = None  # Set at startup
 _CMD_LOG = _PROJECT_ROOT / "engagement" / "evidence" / "shell-commands.log"
 
 
-def _log_command(session: "ShellSession", command: str) -> None:
+def _log_command(session: "Session", command: str) -> None:
     """Append a timestamped command entry to the command log."""
     try:
         if _CMD_LOG.parent.exists():
@@ -149,7 +149,9 @@ class Session:
     pty: bool = False
     prompt_pattern: str = ""
     status: str = "connected"  # "connected" | "stabilized" | "closed"
-    connected_at: datetime = field(default_factory=lambda: datetime.now(tz=timezone.utc))
+    connected_at: datetime = field(
+        default_factory=lambda: datetime.now(tz=timezone.utc)
+    )
     transcript: list[tuple[str, str, str]] = field(default_factory=list)
     live_log: Path | None = None
     _lock: threading.Lock = field(default_factory=threading.Lock)
@@ -306,7 +308,9 @@ def create_server() -> FastMCP:
                 evidence_dir = _PROJECT_ROOT / "engagement" / "evidence"
                 if evidence_dir.exists():
                     safe_label = re.sub(r"[^a-zA-Z0-9_-]", "_", listener.label)
-                    live_log_path = evidence_dir / f"shell-{session_id}-{safe_label}.log"
+                    live_log_path = (
+                        evidence_dir / f"shell-{session_id}-{safe_label}.log"
+                    )
                     session.live_log = live_log_path
                     with open(live_log_path, "w") as f:
                         f.write(f"# Shell Live Log — {listener.label}\n")
@@ -404,18 +408,21 @@ def create_server() -> FastMCP:
         listeners[listener_id] = listener
         listener.thread.start()
 
-        return json.dumps({
-            "listener_id": listener_id,
-            "status": "listening",
-            "address": f"{host}:{port}",
-            "timeout": timeout,
-            "label": listener.label,
-            "message": (
-                f"Listening on {host}:{port}. Send a reverse shell payload to "
-                f"this port, then call list_sessions() to check for connections. "
-                f"Listener will timeout after {timeout}s if no connection arrives."
-            ),
-        }, indent=2)
+        return json.dumps(
+            {
+                "listener_id": listener_id,
+                "status": "listening",
+                "address": f"{host}:{port}",
+                "timeout": timeout,
+                "label": listener.label,
+                "message": (
+                    f"Listening on {host}:{port}. Send a reverse shell payload to "
+                    f"this port, then call list_sessions() to check for connections. "
+                    f"Listener will timeout after {timeout}s if no connection arrives."
+                ),
+            },
+            indent=2,
+        )
 
     @mcp.tool()
     def start_process(
@@ -551,26 +558,30 @@ def create_server() -> FastMCP:
 
         sessions[session_id] = session
 
-        return json.dumps({
-            "session_id": session_id,
-            "status": "connected",
-            "pid": proc.pid,
-            "command": command,
-            "label": effective_label,
-            "privileged": privileged,
-            "prompt_pattern": prompt,
-            "live_log": str(live_log_path) if live_log_path else None,
-            "message": (
-                f"Process started (PID {proc.pid})"
-                f"{' [privileged/Docker]' if privileged else ''}. "
-                f"Use send_command() to interact and close_session() to terminate."
-                + (
-                    f" Tip: Append live_log path to operator/agent-dashboard/.dashboard"
-                    f" for operator visibility."
-                    if live_log_path else ""
-                )
-            ),
-        }, indent=2)
+        return json.dumps(
+            {
+                "session_id": session_id,
+                "status": "connected",
+                "pid": proc.pid,
+                "command": command,
+                "label": effective_label,
+                "privileged": privileged,
+                "prompt_pattern": prompt,
+                "live_log": str(live_log_path) if live_log_path else None,
+                "message": (
+                    f"Process started (PID {proc.pid})"
+                    f"{' [privileged/Docker]' if privileged else ''}. "
+                    f"Use send_command() to interact and close_session() to terminate."
+                    + (
+                        " Tip: Append live_log path to operator/agent-dashboard/.dashboard"
+                        " for operator visibility."
+                        if live_log_path
+                        else ""
+                    )
+                ),
+            },
+            indent=2,
+        )
 
     @mcp.tool()
     def send_command(
@@ -603,9 +614,7 @@ def create_server() -> FastMCP:
 
         if session.session_type == "local" and session.process.poll() is not None:
             session.status = "closed"
-            return (
-                f"ERROR: Process exited with code {session.process.returncode}."
-            )
+            return f"ERROR: Process exited with code {session.process.returncode}."
 
         # Real-time command log for operator visibility
         _log_command(session, command)
@@ -620,21 +629,19 @@ def create_server() -> FastMCP:
                 output = _read_until_prompt(session, timeout, expect)
             else:
                 # Raw shell — use markers to delimit output
-                wrapped = (
-                    f"echo {MARKER_START}; {command}; echo {MARKER_END}\n"
-                )
+                wrapped = f"echo {MARKER_START}; {command}; echo {MARKER_END}\n"
                 session.send(wrapped)
                 output = _read_until_marker(session, timeout, expect)
 
             return output
 
-    def _read_until_prompt(
-        session: Session, timeout: float, expect: str
-    ) -> str:
+    def _read_until_prompt(session: Session, timeout: float, expect: str) -> str:
         """Read output until prompt pattern is detected or timeout."""
         chunks: list[str] = []
         deadline = time.monotonic() + timeout
-        prompt_re = re.compile(session.prompt_pattern) if session.prompt_pattern else None
+        prompt_re = (
+            re.compile(session.prompt_pattern) if session.prompt_pattern else None
+        )
         expect_re = re.compile(expect) if expect else None
 
         while time.monotonic() < deadline:
@@ -655,9 +662,7 @@ def create_server() -> FastMCP:
 
         return result.strip()
 
-    def _read_until_marker(
-        session: Session, timeout: float, expect: str
-    ) -> str:
+    def _read_until_marker(session: Session, timeout: float, expect: str) -> str:
         """Read output between start/end markers for raw shells."""
         chunks: list[str] = []
         deadline = time.monotonic() + timeout
@@ -685,11 +690,11 @@ def create_server() -> FastMCP:
 
         if start_idx != -1 and end_idx != -1:
             # Get content between markers, skip the marker line itself
-            content = combined[start_idx + len(MARKER_START):end_idx]
+            content = combined[start_idx + len(MARKER_START) : end_idx]
             return content.strip()
         elif start_idx != -1:
             # Got start marker but not end — return what we have
-            content = combined[start_idx + len(MARKER_START):]
+            content = combined[start_idx + len(MARKER_START) :]
             return content.strip() + "\n[timeout — output may be incomplete]"
         else:
             return combined.strip()
@@ -766,7 +771,9 @@ def create_server() -> FastMCP:
                 ("script", "script -qc /bin/bash /dev/null"),
             ]
         else:
-            return f"ERROR: Unknown method '{method}'. Use: auto, python3, python2, script"
+            return (
+                f"ERROR: Unknown method '{method}'. Use: auto, python3, python2, script"
+            )
 
         with session._lock:
             for name, cmd in methods_to_try:
@@ -794,29 +801,35 @@ def create_server() -> FastMCP:
                     session.pty = True
                     session.status = "stabilized"
 
-                    return json.dumps({
-                        "status": "stabilized",
-                        "method": name,
-                        "session_id": session_id,
-                        "prompt_pattern": prompt,
-                        "message": (
-                            f"Shell stabilized via {name}. PTY active, "
-                            f"TERM=xterm-256color. Use send_command() for "
-                            f"interactive commands."
-                        ),
-                    }, indent=2)
+                    return json.dumps(
+                        {
+                            "status": "stabilized",
+                            "method": name,
+                            "session_id": session_id,
+                            "prompt_pattern": prompt,
+                            "message": (
+                                f"Shell stabilized via {name}. PTY active, "
+                                f"TERM=xterm-256color. Use send_command() for "
+                                f"interactive commands."
+                            ),
+                        },
+                        indent=2,
+                    )
 
-            return json.dumps({
-                "status": "failed",
-                "session_id": session_id,
-                "tried": [name for name, _ in methods_to_try],
-                "message": (
-                    "Could not stabilize shell — none of the PTY methods "
-                    "succeeded. The shell is still usable via send_command() "
-                    "with marker-based output capture, but interactive programs "
-                    "(sudo, su, ssh) may not work correctly."
-                ),
-            }, indent=2)
+            return json.dumps(
+                {
+                    "status": "failed",
+                    "session_id": session_id,
+                    "tried": [name for name, _ in methods_to_try],
+                    "message": (
+                        "Could not stabilize shell — none of the PTY methods "
+                        "succeeded. The shell is still usable via send_command() "
+                        "with marker-based output capture, but interactive programs "
+                        "(sudo, su, ssh) may not work correctly."
+                    ),
+                },
+                indent=2,
+            )
 
     @mcp.tool()
     def list_sessions() -> str:
@@ -828,15 +841,17 @@ def create_server() -> FastMCP:
         result: dict = {"listeners": [], "sessions": []}
 
         for lid, listener in listeners.items():
-            result["listeners"].append({
-                "listener_id": lid,
-                "port": listener.port,
-                "host": listener.host,
-                "status": listener.status,
-                "label": listener.label,
-                "started_at": listener.started_at.isoformat(),
-                "session_id": listener.session_id,
-            })
+            result["listeners"].append(
+                {
+                    "listener_id": lid,
+                    "port": listener.port,
+                    "host": listener.host,
+                    "status": listener.status,
+                    "label": listener.label,
+                    "started_at": listener.started_at.isoformat(),
+                    "session_id": listener.session_id,
+                }
+            )
 
         for sid, session in sessions.items():
             if session.session_type == "local":
@@ -908,7 +923,8 @@ def create_server() -> FastMCP:
                         try:
                             subprocess.run(
                                 ["docker", "kill", session.container_name],
-                                capture_output=True, timeout=10,
+                                capture_output=True,
+                                timeout=10,
                             )
                         except Exception:
                             pass
@@ -932,12 +948,17 @@ def create_server() -> FastMCP:
                 pass
             session.status = "closed"
 
-            return json.dumps({
-                "status": "closed",
-                "session_id": session_id,
-                "transcript_saved": str(transcript_path) if transcript_path else None,
-                "transcript_lines": len(session.transcript),
-            }, indent=2)
+            return json.dumps(
+                {
+                    "status": "closed",
+                    "session_id": session_id,
+                    "transcript_saved": str(transcript_path)
+                    if transcript_path
+                    else None,
+                    "transcript_lines": len(session.transcript),
+                },
+                indent=2,
+            )
 
         # Check if it's a listener
         if session_id in listeners:
@@ -947,11 +968,14 @@ def create_server() -> FastMCP:
             except Exception:
                 pass
             listener.status = "closed"
-            return json.dumps({
-                "status": "closed",
-                "listener_id": session_id,
-                "message": "Listener closed.",
-            }, indent=2)
+            return json.dumps(
+                {
+                    "status": "closed",
+                    "listener_id": session_id,
+                    "message": "Listener closed.",
+                },
+                indent=2,
+            )
 
         available = list(sessions.keys()) + list(listeners.keys())
         return f"ERROR: '{session_id}' not found. Available: {', '.join(available) or 'none'}"
@@ -965,7 +989,9 @@ def create_server() -> FastMCP:
                 f.write(f"# Process: PID {session.remote_addr[1]}\n")
                 f.write(f"# Command: {session.command}\n")
             else:
-                f.write(f"# Remote: {session.remote_addr[0]}:{session.remote_addr[1]}\n")
+                f.write(
+                    f"# Remote: {session.remote_addr[0]}:{session.remote_addr[1]}\n"
+                )
                 f.write(f"# Port: {session.port}\n")
             f.write(f"# Connected: {session.connected_at.isoformat()}\n")
             f.write(f"# PTY: {session.pty}\n")

@@ -27,9 +27,9 @@ os.environ.setdefault("HF_HUB_DISABLE_IMPLICIT_TOKEN", "1")
 warnings.filterwarnings("ignore", message=".*unauthenticated.*")
 warnings.filterwarnings("ignore", message=".*UNEXPECTED.*")
 
-import chromadb
-from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
-from mcp.server.fastmcp import FastMCP
+import chromadb  # noqa: E402 — must follow warnings.filterwarnings
+from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction  # noqa: E402
+from mcp.server.fastmcp import FastMCP  # noqa: E402
 
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 COLLECTION_NAME = "red-run-skills"

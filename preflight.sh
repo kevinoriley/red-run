@@ -498,7 +498,7 @@ check_target_tools() {
         fi
     done
     if [[ $potato_missing -gt 0 ]]; then
-        $JSON_MODE || printf "  ${DIM}   hint: see docs/dependencies.md for download URLs${RESET}\n"
+        $JSON_MODE || printf "  %s   hint: see docs/dependencies.md for download URLs%s\n" "${DIM}" "${RESET}"
     fi
 }
 
@@ -562,7 +562,7 @@ fi
 
 if ! $JSON_MODE; then
     echo "${BOLD}red-run preflight check${RESET}"
-    echo "${DIM}$(uname -srm) — $(cat /etc/os-release 2>/dev/null | grep '^PRETTY_NAME=' | cut -d= -f2 | tr -d '"' || echo 'unknown distro')${RESET}"
+    echo "${DIM}$(uname -srm) — $(grep '^PRETTY_NAME=' /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '"' || echo 'unknown distro')${RESET}"
 fi
 
 if [[ -n "$run_category" ]]; then

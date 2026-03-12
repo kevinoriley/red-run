@@ -5,6 +5,34 @@ on:
     branches: [main]
 
 jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shellcheck
+        run: >-
+          shellcheck -S style -e SC2317
+          install.sh uninstall.sh preflight.sh
+          operator/agent-dashboard/dashboard.sh
+          operator/engagement-firewall/firewall.sh
+          operator/engagement-firewall/teardown.sh
+          operator/state-dashboard/generate-token.sh
+          operator/state-dashboard/start.sh
+          operator/templates/*.sh
+          tools/hooks/*.sh
+
+  ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - name: Install ruff
+        run: uv tool install ruff
+      - name: Ruff check
+        run: ruff check tools/*/server.py tools/*/validate.py tools/*/schema.py tools/skill-router/indexer.py tools/skill-router/convert_frontmatter.py tools/skill-router/update_routing_refs.py operator/agent-dashboard/tail-agent.py operator/state-dashboard/server.py
+      - name: Ruff format
+        run: ruff format --check tools/*/server.py tools/*/validate.py tools/*/schema.py tools/skill-router/indexer.py tools/skill-router/convert_frontmatter.py tools/skill-router/update_routing_refs.py operator/agent-dashboard/tail-agent.py operator/state-dashboard/server.py
+
   lint:
     runs-on: ubuntu-latest
     steps:

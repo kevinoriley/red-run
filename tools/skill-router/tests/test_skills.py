@@ -213,7 +213,7 @@ class TestSkillRouting:
                 if ref_name in placeholder_refs:
                     continue
                 if ref_name not in known:
-                    invalid.append(f"{_skill_id(path)}: get_skill(\"{ref_name}\")")
+                    invalid.append(f'{_skill_id(path)}: get_skill("{ref_name}")')
 
         assert not invalid, (
             f"Found {len(invalid)} get_skill() ref(s) to non-existent skills:\n"

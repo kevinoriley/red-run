@@ -60,9 +60,7 @@ def _rows_to_dicts(rows: list[sqlite3.Row]) -> list[dict]:
 
 def _resolve_target_id(conn: sqlite3.Connection, host: str) -> int | None:
     """Look up target_id by host. Returns None if not found."""
-    row = conn.execute(
-        "SELECT id FROM targets WHERE host = ?", (host,)
-    ).fetchone()
+    row = conn.execute("SELECT id FROM targets WHERE host = ?", (host,)).fetchone()
     return row["id"] if row else None
 
 
@@ -98,6 +96,7 @@ def _emit_event(
 # Read tools (registered for both modes)
 # ---------------------------------------------------------------------------
 
+
 def register_read_tools(mcp: FastMCP) -> None:
     """Register read-only tools on the MCP server."""
 
@@ -120,9 +119,13 @@ def register_read_tools(mcp: FastMCP) -> None:
         sections: list[str] = ["# Engagement State\n"]
 
         # Engagement metadata
-        eng = conn.execute("SELECT name, status, created_at, mode FROM engagement WHERE id = 1").fetchone()
+        eng = conn.execute(
+            "SELECT name, status, created_at, mode FROM engagement WHERE id = 1"
+        ).fetchone()
         if eng:
-            sections.append(f"**Mode: {eng['mode']}** | Status: {eng['status']} | Created: {eng['created_at']}\n")
+            sections.append(
+                f"**Mode: {eng['mode']}** | Status: {eng['status']} | Created: {eng['created_at']}\n"
+            )
 
         # Targets
         sections.append("## Targets\n")
@@ -141,9 +144,7 @@ def register_read_tools(mcp: FastMCP) -> None:
                 else str(p["port"])
                 for p in ports
             )
-            svc_str = ",".join(
-                p["service"] for p in ports if p["service"]
-            )
+            svc_str = ",".join(p["service"] for p in ports if p["service"])
             parts = [t["host"]]
             if t["os"]:
                 parts.append(t["os"])
@@ -184,14 +185,10 @@ def register_read_tools(mcp: FastMCP) -> None:
                 (c["id"],),
             ).fetchall()
             works_on = [
-                f"{r['host']}:{r['service']}"
-                for r in access_rows
-                if r["works"]
+                f"{r['host']}:{r['service']}" for r in access_rows if r["works"]
             ]
             fails_on = [
-                f"{r['host']}:{r['service']}"
-                for r in access_rows
-                if not r["works"]
+                f"{r['host']}:{r['service']}" for r in access_rows if not r["works"]
             ]
             if works_on:
                 parts.append(f"works: {', '.join(works_on)}")
@@ -263,9 +260,7 @@ def register_read_tools(mcp: FastMCP) -> None:
 
         # Pivot Map
         sections.append("## Pivot Map\n")
-        pivots = conn.execute(
-            "SELECT * FROM pivot_map ORDER BY id"
-        ).fetchall()
+        pivots = conn.execute("SELECT * FROM pivot_map ORDER BY id").fetchall()
         for p in pivots:
             parts = [
                 f"{p['source']} -> {p['destination']}",
@@ -282,8 +277,7 @@ def register_read_tools(mcp: FastMCP) -> None:
         # Tunnels
         sections.append("## Tunnels\n")
         if conn.execute(
-            "SELECT name FROM sqlite_master "
-            "WHERE type='table' AND name='tunnels'"
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='tunnels'"
         ).fetchone():
             tunnels = conn.execute(
                 "SELECT * FROM tunnels WHERE status != 'closed' ORDER BY id"
@@ -305,9 +299,7 @@ def register_read_tools(mcp: FastMCP) -> None:
                 parts.append(proxy_note)
                 if tun["notes"]:
                     parts.append(tun["notes"])
-                sections.append(
-                    f"- {' | '.join(pt for pt in parts if pt)}"
-                )
+                sections.append(f"- {' | '.join(pt for pt in parts if pt)}")
             if not tunnels:
                 sections.append("_(none)_")
         else:
@@ -356,9 +348,7 @@ def register_read_tools(mcp: FastMCP) -> None:
                 "SELECT * FROM targets WHERE host = ?", (host,)
             ).fetchall()
         else:
-            targets = conn.execute(
-                "SELECT * FROM targets ORDER BY id"
-            ).fetchall()
+            targets = conn.execute("SELECT * FROM targets ORDER BY id").fetchall()
 
         result = []
         for t in targets:
@@ -383,9 +373,7 @@ def register_read_tools(mcp: FastMCP) -> None:
                           tested against all known target/service combinations.
         """
         conn = _get_db()
-        creds = conn.execute(
-            "SELECT * FROM credentials ORDER BY id"
-        ).fetchall()
+        creds = conn.execute("SELECT * FROM credentials ORDER BY id").fetchall()
 
         result = []
         for c in creds:
@@ -421,10 +409,7 @@ def register_read_tools(mcp: FastMCP) -> None:
             active_only: Only return active sessions (default true).
         """
         conn = _get_db()
-        query = (
-            "SELECT a.*, t.host FROM access a "
-            "JOIN targets t ON a.target_id = t.id"
-        )
+        query = "SELECT a.*, t.host FROM access a JOIN targets t ON a.target_id = t.id"
         conditions = []
         params: list = []
 
@@ -452,8 +437,7 @@ def register_read_tools(mcp: FastMCP) -> None:
         """
         conn = _get_db()
         query = (
-            "SELECT v.*, t.host FROM vulns v "
-            "LEFT JOIN targets t ON v.target_id = t.id"
+            "SELECT v.*, t.host FROM vulns v LEFT JOIN targets t ON v.target_id = t.id"
         )
         conditions = []
         params: list = []
@@ -487,9 +471,7 @@ def register_read_tools(mcp: FastMCP) -> None:
                 (status,),
             ).fetchall()
         else:
-            rows = conn.execute(
-                "SELECT * FROM pivot_map ORDER BY id"
-            ).fetchall()
+            rows = conn.execute("SELECT * FROM pivot_map ORDER BY id").fetchall()
         conn.close()
         return json.dumps(_rows_to_dicts(rows), indent=2)
 
@@ -528,8 +510,7 @@ def register_read_tools(mcp: FastMCP) -> None:
         conn = _get_db()
         # Backward compat: check table exists
         if not conn.execute(
-            "SELECT name FROM sqlite_master "
-            "WHERE type='table' AND name='tunnels'"
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='tunnels'"
         ).fetchone():
             conn.close()
             return json.dumps([])
@@ -572,8 +553,7 @@ def register_read_tools(mcp: FastMCP) -> None:
 
         # Backward compat: check table exists (older DBs without v2 schema)
         if not conn.execute(
-            "SELECT name FROM sqlite_master "
-            "WHERE type='table' AND name='state_events'"
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='state_events'"
         ).fetchone():
             conn.close()
             return json.dumps({"events": [], "cursor": 0, "count": 0})
@@ -595,6 +575,7 @@ def register_read_tools(mcp: FastMCP) -> None:
 # Write tools (registered only in write mode)
 # ---------------------------------------------------------------------------
 
+
 def register_write_tools(mcp: FastMCP) -> None:
     """Register write tools on the MCP server (orchestrator only)."""
 
@@ -610,13 +591,13 @@ def register_write_tools(mcp: FastMCP) -> None:
             mode: Engagement mode — 'ctf' (default) or 'pentest'.
         """
         if mode not in ("ctf", "pentest"):
-            return json.dumps({"error": f"Invalid mode '{mode}'. Must be 'ctf' or 'pentest'."})
+            return json.dumps(
+                {"error": f"Invalid mode '{mode}'. Must be 'ctf' or 'pentest'."}
+            )
         DB_PATH.parent.mkdir(parents=True, exist_ok=True)
         conn = init_db(DB_PATH)
         # Insert singleton engagement row if not exists
-        existing = conn.execute(
-            "SELECT id FROM engagement WHERE id = 1"
-        ).fetchone()
+        existing = conn.execute("SELECT id FROM engagement WHERE id = 1").fetchone()
         if not existing:
             conn.execute(
                 "INSERT INTO engagement (id, name, mode) VALUES (1, ?, ?)",
@@ -634,12 +615,15 @@ def register_write_tools(mcp: FastMCP) -> None:
             )
         conn.commit()
         conn.close()
-        return json.dumps({
-            "status": "initialized",
-            "db_path": str(DB_PATH),
-            "name": name,
-            "mode": mode,
-        }, indent=2)
+        return json.dumps(
+            {
+                "status": "initialized",
+                "db_path": str(DB_PATH),
+                "name": name,
+                "mode": mode,
+            },
+            indent=2,
+        )
 
     @mcp.tool()
     def close_engagement() -> str:
@@ -732,11 +716,14 @@ def register_write_tools(mcp: FastMCP) -> None:
 
         conn.commit()
         conn.close()
-        return json.dumps({
-            "target_id": target_id,
-            "host": host,
-            "action": "updated" if existing else "created",
-        }, indent=2)
+        return json.dumps(
+            {
+                "target_id": target_id,
+                "host": host,
+                "action": "updated" if existing else "created",
+            },
+            indent=2,
+        )
 
     @mcp.tool()
     def update_target(
@@ -821,12 +808,14 @@ def register_write_tools(mcp: FastMCP) -> None:
         )
         conn.commit()
         conn.close()
-        return json.dumps({
-            "host": host,
-            "port": port,
-            "protocol": protocol,
-            "service": service,
-        })
+        return json.dumps(
+            {
+                "host": host,
+                "port": port,
+                "protocol": protocol,
+                "service": service,
+            }
+        )
 
     @mcp.tool()
     def add_credential(
@@ -857,17 +846,28 @@ def register_write_tools(mcp: FastMCP) -> None:
             "INSERT INTO credentials "
             "(username, secret, secret_type, domain, source, via_access_id, discovered_by) "
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (username, secret, secret_type, domain, source, via_access_id, discovered_by),
+            (
+                username,
+                secret,
+                secret_type,
+                domain,
+                source,
+                via_access_id,
+                discovered_by,
+            ),
         )
         cred_id = cursor.lastrowid
         conn.commit()
         conn.close()
-        return json.dumps({
-            "credential_id": cred_id,
-            "username": username,
-            "secret_type": secret_type,
-            "domain": domain,
-        }, indent=2)
+        return json.dumps(
+            {
+                "credential_id": cred_id,
+                "username": username,
+                "secret_type": secret_type,
+                "domain": domain,
+            },
+            indent=2,
+        )
 
     @mcp.tool()
     def update_credential(
@@ -948,12 +948,14 @@ def register_write_tools(mcp: FastMCP) -> None:
         )
         conn.commit()
         conn.close()
-        return json.dumps({
-            "credential_id": credential_id,
-            "host": host,
-            "service": service,
-            "works": works,
-        })
+        return json.dumps(
+            {
+                "credential_id": credential_id,
+                "host": host,
+                "service": service,
+                "works": works,
+            }
+        )
 
     @mcp.tool()
     def add_access(
@@ -991,18 +993,29 @@ def register_write_tools(mcp: FastMCP) -> None:
             "(target_id, access_type, username, privilege, method, "
             "session_ref, discovered_by, notes) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (target_id, access_type, username, privilege, method,
-             session_ref, discovered_by, notes),
+            (
+                target_id,
+                access_type,
+                username,
+                privilege,
+                method,
+                session_ref,
+                discovered_by,
+                notes,
+            ),
         )
         access_id = cursor.lastrowid
         conn.commit()
         conn.close()
-        return json.dumps({
-            "access_id": access_id,
-            "host": host,
-            "access_type": access_type,
-            "privilege": privilege,
-        }, indent=2)
+        return json.dumps(
+            {
+                "access_id": access_id,
+                "host": host,
+                "access_type": access_type,
+                "privilege": privilege,
+            },
+            indent=2,
+        )
 
     @mcp.tool()
     def update_access(
@@ -1087,18 +1100,31 @@ def register_write_tools(mcp: FastMCP) -> None:
             "(target_id, title, vuln_type, status, severity, endpoint, "
             "details, evidence_path, via_access_id, discovered_by) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (target_id, title, vuln_type, status, severity, endpoint,
-             details, evidence_path, via_access_id, discovered_by),
+            (
+                target_id,
+                title,
+                vuln_type,
+                status,
+                severity,
+                endpoint,
+                details,
+                evidence_path,
+                via_access_id,
+                discovered_by,
+            ),
         )
         vuln_id = cursor.lastrowid
         conn.commit()
         conn.close()
-        return json.dumps({
-            "vuln_id": vuln_id,
-            "title": title,
-            "severity": severity,
-            "status": status,
-        }, indent=2)
+        return json.dumps(
+            {
+                "vuln_id": vuln_id,
+                "title": title,
+                "severity": severity,
+                "status": status,
+            },
+            indent=2,
+        )
 
     @mcp.tool()
     def update_vuln(
@@ -1171,12 +1197,15 @@ def register_write_tools(mcp: FastMCP) -> None:
         pivot_id = cursor.lastrowid
         conn.commit()
         conn.close()
-        return json.dumps({
-            "pivot_id": pivot_id,
-            "source": source,
-            "destination": destination,
-            "status": status,
-        }, indent=2)
+        return json.dumps(
+            {
+                "pivot_id": pivot_id,
+                "source": source,
+                "destination": destination,
+                "status": status,
+            },
+            indent=2,
+        )
 
     @mcp.tool()
     def update_pivot(
@@ -1247,11 +1276,14 @@ def register_write_tools(mcp: FastMCP) -> None:
         blocked_id = cursor.lastrowid
         conn.commit()
         conn.close()
-        return json.dumps({
-            "blocked_id": blocked_id,
-            "technique": technique,
-            "retry": retry,
-        }, indent=2)
+        return json.dumps(
+            {
+                "blocked_id": blocked_id,
+                "technique": technique,
+                "retry": retry,
+            },
+            indent=2,
+        )
 
     @mcp.tool()
     def add_tunnel(
@@ -1285,20 +1317,30 @@ def register_write_tools(mcp: FastMCP) -> None:
             "(tunnel_type, pivot_host, target_subnet, local_endpoint, "
             "remote_endpoint, requires_proxychains, notes, created_by) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (tunnel_type, pivot_host, target_subnet, local_endpoint,
-             remote_endpoint, 1 if requires_proxychains else 0,
-             notes, created_by),
+            (
+                tunnel_type,
+                pivot_host,
+                target_subnet,
+                local_endpoint,
+                remote_endpoint,
+                1 if requires_proxychains else 0,
+                notes,
+                created_by,
+            ),
         )
         tunnel_id = cursor.lastrowid
         conn.commit()
         conn.close()
-        return json.dumps({
-            "tunnel_id": tunnel_id,
-            "tunnel_type": tunnel_type,
-            "pivot_host": pivot_host,
-            "target_subnet": target_subnet,
-            "requires_proxychains": requires_proxychains,
-        }, indent=2)
+        return json.dumps(
+            {
+                "tunnel_id": tunnel_id,
+                "tunnel_type": tunnel_type,
+                "pivot_host": pivot_host,
+                "target_subnet": target_subnet,
+                "requires_proxychains": requires_proxychains,
+            },
+            indent=2,
+        )
 
     @mcp.tool()
     def update_tunnel(
@@ -1342,6 +1384,7 @@ def register_write_tools(mcp: FastMCP) -> None:
 # Interim tools (registered only in interim mode — all agents)
 # ---------------------------------------------------------------------------
 
+
 def register_interim_tools(mcp: FastMCP) -> None:
     """Register add-only write tools for agents.
 
@@ -1384,7 +1427,15 @@ def register_interim_tools(mcp: FastMCP) -> None:
             "INSERT INTO credentials "
             "(username, secret, secret_type, domain, source, via_access_id, discovered_by) "
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (username, secret, secret_type, domain, source, via_access_id, discovered_by),
+            (
+                username,
+                secret,
+                secret_type,
+                domain,
+                source,
+                via_access_id,
+                discovered_by,
+            ),
         )
         cred_id = cursor.lastrowid
         summary = (
@@ -1395,12 +1446,15 @@ def register_interim_tools(mcp: FastMCP) -> None:
         _emit_event(conn, "credential", cred_id, summary, discovered_by)
         conn.commit()
         conn.close()
-        return json.dumps({
-            "credential_id": cred_id,
-            "username": username,
-            "secret_type": secret_type,
-            "domain": domain,
-        }, indent=2)
+        return json.dumps(
+            {
+                "credential_id": cred_id,
+                "username": username,
+                "secret_type": secret_type,
+                "domain": domain,
+            },
+            indent=2,
+        )
 
     @mcp.tool()
     def add_vuln(
@@ -1443,8 +1497,18 @@ def register_interim_tools(mcp: FastMCP) -> None:
             "(target_id, title, vuln_type, status, severity, endpoint, "
             "details, evidence_path, via_access_id, discovered_by) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (target_id, title, vuln_type, status, severity, endpoint,
-             details, evidence_path, via_access_id, discovered_by),
+            (
+                target_id,
+                title,
+                vuln_type,
+                status,
+                severity,
+                endpoint,
+                details,
+                evidence_path,
+                via_access_id,
+                discovered_by,
+            ),
         )
         vuln_id = cursor.lastrowid
         summary = f"{title} [{severity}]"
@@ -1453,12 +1517,15 @@ def register_interim_tools(mcp: FastMCP) -> None:
         _emit_event(conn, "vuln", vuln_id, summary, discovered_by)
         conn.commit()
         conn.close()
-        return json.dumps({
-            "vuln_id": vuln_id,
-            "title": title,
-            "severity": severity,
-            "status": status,
-        }, indent=2)
+        return json.dumps(
+            {
+                "vuln_id": vuln_id,
+                "title": title,
+                "severity": severity,
+                "status": status,
+            },
+            indent=2,
+        )
 
     @mcp.tool()
     def add_pivot(
@@ -1488,17 +1555,23 @@ def register_interim_tools(mcp: FastMCP) -> None:
         )
         pivot_id = cursor.lastrowid
         _emit_event(
-            conn, "pivot", pivot_id,
-            f"{source} -> {destination}", discovered_by,
+            conn,
+            "pivot",
+            pivot_id,
+            f"{source} -> {destination}",
+            discovered_by,
         )
         conn.commit()
         conn.close()
-        return json.dumps({
-            "pivot_id": pivot_id,
-            "source": source,
-            "destination": destination,
-            "status": status,
-        }, indent=2)
+        return json.dumps(
+            {
+                "pivot_id": pivot_id,
+                "source": source,
+                "destination": destination,
+                "status": status,
+            },
+            indent=2,
+        )
 
     @mcp.tool()
     def add_tunnel(
@@ -1532,9 +1605,16 @@ def register_interim_tools(mcp: FastMCP) -> None:
             "(tunnel_type, pivot_host, target_subnet, local_endpoint, "
             "remote_endpoint, requires_proxychains, notes, created_by) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (tunnel_type, pivot_host, target_subnet, local_endpoint,
-             remote_endpoint, 1 if requires_proxychains else 0,
-             notes, created_by),
+            (
+                tunnel_type,
+                pivot_host,
+                target_subnet,
+                local_endpoint,
+                remote_endpoint,
+                1 if requires_proxychains else 0,
+                notes,
+                created_by,
+            ),
         )
         tunnel_id = cursor.lastrowid
         proxy_note = "proxychains" if requires_proxychains else "transparent"
@@ -1542,13 +1622,16 @@ def register_interim_tools(mcp: FastMCP) -> None:
         _emit_event(conn, "tunnel", tunnel_id, summary, created_by)
         conn.commit()
         conn.close()
-        return json.dumps({
-            "tunnel_id": tunnel_id,
-            "tunnel_type": tunnel_type,
-            "pivot_host": pivot_host,
-            "target_subnet": target_subnet,
-            "requires_proxychains": requires_proxychains,
-        }, indent=2)
+        return json.dumps(
+            {
+                "tunnel_id": tunnel_id,
+                "tunnel_type": tunnel_type,
+                "pivot_host": pivot_host,
+                "target_subnet": target_subnet,
+                "requires_proxychains": requires_proxychains,
+            },
+            indent=2,
+        )
 
     @mcp.tool()
     def add_blocked(
@@ -1588,16 +1671,20 @@ def register_interim_tools(mcp: FastMCP) -> None:
         _emit_event(conn, "blocked", blocked_id, summary, blocked_by)
         conn.commit()
         conn.close()
-        return json.dumps({
-            "blocked_id": blocked_id,
-            "technique": technique,
-            "retry": retry,
-        }, indent=2)
+        return json.dumps(
+            {
+                "blocked_id": blocked_id,
+                "technique": technique,
+                "retry": retry,
+            },
+            indent=2,
+        )
 
 
 # ---------------------------------------------------------------------------
 # Server creation and entrypoint
 # ---------------------------------------------------------------------------
+
 
 def create_server(mode: str) -> FastMCP:
     """Create and configure the state MCP server.
@@ -1606,7 +1693,11 @@ def create_server(mode: str) -> FastMCP:
         mode: "read" for read-only tools, "interim" for read + 4 add-only
               write tools, "write" for read + all write tools.
     """
-    names = {"read": "red-run-state-reader", "interim": "red-run-state-interim", "write": "red-run-state-writer"}
+    names = {
+        "read": "red-run-state-reader",
+        "interim": "red-run-state-interim",
+        "write": "red-run-state-writer",
+    }
     name = names[mode]
 
     instructions_map = {
