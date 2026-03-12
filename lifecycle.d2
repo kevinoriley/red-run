@@ -1,0 +1,75 @@
+classes: {
+  orch: {
+    style: {
+      fill: "#2d3748"
+      stroke: "#e2e8f0"
+      font-color: "#e2e8f0"
+      border-radius: 5
+    }
+  }
+  agent: {
+    style: {
+      fill: "#2b6cb0"
+      stroke: "#bee3f8"
+      font-color: "#bee3f8"
+      border-radius: 5
+    }
+  }
+  hook: {
+    style: {
+      fill: "#744210"
+      stroke: "#fefcbf"
+      font-color: "#fefcbf"
+      border-radius: 5
+    }
+  }
+  phase: {
+    style: {
+      fill: "#1a202c"
+      stroke: "#4a5568"
+      font-color: "#a0aec0"
+      border-radius: 8
+    }
+  }
+}
+
+direction: down
+
+orchestrator-pre: "1  Orchestrator" {
+  class: phase
+  grid-columns: 2
+
+  pick: Pick skill + agent {class: orch}
+  spawn: Spawn agent {class: orch}
+}
+
+agent-run: "2  Agent execution" {
+  class: phase
+  grid-columns: 5
+
+  load: "get_skill()" {class: agent}
+  state: "get_state_summary()" {class: agent}
+  execute: Execute methodology {class: agent}
+  evidence: Save evidence {class: agent}
+  report: Return findings {class: agent}
+}
+
+orchestrator-post: "3  Orchestrator (post-skill)" {
+  class: phase
+  grid-columns: 3
+
+  parse: Parse results {class: orch}
+  record: Write state {class: orch}
+  next: Next decision {class: orch}
+}
+
+hook: "SubagentStop Hook" {
+  class: phase
+  transcript: Save JSONL transcript {class: hook}
+}
+
+# Connections between phases (container-to-container)
+orchestrator-pre -> agent-run
+agent-run -> orchestrator-post
+agent-run -> hook: {style.stroke-dash: 3}
+orchestrator-post -> orchestrator-pre: loop {style.stroke-dash: 3}

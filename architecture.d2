@@ -1,0 +1,124 @@
+direction: down
+
+classes: {
+  operator: {
+    style: {
+      fill: "#553c9a"
+      stroke: "#e9d8fd"
+      font-color: "#e9d8fd"
+      border-radius: 10
+      bold: true
+    }
+  }
+  orchestrator: {
+    style: {
+      fill: "#2d3748"
+      stroke: "#e2e8f0"
+      font-color: "#e2e8f0"
+      border-radius: 5
+      bold: true
+      font-size: 16
+    }
+  }
+  agent: {
+    style: {
+      fill: "#2b6cb0"
+      stroke: "#bee3f8"
+      font-color: "#bee3f8"
+      border-radius: 5
+    }
+  }
+  mcp: {
+    style: {
+      fill: "#2f855a"
+      stroke: "#c6f6d5"
+      font-color: "#c6f6d5"
+      border-radius: 5
+    }
+  }
+  storage: {
+    style: {
+      fill: "#744210"
+      stroke: "#fefcbf"
+      font-color: "#fefcbf"
+      border-radius: 5
+    }
+  }
+  container: {
+    style: {
+      fill: "#1a202c"
+      stroke: "#4a5568"
+      font-color: "#a0aec0"
+      border-radius: 8
+    }
+  }
+}
+
+operator: Operator {class: operator}
+orchestrator: Orchestrator {class: orchestrator}
+
+agents: Agents {
+  class: container
+
+  discovery: "Discovery" {
+    style.fill: transparent
+    style.stroke: transparent
+    style.font-color: "#a0aec0"
+    grid-columns: 3
+    grid-gap: 8
+
+    network-recon {class: agent}
+    web-discovery {class: agent}
+    ad-discovery {class: agent}
+  }
+
+  technique: "Technique" {
+    style.fill: transparent
+    style.stroke: transparent
+    style.font-color: "#a0aec0"
+    grid-columns: 4
+    grid-gap: 8
+
+    web-exploit {class: agent}
+    ad-exploit {class: agent}
+    linux-privesc {class: agent}
+    windows-privesc {class: agent}
+    pivoting {class: agent}
+    password-spray {class: agent}
+    evasion {class: agent}
+    credential-cracking {class: agent}
+  }
+}
+
+mcp: MCP Servers {
+  class: container
+  grid-columns: 4
+  grid-gap: 8
+
+  skill-router {class: mcp}
+  nmap-server {class: mcp}
+  shell-server {class: mcp}
+  browser-server {class: mcp}
+  state-writer {class: mcp}
+  state-interim {class: mcp}
+  state-reader {class: mcp}
+}
+
+engagement: "engagement/" {
+  class: container
+  grid-columns: 2
+
+  state: state.db {
+    class: storage
+    shape: cylinder
+  }
+  evidence: "evidence/" {class: storage}
+}
+
+# All edges flow downward
+operator -> orchestrator: targets {style.stroke: "#e9d8fd"}
+orchestrator <-> agents: spawn + context / return findings {style.stroke: "#e2e8f0"}
+orchestrator -> mcp: state writes, skill search {style.stroke: "#c6f6d5"}
+agents -> mcp: skills, scans, shells, browser, state {style.stroke: "#c6f6d5"}
+agents -> engagement: save evidence {style.stroke: "#fefcbf"}
+mcp -> engagement: state read/write {style.stroke: "#fefcbf"}

@@ -1,0 +1,227 @@
+classes: {
+  action: {
+    style: {
+      fill: "#2b6cb0"
+      stroke: "#bee3f8"
+      font-color: "#bee3f8"
+      border-radius: 5
+    }
+  }
+  decision: {
+    style: {
+      fill: "#553c9a"
+      stroke: "#e9d8fd"
+      font-color: "#e9d8fd"
+      border-radius: 5
+    }
+    shape: diamond
+  }
+  hardstop: {
+    style: {
+      fill: "#9b2c2c"
+      stroke: "#feb2b2"
+      font-color: "#feb2b2"
+      border-radius: 5
+      bold: true
+    }
+  }
+  agent: {
+    style: {
+      fill: "#2d3748"
+      stroke: "#e2e8f0"
+      font-color: "#e2e8f0"
+      border-radius: 5
+    }
+  }
+  done: {
+    style: {
+      fill: "#2f855a"
+      stroke: "#c6f6d5"
+      font-color: "#c6f6d5"
+      border-radius: 5
+      bold: true
+    }
+  }
+  recovery: {
+    style: {
+      fill: "#744210"
+      stroke: "#fefcbf"
+      font-color: "#fefcbf"
+      border-radius: 5
+    }
+  }
+  phase: {
+    style: {
+      fill: "#1a202c"
+      stroke: "#4a5568"
+      font-color: "#a0aec0"
+      border-radius: 8
+    }
+  }
+}
+
+direction: down
+
+# ── Phase 1: Scope & Setup ──
+setup: "Scope & Setup" {
+  class: phase
+
+  start: "attack TARGET" {class: action}
+  scope: Gather scope + creds {class: action}
+  init: Init engagement dir + state.db {class: action}
+  start -> scope -> init
+}
+
+# ── Phase 2: Reconnaissance ──
+recon: Reconnaissance {
+  class: phase
+
+  scan-stop: "HARD STOP\nScan type?" {class: hardstop}
+  nr: network-recon-agent {class: agent}
+  record: Record hosts + ports + services {class: action}
+  host-check: "Hostnames\nresolve?" {class: decision}
+  host-stop: "HARD STOP\nhosts-update.sh" {class: hardstop}
+  web-check: "HTTP/HTTPS\nports?" {class: decision}
+  wd: web-discovery-agent {class: agent}
+  vhost-check: "Vhosts\nresolve?" {class: decision}
+
+  scan-stop -> nr -> record -> host-check
+  host-check -> host-stop: no
+  host-stop -> host-check: operator fixes
+  host-check -> web-check: yes
+  web-check -> wd: yes
+  wd -> vhost-check
+  vhost-check -> host-stop: no
+}
+
+# ── Phase 3: Attack Surface ──
+surface: "Categorize attack surface\nPresent chain analysis\nOperator picks path" {class: action}
+
+# ── Phase 4: Discovery & Exploitation ──
+exploit: "Discovery & Exploitation" {
+  class: phase
+
+  pick: Pick skill + agent {class: action}
+  spawn: Spawn agent with context {class: action}
+  run: "Load skill → execute\n→ save evidence\n→ return findings" {class: agent}
+  pick -> spawn -> run
+}
+
+# ── Phase 5: Post-Skill Checkpoint ──
+post: "Post-Skill Checkpoint" {
+  class: phase
+
+  parse: Parse return summary {class: action}
+  record-state: "Record to state:\ncreds, vulns, access, pivots" {class: action}
+  user-check: "New\nusernames?" {class: decision}
+  parse -> record-state -> user-check
+}
+
+# ── Phase 6: Credential Spray Gate ──
+spray: "Credential Spray Gate" {
+  class: phase
+
+  spray-stop: "HARD STOP\nShow usernames\n+ lockout policy" {class: hardstop}
+  spray-check: "Spray\nintensity?" {class: decision}
+  spray-agent: password-spray-agent {class: agent}
+  record-creds: Record valid creds {class: action}
+  spray-stop -> spray-check
+  spray-check -> spray-agent: light / medium / heavy
+  spray-agent -> record-creds
+}
+
+# ── Phase 7: Chaining ──
+chain: Chaining {
+  class: phase
+
+  analyze: "get_state_summary()\nAnalyze pivot map" {class: action}
+  d1: "Unexploited\nvulns?" {class: decision}
+  d2: "Shell without\nroot?" {class: decision}
+  d3: "Untested\ncreds?" {class: decision}
+  test-creds: Test creds against all services {class: action}
+  d4: "Uncracked\nhashes?" {class: decision}
+  crack: credential-cracking {class: agent}
+  d5: "Pivot\npaths?" {class: decision}
+  d6: "Objectives\nmet?" {class: decision}
+
+  analyze -> d1
+  d1 -> d2: no
+  d2 -> d3: no
+  d3 -> test-creds: yes
+  d3 -> d4: no
+  d4 -> crack: yes
+  crack -> analyze
+  d4 -> d5: no
+  d5 -> d6: no
+}
+
+# ── Phase 8: Host Discovery ──
+host-disc: "Shell → Host Discovery" {
+  class: phase
+
+  os: "OS?" {class: decision}
+  lin: "linux-privesc-agent\n→ linux-discovery" {class: agent}
+  win: "windows-privesc-agent\n→ windows-discovery" {class: agent}
+  ad: "ad-discovery-agent\n→ ad-discovery" {class: agent}
+  os -> lin: Linux
+  os -> win: Windows
+  os -> ad: Windows DC
+}
+
+# ── Recovery ──
+recovery: "Recovery Paths" {
+  class: phase
+
+  av: "evasion-agent\n→ av-edr-evasion" {class: recovery}
+  clock: "HARD STOP\nclock-sync.sh" {class: hardstop}
+  blocked: "add_blocked\nnext vector" {class: action}
+  av -> blocked: no bypass
+}
+
+# ── Post-Exploitation ──
+post-exploit: "Collect evidence\nUpdate state\nVerify objectives" {class: action}
+
+# ── End ──
+complete: Engagement Complete {class: done}
+retro: "retrospective\n→ skill improvements" {class: recovery}
+
+# ═══ Cross-phase connections ═══
+
+setup -> recon
+
+# Recon exits
+recon.web-check -> surface: no HTTP
+recon.vhost-check -> surface: yes
+
+surface -> exploit
+
+exploit -> post
+post.user-check -> spray: yes
+post.user-check -> chain.analyze: no
+
+spray.spray-check -> chain.analyze: skip
+spray.record-creds -> chain.analyze
+
+# Chaining loops
+chain.d1 -> exploit.pick: yes {style.stroke-dash: 3}
+chain.d2 -> host-disc.os: yes
+chain.test-creds -> exploit.pick {style.stroke-dash: 3}
+chain.d5 -> exploit.pick: yes {style.stroke-dash: 3}
+
+# Host discovery back to post
+host-disc.lin -> post.parse {style.stroke-dash: 3}
+host-disc.win -> post.parse {style.stroke-dash: 3}
+host-disc.ad -> post.parse {style.stroke-dash: 3}
+
+# Recovery
+exploit.run -> recovery.av: AV blocked {style.stroke-dash: 3}
+exploit.run -> recovery.clock: clock skew {style.stroke-dash: 3}
+recovery.av -> exploit.spawn: bypass {style.stroke-dash: 3}
+recovery.blocked -> chain.analyze {style.stroke-dash: 3}
+recovery.clock -> exploit.spawn: synced {style.stroke-dash: 3}
+
+# End
+chain.d6 -> post-exploit: yes
+chain.d6 -> complete: no — exhausted
+post-exploit -> complete
+complete -> retro: {style.stroke-dash: 3}
