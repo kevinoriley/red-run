@@ -4,7 +4,7 @@ Live-tail and multi-pane dashboard for monitoring Claude Code agent JSONL output
 Parses Claude Code's raw JSONL transcript format and displays agent reasoning,
 shell commands, and tool calls with color-coded formatting.
 
-Also available as a standalone tool: [claude-agent-dashboard](https://github.com/kevinoriley/claude-agent-dashboard)
+Also available as a standalone tool: [agentsee](https://github.com/blacklanternsecurity/agentsee)
 
 ## Prerequisites
 
