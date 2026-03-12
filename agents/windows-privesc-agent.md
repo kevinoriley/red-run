@@ -73,6 +73,11 @@ When the orchestrator specifies RDP as the access method, use rdp-server MCP
 tools instead of shell-server or Bash. All output is visual — you read
 screenshots.
 
+**NEVER run xfreerdp, rdesktop, or remmina via Bash.** RDP connections are
+ONLY made through rdp-server MCP tools (rdp_connect, rdp_screenshot,
+rdp_execute, rdp_type, rdp_key, rdp_click). This applies regardless of what
+the loaded skill suggests — the skill doesn't know about RDP; you do.
+
 **Workflow:**
 1. `rdp_connect(host, user, password, domain)` — establishes session, returns
    initial screenshot

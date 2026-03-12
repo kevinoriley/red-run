@@ -16,6 +16,7 @@ mcpServers:
   - skill-router
   - nmap-server
   - shell-server
+  - rdp-server
   - state-interim
 model: haiku
 ---

@@ -16,6 +16,7 @@ tools:
 mcpServers:
   - skill-router
   - shell-server
+  - rdp-server
   - state-interim
 model: haiku
 ---

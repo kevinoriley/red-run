@@ -17,6 +17,7 @@ mcpServers:
   - skill-router
   - shell-server
   - browser-server
+  - rdp-server
   - state-interim
 model: sonnet
 ---
