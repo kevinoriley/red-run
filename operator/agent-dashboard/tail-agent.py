@@ -676,26 +676,27 @@ def dashboard(
                 reload_counter = 0
 
                 # Auto-discover new agents from tasks directory and subagent dirs
-                if tasks_dir:
-                    # Resolve symlinks so .output symlinks and direct JSONL paths dedup
-                    displayed = set(pane_map.keys()) | {
-                        os.path.realpath(p) for p in pane_map
-                    }
-                    for label, path, mtime, in_dash in _discover_agents(
-                        tasks_dir, displayed
+                if not tasks_dir:
+                    tasks_dir = _infer_tasks_dir(panes)
+                # Resolve symlinks so .output symlinks and direct JSONL paths dedup
+                displayed = set(pane_map.keys()) | {
+                    os.path.realpath(p) for p in pane_map
+                }
+                for label, path, mtime, in_dash in _discover_agents(
+                    tasks_dir, displayed
+                ):
+                    if (
+                        not in_dash
+                        and path not in dismissed_paths
+                        and path not in completed_paths
                     ):
-                        if (
-                            not in_dash
-                            and path not in dismissed_paths
-                            and path not in completed_paths
-                        ):
-                            p = AgentPane(
-                                label, path, len(panes) % len(PANE_COLORS)
-                            )
-                            t = _start_pane(p)
-                            panes.append(p)
-                            threads.append(t)
-                            pane_map[path] = (p, t)
+                        p = AgentPane(
+                            label, path, len(panes) % len(PANE_COLORS)
+                        )
+                        t = _start_pane(p)
+                        panes.append(p)
+                        threads.append(t)
+                        pane_map[path] = (p, t)
 
                 # Track completed agents (no longer auto-removed — they show *stopped* in header)
                 for path in list(pane_map.keys()):
