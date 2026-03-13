@@ -353,7 +353,7 @@ what the operator chose:
   sudo nmap -sV -sC --top-ports 1000 -T4 -oA scan_HOSTNAME -vvv TARGET_IP
   ```
 
-- **`full`** (or no directive) — all 65535 ports, full enumeration:
+- **`full`** — all 65535 ports, full enumeration:
   ```bash
   sudo nmap -A -p- -T4 -oA scan_HOSTNAME -vvv TARGET_IP
   ```
@@ -362,7 +362,7 @@ what the operator chose:
   Translate their description into appropriate nmap options. Preserve `-oA`
   for output and add `-vvv` for verbose results.
 
-If no scan type is specified, default to **full scan**.
+If no scan type is specified, **return and ask the orchestrator** — never assume.
 
 The full scan is the go-to for most engagements. `-A` enables OS detection,
 version detection, script scanning, and traceroute. `-p-` scans all 65535

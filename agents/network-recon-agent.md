@@ -62,8 +62,11 @@ instead of the sudo handoff protocol described in the skill text.
 - Raw XML is automatically saved to `engagement/evidence/` if the directory
   exists.
 - For host discovery scans, use `nmap_scan(target="<range>", options="-sn -PE -PS22,80,135,443,445")`.
-- For full port scans, use the defaults: `nmap_scan(target="<ip>")` runs
-  `-A -p- -T4`.
+- **Match the scan type from the orchestrator prompt exactly:**
+  - `Scan type: quick` → `options="-sV -sC --top-ports 1000 -T4"`
+  - `Scan type: full` → `options="-A -p- -T4"`
+  - `Custom scan request: ...` → translate the description into nmap flags
+- Never default to a full scan when a quick scan was requested.
 
 **When the skill text says "write a handoff script" or "present the sudo
 command to the user"**, use `nmap_scan` instead. The MCP server handles Docker
@@ -120,6 +123,10 @@ exits, it goes through Bash — even if it runs for minutes.
   skill per invocation, the one the orchestrator specified.
 - **Do not exploit vulnerabilities.** Your job is reconnaissance — find things,
   report them, return. If you confirm a vulnerability, log it and return.
+- **Do not start listeners, send reverse shell payloads, or attempt RCE.**
+  `start_listener` is for enumeration skills (smb-exploitation), not recon.
+- **Do not interact with HTTP services** (no curl, wget, or browser tools
+  against target web ports). That is web-discovery's job.
 - **Do not perform web application testing**, AD enumeration, or privilege
   escalation. Report that these attack surfaces exist and return.
 
