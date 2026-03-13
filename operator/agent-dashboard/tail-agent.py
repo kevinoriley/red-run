@@ -63,6 +63,12 @@ def format_tool(name: str, inp: dict) -> tuple[str, str]:
         return ("dim", f"BROWSER {tool}({args})")
 
     # Built-in Claude Code tools
+    if name == "WebSearch":
+        query = inp.get("query", "")
+        return ("shell", f"SEARCH {query}")
+    if name == "WebFetch":
+        url = inp.get("url", "")
+        return ("shell", f"FETCH {url}")
     if name == "Bash":
         cmd = inp.get("command", "")
         desc = inp.get("description", "")
@@ -351,6 +357,9 @@ def _extract_label(filepath: str) -> str:
                                 content += block.get("text", "") + " "
                 if content:
                     # "Load skill '<name>'" — custom skill agents
+                    # "Research ..." — research-agent (no skill prefix)
+                    if content.strip().startswith("Research "):
+                        return "research-agent"
                     m = re.search(r"Load skill ['\"]([^'\"]+)['\"]", content)
                     if m:
                         return m.group(1)
@@ -376,8 +385,8 @@ def _extract_label(filepath: str) -> str:
                     # Summarize first line of prompt
                     summary = content.strip().split("\n")[0]
                     summary = re.sub(r"[*#`]", "", summary).strip()
-                    if len(summary) > 30:
-                        summary = summary[:27] + "..."
+                    if len(summary) > 22:
+                        summary = summary[:19] + "..."
                     if summary:
                         return summary
             return basename
@@ -403,8 +412,8 @@ def _extract_label(filepath: str) -> str:
         # General-purpose or unknown — summarize
         summary = first_line.strip().split("\n")[0]
         summary = re.sub(r"[*#`]", "", summary).strip()
-        if len(summary) > 30:
-            summary = summary[:27] + "..."
+        if len(summary) > 22:
+            summary = summary[:19] + "..."
         return summary or basename
     except (OSError, KeyError, TypeError):
         pass

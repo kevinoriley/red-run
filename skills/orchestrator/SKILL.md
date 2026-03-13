@@ -1047,6 +1047,11 @@ to the operator (using Parallel Path Presentation when 2+ are independent):
    c. **`retry: "no"`** — technique skill exhausted its methodology. Only
       revisit if fundamentally new access is gained (e.g., admin creds,
       different host).
+   d. **`retry: "with_context"` + custom/unknown vector** — the technique
+      agent hit a custom application that no existing technique skill covers.
+      Route to **research-agent** with `unknown-vector-analysis` (see Unknown
+      Vector Recovery). Distinct from 7a — here, NO existing technique skill
+      covers the vector.
 8. **Assess progress toward objectives** — are we closer to the goal defined
    in scope.md?
 9. **No hardcoded route matches** — if the scenario doesn't match any routing
@@ -1228,6 +1233,31 @@ When a technique agent returns with an "AV/EDR Blocked" section in its summary:
 4. If the evasion agent itself fails (no bypass found), record as permanently
    blocked via `add_blocked()` with retry: "no" and move to the next attack
    vector.
+
+### Unknown Vector Recovery
+
+When a technique agent returns indicating standard patterns do not match a
+custom application, binary, or script:
+
+1. Record via `add_blocked()` with retry: "with_context"
+2. Spawn **research-agent** with skill `unknown-vector-analysis`:
+   ```
+   Agent(
+       subagent_type="research-agent",
+       mode="bypassPermissions",
+       prompt="Load skill 'unknown-vector-analysis'. Context: <paste relevant
+       context from previous agent return — artifact path, what was tried,
+       what failed, current access level and method>.
+       Target: <IP>. Artifact: <path to custom application/script/binary>.",
+       description="Analyze unknown vector on <target>"
+   )
+   ```
+
+3. On return:
+   - **Exploitation succeeded** → parse findings, record state normally
+   - **Known vuln class identified** → route to matching technique agent
+     with the research context (vuln class, root cause, PoC path)
+   - **No vector found** → record blocked with retry: "no", move on
 
 ### Web Proxy Setup
 
