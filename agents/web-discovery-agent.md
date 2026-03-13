@@ -220,3 +220,4 @@ why, and assessment (blocked permanently or retry-later with different context).
 - Run `date '+%Y-%m-%d %H:%M:%S'` for real timestamps — never write placeholder
   text.
 - **NEVER download, clone, or install tools.** If a required tool is not installed on the attackbox, STOP immediately. Return with: which tool is missing, what it's needed for, and the install command for the operator. Do not attempt workarounds — the operator's toolset is the only toolset.
+- **curl timeouts:** Always use `--connect-timeout 5 --max-time 15`. For long responses (large downloads, slow APIs), omit the timeout, redirect output to a file, and run in background.
