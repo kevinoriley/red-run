@@ -755,6 +755,25 @@ function renderGraph() {
     }
   }
 
+  // Prune dead-end creds: remove credential nodes that have no outbound edges
+  // (they didn't lead to any access — keep them in tables only)
+  const credOutbound = new Set();
+  for (const e of edges) {
+    if (e.from.startsWith('cred:')) credOutbound.add(e.from);
+  }
+  const deadCreds = new Set();
+  for (const n of nodes) {
+    if (n.type === 'cred' && !credOutbound.has(n.id)) deadCreds.add(n.id);
+  }
+  if (deadCreds.size) {
+    for (let i = nodes.length - 1; i >= 0; i--) {
+      if (deadCreds.has(nodes[i].id)) { delete nodeMap[nodes[i].id]; nodes.splice(i, 1); }
+    }
+    for (let i = edges.length - 1; i >= 0; i--) {
+      if (deadCreds.has(edges[i].to)) edges.splice(i, 1);
+    }
+  }
+
   // --- Layered layout ---
   // BFS from attacker to assign layers
   const adj = {};
