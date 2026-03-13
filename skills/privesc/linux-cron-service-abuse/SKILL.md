@@ -485,6 +485,35 @@ find / -type s -writable 2>/dev/null
 ls -la /var/run/*.sock /tmp/*.sock /tmp/*.s 2>/dev/null
 ```
 
+### Socket Protocol Analysis
+
+Before injecting, determine the socket's protocol. Root-owned sockets may use
+custom protocols (length-prefixed JSON, line-delimited text, HTTP, protobuf):
+
+```bash
+# Probe with empty/minimal data — observe error messages for protocol clues
+echo "" | socat - UNIX-CLIENT:/path/to/socket
+echo "{}" | socat - UNIX-CLIENT:/path/to/socket
+echo "help" | socat - UNIX-CLIENT:/path/to/socket
+
+# For length-prefixed protocols, craft a proper header:
+# Example: 4-byte big-endian length + JSON payload
+python3 -c "
+import struct, json, socket, sys
+msg = json.dumps({'op':'status'}).encode()
+s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+s.connect('/path/to/socket')
+s.send(struct.pack('>I', len(msg)) + msg)
+print(s.recv(4096).decode())
+"
+```
+
+**If the service evaluates code** (PHP, Lua, Python) from socket messages —
+e.g., a rule engine or sandbox — check whether the sandbox's config files
+(php.ini, policy files) are writable from your current user. Overwriting
+sandbox restrictions then re-triggering code evaluation can escalate to
+unrestricted execution as the socket owner.
+
 ### Socket Command Injection
 
 If a root-owned socket accepts commands without authentication:

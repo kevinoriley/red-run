@@ -46,6 +46,12 @@ encounter a scenario not covered here, note it and return — do not improvise
 attacks, write custom exploit code, or apply techniques from other domains.
 The orchestrator will provide specific guidance or route to a different skill.
 
+**Bail out on unmet preconditions.** If the Prerequisites for this skill are
+not met (e.g., the injection point doesn't exist, the service isn't running,
+user input never reaches the target function), report a negative finding and
+return immediately. Do not pivot to unrelated attack vectors — the
+orchestrator will route to the correct skill based on your report.
+
 ## State Management
 
 Call `get_state_summary()` from the state-reader MCP server to read current

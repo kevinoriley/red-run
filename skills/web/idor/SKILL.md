@@ -5,6 +5,8 @@ description: >
   vulnerabilities during authorized penetration testing.
 keywords:
   - idor
+  - idor enumeration
+  - idor-enumeration
   - insecure direct object reference
   - broken access control
   - horizontal privilege escalation
@@ -16,6 +18,8 @@ keywords:
   - access control bypass
   - bola
   - broken object level authorization
+  - user id enumeration
+  - enumerate users via idor
 tools:
   - burpsuite (Autorize/AuthMatrix extensions)
   - ffuf
