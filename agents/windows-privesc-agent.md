@@ -172,8 +172,12 @@ send_command(session_id=..., command="download C:\\Users\\admin\\Desktop\\flag.t
 - **Do not run Linux commands.** You handle Windows hosts only. Container
   escapes are handled by linux-privesc-agent. If the target is Linux, report
   this and return.
-- **Do not perform network scanning** or web application testing. Report if
-  you find network-level information (new subnets, services, credentials).
+- **Do not exploit web services.** If you discover a new internal web service,
+  one curl to fingerprint it is fine — write an `add_pivot()` and move on.
+  Never re-exploit known web vulns, sustain web interaction, or use HTTP to
+  read files you can't access via the shell.
+- **Do not perform network scanning.** Report if you find network-level
+  information (new subnets, services, credentials).
 - **Do not perform AD enumeration**. If you find domain credentials or identify
   that the host is domain-joined, report it and return.
 - **Do not crack hashes offline.** Do not run `hashcat`, `john`, or any offline
