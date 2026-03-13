@@ -44,6 +44,7 @@ The orchestrator spawns domain-specific subagents for each skill invocation:
 | `windows-privesc-agent` | Windows privesc | skill-router, shell-server, rdp-server, state-interim | Windows discovery + privesc |
 | `evasion-agent` | AV/EDR evasion | skill-router, shell-server, rdp-server, state-interim | av-edr-evasion |
 | `credential-cracking-agent` | Credential cracking | skill-router, state-interim | credential-cracking (haiku, local-only) |
+| `research-agent` | Deep analysis | skill-router, shell-server, state-interim | unknown-vector-analysis (opus) |
 
 Each invocation: agent loads one skill via `get_skill()`, executes methodology, saves evidence, and returns findings. The orchestrator parses the return summary, records state changes via the state-writer MCP, and makes the next routing decision. All agents use state-interim for mid-run writes of critical discoveries (credentials, vulns, pivots, blocked). The orchestrator deduplicates interim writes against return summaries.
 
