@@ -27,6 +27,7 @@ MCP_SHELL_SERVER="${REPO_DIR}/tools/shell-server"
 MCP_STATE_SERVER="${REPO_DIR}/tools/state-server"
 MCP_BROWSER_SERVER="${REPO_DIR}/tools/browser-server"
 MCP_RDP_SERVER="${REPO_DIR}/tools/rdp-server"
+MCP_SLIVER_SERVER="${REPO_DIR}/tools/sliver-server"
 
 # Only the orchestrator is installed as a native Claude Code skill.
 # Everything else is served on-demand via the MCP skill-router.
@@ -193,6 +194,36 @@ uv run --directory "${MCP_BROWSER_SERVER}" playwright install chromium
 echo "  [rdp-server] Installing Python dependencies..."
 uv sync --directory "${MCP_RDP_SERVER}" --quiet
 
+# sliver-server (Sliver C2 gRPC integration — optional)
+echo "  [sliver-server] Installing Python dependencies..."
+uv sync --directory "${MCP_SLIVER_SERVER}" --quiet
+
+# Compile Sliver protobuf stubs if proto source files exist
+if [[ -d "${MCP_SLIVER_SERVER}/proto/rpcpb" ]]; then
+    echo "  [sliver-server] Compiling protobuf stubs..."
+    PROTO_DIR="${MCP_SLIVER_SERVER}/proto"
+    PROTO_GEN_DIR="${MCP_SLIVER_SERVER}/proto_gen"
+    mkdir -p "${PROTO_GEN_DIR}/commonpb" "${PROTO_GEN_DIR}/sliverpb" \
+             "${PROTO_GEN_DIR}/clientpb" "${PROTO_GEN_DIR}/rpcpb"
+    touch "${PROTO_GEN_DIR}/__init__.py" \
+          "${PROTO_GEN_DIR}/commonpb/__init__.py" \
+          "${PROTO_GEN_DIR}/sliverpb/__init__.py" \
+          "${PROTO_GEN_DIR}/clientpb/__init__.py" \
+          "${PROTO_GEN_DIR}/rpcpb/__init__.py"
+    uv run --directory "${MCP_SLIVER_SERVER}" python -m grpc_tools.protoc \
+        --proto_path="${PROTO_DIR}" \
+        --python_out="${PROTO_GEN_DIR}" \
+        --grpc_python_out="${PROTO_GEN_DIR}" \
+        "${PROTO_DIR}/commonpb/common.proto" \
+        "${PROTO_DIR}/sliverpb/sliver.proto" \
+        "${PROTO_DIR}/clientpb/client.proto" \
+        "${PROTO_DIR}/rpcpb/services.proto" 2>/dev/null \
+    && echo "  [sliver-server] Protobuf stubs: OK" \
+    || echo "  [sliver-server] Protobuf stubs: SKIPPED (run scripts/update-sliver-protos.sh to fetch protos)"
+else
+    echo "  [sliver-server] Protobuf stubs: SKIPPED (no proto files — run scripts/update-sliver-protos.sh)"
+fi
+
 # --- Step 5: Verify project config ---
 config_warnings=0
 if [[ ! -f "${REPO_DIR}/.mcp.json" ]]; then
@@ -220,6 +251,7 @@ echo "shell MCP server ready (TCP listener + reverse shell + privileged Docker)"
 echo "state MCP server ready (SQLite engagement state)"
 echo "browser MCP server ready (headless Chromium)"
 echo "rdp MCP server ready (headless RDP via aardwolf)"
+echo "sliver MCP server ready (Sliver C2 gRPC — optional, run scripts/update-sliver-protos.sh for proto stubs)"
 if [[ "$config_warnings" -eq 0 ]]; then
     echo ""
     echo "Done! Start Claude Code from this repo directory to activate."

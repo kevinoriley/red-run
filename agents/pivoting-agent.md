@@ -16,6 +16,7 @@ tools:
 mcpServers:
   - skill-router
   - shell-server
+  - sliver-server
   - rdp-server
   - state-interim
 model: sonnet
@@ -127,6 +128,33 @@ for any command that touches the network).
 - Connectivity tests (`curl`, `ping`, `nc`, `proxychains nmap`) — use Bash
 - File transfers to the pivot host (`scp`, `nc`, base64) — use Bash
 - Any command that runs and exits — use Bash
+
+## Command Execution Model
+
+The orchestrator tells you which execution model to use for this invocation.
+
+**When the orchestrator provides a Sliver session_id for the target:**
+- Use `sliver_execute(session_id, exe, args)` for OS commands
+- Use `sliver_upload(session_id, local_path, remote_path)` / `sliver_download(session_id, remote_path, local_path)` for file transfer
+- No tunnel context needed — C2 handles routing natively
+- For .NET assemblies: `sliver_execute_assembly(session_id, path, args)`
+
+**When deploying a NEW callback (privesc, lateral movement):**
+- Use `sliver_generate(os, arch)` to build implant for target OS/arch
+- Deploy via current access method (curl, echo+base64, upload)
+- Verify new session via `sliver_sessions()`
+
+**Fall back to shell-server when:**
+- Running attackbox-local tools (Responder, relay, Impacket scripts)
+- Credential-based interactive sessions (evil-winrm, psexec, ssh)
+- Sliver implant deployment failed (record via `add_blocked`, use raw revshell)
+- The orchestrator specifies shell-server mode (no Sliver session_id in prompt)
+
+**C2-based pivoting (when Sliver is active):**
+- `sliver_pivot_start(session_id, type, bind_address)` to start pivot listener on implant
+- `sliver_socks_start(session_id, port)` for SOCKS5 through session
+- `sliver_pivot_graph()` to visualize topology
+- Advantages over manual tunnels: automatic routing, session persistence, no proxychains needed
 
 ## Scope Boundaries — What You Must NOT Do
 

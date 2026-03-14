@@ -8,7 +8,7 @@ Offensive security toolkit for Claude Code.
 
 red-run combines skills, MCP servers, and agents with routing logic that guides Claude through the phases of an infrastructure-focused attack — recon, initial access, lateral movement, privilege escalation, and post-exploitation. It tracks engagement state in a SQLite database that persists across context compactions, routes to skills via semantic search (RAG), and delegates execution to focused agents that each handle one technique per invocation.
 
-The orchestrator presents the attack surface, chain analysis, and available paths — you choose what to hit next. Once you pick a path, the agent runs end-to-end and reports back. When web ports are found, the orchestrator can hard-stop for optional Burp listener setup and pass that proxy to web agents for request capture. See the [Architecture docs](https://blacklanternsecurity.github.io/red-run/architecture/) for diagrams and data flow.
+The orchestrator presents the attack surface, chain analysis, and available paths — you choose what to hit next. Once you pick a path, the agent runs end-to-end and reports back. An engagement config wizard captures operator preferences (C2 framework, web proxy, scan type, cracking method) upfront so subsequent resumes skip repeated questions. Optional Sliver C2 integration provides native session management, pivoting, and implant generation as an alternative to raw reverse shells. See the [Architecture docs](https://blacklanternsecurity.github.io/red-run/architecture/) for diagrams and data flow.
 
 ## Skills
 
@@ -41,10 +41,15 @@ See also: [ARCHITECTURE.md](ARCHITECTURE.md) for Mermaid diagrams, [Skills Inven
 
 **Prerequisites:** Linux VM with pentesting tools, [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [uv](https://docs.astral.sh/uv/), [Docker](https://docs.docker.com/engine/install/)
 
+**Optional:** [Sliver C2](https://github.com/BishopFox/sliver) for C2 integration (session management, pivoting, implant generation). Without Sliver, the orchestrator uses raw reverse shells via shell-server.
+
 ```bash
 ./install.sh          # Symlink-based (edits reflect immediately)
 ./install.sh --copy   # Copy-based (standalone machines)
 ./uninstall.sh        # Remove everything
+
+# Optional: Sliver C2 proto compilation (requires Sliver protos)
+bash scripts/update-sliver-protos.sh
 ```
 
 The installer sets up the orchestrator, agents, and MCP servers, and indexes `skills/` into ChromaDB for semantic retrieval. The repo must stay in place — skill-router reads from `skills/` at runtime.

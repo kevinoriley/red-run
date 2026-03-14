@@ -221,6 +221,27 @@ find ~/.claude/projects/-$(pwd | tr / - | sed 's/^-//')/*/subagents/ \
 The agent dashboard auto-discovers spawned agents — no manual registration needed.
 Print: `Watch live: bash operator/agent-dashboard/dashboard.sh`
 
+**C2 context in agent prompts.** When routing to any agent that executes
+commands on a target, include the execution context:
+
+When a Sliver session exists on the target:
+```
+C2: Sliver session <id> on <target>. Use sliver_execute() for commands,
+sliver_upload()/sliver_download() for file transfer. No tunnel context
+needed — C2 handles routing natively.
+```
+
+When no Sliver session (shell-server mode or fallback):
+```
+Shell: reverse shell on shell-server session <id>. Use send_command() for
+commands. Tunnel context: <if applicable>.
+```
+
+When credential-based access (any C2 mode):
+```
+Access: <evil-winrm|psexec|ssh> session via shell-server. Credentials: <creds>.
+```
+
 **Context passing — do NOT override skill methodology.** When routing to a
 technique agent, pass discovery-phase findings as **informational context**,
 not as directives to skip techniques. The skill's methodology determines what
@@ -475,15 +496,19 @@ If `engagement/state.db` already exists (the user said "resume", "continue",
 "pick it up", "next steps", "where were we", etc.), **skip Step 1** entirely:
 
 1. Call `get_state_summary()` to load the full engagement state.
-2. Read `engagement/scope.md` if it exists. Recover operator-controlled
-   workflow choices that are not stored in state (especially the `## Web Proxy`
-   section). If a web proxy decision already exists, ensure the helper files
-   `engagement/web-proxy.json` and `engagement/web-proxy.sh` match that
-   decision before any web agent is spawned.
-3. Print a concise status briefing for the operator: targets, current
-   access, key vulns, active tunnels, blocked paths.
-4. Run the **Step 4 decision logic** to determine the next action.
-5. Present the recommended next action to the operator and wait for approval
+2. Read `engagement/config.yaml` if it exists. This is the authoritative
+   source for operator preferences (C2 framework, web proxy, scan type,
+   cracking method, callback interface). Print a one-line summary of each
+   configured value. Regenerate derived files if missing:
+   - `engagement/web-proxy.json` and `engagement/web-proxy.sh` from
+     `config.yaml#proxy`
+3. If `config.yaml` does not exist (pre-config engagement), fall back to
+   reading `engagement/scope.md` for the `## Web Proxy` section. Offer to
+   run the config wizard to create `config.yaml` for future resumes.
+4. Print a concise status briefing for the operator: targets, current
+   access, key vulns, active tunnels, blocked paths, C2 mode.
+5. Run the **Step 4 decision logic** to determine the next action.
+6. Present the recommended next action to the operator and wait for approval
    before spawning any agents.
 
 Do NOT re-initialize scope, re-create the engagement directory, or re-run
@@ -517,6 +542,87 @@ Use `AskUserQuestion`:
 
 If the operator selects Cancel, stop immediately.
 
+### Engagement Configuration
+
+**After CTF disclaimer, before creating the engagement directory**, walk the
+operator through engagement configuration. This creates `engagement/config.yaml`
+which eliminates repeated hard stops on resume and configures C2 integration.
+
+Use `AskUserQuestion` for each setting. Present sensible defaults and allow
+the operator to accept them quickly.
+
+**Question 1 — C2 Framework** (single-select):
+- Header: "C2 framework"
+- Options:
+  - Shell-server (Default) — raw reverse shells via shell-server MCP
+  - Sliver — Sliver C2 for session management, pivoting, and implant deployment
+  - Operator-managed — external C2, orchestrator won't manage sessions
+
+If **Sliver** is selected, follow up:
+
+**Question 1b — Sliver config** (text input):
+- Header: "Sliver operator config path"
+- Question: "Path to Sliver .cfg file (leave blank for ~/.sliver-client/configs/default.cfg)"
+
+**Question 2 — Web proxy** (single-select):
+- Header: "Web proxy"
+- Options:
+  - No proxy (Default) — send web traffic directly
+  - Burp on loopback — use `http://127.0.0.1:8080`
+  - Custom proxy — enter URL (e.g., `http://10.0.0.1:8081`)
+
+If **Custom proxy** selected, read the URL from the Other text input.
+
+**Question 3 — Callback interface** (single-select):
+- Header: "Callback interface"
+- Options:
+  - Auto-detect (Default) — prefer tun0/wg0, fall back to primary interface
+  - tun0 — VPN tunnel interface
+  - wg0 — WireGuard interface
+  - Custom — enter interface name or IP
+
+**Question 4 — Default scan type** (single-select):
+- Header: "Default scan type"
+- Options:
+  - Quick scan (Default) — top 1000 ports + service detection
+  - Full scan — all 65535 ports
+
+**Question 5 — Cracking method** (single-select):
+- Header: "Hash cracking preference"
+- Options:
+  - Crack locally (Default) — hashcat/john on this machine
+  - Export for external rig — operator cracks on dedicated hardware
+  - Skip cracking — never crack, rely on other attack paths
+
+After all questions are answered, write `engagement/config.yaml`:
+
+```yaml
+c2:
+  framework: shell-server      # sliver | shell-server | operator-managed
+  sliver_config: null           # path to .cfg file (only when framework: sliver)
+
+proxy:
+  enabled: false
+  url: ""                       # e.g. http://127.0.0.1:8080
+
+callback:
+  interface: auto               # auto | tun0 | wg0 | <custom>
+  ip: null                      # auto-detected or explicit override
+
+scan:
+  default_type: quick           # quick | full
+
+cracking:
+  method: local                 # local | external | skip
+```
+
+Populate each field from the operator's answers. Then generate derived files:
+- If proxy is enabled: write `engagement/web-proxy.json` and
+  `engagement/web-proxy.sh` immediately (same format as Web Proxy Setup)
+- If proxy is disabled: write the "disabled" variants of both files
+
+This eliminates the Web Proxy Setup hard stop — the decision is already made.
+
 ### Initialize Engagement Directory
 
 Create the engagement directory structure:
@@ -544,10 +650,9 @@ mkdir -p engagement/evidence/logs
 
 ## Objectives
 - <goals>
-
-## Web Proxy
-- undecided until the first HTTP/HTTPS service is discovered
 ```
+
+**engagement/config.yaml** — already written by the config wizard above.
 
 **engagement/state.db** — initialize via state-writer MCP:
 
@@ -567,10 +672,14 @@ Do not run scanning or enumeration tools directly from the orchestrator.
 
 ### Network Recon (if IP/subnet in scope)
 
-**Hard stop — scan selection.**
+**Scan type selection — config-first.**
 
-Before spawning the network-recon agent, present the operator with scan
-options via `AskUserQuestion`. The operator always chooses the scan type.
+Check `engagement/config.yaml#scan.default_type` first. If a default is
+configured (`quick` or `full`), use it without prompting — print
+`Using configured scan type: <type>` and proceed.
+
+If no config exists, or if the operator needs to override (import results,
+custom scan), present the hard stop:
 
 **Question — Scan type** (single-select):
 - Header: "Scan type"
@@ -783,7 +892,31 @@ Common chains that produce shell access on a host:
 > When any chain above produces command execution on a host, follow this
 > sequence before doing anything else:
 >
-> **1. Stabilize access — get an interactive shell via shell-server.**
+> **1. Stabilize access — establish a persistent session.**
+>
+> The stabilization flow depends on the C2 framework configured in
+> `engagement/config.yaml#c2.framework`:
+>
+> **When `c2.framework: sliver`:**
+> Sliver is the universal session layer — ALL callbacks go through Sliver.
+> 1. Ensure a Sliver listener is running: call `sliver_listeners()`. If no
+>    listener exists, call `sliver_start_listener(type="mtls", port=8888)`
+> 2. Generate an implant: `sliver_generate(os=<target_os>, arch=<target_arch>)`
+> 3. Deploy the implant through the current access method:
+>    - Web RCE: curl/wget the implant from attackbox HTTP server
+>    - File upload: upload implant directly
+>    - Command injection: echo+base64 decode, or multi-part transfer
+> 4. Wait for session: poll `sliver_sessions()` until the new session appears
+> 5. Verify: `sliver_execute(session_id, "whoami")` (Linux) or
+>    `sliver_execute(session_id, "cmd.exe", ["/c", "whoami"])` (Windows)
+> 6. Route to host discovery with `Sliver session: <session_id>` in the prompt
+>
+> **Fallback:** If Sliver implant deployment fails (AV blocks it, no outbound
+> to C2 listener, binary transfer not possible), fall back to shell-server
+> `start_listener` + raw reverse shell, and note the limitation via
+> `add_blocked()`.
+>
+> **When `c2.framework: shell-server` (default):**
 > A webshell, blind RCE callback, or database command execution is NOT a stable
 > shell. Before routing to discovery, catch a reverse shell using the MCP
 > shell-server:
@@ -794,9 +927,15 @@ Common chains that produce shell access on a host:
 > 3. Call `list_sessions()` to verify the connection arrived
 > 4. Call `stabilize_shell(session_id=...)` to upgrade to interactive PTY
 >
-> If the target has no outbound connectivity, fall back to inline command
-> execution and note the limitation via `add_blocked()`. If the subagent has
-> shell-server MCP access, it can call these tools directly.
+> **When `c2.framework: operator-managed`:**
+> The operator manages C2 externally. Present the RCE context (target, user,
+> access method) and wait for the operator to confirm session establishment
+> before routing to discovery.
+>
+> If the target has no outbound connectivity (any framework), fall back to
+> inline command execution and note the limitation via `add_blocked()`. If the
+> subagent has shell-server or sliver-server MCP access, it can call these
+> tools directly.
 >
 > **1b. Credential-based access — use `start_process`.**
 > When the chain produces credentials rather than a callback, and the
@@ -1008,8 +1147,36 @@ to the operator (using Parallel Path Presentation when 2+ are independent):
    For pivots with `status: "identified"` and method containing "pivot candidate"
    or "Additional NIC":
    a. Check `get_tunnels()` — does an active tunnel already cover this subnet?
-   b. If no tunnel covers the target subnet, present to the operator and
-      spawn **pivoting-agent** with `pivoting-tunneling` after approval:
+   b. If no tunnel covers the target subnet, present pivot options to the
+      operator based on C2 framework:
+
+      **When `config.yaml#c2.framework: sliver`:**
+      | Option | Behavior |
+      |--------|----------|
+      | C2 implant (Recommended) | Deploy Sliver implant on pivot host → `sliver_pivot_start` → generate second-stage for internal target |
+      | Manual tunnel | Existing pivoting-agent behavior (chisel/ligolo/ssh) |
+      | Operator handles | Hard stop, wait for operator |
+
+      **When `c2.framework: shell-server`:**
+      | Option | Behavior |
+      |--------|----------|
+      | Manual tunnel (Recommended) | pivoting-agent with chisel/ligolo/ssh |
+      | Operator handles | Hard stop, wait for operator |
+
+      **When `c2.framework: operator-managed`:**
+      Only show "Operator handles" — wait for operator.
+
+      For **C2 implant**: spawn **pivoting-agent** with Sliver context:
+      ```
+      Agent(
+          subagent_type="pivoting-agent",
+          mode="bypassPermissions",
+          prompt="Load skill 'pivoting-tunneling'. Pivot host: <host>. Target subnet: <subnet>. Access: Sliver session <id>. C2 pivot mode: use sliver_pivot_start() to establish pivot listener on the implant, then sliver_generate() for second-stage implant targeting internal hosts.",
+          description="C2 pivot to <subnet> via <host>"
+      )
+      ```
+
+      For **Manual tunnel**: spawn **pivoting-agent** normally:
       ```
       Agent(
           subagent_type="pivoting-agent",
@@ -1274,8 +1441,14 @@ custom application, binary, or script:
 
 ### Web Proxy Setup
 
-When HTTP/HTTPS services are found, the orchestrator MUST trigger this hard
-stop **before** spawning `web-discovery-agent` or `web-exploit-agent`, unless
+**Config-first:** If `engagement/config.yaml#proxy` exists, the proxy decision
+is already made. Ensure `engagement/web-proxy.json` and
+`engagement/web-proxy.sh` exist (regenerate from config if missing) and skip
+the hard stop entirely. Print `Using configured proxy: <url or disabled>`.
+
+**Fallback (no config.yaml or pre-config engagement):** When HTTP/HTTPS
+services are found, the orchestrator MUST trigger this hard stop **before**
+spawning `web-discovery-agent` or `web-exploit-agent`, unless
 `engagement/scope.md` already records a `## Web Proxy` decision.
 
 **This is the first prompt after web ports are identified.** Do not ask about
@@ -1299,8 +1472,7 @@ places:
 - Immediately after recon records any HTTP/HTTPS service or web URL
 - Before the first `web-discovery-agent` spawn of the engagement
 - Before any later `web-exploit-agent` spawn if no proxy decision is recorded
-- On resume when web work is pending and `scope.md` has no `## Web Proxy`
-  section or only an undecided placeholder
+- On resume when web work is pending and no proxy config exists
 
 **Hard stop procedure:**
 
@@ -1465,18 +1637,23 @@ later. Skip only if ALL users have been sprayed at the operator's chosen tier.
 When ANY skill returns with captured hashes (NTLMv2 from Responder, Kerberos
 TGS from Kerberoasting, NTLM from SAM/LSASS, shadow file hashes, etc.) or
 encrypted files that need cracking (ZIP, Office, KeePass, SSH keys), the
-orchestrator MUST trigger this hard stop before spawning the cracking agent.
+orchestrator routes based on the configured cracking method.
 
-**Hard stop** — never auto-crack.
-Operators may have dedicated cracking rigs with better GPUs. The operator
-always chooses the cracking method.
+**Config-first:** Check `engagement/config.yaml#cracking.method`:
+- `local` → spawn **credential-cracking-agent** immediately (no hard stop)
+- `external` → print hash file path and hashcat command, wait for operator
+- `skip` → log and continue via other paths
+
+Print `Using configured cracking method: <method>` and proceed.
+
+**Fallback (no config.yaml):** Present the hard stop.
 
 **When to trigger:**
 - After recording a hash credential in engagement state (from any skill)
 - After discovering encrypted files that block progress
 - Re-triggers when additional hashes are discovered later
 
-**Hard stop procedure:**
+**Hard stop procedure (only when config.yaml is absent):**
 
 1. Collect hash details: type, source, account, file path
 2. Present the hard stop with hash context. Use `AskUserQuestion`:

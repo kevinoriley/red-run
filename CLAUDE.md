@@ -34,15 +34,15 @@ The orchestrator spawns domain-specific subagents for each skill invocation:
 | Agent | Domain | MCP Servers | Skills |
 |-------|--------|-------------|--------|
 | `network-recon-agent` | Network | skill-router, nmap-server, shell-server, rdp-server, state-interim | network-recon, smb-enumeration, database-enumeration, remote-access-enumeration, infrastructure-enumeration, smb-exploitation (haiku) |
-| `pivoting-agent` | Pivoting | skill-router, shell-server, rdp-server, state-interim | pivoting-tunneling (sonnet) |
+| `pivoting-agent` | Pivoting | skill-router, shell-server, sliver-server, rdp-server, state-interim | pivoting-tunneling (sonnet) |
 | `web-discovery-agent` | Web discovery | skill-router, shell-server, browser-server, rdp-server, state-interim | web-discovery |
-| `web-exploit-agent` | Web exploitation | skill-router, shell-server, browser-server, rdp-server, state-interim | All web technique skills |
-| `ad-discovery-agent` | AD discovery | skill-router, shell-server, rdp-server, state-interim | ad-discovery |
-| `ad-exploit-agent` | AD exploitation | skill-router, shell-server, rdp-server, state-interim | All AD technique skills |
+| `web-exploit-agent` | Web exploitation | skill-router, shell-server, sliver-server, browser-server, rdp-server, state-interim | All web technique skills |
+| `ad-discovery-agent` | AD discovery | skill-router, shell-server, sliver-server, rdp-server, state-interim | ad-discovery |
+| `ad-exploit-agent` | AD exploitation | skill-router, shell-server, sliver-server, rdp-server, state-interim | All AD technique skills |
 | `password-spray-agent` | Credential spraying | skill-router, shell-server, rdp-server, state-interim | password-spraying (haiku) |
-| `linux-privesc-agent` | Linux privesc | skill-router, shell-server, state-interim | Linux discovery + privesc + container escapes |
-| `windows-privesc-agent` | Windows privesc | skill-router, shell-server, rdp-server, state-interim | Windows discovery + privesc |
-| `evasion-agent` | AV/EDR evasion | skill-router, shell-server, rdp-server, state-interim | av-edr-evasion |
+| `linux-privesc-agent` | Linux privesc | skill-router, shell-server, sliver-server, state-interim | Linux discovery + privesc + container escapes |
+| `windows-privesc-agent` | Windows privesc | skill-router, shell-server, sliver-server, rdp-server, state-interim | Windows discovery + privesc |
+| `evasion-agent` | AV/EDR evasion | skill-router, shell-server, sliver-server, rdp-server, state-interim | av-edr-evasion |
 | `credential-cracking-agent` | Credential cracking | skill-router, state-interim | credential-cracking (haiku, local-only) |
 | `research-agent` | Deep analysis | skill-router, shell-server, state-interim | unknown-vector-analysis (opus) |
 
@@ -64,6 +64,7 @@ Agent source files live in `agents/` (version controlled), installed to `~/.clau
 | state-writer | `tools/state-server/` | Full engagement state management (orchestrator only) |
 | browser-server | `tools/browser-server/` | Headless browser automation (web agents) |
 | rdp-server | `tools/rdp-server/` | Headless RDP automation via aardwolf (windows-privesc-agent) |
+| sliver-server | `tools/sliver-server/` | Sliver C2 gRPC integration — session management, implant generation, pivoting (optional, requires Sliver) |
 | state-dashboard | `operator/state-dashboard/` | Read-only web dashboard for state.db (operator use, not MCP) |
 
 The state-reader, state-interim, and state-writer are three instances of the same server running in different modes. All agents use state-interim to write critical discoveries (credentials, vulns, pivots, blocked) mid-run. The orchestrator uses state-writer for full read/write access. See each server's `README.md` for tool details.
@@ -93,9 +94,12 @@ Skills support optional engagement logging. No engagement directory = no logging
 
 ```
 engagement/
+├── config.yaml       # Operator preferences (C2, proxy, scan, cracking, callback)
 ├── scope.md          # Target scope, credentials, rules of engagement
 ├── state.db          # SQLite engagement state (managed via MCP state-server)
 ├── dump-state.sh     # Export state.db as markdown (from operator/templates/)
+├── web-proxy.json    # Machine-readable proxy config (derived from config.yaml)
+├── web-proxy.sh      # Shell snippet for proxy env vars (derived from config.yaml)
 └── evidence/         # Saved output, responses, dumps (subagents write)
     └── logs/         # Subagent JSONL transcripts (captured by SubagentStop hook)
 ```
@@ -162,6 +166,8 @@ red-run/
     privesc/              # Privilege escalation
     network/              # Recon, protocols, pivoting
     evasion/              # AV/EDR bypass
+  scripts/
+    update-sliver-protos.sh # Pull + compile Sliver protobuf files
   tools/
     skill-router/         # MCP server (ChromaDB + embeddings)
       README.md            # Server documentation
@@ -183,6 +189,12 @@ red-run/
       README.md            # Server documentation
       server.py           # FastMCP server — browser_open, browser_fill, browser_click, etc.
       pyproject.toml       # Python dependencies (mcp, playwright, markdownify)
+    sliver-server/        # MCP server (Sliver C2 gRPC)
+      README.md            # Server documentation
+      server.py           # FastMCP server — session mgmt, implants, pivoting, post-exploitation
+      connection.py       # gRPC connection management, mTLS auth, lazy init
+      pyproject.toml       # Python dependencies (mcp, grpcio, protobuf, pyyaml)
+      proto/               # Vendored Sliver protobuf files (pulled by scripts/update-sliver-protos.sh)
     state-server/         # MCP server (SQLite engagement state)
       README.md            # Server documentation
       server.py           # FastMCP server — runs as state-reader (read) or state-writer (read+write)
@@ -277,5 +289,5 @@ Anthropic API + scope targets. See `operator/engagement-firewall/README.md`.
 ./uninstall.sh
 ```
 
-The installer puts the orchestrator in `~/.claude/skills/red-run-orchestrator/`, subagents in `~/.claude/agents/`, and sets up MCP servers (skill-router, nmap-server, shell-server, browser-server, state-server). Requires [uv](https://docs.astral.sh/uv/), Docker for nmap, and Playwright for browser automation (Chromium installed automatically).
+The installer puts the orchestrator in `~/.claude/skills/red-run-orchestrator/`, subagents in `~/.claude/agents/`, and sets up MCP servers (skill-router, nmap-server, shell-server, browser-server, state-server, sliver-server). Requires [uv](https://docs.astral.sh/uv/), Docker for nmap, Playwright for browser automation (Chromium installed automatically), and optionally Sliver C2 for C2 integration.
 
