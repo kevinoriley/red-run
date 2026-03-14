@@ -3,10 +3,11 @@ FROM python:3.12-slim
 # Pinned tool versions — update ARGs to bump
 ARG CHISEL_VERSION=1.11.4
 ARG LIGOLO_VERSION=0.8.2
+ARG IMPACKET_VERSION=0.13.0
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     net-tools iproute2 iputils-ping dnsutils tcpdump gcc libc6-dev \
-    libffi-dev libssl-dev git curl socat openssh-client \
+    libffi-dev libssl-dev git curl socat proxychains-ng openssh-client \
     ruby ruby-dev make \
     && rm -rf /var/lib/apt/lists/*
 
@@ -17,7 +18,7 @@ RUN gem install evil-winrm --no-document
 RUN git clone --depth 1 https://github.com/lgandx/Responder.git /opt/Responder
 
 # Python pentest tools (impacket, mitm6)
-RUN pip install --no-cache-dir impacket mitm6 aioquic
+RUN pip install --no-cache-dir impacket==${IMPACKET_VERSION} mitm6 aioquic
 
 # Chisel — TCP/UDP tunnel over HTTP (pivoting)
 RUN curl -fsSL "https://github.com/jpillora/chisel/releases/download/v${CHISEL_VERSION}/chisel_${CHISEL_VERSION}_linux_amd64.gz" \

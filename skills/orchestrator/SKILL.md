@@ -134,6 +134,7 @@ The only commands the orchestrator may execute directly are:
 - Skill-router MCP tools (`get_skill`, `search_skills`, `list_skills`) — skill routing
 - `getent hosts <hostname>` — hostname resolution verification (local-only, no network traffic)
 - `ldapsearch -x -H ldap://TARGET -b "DC=..." -s base lockoutThreshold lockOutObservationWindow lockoutDuration minPwdLength pwdProperties` — lockout policy query (safety-critical pre-spray check, single base-scope read, not enumeration)
+- `ip -4 addr show dev tun0`, `ip -4 addr show dev wg0` — detect VPN interface IP for reverse shell callbacks (prefer tun0/wg0 over `hostname -I` which returns NAT addresses)
 - `ps aux | grep <tool>`, `kill <pid>` — subprocess cleanup after `TaskStop` (see Subprocess Cleanup below)
 
 Everything else — nmap, netexec, ffuf, nuclei, httpx, sqlmap, curl, nc, evil-winrm,
@@ -1120,11 +1121,18 @@ all agents in a single message** — this ensures true parallel execution.
 #### 2. Wait for First Return
 
 Background agents auto-notify on completion. The event watcher runs alongside
-parallel agents — if the watcher fires with actionable findings before any
-agent completes, the orchestrator can act on them (spawn follow-up agents, ask
-the operator). However, **watcher notifications do NOT resolve the parallel
-run** — resolution still requires an agent to complete and return. Spawn a new
-watcher after processing each notification.
+parallel agents and surfaces interim discoveries in real time.
+
+**Act on actionable interims immediately — do not wait for agents to finish.**
+When the watcher fires, check the Actionable Event Criteria table. If the
+event is actionable (credential, high/critical vuln, flag, vhost, pivot),
+present the follow-up to the operator via `AskUserQuestion` and spawn the
+recommended agent on approval — even while the original agents are still
+running. This is the entire point of interim writes: early routing.
+
+Interim-spawned agents do NOT resolve the parallel run — the original agents
+keep running and still go through Race Resolution when they return. Spawn a
+new watcher after processing each notification.
 
 #### 3. Race Resolution
 
@@ -1240,7 +1248,10 @@ When a technique agent returns indicating standard patterns do not match a
 custom application, binary, or script:
 
 1. Record via `add_blocked()` with retry: "with_context"
-2. Spawn **research-agent** with skill `unknown-vector-analysis`:
+2. Spawn **research-agent** with skill `unknown-vector-analysis`. When
+   re-invoking on the same target, include a summary of prior analysis (source
+   files already reviewed, techniques already ruled out) to avoid redundant
+   file reads:
    ```
    Agent(
        subagent_type="research-agent",
@@ -1248,6 +1259,8 @@ custom application, binary, or script:
        prompt="Load skill 'unknown-vector-analysis'. Context: <paste relevant
        context from previous agent return — artifact path, what was tried,
        what failed, current access level and method>.
+       Prior analysis: <summarize what previous research agents already reviewed
+       and concluded — prevents re-reading the same source files>.
        Target: <IP>. Artifact: <path to custom application/script/binary>.",
        description="Analyze unknown vector on <target>"
    )

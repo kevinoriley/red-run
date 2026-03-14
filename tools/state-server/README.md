@@ -46,6 +46,13 @@ immediately so the orchestrator can act via the event watcher mid-run. This is
 especially important for technique agents that capture hashes during
 exploitation.
 
+**Credential deduplication:** `add_credential` checks for an existing row
+matching `(username, secret_type, secret)` before INSERT. If a duplicate
+exists, it returns `{"status": "duplicate_skipped", "credential_id": N}`
+without creating a new row or emitting an event. This prevents multiple
+agents from recording the same credential independently (common when
+discovery and spray agents find the same password).
+
 **Why only 5 tools?** These are add-only (INSERT), never update existing
 records, and represent findings that other agents can act on immediately:
 credentials (spray/test), vulns (exploit), pivots (plan chains), blocked

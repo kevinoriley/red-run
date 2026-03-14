@@ -66,6 +66,31 @@ Report all findings in your return summary as well (orchestrator deduplicates).
 - Network access to database ports on the target
 - Target IP and port list (provided by orchestrator)
 
+## Query Output Handling
+
+When running database queries via interactive shell sessions (send_command /
+read_output), large result sets create many round-trip cycles as output arrives
+incrementally. For queries that may return more than a few rows, redirect output
+to a file on the target and read it once:
+
+```bash
+# BAD — inline capture, multiple read_output cycles for large results
+mysql -h TARGET -u user -p'pass' -e "SELECT * FROM users;"
+
+# GOOD — write to file, read once
+mysql -h TARGET -u user -p'pass' -e "SELECT * FROM users;" > /tmp/db_users.txt 2>&1
+wc -l /tmp/db_users.txt  # Check size before reading
+cat /tmp/db_users.txt     # Single read
+
+# For very large tables, preview first
+mysql -h TARGET -u user -p'pass' -e "SELECT COUNT(*) FROM users;" > /tmp/db_count.txt 2>&1
+cat /tmp/db_count.txt
+# If >1000 rows, use LIMIT or targeted queries instead of full dump
+```
+
+This applies to all database clients (mysql, psql, mssqlclient.py, mongosh).
+Clean up temp files when done: `rm /tmp/db_*.txt`.
+
 ## Port-Based Execution
 
 The orchestrator passes a port list. **Only run sections for ports that are open

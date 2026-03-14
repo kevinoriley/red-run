@@ -118,6 +118,28 @@ Your return summary must include:
 - Wordlists available (SecLists: `apt install seclists` or `/usr/share/seclists/`)
 - Tools: `ffuf`, `arjun` (`pip install arjun`), `paramspider` (`pip install paramspider`), `wpscan` (`gem install wpscan`)
 
+## Browser Efficiency
+
+When extracting specific data from a page (form values, table contents, API
+responses, version strings), use `browser_evaluate` with CSS selectors or
+targeted JS instead of `browser_get_page`. Full page dumps via
+`browser_get_page` return the entire DOM (often 10-40K chars of navigation,
+scripts, and boilerplate) when you only need a few hundred chars of data.
+
+```
+# BAD — dumps entire page HTML (~30K chars)
+browser_get_page(session_id=...)
+
+# GOOD — targeted extraction (~200 chars)
+browser_evaluate(session_id=..., expression="document.querySelector('#version').innerText")
+browser_evaluate(session_id=..., expression="document.querySelector('form').outerHTML")
+browser_evaluate(session_id=..., expression="[...document.querySelectorAll('table.data tr')].map(r => r.innerText).join('\\n')")
+```
+
+Reserve `browser_get_page` for initial page structure discovery when you
+don't yet know what elements exist. After identifying the page layout,
+switch to `browser_evaluate` for all subsequent data extraction.
+
 ## Proxy Handling
 
 If the orchestrator provides a Burp listener (`Web proxy: http://IP:PORT`),

@@ -112,6 +112,7 @@ start_process(command="msfconsole -q")
 - chisel (TCP/UDP tunnel for pivoting)
 - ligolo-ng proxy (TUN-based pivot proxy)
 - socat (port forwarding)
+- proxychains-ng (SOCKS proxy wrapper for pivoted connections)
 - Responder (LLMNR/NBT-NS/mDNS poisoner)
 - mitm6 (IPv6 DHCP poisoning)
 - tcpdump (packet capture)
@@ -124,6 +125,11 @@ start_process(command="msfconsole -q")
 
 **Environment variable:** `SHELL_DOCKER_IMAGE` overrides the default image name
 (`red-run-shell:latest`).
+
+**Staging directory:** `/tmp/red-run-stage` is bind-mounted into every
+privileged container. Prep tools on the host (clone, patch, compile) then
+run them inside Docker with `NET_BIND_SERVICE`. Containers are still
+ephemeral (`--rm`) — the staging dir persists on the host between calls.
 
 **VPN note:** `--network=host` shares the host's full network namespace
 including tun0. Responder and mitm6 should work over VPN, but this needs
