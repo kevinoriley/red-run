@@ -1,6 +1,6 @@
 # MCP Servers
 
-red-run uses five MCP (Model Context Protocol) servers to give agents access to capabilities that Claude Code's built-in tools can't provide: network scanning, persistent shell sessions, browser automation, semantic skill search, and engagement state management.
+red-run uses MCP (Model Context Protocol) servers to give agents access to capabilities that Claude Code's built-in tools can't provide: network scanning, persistent shell sessions, browser automation, C2 integration, semantic skill search, and engagement state management.
 
 MCP servers run as local processes, started automatically by Claude Code when you open a session in the repo directory. Each server exposes tools that agents call during skill execution.
 
@@ -27,6 +27,10 @@ All servers are configured in `.mcp.json` at the repo root:
     "browser-server": {
       "command": "uv",
       "args": ["run", "--directory", "tools/browser-server", "python", "server.py"]
+    },
+    "sliver-server": {
+      "command": "uv",
+      "args": ["run", "--directory", "tools/sliver-server", "python", "server.py"]
     },
     "state-reader": {
       "command": "uv",
@@ -201,6 +205,28 @@ See [Engagement State](engagement-state.md) for the full schema, mode architectu
 
 ---
 
+## sliver-server
+
+**Location:** `tools/sliver-server/` · **26 tools** · **Optional (requires Sliver C2)**
+
+gRPC integration with the [Sliver C2 framework](https://github.com/BishopFox/sliver). When the operator selects Sliver as the C2 framework during engagement setup, all callbacks go through Sliver implants instead of raw reverse shells. Provides native session management, pivoting, and post-exploitation through Sliver's gRPC API with mTLS authentication.
+
+**Connection:** Lazy — connects on first tool call, not at server startup. Reads Sliver operator `.cfg` files for mTLS credentials. Config resolution: `SLIVER_CONFIG` env var → `engagement/config.yaml#c2.sliver_config` → `~/.sliver-client/configs/default.cfg`.
+
+| Tier | Tools | Purpose |
+|------|-------|---------|
+| Core | `sliver_sessions`, `sliver_execute`, `sliver_upload`, `sliver_download`, `sliver_ls`, `sliver_ps`, `sliver_ifconfig`, `sliver_netstat` | Session management, command execution, file transfer |
+| Generation | `sliver_generate`, `sliver_listeners`, `sliver_start_listener`, `sliver_stop_listener` | Build implants and manage C2 listeners |
+| Pivoting | `sliver_pivot_start`, `sliver_pivot_stop`, `sliver_pivot_graph`, `sliver_socks_start`, `sliver_socks_stop`, `sliver_portfwd_start`, `sliver_portfwd_stop` | Network pivoting, SOCKS proxy, port forwarding |
+| Post-exploitation | `sliver_execute_assembly`, `sliver_sideload`, `sliver_make_token`, `sliver_get_system`, `sliver_screenshot` | .NET in-memory execution, token manipulation, privilege escalation |
+| Beacons | `sliver_beacons`, `sliver_beacon_tasks`, `sliver_beacon_interactive` | Beacon management and session upgrade |
+
+**Setup:** Run `bash scripts/update-sliver-protos.sh` once to download and compile protobuf stubs. See [Installation](installation.md#sliver-c2-setup-optional) for details.
+
+**Agent access:** Seven agents have sliver-server MCP access: linux-privesc, windows-privesc, ad-exploit, ad-discovery, pivoting, web-exploit, and evasion. Five agents (network-recon, web-discovery, password-spray, credential-cracking, research) do not — they only run attackbox-local tools.
+
+---
+
 ## Server details
 
 For complete documentation of each server — parameters, environment variables, architecture, and edge cases — see the README in each server's directory:
@@ -209,4 +235,5 @@ For complete documentation of each server — parameters, environment variables,
 - [`tools/nmap-server/README.md`](https://github.com/blacklanternsecurity/red-run/blob/main/tools/nmap-server/README.md)
 - [`tools/shell-server/README.md`](https://github.com/blacklanternsecurity/red-run/blob/main/tools/shell-server/README.md)
 - [`tools/browser-server/README.md`](https://github.com/blacklanternsecurity/red-run/blob/main/tools/browser-server/README.md)
+- [`tools/sliver-server/README.md`](https://github.com/blacklanternsecurity/red-run/blob/main/tools/sliver-server/README.md)
 - [`tools/state-server/README.md`](https://github.com/blacklanternsecurity/red-run/blob/main/tools/state-server/README.md)

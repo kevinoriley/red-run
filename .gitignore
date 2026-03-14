@@ -27,6 +27,11 @@ tools/*/uv.lock
 .claude/commands
 .claude/skills
 
+# /proc FD references (leaked by MCP servers / Docker)
+socket:*
+pipe:*
+anon_inode:*
+
 # bwrap sandbox sentinels (zero-byte read-only files)
 .bash_profile
 .bashrc

@@ -23,15 +23,32 @@ The orchestrator's first action is gathering scope:
 3. **Rules of engagement** — what's in scope, what's off-limits
 4. **Objectives** — flags, domain admin, data exfiltration goals
 
+### Engagement Configuration
+
+After the CTF disclaimer, the orchestrator runs a config wizard that captures operator preferences upfront:
+
+| Setting | Options | Default |
+|---------|---------|---------|
+| C2 framework | shell-server, Sliver, operator-managed | shell-server |
+| Web proxy | disabled, Burp on loopback, custom URL | disabled |
+| Callback interface | auto, tun0, wg0, custom | auto |
+| Default scan type | quick, full | quick |
+| Cracking method | local, external rig, skip | local |
+
+These are written to `engagement/config.yaml`. On resume, the orchestrator reads this file and skips the corresponding hard stops — no repeated questions about scan type, proxy, or cracking method.
+
 ### Engagement Directory
 
 The orchestrator creates the engagement directory structure:
 
 ```
 engagement/
+├── config.yaml       # Operator preferences from config wizard
 ├── scope.md          # Target scope and rules of engagement
 ├── state.db          # SQLite engagement state database
 ├── dump-state.sh     # Export state.db as markdown (operator convenience)
+├── web-proxy.json    # Machine-readable proxy config (from config.yaml)
+├── web-proxy.sh      # Shell snippet for proxy env vars (from config.yaml)
 └── evidence/         # Saved output and dumps
     └── logs/         # Agent JSONL transcripts
 ```
@@ -52,7 +69,9 @@ After scope setup, the orchestrator runs reconnaissance.
 
 ### Scan Type Selection
 
-> **Hard Stop:** The orchestrator pauses and asks the operator to choose a scan type before proceeding. This is the first of several **hard stops** — points where the orchestrator requires operator input.
+If `config.yaml` has a default scan type, the orchestrator uses it without prompting. Otherwise:
+
+> **Hard Stop:** The orchestrator pauses and asks the operator to choose a scan type before proceeding. This is one of several **hard stops** — points where the orchestrator requires operator input.
 
 Options:
 
@@ -75,7 +94,7 @@ This pattern repeats when web discovery finds virtual hosts that need resolution
 
 ### Web Discovery
 
-If HTTP/HTTPS ports are found, the **first thing** the orchestrator does is hit a **Web proxy** hard stop. The operator can enable Burp on loopback (`127.0.0.1`), enable Burp on a dedicated proxy IP (for example a VPN or bridged interface), or skip proxying entirely. The operator also selects the listener port.
+If `config.yaml` has a proxy decision, the orchestrator uses it without prompting — `web-proxy.json` and `web-proxy.sh` are generated from the config. Otherwise, when HTTP/HTTPS ports are found, the orchestrator hits a **Web proxy** hard stop. The operator can enable Burp on loopback (`127.0.0.1`), enable Burp on a dedicated proxy IP, or skip proxying entirely.
 
 If Burp proxying is enabled, the orchestrator records the listener URL in `engagement/scope.md`, writes `engagement/web-proxy.json` for browser defaults, and writes `engagement/web-proxy.sh` for CLI tools so subsequent web agents route through the same Burp listener. If the operator skips proxying, those files are still written in direct mode so the original no-proxy behavior is preserved explicitly.
 

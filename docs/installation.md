@@ -12,6 +12,14 @@ red-run requires the following installed:
 | [uv](https://docs.astral.sh/uv/) | Python package manager for MCP servers | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | [Docker](https://docs.docker.com/engine/install/) | Containerized nmap and pentest toolbox | See Docker docs |
 
+### Optional
+
+| Requirement | Purpose | Install |
+|-------------|---------|---------|
+| [Sliver C2](https://github.com/BishopFox/sliver) | Session management, pivoting, implant generation | See Sliver docs |
+
+Sliver is optional. Without it, the orchestrator uses raw reverse shells via shell-server. With it, all callbacks go through Sliver implants with native pivoting, session persistence, and automatic routing.
+
 ## Install
 
 ```bash
@@ -39,7 +47,21 @@ The installer runs five steps:
 
 **6. Browser setup** — Installs Chromium via Playwright (~150MB) for headless browser automation.
 
-**7. Config verification** — Checks that `.mcp.json` and `.claude/settings.json` are properly configured.
+**7. Sliver server** — Installs Python dependencies for the Sliver MCP server. If protobuf source files exist (from a prior `update-sliver-protos.sh` run), compiles gRPC stubs. Skips gracefully if protos aren't present.
+
+**8. Config verification** — Checks that `.mcp.json` and `.claude/settings.json` are properly configured.
+
+### Sliver C2 setup (optional)
+
+If you want Sliver C2 integration, run the proto vendoring script after install:
+
+```bash
+bash scripts/update-sliver-protos.sh
+```
+
+This downloads protobuf definitions from the [Sliver GitHub repo](https://github.com/BishopFox/sliver) and compiles Python gRPC stubs into `tools/sliver-server/proto_gen/`. You only need to run this once — the compiled stubs persist across subsequent `install.sh` runs.
+
+**Prerequisites:** A running Sliver server with an operator config (`.cfg` file). Generate one with `sliver > new-operator` on the Sliver server. The config path is set during the engagement config wizard or via the `SLIVER_CONFIG` environment variable.
 
 ### Attackbox dependencies
 
