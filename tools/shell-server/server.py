@@ -62,7 +62,10 @@ MARKER_END = "__CMD_END_7f3a__"
 
 # Privileged Docker mode
 SHELL_DOCKER_IMAGE = os.environ.get("SHELL_DOCKER_IMAGE", "red-run-shell:latest")
-DOCKER_STAGE_DIR = "/tmp/red-run-stage"  # Host↔container shared staging
+DOCKER_STAGE_DIR = os.environ.get(
+    "SHELL_STAGE_DIR",
+    str(_PROJECT_ROOT / "engagement" / "stage"),
+)  # Host↔container shared staging
 _docker_shell_available: bool | None = None  # Set at startup
 
 # Real-time command log — tail -f this file to see what agents are doing
