@@ -16,6 +16,40 @@ set -euo pipefail
 # Requires: uv (https://docs.astral.sh/uv/)
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Progress display for long-running commands
+# Spinner — shows elapsed time and rotating indicator
+run_with_spin() {
+    local label=$1 msg=$2
+    shift 2
+    local chars='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    local i=0 elapsed=0
+
+    # Disable line wrapping so resizing the terminal doesn't leave ghost text
+    tput rmam 2>/dev/null || true
+    trap 'tput smam 2>/dev/null || true' RETURN
+
+    "$@" &
+    local pid=$!
+    while kill -0 "$pid" 2>/dev/null; do
+        printf "\r  [%s] %s %s (%ds)" "$label" "${chars:i%${#chars}:1}" "$msg" "$elapsed"
+        sleep 0.5
+        i=$((i + 1))
+        elapsed=$((i / 2))
+    done
+    wait "$pid"
+    local rc=$?
+    printf "\r  [%s] %s (%ds)\n" "$label" "$msg" "$elapsed"
+    return $rc
+}
+
+# Run uv sync with native output — just a label header, then let uv talk
+run_uv_sync() {
+    local label=$1 uv_dir=$2
+    echo "  [${label}] Installing dependencies..."
+    uv sync --directory "$uv_dir"
+}
+
 SKILLS_SRC="${REPO_DIR}/skills"
 SKILLS_DST="${HOME}/.claude/skills"
 AGENTS_SRC="${REPO_DIR}/agents"
@@ -43,6 +77,9 @@ for arg in "$@"; do
 done
 
 mkdir -p "${SKILLS_DST}" "${AGENTS_DST}"
+
+echo "This may take 5 minutes or more, depending on your connection speed."
+echo ""
 
 # --- Step 1: Install native skills ---
 echo "Installing native skills..."
@@ -133,22 +170,19 @@ if ! command -v uv &>/dev/null; then
 fi
 
 # Skill-router (ChromaDB + embeddings)
-echo "  [skill-router] Installing Python dependencies. This could take a while..."
-uv sync --directory "${MCP_SKILL_ROUTER}" --quiet
+run_uv_sync "skill-router" "${MCP_SKILL_ROUTER}"
 
-echo "  [skill-router] Indexing skills into ChromaDB (downloads embedding model on first run)..."
-uv run --directory "${MCP_SKILL_ROUTER}" python indexer.py 2>/dev/null
+run_with_spin "skill-router" "Indexing skills into ChromaDB..." \
+    uv run --directory "${MCP_SKILL_ROUTER}" python indexer.py 2>/dev/null
 
 # nmap-server
-echo "  [nmap-server] Installing Python dependencies..."
-uv sync --directory "${MCP_NMAP_SERVER}" --quiet
+run_uv_sync "nmap-server" "${MCP_NMAP_SERVER}"
 
 # Build Docker image for nmap
 if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
     if [[ "$REBUILD_DOCKER" == true ]] || ! docker image inspect red-run-nmap:latest &>/dev/null; then
-        echo "  [nmap-server] Building Docker image..."
-        docker build -t red-run-nmap:latest "${MCP_NMAP_SERVER}" --quiet
-        echo "  [nmap-server] Docker image: OK"
+        run_with_spin "nmap-server" "Building Docker image..." \
+            docker build -t red-run-nmap:latest "${MCP_NMAP_SERVER}" --quiet
     else
         echo "  [nmap-server] Docker image: already exists (use --rebuild to force)"
     fi
@@ -160,15 +194,13 @@ else
 fi
 
 # shell-server (TCP listener + reverse shell manager)
-echo "  [shell-server] Installing Python dependencies..."
-uv sync --directory "${MCP_SHELL_SERVER}" --quiet
+run_uv_sync "shell-server" "${MCP_SHELL_SERVER}"
 
 # Build Docker image for shell-server (privileged mode)
 if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
     if [[ "$REBUILD_DOCKER" == true ]] || ! docker image inspect red-run-shell:latest &>/dev/null; then
-        echo "  [shell-server] Building Docker image..."
-        docker build -t red-run-shell:latest "${MCP_SHELL_SERVER}" --quiet
-        echo "  [shell-server] Docker image: OK"
+        run_with_spin "shell-server" "Building Docker image..." \
+            docker build -t red-run-shell:latest "${MCP_SHELL_SERVER}" --quiet
     else
         echo "  [shell-server] Docker image: already exists (use --rebuild to force)"
     fi
@@ -181,26 +213,21 @@ else
 fi
 
 # state-server (SQLite engagement state)
-echo "  [state-server] Installing Python dependencies..."
-uv sync --directory "${MCP_STATE_SERVER}" --quiet
+run_uv_sync "state-server" "${MCP_STATE_SERVER}"
 
 # browser-server (headless browser automation)
-echo "  [browser-server] Installing Python dependencies..."
-uv sync --directory "${MCP_BROWSER_SERVER}" --quiet
+run_uv_sync "browser-server" "${MCP_BROWSER_SERVER}"
 echo "  [browser-server] Installing Chromium..."
 uv run --directory "${MCP_BROWSER_SERVER}" playwright install chromium
 
 # rdp-server (headless RDP automation via aardwolf — pure Python, no system deps)
-echo "  [rdp-server] Installing Python dependencies..."
-uv sync --directory "${MCP_RDP_SERVER}" --quiet
+run_uv_sync "rdp-server" "${MCP_RDP_SERVER}"
 
 # sliver-server (Sliver C2 gRPC integration — optional)
-echo "  [sliver-server] Installing Python dependencies..."
-uv sync --directory "${MCP_SLIVER_SERVER}" --quiet
+run_uv_sync "sliver-server" "${MCP_SLIVER_SERVER}"
 
 # Compile Sliver protobuf stubs if proto source files exist
 if [[ -d "${MCP_SLIVER_SERVER}/proto/rpcpb" ]]; then
-    echo "  [sliver-server] Compiling protobuf stubs..."
     PROTO_DIR="${MCP_SLIVER_SERVER}/proto"
     PROTO_GEN_DIR="${MCP_SLIVER_SERVER}/proto_gen"
     mkdir -p "${PROTO_GEN_DIR}/commonpb" "${PROTO_GEN_DIR}/sliverpb" \
@@ -210,16 +237,18 @@ if [[ -d "${MCP_SLIVER_SERVER}/proto/rpcpb" ]]; then
           "${PROTO_GEN_DIR}/sliverpb/__init__.py" \
           "${PROTO_GEN_DIR}/clientpb/__init__.py" \
           "${PROTO_GEN_DIR}/rpcpb/__init__.py"
-    uv run --directory "${MCP_SLIVER_SERVER}" python -m grpc_tools.protoc \
-        --proto_path="${PROTO_DIR}" \
-        --python_out="${PROTO_GEN_DIR}" \
-        --grpc_python_out="${PROTO_GEN_DIR}" \
-        "${PROTO_DIR}/commonpb/common.proto" \
-        "${PROTO_DIR}/sliverpb/sliver.proto" \
-        "${PROTO_DIR}/clientpb/client.proto" \
-        "${PROTO_DIR}/rpcpb/services.proto" 2>/dev/null \
-    && echo "  [sliver-server] Protobuf stubs: OK" \
-    || echo "  [sliver-server] Protobuf stubs: SKIPPED (run scripts/update-sliver-protos.sh to fetch protos)"
+    if run_with_spin "sliver-server" "Compiling protobuf stubs..." \
+        uv run --directory "${MCP_SLIVER_SERVER}" python -m grpc_tools.protoc \
+            --proto_path="${PROTO_DIR}" \
+            --python_out="${PROTO_GEN_DIR}" \
+            --grpc_python_out="${PROTO_GEN_DIR}" \
+            "${PROTO_DIR}/commonpb/common.proto" \
+            "${PROTO_DIR}/sliverpb/sliver.proto" \
+            "${PROTO_DIR}/clientpb/client.proto" \
+            "${PROTO_DIR}/rpcpb/services.proto" 2>/dev/null
+    then true
+    else echo "  [sliver-server] Protobuf stubs: SKIPPED (run scripts/update-sliver-protos.sh to fetch protos)"
+    fi
 else
     echo "  [sliver-server] Protobuf stubs: SKIPPED (no proto files — run scripts/update-sliver-protos.sh)"
 fi
