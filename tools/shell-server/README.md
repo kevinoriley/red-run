@@ -126,10 +126,11 @@ start_process(command="msfconsole -q")
 **Environment variable:** `SHELL_DOCKER_IMAGE` overrides the default image name
 (`red-run-shell:latest`).
 
-**Staging directory:** `/tmp/red-run-stage` is bind-mounted into every
-privileged container. Prep tools on the host (clone, patch, compile) then
-run them inside Docker with `NET_BIND_SERVICE`. Containers are still
-ephemeral (`--rm`) — the staging dir persists on the host between calls.
+**Staging directory:** `engagement/stage/` (relative to project root) is
+bind-mounted into every privileged container at its absolute path. Prep tools
+on the host (clone, patch, compile) then run them inside Docker with
+`NET_BIND_SERVICE`. Containers are still ephemeral (`--rm`) — the staging dir
+persists on the host between calls. Override via `SHELL_STAGE_DIR` env var.
 
 **VPN note:** `--network=host` shares the host's full network namespace
 including tun0. Responder and mitm6 should work over VPN, but this needs

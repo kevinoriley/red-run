@@ -364,22 +364,16 @@ def _extract_label(filepath: str) -> str:
                     if m:
                         return m.group(1)
                     # Built-in agent type detection from prompt content
+                    # Use word boundaries to avoid false positives
+                    # (e.g., "implant" matching "plan")
                     text_lower = content.strip().lower()
-                    if any(
-                        kw in text_lower
-                        for kw in ("plan", "design", "architect", "implementation")
+                    if re.search(
+                        r"\b(?:plan|design|architect|implementation)\b", text_lower
                     ):
                         return "Plan agent"
-                    if any(
-                        kw in text_lower
-                        for kw in (
-                            "explore",
-                            "search for",
-                            "find files",
-                            "find the",
-                            "look for",
-                            "codebase",
-                        )
+                    if re.search(
+                        r"\b(?:explore|search for|find files|find the|look for|codebase)\b",
+                        text_lower,
                     ):
                         return "Explore agent"
                     # Summarize first line of prompt
@@ -395,18 +389,10 @@ def _extract_label(filepath: str) -> str:
 
         # Plain text first line — built-in agent (Plan, Explore, general-purpose)
         text = first_line.strip().lower()
-        if any(kw in text for kw in ("plan", "design", "architect", "implementation")):
+        if re.search(r"\b(?:plan|design|architect|implementation)\b", text):
             return "Plan agent"
-        if any(
-            kw in text
-            for kw in (
-                "explore",
-                "search for",
-                "find files",
-                "find the",
-                "look for",
-                "codebase",
-            )
+        if re.search(
+            r"\b(?:explore|search for|find files|find the|look for|codebase)\b", text
         ):
             return "Explore agent"
         # General-purpose or unknown — summarize

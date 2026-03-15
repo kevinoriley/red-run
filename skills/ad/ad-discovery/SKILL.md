@@ -774,6 +774,14 @@ which getTGT.py 2>/dev/null || which impacket-getTGT 2>/dev/null
 The `.py` form is common on manually-installed Impacket; the `impacket-` prefix
 comes from pip/apt packages.
 
+### NoPac Scanner False Positives
+
+The `nxc ldap -M nopac` scanner compares TGT sizes with and without PAC. The
+target is **only vulnerable when `tgt_no_pac < tgt_with_pac`** (different sizes).
+If both sizes are equal (e.g., `1548 == 1548`), the target is **NOT vulnerable**
+— the PAC was not removed, meaning the patch is applied. Do not report equal
+PAC sizes as a NoPac vulnerability.
+
 ### No Credentials Available
 
 Start with:

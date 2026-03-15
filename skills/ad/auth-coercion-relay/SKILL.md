@@ -240,6 +240,13 @@ Force a remote machine to authenticate back to your listener.
 | ShadowCoerce | MS-FSRVP | `\PIPE\FssagentRpc` | ShadowCoerce | Yes | VSS Agent service required |
 | CheeseOunce | MS-EVEN | `\PIPE\even` | CheeseOunce | Yes | EventLog backup coercion |
 
+### Cross-Forest Coercion: Hostname Required
+
+When coercing across a forest trust with `ENABLE_TGT_DELEGATION`, the listener
+argument **must be a hostname** (not an IP). IP causes NTLM fallback; hostname
+forces Kerberos authentication, which triggers TGT forwarding to the listener
+DC. See trust-attacks Step 6 for the full TGT delegation coercion methodology.
+
 ### NetExec coerce_plus (Automated Discovery)
 
 ```bash

