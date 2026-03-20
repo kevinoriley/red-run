@@ -1,10 +1,21 @@
 # Dashboard & Monitoring
 
-red-run provides real-time visibility into agent execution through a multi-pane dashboard and background event polling.
+red-run provides real-time visibility into agent execution through dashboards and background event polling. Two options are available for watching agents: **agentsee** (recommended) for full operator control, or the **built-in terminal dashboard** for lightweight observation.
 
-## Agent Dashboard
+## agentsee (Recommended)
 
-The dashboard (`operator/agent-dashboard/tail-agent.py`) parses Claude Code's raw JSONL transcripts and displays agent activity with color-coded formatting.
+[agentsee](https://github.com/blacklanternsecurity/agentsee) is a browser-based operator control plane for Claude Code agents. red-run's orchestrator controls *which* agent runs — agentsee controls *what happens while it's running*:
+
+- **Hold/Release** — pause any agent at its next tool call, then resume
+- **Leash mode** — require check-in every N tool calls (adjustable per-agent)
+- **Chat** — redirect held agents, ask questions, or give new instructions mid-run
+- **Multi-agent tiling** — auto-tiled panes with real-time streaming and color-coded output
+
+See the [agentsee README](https://github.com/blacklanternsecurity/agentsee) for installation and usage.
+
+## Built-in Terminal Dashboard
+
+The built-in dashboard (`operator/agent-dashboard/tail-agent.py`) is a lightweight, read-only terminal viewer that parses Claude Code's raw JSONL transcripts. No server, no npm, no dependencies beyond Python 3. It's useful for quick observation when you don't need runtime control, or as a fallback when agentsee isn't installed.
 
 ### Single-Agent Modes
 

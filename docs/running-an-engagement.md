@@ -200,9 +200,13 @@ When tools fail on hostname resolution, the orchestrator follows the same hostna
 
 ## Monitoring During Engagement
 
-### Dashboard
+### Agent Dashboard
 
-The [agent dashboard](dashboard-and-monitoring.md) provides real-time visibility into what agents are doing. Run it in a separate terminal:
+Two options for watching agents — see [Dashboard and Monitoring](dashboard-and-monitoring.md) for full details.
+
+**[agentsee](https://github.com/blacklanternsecurity/agentsee) (recommended)** — browser-based control plane. Watch agents in real time, hold/release them mid-run, chat with held agents to redirect or ask questions, and set per-agent leash thresholds for supervised execution. Start the server, open `http://localhost:4900`, and agents appear automatically.
+
+**Built-in terminal dashboard** — lightweight read-only viewer. No dependencies beyond Python 3:
 
 ```bash
 bash operator/agent-dashboard/dashboard.sh

@@ -57,6 +57,10 @@ bash preflight.sh
 
 See [dependencies](docs/dependencies.md) for the full list of required tools and [Installation docs](https://blacklanternsecurity.github.io/red-run/installation/) for firewall setup and troubleshooting.
 
+## Agent Monitoring
+
+For real-time agent control, use [agentsee](https://github.com/blacklanternsecurity/agentsee) — a browser-based operator control plane that lets you watch agents work, hold/release them mid-run, chat with held agents, and set per-agent leash thresholds for supervised execution. A built-in terminal dashboard (`bash operator/agent-dashboard/dashboard.sh`) is also available for lightweight read-only observation. See the [monitoring docs](https://blacklanternsecurity.github.io/red-run/dashboard-and-monitoring/) for setup details.
+
 ## State Dashboard
 
 Browser-based read-only dashboard for `engagement/state.db` with a kill-chain attack graph and live SSE updates:
