@@ -25,15 +25,14 @@ The orchestrator's first action is gathering scope:
 
 ### Engagement Configuration
 
-After the CTF disclaimer, the orchestrator runs a **config wizard** — five quick questions that capture operator preferences for the entire engagement:
+After the CTF disclaimer, the orchestrator runs a **config wizard** — four quick questions that capture operator preferences for the entire engagement:
 
 1. **Scan type** — quick (top 1000) or full (all 65535)
 2. **Web proxy** — Burp on loopback, custom proxy, no proxy, or ask later
 3. **Spray intensity** — light/medium/heavy/skip default when usernames are found
 4. **Cracking method** — local/external/skip default when hashes are captured
-5. **Callback interface** — auto-detect or specify interface/IP for reverse shells
 
-Every question has an "ask each time" option that preserves the old interactive behavior. Preferences are stored in `engagement/config.yaml` and can be edited at any time.
+Every question has an "ask each time" option that preserves the old interactive behavior. Preferences are stored in `engagement/config.yaml` and can be edited at any time. The config file also supports `callback_ip` and `callback_interface` overrides for reverse shell callbacks (auto-detected by default).
 
 Config values either **skip hard stops entirely** (scan type and web proxy use the config value without asking) or **pre-select defaults** in hard stops that still fire (spray and cracking still show context but the operator confirms with one keystroke).
 

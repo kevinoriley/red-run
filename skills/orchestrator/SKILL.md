@@ -529,9 +529,8 @@ which captures operator preferences upfront — eliminating repeated hard stops
 on resume and allowing faster confirmation when context-dependent decisions
 arise later.
 
-Present **all 5 questions (scan, proxy, spray, cracking, AND callback) in a
-single `AskUserQuestion` call** so the operator answers them in one batch.
-The callback question is part of the config wizard, not a separate step.
+Present **all 4 questions in a single `AskUserQuestion` call** so the operator
+answers them in one batch.
 
 **Preamble** (print before questions):
 ```
@@ -580,13 +579,6 @@ Parsing rules:
   - Skip cracking — don't crack, work other paths
   - Ask each time — prompt me when hashes are found
 
-**Question 5 — Callback interface** (single-select):
-- Header: "Reverse shell callback interface"
-- Options:
-  - Auto-detect (Recommended) — use tun0/wg0 automatically
-  - Specify interface — enter interface name in Other (e.g., tun0, wg0, eth0)
-  - Specify IP — enter callback IP in Other
-
 After all questions, write `engagement/config.yaml` using
 `operator/templates/config.yaml` as the base template. Populate each field
 from the operator's answers. **Omit keys** (comment them out or remove them)
@@ -597,8 +589,10 @@ If `web_proxy.enabled` is set, also generate the persistence files immediately
 (same format as the Web Proxy Setup section below). This means web-discovery
 can start without a hard stop when HTTP services are found later.
 
-If `callback_ip` or `callback_interface` is set, resolve and cache the IP
-once at engagement start. Include `Callback IP: <ip>` in every agent prompt
+The `callback_ip` and `callback_interface` keys are not part of the wizard —
+they are manual overrides the operator can add to config.yaml when auto-detect
+(tun0/wg0) picks the wrong interface. If either is set, resolve and cache the
+IP once at engagement start. Include `Callback IP: <ip>` in every agent prompt
 that involves reverse shells or callbacks.
 
 ### Initialize Engagement Directory
