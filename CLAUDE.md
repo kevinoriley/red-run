@@ -23,6 +23,13 @@ agent templates focused; avoid verbose boilerplate. This is a judgment call —
 never cut needed context, but always ask "does this need to be in every
 invocation?"
 
+**No inline file templates.** Never embed file contents (YAML, shell scripts,
+JSON, config files) directly in skill files, agent templates, or orchestrator
+prompts. These burn context tokens on every invocation even when the file isn't
+being written. Instead, store templates in `operator/templates/` and reference
+them by path. The orchestrator reads and populates templates at runtime — the
+template content is only loaded when actually needed.
+
 ## Architecture
 
 The **orchestrator** is a native Claude Code skill that runs in the main conversation thread. It routes skill execution to **custom domain subagents** — each subagent has MCP access and executes one skill per invocation. All other skills (63 discovery + technique skills) are served on-demand via the **MCP skill-router**.
@@ -93,9 +100,12 @@ Skills support optional engagement logging. No engagement directory = no logging
 
 ```
 engagement/
+├── config.yaml       # Operator preferences (scan type, proxy, spray, cracking, callback)
 ├── scope.md          # Target scope, credentials, rules of engagement
 ├── state.db          # SQLite engagement state (managed via MCP state-server)
 ├── dump-state.sh     # Export state.db as markdown (from operator/templates/)
+├── web-proxy.json    # Machine-readable web proxy config (derived from config.yaml)
+├── web-proxy.sh      # Shell env vars for web proxy (sourced by agents)
 └── evidence/         # Saved output, responses, dumps (subagents write)
     └── logs/         # Subagent JSONL transcripts (captured by SubagentStop hook)
 ```

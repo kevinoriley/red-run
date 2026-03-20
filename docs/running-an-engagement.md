@@ -23,20 +23,37 @@ The orchestrator's first action is gathering scope:
 3. **Rules of engagement** — what's in scope, what's off-limits
 4. **Objectives** — flags, domain admin, data exfiltration goals
 
+### Engagement Configuration
+
+After the CTF disclaimer, the orchestrator runs a **config wizard** — five quick questions that capture operator preferences for the entire engagement:
+
+1. **Scan type** — quick (top 1000) or full (all 65535)
+2. **Web proxy** — Burp on loopback, custom proxy, no proxy, or ask later
+3. **Spray intensity** — light/medium/heavy/skip default when usernames are found
+4. **Cracking method** — local/external/skip default when hashes are captured
+5. **Callback interface** — auto-detect or specify interface/IP for reverse shells
+
+Every question has an "ask each time" option that preserves the old interactive behavior. Preferences are stored in `engagement/config.yaml` and can be edited at any time.
+
+Config values either **skip hard stops entirely** (scan type and web proxy use the config value without asking) or **pre-select defaults** in hard stops that still fire (spray and cracking still show context but the operator confirms with one keystroke).
+
 ### Engagement Directory
 
 The orchestrator creates the engagement directory structure:
 
 ```
 engagement/
+├── config.yaml       # Operator preferences from config wizard
 ├── scope.md          # Target scope and rules of engagement
 ├── state.db          # SQLite engagement state database
 ├── dump-state.sh     # Export state.db as markdown (operator convenience)
+├── web-proxy.json    # Machine-readable web proxy config
+├── web-proxy.sh      # Shell env vars for web proxy (sourced by agents)
 └── evidence/         # Saved output and dumps
     └── logs/         # Agent JSONL transcripts
 ```
 
-It initializes `state.db` via `init_engagement()` and writes the scope to `scope.md`.
+It initializes `state.db` via `init_engagement()`, writes the scope to `scope.md`, and generates `config.yaml` from the wizard answers.
 
 ## Engagement Workflow
 
@@ -52,14 +69,9 @@ After scope setup, the orchestrator runs reconnaissance.
 
 ### Scan Type Selection
 
-> **Hard Stop:** The orchestrator pauses and asks the operator to choose a scan type before proceeding. This is the first of several **hard stops** — points where the orchestrator requires operator input.
+If `config.yaml` has a `scan_type` value, the orchestrator uses it directly — no hard stop. The operator still approves the agent spawn, so they can override at that point. If `scan_type` is omitted (operator chose "ask each time"), the orchestrator pauses to ask.
 
-Options:
-
-- **Quick** — Top ports, fast service detection
-- **Full** — All 65535 ports with version detection and scripts (`-A -p- -T4`)
-- **Custom** — Operator-specified nmap flags
-- **Import XML** — Parse existing nmap XML output
+Options: **Quick** (top 1000), **Full** (all 65535), **Custom** (operator-specified flags), or **Import XML** (existing nmap output).
 
 The orchestrator spawns the `network-recon-agent` with the `network-recon` skill, which runs nmap via the nmap-server MCP and enumerates discovered services.
 
@@ -75,11 +87,11 @@ This pattern repeats when web discovery finds virtual hosts that need resolution
 
 ### Web Discovery
 
-If HTTP/HTTPS ports are found, the **first thing** the orchestrator does is hit a **Web proxy** hard stop. The operator can enable Burp on loopback (`127.0.0.1`), enable Burp on a dedicated proxy IP (for example a VPN or bridged interface), or skip proxying entirely. The operator also selects the listener port.
+If HTTP/HTTPS ports are found, the orchestrator resolves the web proxy decision before spawning any web agent. If `config.yaml` has a `web_proxy` section, the orchestrator writes the persistence files (`web-proxy.json`, `web-proxy.sh`, `scope.md` `## Web Proxy` section) automatically — no hard stop. If `web_proxy` is omitted from config, the orchestrator pauses to ask the operator.
 
-If Burp proxying is enabled, the orchestrator records the listener URL in `engagement/scope.md`, writes `engagement/web-proxy.json` for browser defaults, and writes `engagement/web-proxy.sh` for CLI tools so subsequent web agents route through the same Burp listener. If the operator skips proxying, those files are still written in direct mode so the original no-proxy behavior is preserved explicitly.
+If Burp proxying is enabled, `web-proxy.json` records the listener URL for browser-server defaults, and `web-proxy.sh` exports env vars for CLI tools. All subsequent web agents source `web-proxy.sh` and route attackbox HTTP(S) traffic through the configured proxy.
 
-Only after that decision is made does the orchestrator spawn the `web-discovery-agent` with the `web-discovery` skill. This performs content discovery, technology fingerprinting, parameter fuzzing, and vulnerability identification.
+Only after that decision is resolved does the orchestrator spawn the `web-discovery-agent` with the `web-discovery` skill. This performs content discovery, technology fingerprinting, parameter fuzzing, and vulnerability identification.
 
 ## Attack Surface Presentation
 
@@ -135,17 +147,18 @@ See [Agents](agents.md) for the full agent model and routing table.
 
 ## Hard Stops
 
-The orchestrator has several points where it **must** pause for operator input:
+The orchestrator has several points where it **must** pause for operator input. Some are **config-aware** — if `config.yaml` provides the answer, the hard stop is skipped or pre-filled.
 
-| Hard Stop | When | Why |
-|-----------|------|-----|
-| **Scan type** | Before reconnaissance | Operator controls scan intensity and stealth |
-| **Web proxy** | Immediately after HTTP/HTTPS ports are found | Operator decides whether Burp captures web traffic, which IP it binds to, and which port to use |
-| **Hostname resolution** | New hostnames discovered | `/etc/hosts` changes require sudo |
-| **Password spray intensity** | New usernames discovered | Spray intensity affects account lockout risk |
-| **Vhost resolution** | Web discovery finds virtual hosts | Same as hostname resolution |
+| Hard Stop | When | Config-aware? | Behavior with config |
+|-----------|------|---------------|----------------------|
+| **Scan type** | Before reconnaissance | Yes — `scan_type` | Skipped entirely; config value used |
+| **Web proxy** | HTTP/HTTPS ports found | Yes — `web_proxy` | Skipped entirely; persistence files written from config |
+| **Hostname resolution** | New hostnames discovered | No | Always interactive (requires sudo) |
+| **Password spray** | New usernames discovered | Partial — `spray.default_tier` | Still fires; config pre-selects tier |
+| **Hash cracking** | Hashes captured | Partial — `cracking.default_method` | Still fires; config pre-selects method |
+| **Vhost resolution** | Virtual hosts discovered | No | Always interactive (requires sudo) |
 
-Hard stops prevent the orchestrator from making high-impact decisions autonomously. The operator always controls scan intensity, credential spraying risk, and system-level changes.
+Hard stops prevent the orchestrator from making high-impact decisions autonomously. The config wizard captures preferences upfront so returning operators move faster, while "ask each time" options preserve the fully interactive workflow.
 
 ## Chaining Logic
 
