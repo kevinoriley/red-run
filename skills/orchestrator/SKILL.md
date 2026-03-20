@@ -128,7 +128,7 @@ The orchestrator routes to skills — it does not run attack tools itself.
 The only commands the orchestrator may execute directly are:
 
 - `mkdir -p engagement/evidence/logs` — engagement directory creation
-- File writes to `engagement/scope.md`. Use Write/Edit for scope.md (structured, may need mid-file edits).
+- File writes to `engagement/scope.md`, `engagement/config.yaml`, `engagement/web-proxy.json`, `engagement/web-proxy.sh`. Use Write/Edit for scope.md (structured, may need mid-file edits).
 - State-writer MCP tools (`init_engagement`, `add_target`, `add_credential`, `add_access`, `add_vuln`, `add_pivot`, `add_blocked`, `add_tunnel`, `update_tunnel`, and their update variants) — engagement state
 - State-reader MCP tools (`get_state_summary`, `get_targets`, `get_credentials`, `get_access`, `get_vulns`, `get_pivot_map`, `get_blocked`, `get_tunnels`, `poll_events`) — state queries
 - Skill-router MCP tools (`get_skill`, `search_skills`, `list_skills`) — skill routing
@@ -475,15 +475,19 @@ If `engagement/state.db` already exists (the user said "resume", "continue",
 "pick it up", "next steps", "where were we", etc.), **skip Step 1** entirely:
 
 1. Call `get_state_summary()` to load the full engagement state.
-2. Read `engagement/scope.md` if it exists. Recover operator-controlled
-   workflow choices that are not stored in state (especially the `## Web Proxy`
-   section). If a web proxy decision already exists, ensure the helper files
-   `engagement/web-proxy.json` and `engagement/web-proxy.sh` match that
-   decision before any web agent is spawned.
-3. Print a concise status briefing for the operator: targets, current
+2. Read `engagement/config.yaml` if it exists. This is the authoritative
+   source for operator preferences (scan type, web proxy, spray tier,
+   cracking method, callback interface). Print a one-line summary of each
+   configured value. Regenerate derived files if missing:
+   - `engagement/web-proxy.json` and `engagement/web-proxy.sh` from
+     `config.yaml` → `web_proxy`
+3. If `config.yaml` does not exist (pre-config engagement), fall back to
+   reading `engagement/scope.md` for the `## Web Proxy` section. Offer to
+   run the config wizard to create `config.yaml` for future resumes.
+4. Print a concise status briefing for the operator: targets, current
    access, key vulns, active tunnels, blocked paths.
-4. Run the **Step 4 decision logic** to determine the next action.
-5. Present the recommended next action to the operator and wait for approval
+5. Run the **Step 4 decision logic** to determine the next action.
+6. Present the recommended next action to the operator and wait for approval
    before spawning any agents.
 
 Do NOT re-initialize scope, re-create the engagement directory, or re-run
@@ -517,6 +521,80 @@ Use `AskUserQuestion`:
 
 If the operator selects Cancel, stop immediately.
 
+### Engagement Configuration
+
+**After CTF disclaimer, before creating the engagement directory**, walk the
+operator through engagement configuration. This creates `engagement/config.yaml`
+which captures operator preferences upfront — eliminating repeated hard stops
+on resume and allowing faster confirmation when context-dependent decisions
+arise later.
+
+Present **all 4 questions in a single `AskUserQuestion` call** so the operator
+answers them in one batch.
+
+**Preamble** (print before questions):
+```
+[orchestrator] Engagement config wizard
+
+These preferences apply for the entire engagement. You can edit
+engagement/config.yaml at any time to change them.
+```
+
+**Question 1 — Scan type** (single-select):
+- Header: "Default scan type for network recon"
+- Options:
+  - Quick scan (Recommended) — top 1000 ports + service detection
+  - Full scan — all 65535 ports + OS fingerprint
+  - Ask each time — prompt me before each scan
+
+**Question 2 — Web proxy** (single-select):
+- Header: "Web proxy for HTTP(S) traffic capture"
+- Options:
+  - Burp on 127.0.0.1:8080 (Recommended) — default Burp loopback listener
+  - Custom proxy — enter `IP:PORT` in Other (e.g., `10.0.0.1:8081`)
+  - No proxy — send traffic directly
+  - Ask when needed — prompt me when HTTP services are found
+
+Parsing rules:
+- If **Burp on 127.0.0.1:8080** is selected, use `http://127.0.0.1:8080`
+- If **Custom proxy** is selected, read `IP:PORT` from the Other text input;
+  if missing or malformed, re-ask. Build URL as `http://<IP>:<PORT>`
+- If **No proxy** is selected, set `web_proxy.enabled: false`
+- If **Ask when needed** is selected, omit `web_proxy` key from config.yaml
+
+**Question 3 — Spray intensity** (single-select):
+- Header: "Default password spray intensity"
+- Options:
+  - Light (Recommended) — ~30 common passwords per user
+  - Medium — ~10k passwords
+  - Heavy — ~100k passwords
+  - Skip spraying — never auto-spray
+  - Ask each time — prompt me when usernames are found
+
+**Question 4 — Cracking method** (single-select):
+- Header: "Default hash cracking method"
+- Options:
+  - Crack locally (Recommended) — hashcat/john on this machine
+  - Export for external rig — I have a dedicated cracking machine
+  - Skip cracking — don't crack, work other paths
+  - Ask each time — prompt me when hashes are found
+
+After all questions, write `engagement/config.yaml` using
+`operator/templates/config.yaml` as the base template. Populate each field
+from the operator's answers. **Omit keys** (comment them out or remove them)
+where the operator selected "Ask each time" / "Ask when needed" — the
+orchestrator falls back to the existing interactive hard stop for omitted keys.
+
+If `web_proxy.enabled` is set, also generate the persistence files immediately
+(same format as the Web Proxy Setup section below). This means web-discovery
+can start without a hard stop when HTTP services are found later.
+
+The `callback_ip` and `callback_interface` keys are not part of the wizard —
+they are manual overrides the operator can add to config.yaml when auto-detect
+(tun0/wg0) picks the wrong interface. If either is set, resolve and cache the
+IP once at engagement start. Include `Callback IP: <ip>` in every agent prompt
+that involves reverse shells or callbacks.
+
 ### Initialize Engagement Directory
 
 Create the engagement directory structure:
@@ -544,9 +622,6 @@ mkdir -p engagement/evidence/logs
 
 ## Objectives
 - <goals>
-
-## Web Proxy
-- undecided until the first HTTP/HTTPS service is discovered
 ```
 
 **engagement/state.db** — initialize via state-writer MCP:
@@ -567,10 +642,14 @@ Do not run scanning or enumeration tools directly from the orchestrator.
 
 ### Network Recon (if IP/subnet in scope)
 
-**Hard stop — scan selection.**
+**Config-aware scan selection.**
 
-Before spawning the network-recon agent, present the operator with scan
-options via `AskUserQuestion`. The operator always chooses the scan type.
+Check `engagement/config.yaml` for `scan_type`. If set (`quick` or `full`),
+use it directly — skip the scan selection hard stop. The operator still
+approves the agent spawn (which shows the scan type), so they can override.
+
+If `scan_type` is omitted from config (operator chose "Ask each time"),
+present the scan selection hard stop:
 
 **Question — Scan type** (single-select):
 - Header: "Scan type"
@@ -580,7 +659,7 @@ options via `AskUserQuestion`. The operator always chooses the scan type.
   - Import existing results — provide a path to nmap XML output (skip scanning)
   - Custom scan — describe the scan you'd like (ports, timing, scripts)
 
-**After operator responds:**
+**After scan type is determined (from config or operator response):**
 
 - **Quick scan** or **Full scan**: Spawn **network-recon-agent** with the
   selected scan type passed in the prompt:
@@ -647,12 +726,12 @@ for open ports on the target.
 
 ### Web Discovery (if HTTP/HTTPS found)
 
-Before any web agent runs, trigger the **Web Proxy Setup** hard stop if
-`engagement/scope.md` does not already record a `## Web Proxy` decision for
-this engagement. This must be the **first** operator prompt after web ports are
-identified.
+Before any web agent runs, ensure the web proxy decision is resolved via the
+**Web Proxy Setup** procedure (config-aware — see below). If config.yaml has
+a `web_proxy` key, persistence files are written automatically with no hard
+stop. If omitted, the interactive hard stop fires.
 
-STOP. After the proxy decision is recorded, spawn **web-discovery-agent** with
+After the proxy decision is resolved, spawn **web-discovery-agent** with
 skill `web-discovery`:
 
 ```
@@ -727,9 +806,9 @@ Route to discovery skills based on attack surface. Pass along:
 ### Web Applications
 
 STOP. Spawn **web-discovery-agent** with skill `web-discovery`. Pass: target
-URL, technology stack, any credentials, and the stored web proxy decision from
-`engagement/scope.md` (`http://IP:PORT` or "disabled by operator"), and tell
-the agent to source `engagement/web-proxy.sh` before Bash-driven HTTP(S)
+URL, technology stack, any credentials, and the web proxy decision from
+`engagement/web-proxy.json` (`http://IP:PORT` or "disabled by operator"), and
+tell the agent to source `engagement/web-proxy.sh` before Bash-driven HTTP(S)
 commands. Do not execute ffuf, httpx, or nuclei commands inline.
 
 ### Active Directory
@@ -1274,13 +1353,9 @@ custom application, binary, or script:
 
 ### Web Proxy Setup
 
-When HTTP/HTTPS services are found, the orchestrator MUST trigger this hard
-stop **before** spawning `web-discovery-agent` or `web-exploit-agent`, unless
-`engagement/scope.md` already records a `## Web Proxy` decision.
-
-**This is the first prompt after web ports are identified.** Do not ask about
-vhosts, attack paths, or exploitation until the operator explicitly chooses to
-proxy web traffic through Burp or skip proxying.
+Before spawning any web agent (`web-discovery-agent` or `web-exploit-agent`),
+the orchestrator must ensure a web proxy decision exists. The decision is
+stored in persistence files that agents read at runtime.
 
 **Purpose:** Capture attackbox-originated HTTP(S) traffic in Burp Suite while
 preserving operator control over listener binding and port selection. This
@@ -1288,30 +1363,29 @@ applies to browser-server sessions and CLI web tooling (`curl`, `ffuf`,
 `wpscan`, `sqlmap`, etc.) that originate from the attackbox. It does **not**
 apply to reverse shells, nmap, or non-HTTP protocols.
 
-**Persistence helpers:** The orchestrator should keep the choice in three
-places:
-- `engagement/scope.md` — operator-readable record
+**Persistence helpers:** The orchestrator keeps the choice in three places:
+- `engagement/scope.md` `## Web Proxy` section — operator-readable record
 - `engagement/web-proxy.json` — machine-readable default for browser-server
 - `engagement/web-proxy.sh` — shell snippet that web agents source before
   Bash-driven HTTP(S) commands
 
-**When to trigger:**
-- Immediately after recon records any HTTP/HTTPS service or web URL
-- Before the first `web-discovery-agent` spawn of the engagement
-- Before any later `web-exploit-agent` spawn if no proxy decision is recorded
-- On resume when web work is pending and `scope.md` has no `## Web Proxy`
-  section or only an undecided placeholder
+**Config-aware resolution:**
 
-**Hard stop procedure:**
+1. Check if persistence files already exist (`engagement/web-proxy.json`).
+   If so, reuse — no action needed.
 
-1. Collect the discovered web services (host, port, scheme, service banner)
-2. Read `engagement/scope.md`
-3. If `scope.md` already contains a concrete `## Web Proxy` decision:
-   - `Enabled: yes` with a listener URL → reuse it, include it in future web
-     agent prompts, and continue without re-asking
-   - `Enabled: no` → continue without re-asking and pass
-     `Web proxy: disabled by operator` to future web agents
-4. Otherwise, present the hard stop context:
+2. Check `engagement/config.yaml` for `web_proxy` key. If present:
+   - If `web_proxy.enabled: true`: write the three persistence files using
+     `web_proxy.url` from config. Print:
+     `"Web proxy configured: <url> (from config.yaml). Ensure Burp is listening."`
+   - If `web_proxy.enabled: false`: write the disabled variants of all three
+     files. Print: `"Web proxy disabled (from config.yaml)."`
+   - Continue directly to spawning web agents — no hard stop.
+
+3. If `web_proxy` is omitted from config (operator chose "Ask when needed"),
+   trigger the **interactive hard stop**:
+
+   Present context:
    ```
    [orchestrator] HARD STOP — web proxy decision required
 
@@ -1322,7 +1396,8 @@ places:
    Before web discovery starts, decide whether to route attackbox-originated
    HTTP(S) traffic through Burp Suite for request/response capture.
    ```
-5. Use `AskUserQuestion` with **two questions**:
+
+   Use `AskUserQuestion`:
 
    **Question 1 — Proxy location** (single-select):
    - Header: "Web proxy"
@@ -1331,7 +1406,7 @@ places:
      - Dedicated proxy IP — bind Burp to another attackbox IP (enter the IP in `Other`)
      - No proxy — send web traffic directly
 
-   **Question 2 — Listener port** (single-select):
+   **Question 2 — Listener port** (single-select, skip if "No proxy"):
    - Header: "Proxy port"
    - Options:
      - 8080 (Recommended) — default Burp listener
@@ -1346,61 +1421,29 @@ places:
    - If **Custom port** is selected, read the port from the port question's
      `Other` text input; if invalid or missing, hard stop and ask again
 
-6. After the operator responds:
-   - **No proxy**:
-     - Update `engagement/scope.md`:
-       ```markdown
-       ## Web Proxy
-       - Enabled: no
-       - Listener: none
-       - Decision: operator skipped Burp capture
-       ```
-     - Write `engagement/web-proxy.json`:
-       ```json
-       {"enabled": false, "proxy_url": ""}
-       ```
-     - Write `engagement/web-proxy.sh`:
-       ```bash
-       #!/usr/bin/env bash
-       unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY all_proxy ALL_PROXY
-       export RR_WEB_PROXY_ENABLED=0
-       export RR_WEB_PROXY_URL=
-       ```
-     - Continue to web-discovery with `Web proxy: disabled by operator`
+**Writing persistence files (from config or interactive):**
 
-   - **Loopback listener** or **Dedicated proxy IP**:
-     - Build the listener URL as `http://<ip>:<port>`
-     - Print: `Ensure Burp Suite is listening on http://<ip>:<port> before web traffic begins.`
-     - Update `engagement/scope.md`:
-       ```markdown
-       ## Web Proxy
-       - Enabled: yes
-       - Listener: http://<ip>:<port>
-       - Binding: <loopback|dedicated>
-       ```
-     - Write `engagement/web-proxy.json`:
-       ```json
-       {"enabled": true, "proxy_url": "http://<ip>:<port>"}
-       ```
-     - Write `engagement/web-proxy.sh`:
-       ```bash
-       #!/usr/bin/env bash
-       export RR_WEB_PROXY_ENABLED=1
-       export RR_WEB_PROXY_URL='http://<ip>:<port>'
-       export http_proxy="$RR_WEB_PROXY_URL"
-       export https_proxy="$RR_WEB_PROXY_URL"
-       export HTTP_PROXY="$RR_WEB_PROXY_URL"
-       export HTTPS_PROXY="$RR_WEB_PROXY_URL"
-       export all_proxy="$RR_WEB_PROXY_URL"
-       export ALL_PROXY="$RR_WEB_PROXY_URL"
-       ```
+After the proxy decision is determined (from any source), write three files:
 
-7. For every subsequent web agent prompt in this engagement:
-   - If enabled, include `Web proxy: http://<ip>:<port>`
-   - If disabled, include `Web proxy: disabled by operator`
-   - Tell the agent to source `engagement/web-proxy.sh` before every
-     Bash-driven HTTP(S) command
-8. Do not spawn any web agent until this procedure is complete
+- **`engagement/scope.md`** — append `## Web Proxy` section with
+  `Enabled: yes/no` and `Listener: <url or none>`
+- **`engagement/web-proxy.json`** — `{"enabled": true/false, "proxy_url": "<url>"}`
+- **`engagement/web-proxy.sh`** — copy from `operator/templates/`:
+  - Disabled: copy `web-proxy-disabled.sh`
+  - Enabled: copy `web-proxy-enabled.sh`, replace `PROXY_URL` with the
+    actual URL (e.g., `http://127.0.0.1:8080`)
+
+Always `chmod +x engagement/web-proxy.sh` after writing.
+
+If enabled, print: `Ensure Burp Suite is listening on <url> before web traffic begins.`
+
+**For every subsequent web agent prompt in this engagement:**
+- If enabled, include `Web proxy: http://<ip>:<port>`
+- If disabled, include `Web proxy: disabled by operator`
+- Tell the agent to source `engagement/web-proxy.sh` before every
+  Bash-driven HTTP(S) command
+
+Do not spawn any web agent until persistence files exist.
 
 ### Hosts File Update
 
@@ -1439,11 +1482,17 @@ If exit code is non-zero, the hostname does not resolve.
 
 ### Usernames Found
 
-**Hard stop** — never auto-spray. The operator must choose intensity.
+**Hard stop** — never auto-spray. The operator must confirm before spraying.
 
 **When to trigger:** After recording new usernames in state (from any skill),
 if auth services are available. Re-triggers when new usernames are discovered
 later. Skip only if ALL users have been sprayed at the operator's chosen tier.
+
+**Config-aware defaults:** Check `engagement/config.yaml` for
+`spray.default_tier`. If set, pre-select that tier in the hard stop question
+(the operator confirms with one keystroke or overrides). If
+`spray.default_tier: skip`, still present the hard stop but recommend
+skipping — the operator can override when high-value usernames are found.
 
 **Hard stop procedure:**
 
@@ -1453,6 +1502,7 @@ later. Skip only if ALL users have been sprayed at the operator's chosen tier.
 3. Present context (usernames, lockout policy) then `AskUserQuestion` with:
    - **Spray tier** (single-select): Light (~30 passwords) / Medium (10k) /
      Heavy (100k) / Skip
+     If config default exists, note it: `"Light [config default]"`
    - **Services** (multi-select): build from discovered ports (SMB, WinRM,
      SSH, LDAP, RDP, HTTP login, MSSQL, FTP)
 4. If skip: log and continue. Otherwise: spawn **password-spray-agent** in
@@ -1467,14 +1517,17 @@ TGS from Kerberoasting, NTLM from SAM/LSASS, shadow file hashes, etc.) or
 encrypted files that need cracking (ZIP, Office, KeePass, SSH keys), the
 orchestrator MUST trigger this hard stop before spawning the cracking agent.
 
-**Hard stop** — never auto-crack.
-Operators may have dedicated cracking rigs with better GPUs. The operator
-always chooses the cracking method.
+**Hard stop** — never auto-crack. The operator must confirm the method.
 
 **When to trigger:**
 - After recording a hash credential in engagement state (from any skill)
 - After discovering encrypted files that block progress
 - Re-triggers when additional hashes are discovered later
+
+**Config-aware defaults:** Check `engagement/config.yaml` for
+`cracking.default_method`. If set, pre-select that method in the hard stop
+question (the operator confirms or overrides). The hard stop always fires
+because the operator needs to see hash details and file paths.
 
 **Hard stop procedure:**
 
@@ -1497,6 +1550,7 @@ always chooses the cracking method.
      - Export for external rig — hash file path provided, operator cracks
        externally and provides plaintext
      - Skip cracking — don't crack, continue engagement via other paths
+   If config default exists, note it: `"Crack locally [config default]"`
 
 3. After operator responds:
    - **Crack locally**: Spawn **credential-cracking-agent** with hash details,
