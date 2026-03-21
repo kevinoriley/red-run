@@ -112,6 +112,7 @@ techniques from other domains, retrying with trivial changes.
 
 - `date '+%Y-%m-%d %H:%M:%S'` for real timestamps — never placeholders.
 - **Never download/clone/install tools.** Missing tool → stop, report, return.
+- **Never write custom scripts** to interact with remote services. Use installed CLI tools and MCP servers. If a tool fails, report — don't reinvent.
 - `curl --connect-timeout 5 --max-time 15` always.
 - MCP server names use hyphens: `mcp__nmap-server__nmap_scan`, `mcp__state-interim__get_state_summary`
 

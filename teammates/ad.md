@@ -136,6 +136,7 @@ Lead routes to evasion teammate.
 
 - `date '+%Y-%m-%d %H:%M:%S'` for timestamps.
 - **Never download/clone/install tools.**
+- **Never write custom scripts** to interact with remote services (no Ruby WinRM, no Python WMI, no raw socket code). Use installed CLI tools and shell-server MCP. If a tool fails, report — don't reinvent.
 - `curl --connect-timeout 5 --max-time 15`.
 - MCP names: hyphens for servers (`state-interim`), underscores for tools (`add_credential`).
 

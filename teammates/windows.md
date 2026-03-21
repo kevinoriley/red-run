@@ -44,7 +44,7 @@ list_sessions() → stabilize_shell() → verify privilege level → close_sessi
 **Bash is the default** for CLI tools — `dangerouslyDisableSandbox: true` for
 network commands.
 
-**`start_process`** only for:
+**`start_process` via shell-server MCP** for interactive sessions:
 - Docker tools (evil-winrm, Impacket interactive shells): `privileged=True`
 - Host tools (ssh, msfconsole): `privileged=False`
 
@@ -59,6 +59,12 @@ start_process(command="evil-winrm -i TARGET -u user -p pass", privileged=True)
 send_command(session_id, "upload /path/to/tool.exe C:\\Windows\\Temp\\tool.exe")
 send_command(session_id, "download C:\\Users\\admin\\Desktop\\loot.zip /local/path/")
 ```
+
+**Do NOT write custom scripts to interact with remote services.** No Ruby WinRM
+scripts, no Python WMI scripts, no raw socket code. Use the tools available via
+shell-server MCP (`start_process`, `send_command`) and installed CLI tools
+(evil-winrm, psexec.py, wmiexec.py, smbexec.py). If a tool fails, report the
+failure — do not reinvent it.
 
 ## Scope Boundaries
 
