@@ -396,6 +396,27 @@ Access → deeper:   DB→cmdexec→shell | JWT→admin→upload→shell | deser
 Shell → privesc:   stabilize → linux/windows teammate(discovery) → privesc technique
 Lateral:           creds from host A → test all others | service acct → kerberos | pivot→recon
 Privesc chain:     local admin → ad(credential-dumping) | domain user → ad(kerberoasting)
+Pivot → internal:  additional NIC/subnet in state + access to pivot host → pivoting → recon internal
+```
+
+**Pivot identified + access exists → act immediately:**
+```
+When state shows a pivot (additional NIC, new subnet) AND you have access to the pivot host:
+1. Check get_tunnels() — does an active tunnel already cover this subnet?
+2. If no tunnel:
+   a. Spawn pivoting teammate: "Load skill 'pivoting-tunneling'.
+      Pivot host: <host>. Target subnet: <subnet>.
+      Access: <evil-winrm/ssh/shell + user + creds>.
+      Tool preference: SSH > sshuttle > ligolo > chisel."
+   b. After tunnel established → record via add_tunnel() if teammate didn't
+   c. Update pivot status to "exploited" via update_pivot()
+   d. Assign recon teammate: network-recon on the internal subnet
+3. Include tunnel context in ALL subsequent tasks targeting hosts behind tunnel:
+   "Tunnel active: <type> via <pivot-host> → <subnet>
+    Transparent: <yes|no>. SOCKS: <endpoint if proxychains needed>."
+
+Do NOT wait for other decision logic items to complete before acting on pivots.
+A new subnet is a high-value expansion of the attack surface.
 ```
 
 **Shell access gained → stabilize → host discovery (mandatory):**
@@ -434,11 +455,14 @@ Walk ALL items, collect every actionable finding, present to operator:
 
 5. Uncracked hashes → trigger Hashes Found hard stop
 
-6. Pivot map paths with status "identified":
-   Check get_tunnels() for existing coverage
-   If no tunnel → spawn pivoting teammate
-   After tunnel → assign recon teammate: network-recon on internal subnet
-   Include tunnel context in all subsequent tasks behind that tunnel
+6. Pivot map — HIGH PRIORITY, act before items 7-9:
+   for each pivot with status "identified" or "Additional NIC":
+     if access exists to pivot host (check Access section in state):
+       if no active tunnel covers target subnet (check get_tunnels()):
+         → spawn pivoting teammate (see "Pivot identified + access exists" above)
+         → after tunnel: assign recon on internal subnet
+     else:
+       note: need access to pivot host first — pursue via other chains
 
 7. Blocked items:
    retry "with_context" → assign technique skill (deeper methodology)

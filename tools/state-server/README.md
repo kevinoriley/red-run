@@ -60,9 +60,11 @@ credentials (spray/test), vulns (exploit), pivots (plan chains), blocked
 Target/port/access management and all UPDATE operations remain
 orchestrator-only to avoid contention.
 
-SQLite WAL mode + `PRAGMA busy_timeout=5000` handles concurrent readers and
+SQLite WAL mode + `PRAGMA busy_timeout=30000` handles concurrent readers and
 interim writers safely. Interim agents only INSERT into separate tables, so
-write conflicts with the orchestrator are prevented by the busy timeout.
+write conflicts with the orchestrator are prevented by the busy timeout. The
+30-second timeout accommodates agent teams where multiple teammates may write
+to state-interim simultaneously.
 
 ### Typical workflow
 

@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import json
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
@@ -38,8 +39,9 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DB_PATH = _PROJECT_ROOT / "engagement" / "state.db"
 
 
-def _get_db() -> sqlite3.Connection:
-    """Open connection to the state database."""
+@contextmanager
+def _get_db():
+    """Open connection to the state database with guaranteed cleanup."""
     if not DB_PATH.exists():
         raise FileNotFoundError(
             "No engagement state database found. "
@@ -49,8 +51,11 @@ def _get_db() -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
-    conn.execute("PRAGMA busy_timeout=5000")
-    return conn
+    conn.execute("PRAGMA busy_timeout=30000")
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 def _rows_to_dicts(rows: list[sqlite3.Row]) -> list[dict]:
@@ -112,228 +117,227 @@ def register_read_tools(mcp: FastMCP) -> None:
             max_lines: Maximum lines in the summary (default 200).
         """
         try:
-            conn = _get_db()
+            db = _get_db()
         except FileNotFoundError:
             return "No engagement state database found. Run init_engagement() first."
 
-        sections: list[str] = ["# Engagement State\n"]
+        with db as conn:
+            sections: list[str] = ["# Engagement State\n"]
 
-        # Engagement metadata
-        eng = conn.execute(
-            "SELECT name, status, created_at, mode FROM engagement WHERE id = 1"
-        ).fetchone()
-        if eng:
-            sections.append(
-                f"**Mode: {eng['mode']}** | Status: {eng['status']} | Created: {eng['created_at']}\n"
-            )
-
-        # Targets
-        sections.append("## Targets\n")
-        targets = conn.execute(
-            "SELECT t.id, t.host, t.os, t.role FROM targets t ORDER BY t.id"
-        ).fetchall()
-        for t in targets:
-            ports = conn.execute(
-                "SELECT port, protocol, service FROM ports "
-                "WHERE target_id = ? ORDER BY port",
-                (t["id"],),
-            ).fetchall()
-            port_str = ",".join(
-                f"{p['port']}/{p['protocol']}"
-                if p["protocol"] != "tcp"
-                else str(p["port"])
-                for p in ports
-            )
-            svc_str = ",".join(p["service"] for p in ports if p["service"])
-            parts = [t["host"]]
-            if t["os"]:
-                parts.append(t["os"])
-            if t["role"]:
-                parts.append(t["role"])
-            if port_str:
-                parts.append(port_str)
-            if svc_str:
-                parts.append(f"({svc_str})")
-            sections.append(f"- {' | '.join(parts)}")
-        if not targets:
-            sections.append("_(none)_")
-        sections.append("")
-
-        # Credentials
-        sections.append("## Credentials\n")
-        creds = conn.execute(
-            "SELECT id, username, secret, secret_type, domain, cracked, notes "
-            "FROM credentials ORDER BY id"
-        ).fetchall()
-        for c in creds:
-            display_secret = c["secret"]
-            if c["secret_type"] not in ("password",) and len(display_secret) > 32:
-                display_secret = display_secret[:32] + "..."
-            parts = []
-            if c["domain"]:
-                parts.append(f"{c['domain']}\\{c['username']}")
-            else:
-                parts.append(c["username"])
-            parts.append(f"{display_secret} ({c['secret_type']})")
-            if c["cracked"]:
-                parts.append("[cracked]")
-            # Show where it works
-            access_rows = conn.execute(
-                "SELECT t.host, ca.service, ca.works FROM credential_access ca "
-                "JOIN targets t ON ca.target_id = t.id "
-                "WHERE ca.credential_id = ?",
-                (c["id"],),
-            ).fetchall()
-            works_on = [
-                f"{r['host']}:{r['service']}" for r in access_rows if r["works"]
-            ]
-            fails_on = [
-                f"{r['host']}:{r['service']}" for r in access_rows if not r["works"]
-            ]
-            if works_on:
-                parts.append(f"works: {', '.join(works_on)}")
-            if fails_on:
-                parts.append(f"fails: {', '.join(fails_on)}")
-            if c["notes"]:
-                parts.append(c["notes"])
-            sections.append(f"- {' | '.join(parts)}")
-        if not creds:
-            sections.append("_(none)_")
-        sections.append("")
-
-        # Access
-        sections.append("## Access\n")
-        accesses = conn.execute(
-            "SELECT a.*, t.host FROM access a "
-            "JOIN targets t ON a.target_id = t.id "
-            "WHERE a.active = 1 ORDER BY a.id"
-        ).fetchall()
-        for a in accesses:
-            parts = [
-                a["host"],
-                f"{a['username']} via {a['access_type']}",
-                f"[{a['privilege']}]",
-            ]
-            if a["method"]:
-                parts.append(f"from {a['method']}")
-            if a["session_ref"]:
-                parts.append(f"session:{a['session_ref']}")
-            if a["notes"]:
-                parts.append(a["notes"])
-            sections.append(f"- {' | '.join(parts)}")
-        # Also show revoked access
-        revoked = conn.execute(
-            "SELECT a.*, t.host FROM access a "
-            "JOIN targets t ON a.target_id = t.id "
-            "WHERE a.active = 0 ORDER BY a.id"
-        ).fetchall()
-        for a in revoked:
-            sections.append(
-                f"- ~~{a['host']} | {a['username']} via {a['access_type']}~~ [revoked]"
-            )
-        if not accesses and not revoked:
-            sections.append("_(none)_")
-        sections.append("")
-
-        # Vulns
-        sections.append("## Vulns\n")
-        vulns = conn.execute(
-            "SELECT v.*, t.host FROM vulns v "
-            "LEFT JOIN targets t ON v.target_id = t.id "
-            "ORDER BY v.id"
-        ).fetchall()
-        for v in vulns:
-            host = v["host"] or "unknown"
-            parts = [
-                f"{v['title']} [{v['status']}]",
-                f"[{v['severity']}]",
-                host,
-            ]
-            if v["endpoint"]:
-                parts.append(v["endpoint"])
-            if v["details"]:
-                parts.append(v["details"][:80])
-            sections.append(f"- {' | '.join(parts)}")
-        if not vulns:
-            sections.append("_(none)_")
-        sections.append("")
-
-        # Pivot Map
-        sections.append("## Pivot Map\n")
-        pivots = conn.execute("SELECT * FROM pivot_map ORDER BY id").fetchall()
-        for p in pivots:
-            parts = [
-                f"{p['source']} -> {p['destination']}",
-                f"via {p['method']}" if p["method"] else "",
-                f"[{p['status']}]",
-            ]
-            if p["notes"]:
-                parts.append(p["notes"])
-            sections.append(f"- {' | '.join(pt for pt in parts if pt)}")
-        if not pivots:
-            sections.append("_(none)_")
-        sections.append("")
-
-        # Tunnels
-        sections.append("## Tunnels\n")
-        if conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='tunnels'"
-        ).fetchone():
-            tunnels = conn.execute(
-                "SELECT * FROM tunnels WHERE status != 'closed' ORDER BY id"
-            ).fetchall()
-            for tun in tunnels:
-                proxy_note = (
-                    "(proxychains required)"
-                    if tun["requires_proxychains"]
-                    else "(transparent)"
+            # Engagement metadata
+            eng = conn.execute(
+                "SELECT name, status, created_at, mode FROM engagement WHERE id = 1"
+            ).fetchone()
+            if eng:
+                sections.append(
+                    f"**Mode: {eng['mode']}** | Status: {eng['status']} | Created: {eng['created_at']}\n"
                 )
-                parts = [
-                    tun["tunnel_type"],
-                    f"via {tun['pivot_host']}" if tun["pivot_host"] else "",
-                    f"→ {tun['target_subnet']}" if tun["target_subnet"] else "→ *",
-                ]
-                if tun["local_endpoint"]:
-                    parts.append(tun["local_endpoint"])
-                parts.append(f"[{tun['status']}]")
-                parts.append(proxy_note)
-                if tun["notes"]:
-                    parts.append(tun["notes"])
-                sections.append(f"- {' | '.join(pt for pt in parts if pt)}")
-            if not tunnels:
+
+            # Targets
+            sections.append("## Targets\n")
+            targets = conn.execute(
+                "SELECT t.id, t.host, t.os, t.role FROM targets t ORDER BY t.id"
+            ).fetchall()
+            for t in targets:
+                ports = conn.execute(
+                    "SELECT port, protocol, service FROM ports "
+                    "WHERE target_id = ? ORDER BY port",
+                    (t["id"],),
+                ).fetchall()
+                port_str = ",".join(
+                    f"{p['port']}/{p['protocol']}"
+                    if p["protocol"] != "tcp"
+                    else str(p["port"])
+                    for p in ports
+                )
+                svc_str = ",".join(p["service"] for p in ports if p["service"])
+                parts = [t["host"]]
+                if t["os"]:
+                    parts.append(t["os"])
+                if t["role"]:
+                    parts.append(t["role"])
+                if port_str:
+                    parts.append(port_str)
+                if svc_str:
+                    parts.append(f"({svc_str})")
+                sections.append(f"- {' | '.join(parts)}")
+            if not targets:
                 sections.append("_(none)_")
-        else:
-            sections.append("_(none)_")
-        sections.append("")
+            sections.append("")
 
-        # Blocked
-        sections.append("## Blocked\n")
-        blocked = conn.execute(
-            "SELECT b.*, t.host FROM blocked b "
-            "LEFT JOIN targets t ON b.target_id = t.id "
-            "ORDER BY b.id"
-        ).fetchall()
-        for b in blocked:
-            host = b["host"] or ""
-            parts = [b["technique"]]
-            if host:
-                parts.append(host)
-            parts.append(b["reason"])
-            parts.append(f"[{b['retry']}]")
-            if b["notes"]:
-                parts.append(b["notes"])
-            sections.append(f"- {' | '.join(parts)}")
-        if not blocked:
-            sections.append("_(none)_")
+            # Credentials
+            sections.append("## Credentials\n")
+            creds = conn.execute(
+                "SELECT id, username, secret, secret_type, domain, cracked, notes "
+                "FROM credentials ORDER BY id"
+            ).fetchall()
+            for c in creds:
+                display_secret = c["secret"]
+                if c["secret_type"] not in ("password",) and len(display_secret) > 32:
+                    display_secret = display_secret[:32] + "..."
+                parts = []
+                if c["domain"]:
+                    parts.append(f"{c['domain']}\\{c['username']}")
+                else:
+                    parts.append(c["username"])
+                parts.append(f"{display_secret} ({c['secret_type']})")
+                if c["cracked"]:
+                    parts.append("[cracked]")
+                # Show where it works
+                access_rows = conn.execute(
+                    "SELECT t.host, ca.service, ca.works FROM credential_access ca "
+                    "JOIN targets t ON ca.target_id = t.id "
+                    "WHERE ca.credential_id = ?",
+                    (c["id"],),
+                ).fetchall()
+                works_on = [
+                    f"{r['host']}:{r['service']}" for r in access_rows if r["works"]
+                ]
+                fails_on = [
+                    f"{r['host']}:{r['service']}" for r in access_rows if not r["works"]
+                ]
+                if works_on:
+                    parts.append(f"works: {', '.join(works_on)}")
+                if fails_on:
+                    parts.append(f"fails: {', '.join(fails_on)}")
+                if c["notes"]:
+                    parts.append(c["notes"])
+                sections.append(f"- {' | '.join(parts)}")
+            if not creds:
+                sections.append("_(none)_")
+            sections.append("")
 
-        conn.close()
+            # Access
+            sections.append("## Access\n")
+            accesses = conn.execute(
+                "SELECT a.*, t.host FROM access a "
+                "JOIN targets t ON a.target_id = t.id "
+                "WHERE a.active = 1 ORDER BY a.id"
+            ).fetchall()
+            for a in accesses:
+                parts = [
+                    a["host"],
+                    f"{a['username']} via {a['access_type']}",
+                    f"[{a['privilege']}]",
+                ]
+                if a["method"]:
+                    parts.append(f"from {a['method']}")
+                if a["session_ref"]:
+                    parts.append(f"session:{a['session_ref']}")
+                if a["notes"]:
+                    parts.append(a["notes"])
+                sections.append(f"- {' | '.join(parts)}")
+            # Also show revoked access
+            revoked = conn.execute(
+                "SELECT a.*, t.host FROM access a "
+                "JOIN targets t ON a.target_id = t.id "
+                "WHERE a.active = 0 ORDER BY a.id"
+            ).fetchall()
+            for a in revoked:
+                sections.append(
+                    f"- ~~{a['host']} | {a['username']} via {a['access_type']}~~ [revoked]"
+                )
+            if not accesses and not revoked:
+                sections.append("_(none)_")
+            sections.append("")
 
-        result = "\n".join(sections)
-        lines = result.split("\n")
-        if len(lines) > max_lines:
-            lines = lines[:max_lines]
-            lines.append(f"\n_(truncated at {max_lines} lines)_")
-        return "\n".join(lines)
+            # Vulns
+            sections.append("## Vulns\n")
+            vulns = conn.execute(
+                "SELECT v.*, t.host FROM vulns v "
+                "LEFT JOIN targets t ON v.target_id = t.id "
+                "ORDER BY v.id"
+            ).fetchall()
+            for v in vulns:
+                host = v["host"] or "unknown"
+                parts = [
+                    f"{v['title']} [{v['status']}]",
+                    f"[{v['severity']}]",
+                    host,
+                ]
+                if v["endpoint"]:
+                    parts.append(v["endpoint"])
+                if v["details"]:
+                    parts.append(v["details"][:80])
+                sections.append(f"- {' | '.join(parts)}")
+            if not vulns:
+                sections.append("_(none)_")
+            sections.append("")
+
+            # Pivot Map
+            sections.append("## Pivot Map\n")
+            pivots = conn.execute("SELECT * FROM pivot_map ORDER BY id").fetchall()
+            for p in pivots:
+                parts = [
+                    f"{p['source']} -> {p['destination']}",
+                    f"via {p['method']}" if p["method"] else "",
+                    f"[{p['status']}]",
+                ]
+                if p["notes"]:
+                    parts.append(p["notes"])
+                sections.append(f"- {' | '.join(pt for pt in parts if pt)}")
+            if not pivots:
+                sections.append("_(none)_")
+            sections.append("")
+
+            # Tunnels
+            sections.append("## Tunnels\n")
+            if conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='tunnels'"
+            ).fetchone():
+                tunnels = conn.execute(
+                    "SELECT * FROM tunnels WHERE status != 'closed' ORDER BY id"
+                ).fetchall()
+                for tun in tunnels:
+                    proxy_note = (
+                        "(proxychains required)"
+                        if tun["requires_proxychains"]
+                        else "(transparent)"
+                    )
+                    parts = [
+                        tun["tunnel_type"],
+                        f"via {tun['pivot_host']}" if tun["pivot_host"] else "",
+                        f"→ {tun['target_subnet']}" if tun["target_subnet"] else "→ *",
+                    ]
+                    if tun["local_endpoint"]:
+                        parts.append(tun["local_endpoint"])
+                    parts.append(f"[{tun['status']}]")
+                    parts.append(proxy_note)
+                    if tun["notes"]:
+                        parts.append(tun["notes"])
+                    sections.append(f"- {' | '.join(pt for pt in parts if pt)}")
+                if not tunnels:
+                    sections.append("_(none)_")
+            else:
+                sections.append("_(none)_")
+            sections.append("")
+
+            # Blocked
+            sections.append("## Blocked\n")
+            blocked = conn.execute(
+                "SELECT b.*, t.host FROM blocked b "
+                "LEFT JOIN targets t ON b.target_id = t.id "
+                "ORDER BY b.id"
+            ).fetchall()
+            for b in blocked:
+                host = b["host"] or ""
+                parts = [b["technique"]]
+                if host:
+                    parts.append(host)
+                parts.append(b["reason"])
+                parts.append(f"[{b['retry']}]")
+                if b["notes"]:
+                    parts.append(b["notes"])
+                sections.append(f"- {' | '.join(parts)}")
+            if not blocked:
+                sections.append("_(none)_")
+
+            result = "\n".join(sections)
+            lines = result.split("\n")
+            if len(lines) > max_lines:
+                lines = lines[:max_lines]
+                lines.append(f"\n_(truncated at {max_lines} lines)_")
+            return "\n".join(lines)
 
     @mcp.tool()
     def get_targets(host: str = "") -> str:
@@ -342,27 +346,26 @@ def register_read_tools(mcp: FastMCP) -> None:
         Args:
             host: Filter by host (empty = all targets).
         """
-        conn = _get_db()
-        if host:
-            targets = conn.execute(
-                "SELECT * FROM targets WHERE host = ?", (host,)
-            ).fetchall()
-        else:
-            targets = conn.execute("SELECT * FROM targets ORDER BY id").fetchall()
+        with _get_db() as conn:
+            if host:
+                targets = conn.execute(
+                    "SELECT * FROM targets WHERE host = ?", (host,)
+                ).fetchall()
+            else:
+                targets = conn.execute("SELECT * FROM targets ORDER BY id").fetchall()
 
-        result = []
-        for t in targets:
-            t_dict = dict(t)
-            ports = conn.execute(
-                "SELECT port, protocol, state, service, banner FROM ports "
-                "WHERE target_id = ? ORDER BY port",
-                (t["id"],),
-            ).fetchall()
-            t_dict["ports"] = _rows_to_dicts(ports)
-            result.append(t_dict)
+            result = []
+            for t in targets:
+                t_dict = dict(t)
+                ports = conn.execute(
+                    "SELECT port, protocol, state, service, banner FROM ports "
+                    "WHERE target_id = ? ORDER BY port",
+                    (t["id"],),
+                ).fetchall()
+                t_dict["ports"] = _rows_to_dicts(ports)
+                result.append(t_dict)
 
-        conn.close()
-        return json.dumps(result, indent=2)
+            return json.dumps(result, indent=2)
 
     @mcp.tool()
     def get_credentials(untested_only: bool = False) -> str:
@@ -372,33 +375,32 @@ def register_read_tools(mcp: FastMCP) -> None:
             untested_only: If true, only return credentials that haven't been
                           tested against all known target/service combinations.
         """
-        conn = _get_db()
-        creds = conn.execute("SELECT * FROM credentials ORDER BY id").fetchall()
+        with _get_db() as conn:
+            creds = conn.execute("SELECT * FROM credentials ORDER BY id").fetchall()
 
-        result = []
-        for c in creds:
-            c_dict = dict(c)
-            access_rows = conn.execute(
-                "SELECT ca.*, t.host FROM credential_access ca "
-                "JOIN targets t ON ca.target_id = t.id "
-                "WHERE ca.credential_id = ?",
-                (c["id"],),
-            ).fetchall()
-            c_dict["tested_against"] = _rows_to_dicts(access_rows)
+            result = []
+            for c in creds:
+                c_dict = dict(c)
+                access_rows = conn.execute(
+                    "SELECT ca.*, t.host FROM credential_access ca "
+                    "JOIN targets t ON ca.target_id = t.id "
+                    "WHERE ca.credential_id = ?",
+                    (c["id"],),
+                ).fetchall()
+                c_dict["tested_against"] = _rows_to_dicts(access_rows)
 
-            if untested_only:
-                # Count total target/service combos vs tested
-                tested_count = len(access_rows)
-                total_targets = conn.execute(
-                    "SELECT COUNT(*) as cnt FROM targets"
-                ).fetchone()["cnt"]
-                if tested_count >= total_targets and total_targets > 0:
-                    continue
+                if untested_only:
+                    # Count total target/service combos vs tested
+                    tested_count = len(access_rows)
+                    total_targets = conn.execute(
+                        "SELECT COUNT(*) as cnt FROM targets"
+                    ).fetchone()["cnt"]
+                    if tested_count >= total_targets and total_targets > 0:
+                        continue
 
-            result.append(c_dict)
+                result.append(c_dict)
 
-        conn.close()
-        return json.dumps(result, indent=2)
+            return json.dumps(result, indent=2)
 
     @mcp.tool()
     def get_access(target: str = "", active_only: bool = True) -> str:
@@ -408,24 +410,23 @@ def register_read_tools(mcp: FastMCP) -> None:
             target: Filter by target host (empty = all).
             active_only: Only return active sessions (default true).
         """
-        conn = _get_db()
-        query = "SELECT a.*, t.host FROM access a JOIN targets t ON a.target_id = t.id"
-        conditions = []
-        params: list = []
+        with _get_db() as conn:
+            query = "SELECT a.*, t.host FROM access a JOIN targets t ON a.target_id = t.id"
+            conditions = []
+            params: list = []
 
-        if target:
-            conditions.append("t.host = ?")
-            params.append(target)
-        if active_only:
-            conditions.append("a.active = 1")
+            if target:
+                conditions.append("t.host = ?")
+                params.append(target)
+            if active_only:
+                conditions.append("a.active = 1")
 
-        if conditions:
-            query += " WHERE " + " AND ".join(conditions)
-        query += " ORDER BY a.id"
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+            query += " ORDER BY a.id"
 
-        rows = conn.execute(query, params).fetchall()
-        conn.close()
-        return json.dumps(_rows_to_dicts(rows), indent=2)
+            rows = conn.execute(query, params).fetchall()
+            return json.dumps(_rows_to_dicts(rows), indent=2)
 
     @mcp.tool()
     def get_vulns(status: str = "", target: str = "") -> str:
@@ -435,27 +436,26 @@ def register_read_tools(mcp: FastMCP) -> None:
             status: Filter by status (found/active/done, empty = all).
             target: Filter by target host (empty = all).
         """
-        conn = _get_db()
-        query = (
-            "SELECT v.*, t.host FROM vulns v LEFT JOIN targets t ON v.target_id = t.id"
-        )
-        conditions = []
-        params: list = []
+        with _get_db() as conn:
+            query = (
+                "SELECT v.*, t.host FROM vulns v LEFT JOIN targets t ON v.target_id = t.id"
+            )
+            conditions = []
+            params: list = []
 
-        if status:
-            conditions.append("v.status = ?")
-            params.append(status)
-        if target:
-            conditions.append("t.host = ?")
-            params.append(target)
+            if status:
+                conditions.append("v.status = ?")
+                params.append(status)
+            if target:
+                conditions.append("t.host = ?")
+                params.append(target)
 
-        if conditions:
-            query += " WHERE " + " AND ".join(conditions)
-        query += " ORDER BY v.id"
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+            query += " ORDER BY v.id"
 
-        rows = conn.execute(query, params).fetchall()
-        conn.close()
-        return json.dumps(_rows_to_dicts(rows), indent=2)
+            rows = conn.execute(query, params).fetchall()
+            return json.dumps(_rows_to_dicts(rows), indent=2)
 
     @mcp.tool()
     def get_pivot_map(status: str = "") -> str:
@@ -464,16 +464,15 @@ def register_read_tools(mcp: FastMCP) -> None:
         Args:
             status: Filter by status (identified/exploited/blocked, empty = all).
         """
-        conn = _get_db()
-        if status:
-            rows = conn.execute(
-                "SELECT * FROM pivot_map WHERE status = ? ORDER BY id",
-                (status,),
-            ).fetchall()
-        else:
-            rows = conn.execute("SELECT * FROM pivot_map ORDER BY id").fetchall()
-        conn.close()
-        return json.dumps(_rows_to_dicts(rows), indent=2)
+        with _get_db() as conn:
+            if status:
+                rows = conn.execute(
+                    "SELECT * FROM pivot_map WHERE status = ? ORDER BY id",
+                    (status,),
+                ).fetchall()
+            else:
+                rows = conn.execute("SELECT * FROM pivot_map ORDER BY id").fetchall()
+            return json.dumps(_rows_to_dicts(rows), indent=2)
 
     @mcp.tool()
     def get_blocked(target: str = "") -> str:
@@ -482,22 +481,21 @@ def register_read_tools(mcp: FastMCP) -> None:
         Args:
             target: Filter by target host (empty = all).
         """
-        conn = _get_db()
-        if target:
-            rows = conn.execute(
-                "SELECT b.*, t.host FROM blocked b "
-                "LEFT JOIN targets t ON b.target_id = t.id "
-                "WHERE t.host = ? ORDER BY b.id",
-                (target,),
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                "SELECT b.*, t.host FROM blocked b "
-                "LEFT JOIN targets t ON b.target_id = t.id "
-                "ORDER BY b.id"
-            ).fetchall()
-        conn.close()
-        return json.dumps(_rows_to_dicts(rows), indent=2)
+        with _get_db() as conn:
+            if target:
+                rows = conn.execute(
+                    "SELECT b.*, t.host FROM blocked b "
+                    "LEFT JOIN targets t ON b.target_id = t.id "
+                    "WHERE t.host = ? ORDER BY b.id",
+                    (target,),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT b.*, t.host FROM blocked b "
+                    "LEFT JOIN targets t ON b.target_id = t.id "
+                    "ORDER BY b.id"
+                ).fetchall()
+            return json.dumps(_rows_to_dicts(rows), indent=2)
 
     @mcp.tool()
     def get_tunnels(status: str = "", pivot_host: str = "") -> str:
@@ -507,32 +505,30 @@ def register_read_tools(mcp: FastMCP) -> None:
             status: Filter by status (active/down/closed, empty = all).
             pivot_host: Filter by pivot host (empty = all).
         """
-        conn = _get_db()
-        # Backward compat: check table exists
-        if not conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='tunnels'"
-        ).fetchone():
-            conn.close()
-            return json.dumps([])
+        with _get_db() as conn:
+            # Backward compat: check table exists
+            if not conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='tunnels'"
+            ).fetchone():
+                return json.dumps([])
 
-        query = "SELECT * FROM tunnels"
-        conditions = []
-        params: list = []
+            query = "SELECT * FROM tunnels"
+            conditions = []
+            params: list = []
 
-        if status:
-            conditions.append("status = ?")
-            params.append(status)
-        if pivot_host:
-            conditions.append("pivot_host = ?")
-            params.append(pivot_host)
+            if status:
+                conditions.append("status = ?")
+                params.append(status)
+            if pivot_host:
+                conditions.append("pivot_host = ?")
+                params.append(pivot_host)
 
-        if conditions:
-            query += " WHERE " + " AND ".join(conditions)
-        query += " ORDER BY id"
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+            query += " ORDER BY id"
 
-        rows = conn.execute(query, params).fetchall()
-        conn.close()
-        return json.dumps(_rows_to_dicts(rows), indent=2)
+            rows = conn.execute(query, params).fetchall()
+            return json.dumps(_rows_to_dicts(rows), indent=2)
 
     @mcp.tool()
     def poll_events(since_id: int = 0, limit: int = 50) -> str:
@@ -547,28 +543,27 @@ def register_read_tools(mcp: FastMCP) -> None:
             limit: Maximum events to return (default 50).
         """
         try:
-            conn = _get_db()
+            db = _get_db()
         except FileNotFoundError:
             return json.dumps({"events": [], "cursor": 0, "count": 0})
 
-        # Backward compat: check table exists (older DBs without v2 schema)
-        if not conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='state_events'"
-        ).fetchone():
-            conn.close()
-            return json.dumps({"events": [], "cursor": 0, "count": 0})
+        with db as conn:
+            # Backward compat: check table exists (older DBs without v2 schema)
+            if not conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='state_events'"
+            ).fetchone():
+                return json.dumps({"events": [], "cursor": 0, "count": 0})
 
-        rows = conn.execute(
-            "SELECT * FROM state_events WHERE id > ? ORDER BY id LIMIT ?",
-            (since_id, limit),
-        ).fetchall()
-        events = _rows_to_dicts(rows)
-        cursor = events[-1]["id"] if events else since_id
-        conn.close()
-        return json.dumps(
-            {"events": events, "cursor": cursor, "count": len(events)},
-            indent=2,
-        )
+            rows = conn.execute(
+                "SELECT * FROM state_events WHERE id > ? ORDER BY id LIMIT ?",
+                (since_id, limit),
+            ).fetchall()
+            events = _rows_to_dicts(rows)
+            cursor = events[-1]["id"] if events else since_id
+            return json.dumps(
+                {"events": events, "cursor": cursor, "count": len(events)},
+                indent=2,
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -596,25 +591,27 @@ def register_write_tools(mcp: FastMCP) -> None:
             )
         DB_PATH.parent.mkdir(parents=True, exist_ok=True)
         conn = init_db(DB_PATH)
-        # Insert singleton engagement row if not exists
-        existing = conn.execute("SELECT id FROM engagement WHERE id = 1").fetchone()
-        if not existing:
-            conn.execute(
-                "INSERT INTO engagement (id, name, mode) VALUES (1, ?, ?)",
-                (name, mode),
-            )
-        else:
-            updates = ["mode = ?"]
-            params: list[str] = [mode]
-            if name:
-                updates.append("name = ?")
-                params.append(name)
-            conn.execute(
-                f"UPDATE engagement SET {', '.join(updates)} WHERE id = 1",
-                params,
-            )
-        conn.commit()
-        conn.close()
+        try:
+            # Insert singleton engagement row if not exists
+            existing = conn.execute("SELECT id FROM engagement WHERE id = 1").fetchone()
+            if not existing:
+                conn.execute(
+                    "INSERT INTO engagement (id, name, mode) VALUES (1, ?, ?)",
+                    (name, mode),
+                )
+            else:
+                updates = ["mode = ?"]
+                params: list[str] = [mode]
+                if name:
+                    updates.append("name = ?")
+                    params.append(name)
+                conn.execute(
+                    f"UPDATE engagement SET {', '.join(updates)} WHERE id = 1",
+                    params,
+                )
+            conn.commit()
+        finally:
+            conn.close()
         return json.dumps(
             {
                 "status": "initialized",
@@ -628,14 +625,13 @@ def register_write_tools(mcp: FastMCP) -> None:
     @mcp.tool()
     def close_engagement() -> str:
         """Mark the engagement as closed."""
-        conn = _get_db()
-        conn.execute(
-            f"UPDATE engagement SET status = 'closed', "
-            f"closed_at = {_now_sql()} WHERE id = 1"
-        )
-        conn.commit()
-        conn.close()
-        return json.dumps({"status": "closed"})
+        with _get_db() as conn:
+            conn.execute(
+                f"UPDATE engagement SET status = 'closed', "
+                f"closed_at = {_now_sql()} WHERE id = 1"
+            )
+            conn.commit()
+            return json.dumps({"status": "closed"})
 
     @mcp.tool()
     def add_target(
@@ -659,71 +655,70 @@ def register_write_tools(mcp: FastMCP) -> None:
                    service (str), banner (str).
                    Example: [{"port": 80, "service": "http"}, {"port": 443, "service": "https"}]
         """
-        conn = _get_db()
-        existing = conn.execute(
-            "SELECT id FROM targets WHERE host = ?", (host,)
-        ).fetchone()
+        with _get_db() as conn:
+            existing = conn.execute(
+                "SELECT id FROM targets WHERE host = ?", (host,)
+            ).fetchone()
 
-        if existing:
-            target_id = existing["id"]
-            updates = []
-            params: list = []
-            if os:
-                updates.append("os = ?")
-                params.append(os)
-            if role:
-                updates.append("role = ?")
-                params.append(role)
-            if notes:
-                updates.append("notes = ?")
-                params.append(notes)
-            if discovered_by:
-                updates.append("discovered_by = ?")
-                params.append(discovered_by)
-            if updates:
-                updates.append(f"updated_at = {_now_sql()}")
-                params.append(target_id)
-                conn.execute(
-                    f"UPDATE targets SET {', '.join(updates)} WHERE id = ?",
-                    params,
+            if existing:
+                target_id = existing["id"]
+                updates = []
+                params: list = []
+                if os:
+                    updates.append("os = ?")
+                    params.append(os)
+                if role:
+                    updates.append("role = ?")
+                    params.append(role)
+                if notes:
+                    updates.append("notes = ?")
+                    params.append(notes)
+                if discovered_by:
+                    updates.append("discovered_by = ?")
+                    params.append(discovered_by)
+                if updates:
+                    updates.append(f"updated_at = {_now_sql()}")
+                    params.append(target_id)
+                    conn.execute(
+                        f"UPDATE targets SET {', '.join(updates)} WHERE id = ?",
+                        params,
+                    )
+            else:
+                cursor = conn.execute(
+                    "INSERT INTO targets (host, os, role, notes, discovered_by) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (host, os, role, notes, discovered_by),
                 )
-        else:
-            cursor = conn.execute(
-                "INSERT INTO targets (host, os, role, notes, discovered_by) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (host, os, role, notes, discovered_by),
+                target_id = cursor.lastrowid
+
+            # Process ports if provided
+            if ports:
+                port_list = json.loads(ports) if isinstance(ports, str) else ports
+                for p in port_list:
+                    port_num = p["port"]
+                    protocol = p.get("protocol", "tcp")
+                    state = p.get("state", "open")
+                    service = p.get("service", "")
+                    banner = p.get("banner", "")
+                    conn.execute(
+                        "INSERT INTO ports (target_id, port, protocol, state, service, banner) "
+                        "VALUES (?, ?, ?, ?, ?, ?) "
+                        "ON CONFLICT(target_id, port, protocol) DO UPDATE SET "
+                        "state = excluded.state, "
+                        "service = CASE WHEN excluded.service != '' THEN excluded.service ELSE ports.service END, "
+                        "banner = CASE WHEN excluded.banner != '' THEN excluded.banner ELSE ports.banner END",
+                        (target_id, port_num, protocol, state, service, banner),
+                    )
+
+            conn.commit()
+            return json.dumps(
+                {
+                    "target_id": target_id,
+                    "host": host,
+                    "action": "updated" if existing else "created",
+                },
+                indent=2,
             )
-            target_id = cursor.lastrowid
-
-        # Process ports if provided
-        if ports:
-            port_list = json.loads(ports) if isinstance(ports, str) else ports
-            for p in port_list:
-                port_num = p["port"]
-                protocol = p.get("protocol", "tcp")
-                state = p.get("state", "open")
-                service = p.get("service", "")
-                banner = p.get("banner", "")
-                conn.execute(
-                    "INSERT INTO ports (target_id, port, protocol, state, service, banner) "
-                    "VALUES (?, ?, ?, ?, ?, ?) "
-                    "ON CONFLICT(target_id, port, protocol) DO UPDATE SET "
-                    "state = excluded.state, "
-                    "service = CASE WHEN excluded.service != '' THEN excluded.service ELSE ports.service END, "
-                    "banner = CASE WHEN excluded.banner != '' THEN excluded.banner ELSE ports.banner END",
-                    (target_id, port_num, protocol, state, service, banner),
-                )
-
-        conn.commit()
-        conn.close()
-        return json.dumps(
-            {
-                "target_id": target_id,
-                "host": host,
-                "action": "updated" if existing else "created",
-            },
-            indent=2,
-        )
 
     @mcp.tool()
     def update_target(
@@ -740,37 +735,34 @@ def register_write_tools(mcp: FastMCP) -> None:
             role: New role value (empty = no change).
             notes: New notes value (empty = no change).
         """
-        conn = _get_db()
-        target_id = _resolve_target_id(conn, host)
-        if target_id is None:
-            conn.close()
-            return f"ERROR: Target '{host}' not found."
+        with _get_db() as conn:
+            target_id = _resolve_target_id(conn, host)
+            if target_id is None:
+                return f"ERROR: Target '{host}' not found."
 
-        updates = []
-        params: list = []
-        if os:
-            updates.append("os = ?")
-            params.append(os)
-        if role:
-            updates.append("role = ?")
-            params.append(role)
-        if notes:
-            updates.append("notes = ?")
-            params.append(notes)
+            updates = []
+            params: list = []
+            if os:
+                updates.append("os = ?")
+                params.append(os)
+            if role:
+                updates.append("role = ?")
+                params.append(role)
+            if notes:
+                updates.append("notes = ?")
+                params.append(notes)
 
-        if not updates:
-            conn.close()
-            return "No fields to update."
+            if not updates:
+                return "No fields to update."
 
-        updates.append(f"updated_at = {_now_sql()}")
-        params.append(target_id)
-        conn.execute(
-            f"UPDATE targets SET {', '.join(updates)} WHERE id = ?",
-            params,
-        )
-        conn.commit()
-        conn.close()
-        return json.dumps({"target_id": target_id, "host": host, "updated": True})
+            updates.append(f"updated_at = {_now_sql()}")
+            params.append(target_id)
+            conn.execute(
+                f"UPDATE targets SET {', '.join(updates)} WHERE id = ?",
+                params,
+            )
+            conn.commit()
+            return json.dumps({"target_id": target_id, "host": host, "updated": True})
 
     @mcp.tool()
     def add_port(
@@ -791,31 +783,29 @@ def register_write_tools(mcp: FastMCP) -> None:
             service: Service name (e.g., "http", "ssh").
             banner: Service banner/version string.
         """
-        conn = _get_db()
-        target_id = _resolve_target_id(conn, host)
-        if target_id is None:
-            conn.close()
-            return f"ERROR: Target '{host}' not found. Add the target first."
+        with _get_db() as conn:
+            target_id = _resolve_target_id(conn, host)
+            if target_id is None:
+                return f"ERROR: Target '{host}' not found. Add the target first."
 
-        conn.execute(
-            "INSERT INTO ports (target_id, port, protocol, state, service, banner) "
-            "VALUES (?, ?, ?, ?, ?, ?) "
-            "ON CONFLICT(target_id, port, protocol) DO UPDATE SET "
-            "state = excluded.state, "
-            "service = CASE WHEN excluded.service != '' THEN excluded.service ELSE ports.service END, "
-            "banner = CASE WHEN excluded.banner != '' THEN excluded.banner ELSE ports.banner END",
-            (target_id, port, protocol, state, service, banner),
-        )
-        conn.commit()
-        conn.close()
-        return json.dumps(
-            {
-                "host": host,
-                "port": port,
-                "protocol": protocol,
-                "service": service,
-            }
-        )
+            conn.execute(
+                "INSERT INTO ports (target_id, port, protocol, state, service, banner) "
+                "VALUES (?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(target_id, port, protocol) DO UPDATE SET "
+                "state = excluded.state, "
+                "service = CASE WHEN excluded.service != '' THEN excluded.service ELSE ports.service END, "
+                "banner = CASE WHEN excluded.banner != '' THEN excluded.banner ELSE ports.banner END",
+                (target_id, port, protocol, state, service, banner),
+            )
+            conn.commit()
+            return json.dumps(
+                {
+                    "host": host,
+                    "port": port,
+                    "protocol": protocol,
+                    "service": service,
+                }
+            )
 
     @mcp.tool()
     def add_credential(
@@ -841,50 +831,48 @@ def register_write_tools(mcp: FastMCP) -> None:
                           (for kill-chain provenance). None = provided/external.
             discovered_by: Skill that found this credential.
         """
-        conn = _get_db()
-        existing = conn.execute(
-            "SELECT id FROM credentials "
-            "WHERE username = ? AND secret_type = ? AND secret = ?",
-            (username, secret_type, secret),
-        ).fetchone()
-        if existing:
-            conn.close()
+        with _get_db() as conn:
+            existing = conn.execute(
+                "SELECT id FROM credentials "
+                "WHERE username = ? AND secret_type = ? AND secret = ?",
+                (username, secret_type, secret),
+            ).fetchone()
+            if existing:
+                return json.dumps(
+                    {
+                        "credential_id": existing["id"],
+                        "status": "duplicate_skipped",
+                        "username": username,
+                        "secret_type": secret_type,
+                        "domain": domain,
+                    },
+                    indent=2,
+                )
+            cursor = conn.execute(
+                "INSERT INTO credentials "
+                "(username, secret, secret_type, domain, source, via_access_id, discovered_by) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (
+                    username,
+                    secret,
+                    secret_type,
+                    domain,
+                    source,
+                    via_access_id,
+                    discovered_by,
+                ),
+            )
+            cred_id = cursor.lastrowid
+            conn.commit()
             return json.dumps(
                 {
-                    "credential_id": existing["id"],
-                    "status": "duplicate_skipped",
+                    "credential_id": cred_id,
                     "username": username,
                     "secret_type": secret_type,
                     "domain": domain,
                 },
                 indent=2,
             )
-        cursor = conn.execute(
-            "INSERT INTO credentials "
-            "(username, secret, secret_type, domain, source, via_access_id, discovered_by) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (
-                username,
-                secret,
-                secret_type,
-                domain,
-                source,
-                via_access_id,
-                discovered_by,
-            ),
-        )
-        cred_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
-        return json.dumps(
-            {
-                "credential_id": cred_id,
-                "username": username,
-                "secret_type": secret_type,
-                "domain": domain,
-            },
-            indent=2,
-        )
 
     @mcp.tool()
     def update_credential(
@@ -901,32 +889,30 @@ def register_write_tools(mcp: FastMCP) -> None:
             secret: Updated secret value (e.g., cracked plaintext).
             notes: Additional notes.
         """
-        conn = _get_db()
-        updates = []
-        params: list = []
-        if cracked is not None:
-            updates.append("cracked = ?")
-            params.append(1 if cracked else 0)
-        if secret:
-            updates.append("secret = ?")
-            params.append(secret)
-        if notes:
-            updates.append("notes = ?")
-            params.append(notes)
+        with _get_db() as conn:
+            updates = []
+            params: list = []
+            if cracked is not None:
+                updates.append("cracked = ?")
+                params.append(1 if cracked else 0)
+            if secret:
+                updates.append("secret = ?")
+                params.append(secret)
+            if notes:
+                updates.append("notes = ?")
+                params.append(notes)
 
-        if not updates:
-            conn.close()
-            return "No fields to update."
+            if not updates:
+                return "No fields to update."
 
-        updates.append(f"updated_at = {_now_sql()}")
-        params.append(id)
-        conn.execute(
-            f"UPDATE credentials SET {', '.join(updates)} WHERE id = ?",
-            params,
-        )
-        conn.commit()
-        conn.close()
-        return json.dumps({"credential_id": id, "updated": True})
+            updates.append(f"updated_at = {_now_sql()}")
+            params.append(id)
+            conn.execute(
+                f"UPDATE credentials SET {', '.join(updates)} WHERE id = ?",
+                params,
+            )
+            conn.commit()
+            return json.dumps({"credential_id": id, "updated": True})
 
     @mcp.tool()
     def test_credential(
@@ -947,32 +933,30 @@ def register_write_tools(mcp: FastMCP) -> None:
             works: Whether the credential authenticated successfully.
             tested_by: Skill that performed the test.
         """
-        conn = _get_db()
-        target_id = _resolve_target_id(conn, host)
-        if target_id is None:
-            conn.close()
-            return f"ERROR: Target '{host}' not found."
+        with _get_db() as conn:
+            target_id = _resolve_target_id(conn, host)
+            if target_id is None:
+                return f"ERROR: Target '{host}' not found."
 
-        conn.execute(
-            "INSERT INTO credential_access "
-            "(credential_id, target_id, service, works, tested_by) "
-            "VALUES (?, ?, ?, ?, ?) "
-            "ON CONFLICT(credential_id, target_id, service) DO UPDATE SET "
-            "works = excluded.works, "
-            "tested_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), "
-            "tested_by = excluded.tested_by",
-            (credential_id, target_id, service, 1 if works else 0, tested_by),
-        )
-        conn.commit()
-        conn.close()
-        return json.dumps(
-            {
-                "credential_id": credential_id,
-                "host": host,
-                "service": service,
-                "works": works,
-            }
-        )
+            conn.execute(
+                "INSERT INTO credential_access "
+                "(credential_id, target_id, service, works, tested_by) "
+                "VALUES (?, ?, ?, ?, ?) "
+                "ON CONFLICT(credential_id, target_id, service) DO UPDATE SET "
+                "works = excluded.works, "
+                "tested_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), "
+                "tested_by = excluded.tested_by",
+                (credential_id, target_id, service, 1 if works else 0, tested_by),
+            )
+            conn.commit()
+            return json.dumps(
+                {
+                    "credential_id": credential_id,
+                    "host": host,
+                    "service": service,
+                    "works": works,
+                }
+            )
 
     @mcp.tool()
     def add_access(
@@ -999,40 +983,38 @@ def register_write_tools(mcp: FastMCP) -> None:
             discovered_by: Skill that gained access.
             notes: Additional notes.
         """
-        conn = _get_db()
-        target_id = _resolve_target_id(conn, host)
-        if target_id is None:
-            conn.close()
-            return f"ERROR: Target '{host}' not found."
+        with _get_db() as conn:
+            target_id = _resolve_target_id(conn, host)
+            if target_id is None:
+                return f"ERROR: Target '{host}' not found."
 
-        cursor = conn.execute(
-            "INSERT INTO access "
-            "(target_id, access_type, username, privilege, method, "
-            "session_ref, discovered_by, notes) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                target_id,
-                access_type,
-                username,
-                privilege,
-                method,
-                session_ref,
-                discovered_by,
-                notes,
-            ),
-        )
-        access_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
-        return json.dumps(
-            {
-                "access_id": access_id,
-                "host": host,
-                "access_type": access_type,
-                "privilege": privilege,
-            },
-            indent=2,
-        )
+            cursor = conn.execute(
+                "INSERT INTO access "
+                "(target_id, access_type, username, privilege, method, "
+                "session_ref, discovered_by, notes) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    target_id,
+                    access_type,
+                    username,
+                    privilege,
+                    method,
+                    session_ref,
+                    discovered_by,
+                    notes,
+                ),
+            )
+            access_id = cursor.lastrowid
+            conn.commit()
+            return json.dumps(
+                {
+                    "access_id": access_id,
+                    "host": host,
+                    "access_type": access_type,
+                    "privilege": privilege,
+                },
+                indent=2,
+            )
 
     @mcp.tool()
     def update_access(
@@ -1049,32 +1031,30 @@ def register_write_tools(mcp: FastMCP) -> None:
             privilege: Updated privilege level.
             notes: Additional notes.
         """
-        conn = _get_db()
-        updates = []
-        params: list = []
-        if active is not None:
-            updates.append("active = ?")
-            params.append(1 if active else 0)
-        if privilege:
-            updates.append("privilege = ?")
-            params.append(privilege)
-        if notes:
-            updates.append("notes = ?")
-            params.append(notes)
+        with _get_db() as conn:
+            updates = []
+            params: list = []
+            if active is not None:
+                updates.append("active = ?")
+                params.append(1 if active else 0)
+            if privilege:
+                updates.append("privilege = ?")
+                params.append(privilege)
+            if notes:
+                updates.append("notes = ?")
+                params.append(notes)
 
-        if not updates:
-            conn.close()
-            return "No fields to update."
+            if not updates:
+                return "No fields to update."
 
-        updates.append(f"updated_at = {_now_sql()}")
-        params.append(id)
-        conn.execute(
-            f"UPDATE access SET {', '.join(updates)} WHERE id = ?",
-            params,
-        )
-        conn.commit()
-        conn.close()
-        return json.dumps({"access_id": id, "updated": True})
+            updates.append(f"updated_at = {_now_sql()}")
+            params.append(id)
+            conn.execute(
+                f"UPDATE access SET {', '.join(updates)} WHERE id = ?",
+                params,
+            )
+            conn.commit()
+            return json.dumps({"access_id": id, "updated": True})
 
     @mcp.tool()
     def add_vuln(
@@ -1104,44 +1084,42 @@ def register_write_tools(mcp: FastMCP) -> None:
                           (for kill-chain provenance). None = unauthenticated/recon.
             discovered_by: Skill that found this vulnerability.
         """
-        conn = _get_db()
-        target_id = None
-        if host:
-            target_id = _resolve_target_id(conn, host)
-            if target_id is None:
-                conn.close()
-                return f"ERROR: Target '{host}' not found. Add the target first."
+        with _get_db() as conn:
+            target_id = None
+            if host:
+                target_id = _resolve_target_id(conn, host)
+                if target_id is None:
+                    return f"ERROR: Target '{host}' not found. Add the target first."
 
-        cursor = conn.execute(
-            "INSERT INTO vulns "
-            "(target_id, title, vuln_type, status, severity, endpoint, "
-            "details, evidence_path, via_access_id, discovered_by) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                target_id,
-                title,
-                vuln_type,
-                status,
-                severity,
-                endpoint,
-                details,
-                evidence_path,
-                via_access_id,
-                discovered_by,
-            ),
-        )
-        vuln_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
-        return json.dumps(
-            {
-                "vuln_id": vuln_id,
-                "title": title,
-                "severity": severity,
-                "status": status,
-            },
-            indent=2,
-        )
+            cursor = conn.execute(
+                "INSERT INTO vulns "
+                "(target_id, title, vuln_type, status, severity, endpoint, "
+                "details, evidence_path, via_access_id, discovered_by) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    target_id,
+                    title,
+                    vuln_type,
+                    status,
+                    severity,
+                    endpoint,
+                    details,
+                    evidence_path,
+                    via_access_id,
+                    discovered_by,
+                ),
+            )
+            vuln_id = cursor.lastrowid
+            conn.commit()
+            return json.dumps(
+                {
+                    "vuln_id": vuln_id,
+                    "title": title,
+                    "severity": severity,
+                    "status": status,
+                },
+                indent=2,
+            )
 
     @mcp.tool()
     def update_vuln(
@@ -1158,32 +1136,30 @@ def register_write_tools(mcp: FastMCP) -> None:
             severity: Updated severity.
             details: Updated details.
         """
-        conn = _get_db()
-        updates = []
-        params: list = []
-        if status:
-            updates.append("status = ?")
-            params.append(status)
-        if severity:
-            updates.append("severity = ?")
-            params.append(severity)
-        if details:
-            updates.append("details = ?")
-            params.append(details)
+        with _get_db() as conn:
+            updates = []
+            params: list = []
+            if status:
+                updates.append("status = ?")
+                params.append(status)
+            if severity:
+                updates.append("severity = ?")
+                params.append(severity)
+            if details:
+                updates.append("details = ?")
+                params.append(details)
 
-        if not updates:
-            conn.close()
-            return "No fields to update."
+            if not updates:
+                return "No fields to update."
 
-        updates.append(f"updated_at = {_now_sql()}")
-        params.append(id)
-        conn.execute(
-            f"UPDATE vulns SET {', '.join(updates)} WHERE id = ?",
-            params,
-        )
-        conn.commit()
-        conn.close()
-        return json.dumps({"vuln_id": id, "updated": True})
+            updates.append(f"updated_at = {_now_sql()}")
+            params.append(id)
+            conn.execute(
+                f"UPDATE vulns SET {', '.join(updates)} WHERE id = ?",
+                params,
+            )
+            conn.commit()
+            return json.dumps({"vuln_id": id, "updated": True})
 
     @mcp.tool()
     def add_pivot(
@@ -1204,25 +1180,24 @@ def register_write_tools(mcp: FastMCP) -> None:
             discovered_by: Skill that identified this path.
             notes: Additional notes.
         """
-        conn = _get_db()
-        cursor = conn.execute(
-            "INSERT INTO pivot_map "
-            "(source, destination, method, status, discovered_by, notes) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (source, destination, method, status, discovered_by, notes),
-        )
-        pivot_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
-        return json.dumps(
-            {
-                "pivot_id": pivot_id,
-                "source": source,
-                "destination": destination,
-                "status": status,
-            },
-            indent=2,
-        )
+        with _get_db() as conn:
+            cursor = conn.execute(
+                "INSERT INTO pivot_map "
+                "(source, destination, method, status, discovered_by, notes) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (source, destination, method, status, discovered_by, notes),
+            )
+            pivot_id = cursor.lastrowid
+            conn.commit()
+            return json.dumps(
+                {
+                    "pivot_id": pivot_id,
+                    "source": source,
+                    "destination": destination,
+                    "status": status,
+                },
+                indent=2,
+            )
 
     @mcp.tool()
     def update_pivot(
@@ -1237,28 +1212,26 @@ def register_write_tools(mcp: FastMCP) -> None:
             status: Updated status (identified/exploited/blocked).
             notes: Updated notes.
         """
-        conn = _get_db()
-        updates = []
-        params: list = []
-        if status:
-            updates.append("status = ?")
-            params.append(status)
-        if notes:
-            updates.append("notes = ?")
-            params.append(notes)
+        with _get_db() as conn:
+            updates = []
+            params: list = []
+            if status:
+                updates.append("status = ?")
+                params.append(status)
+            if notes:
+                updates.append("notes = ?")
+                params.append(notes)
 
-        if not updates:
-            conn.close()
-            return "No fields to update."
+            if not updates:
+                return "No fields to update."
 
-        params.append(id)
-        conn.execute(
-            f"UPDATE pivot_map SET {', '.join(updates)} WHERE id = ?",
-            params,
-        )
-        conn.commit()
-        conn.close()
-        return json.dumps({"pivot_id": id, "updated": True})
+            params.append(id)
+            conn.execute(
+                f"UPDATE pivot_map SET {', '.join(updates)} WHERE id = ?",
+                params,
+            )
+            conn.commit()
+            return json.dumps({"pivot_id": id, "updated": True})
 
     @mcp.tool()
     def add_blocked(
@@ -1279,28 +1252,27 @@ def register_write_tools(mcp: FastMCP) -> None:
             notes: Additional notes.
             blocked_by: Skill that was blocked.
         """
-        conn = _get_db()
-        target_id = None
-        if host:
-            target_id = _resolve_target_id(conn, host)
+        with _get_db() as conn:
+            target_id = None
+            if host:
+                target_id = _resolve_target_id(conn, host)
 
-        cursor = conn.execute(
-            "INSERT INTO blocked "
-            "(target_id, technique, reason, retry, notes, blocked_by) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (target_id, technique, reason, retry, notes, blocked_by),
-        )
-        blocked_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
-        return json.dumps(
-            {
-                "blocked_id": blocked_id,
-                "technique": technique,
-                "retry": retry,
-            },
-            indent=2,
-        )
+            cursor = conn.execute(
+                "INSERT INTO blocked "
+                "(target_id, technique, reason, retry, notes, blocked_by) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (target_id, technique, reason, retry, notes, blocked_by),
+            )
+            blocked_id = cursor.lastrowid
+            conn.commit()
+            return json.dumps(
+                {
+                    "blocked_id": blocked_id,
+                    "technique": technique,
+                    "retry": retry,
+                },
+                indent=2,
+            )
 
     @mcp.tool()
     def add_tunnel(
@@ -1328,36 +1300,35 @@ def register_write_tools(mcp: FastMCP) -> None:
             notes: Additional notes.
             created_by: Skill/agent that created this tunnel.
         """
-        conn = _get_db()
-        cursor = conn.execute(
-            "INSERT INTO tunnels "
-            "(tunnel_type, pivot_host, target_subnet, local_endpoint, "
-            "remote_endpoint, requires_proxychains, notes, created_by) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                tunnel_type,
-                pivot_host,
-                target_subnet,
-                local_endpoint,
-                remote_endpoint,
-                1 if requires_proxychains else 0,
-                notes,
-                created_by,
-            ),
-        )
-        tunnel_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
-        return json.dumps(
-            {
-                "tunnel_id": tunnel_id,
-                "tunnel_type": tunnel_type,
-                "pivot_host": pivot_host,
-                "target_subnet": target_subnet,
-                "requires_proxychains": requires_proxychains,
-            },
-            indent=2,
-        )
+        with _get_db() as conn:
+            cursor = conn.execute(
+                "INSERT INTO tunnels "
+                "(tunnel_type, pivot_host, target_subnet, local_endpoint, "
+                "remote_endpoint, requires_proxychains, notes, created_by) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    tunnel_type,
+                    pivot_host,
+                    target_subnet,
+                    local_endpoint,
+                    remote_endpoint,
+                    1 if requires_proxychains else 0,
+                    notes,
+                    created_by,
+                ),
+            )
+            tunnel_id = cursor.lastrowid
+            conn.commit()
+            return json.dumps(
+                {
+                    "tunnel_id": tunnel_id,
+                    "tunnel_type": tunnel_type,
+                    "pivot_host": pivot_host,
+                    "target_subnet": target_subnet,
+                    "requires_proxychains": requires_proxychains,
+                },
+                indent=2,
+            )
 
     @mcp.tool()
     def update_tunnel(
@@ -1372,29 +1343,27 @@ def register_write_tools(mcp: FastMCP) -> None:
             status: Updated status (active/down/closed).
             notes: Updated notes.
         """
-        conn = _get_db()
-        updates = []
-        params: list = []
-        if status:
-            updates.append("status = ?")
-            params.append(status)
-        if notes:
-            updates.append("notes = ?")
-            params.append(notes)
+        with _get_db() as conn:
+            updates = []
+            params: list = []
+            if status:
+                updates.append("status = ?")
+                params.append(status)
+            if notes:
+                updates.append("notes = ?")
+                params.append(notes)
 
-        if not updates:
-            conn.close()
-            return "No fields to update."
+            if not updates:
+                return "No fields to update."
 
-        updates.append(f"updated_at = {_now_sql()}")
-        params.append(id)
-        conn.execute(
-            f"UPDATE tunnels SET {', '.join(updates)} WHERE id = ?",
-            params,
-        )
-        conn.commit()
-        conn.close()
-        return json.dumps({"tunnel_id": id, "updated": True})
+            updates.append(f"updated_at = {_now_sql()}")
+            params.append(id)
+            conn.execute(
+                f"UPDATE tunnels SET {', '.join(updates)} WHERE id = ?",
+                params,
+            )
+            conn.commit()
+            return json.dumps({"tunnel_id": id, "updated": True})
 
 
 # ---------------------------------------------------------------------------
@@ -1439,56 +1408,54 @@ def register_interim_tools(mcp: FastMCP) -> None:
                           (for kill-chain provenance). None = provided/external.
             discovered_by: Skill that found this credential.
         """
-        conn = _get_db()
-        existing = conn.execute(
-            "SELECT id FROM credentials "
-            "WHERE username = ? AND secret_type = ? AND secret = ?",
-            (username, secret_type, secret),
-        ).fetchone()
-        if existing:
-            conn.close()
+        with _get_db() as conn:
+            existing = conn.execute(
+                "SELECT id FROM credentials "
+                "WHERE username = ? AND secret_type = ? AND secret = ?",
+                (username, secret_type, secret),
+            ).fetchone()
+            if existing:
+                return json.dumps(
+                    {
+                        "credential_id": existing["id"],
+                        "status": "duplicate_skipped",
+                        "username": username,
+                        "secret_type": secret_type,
+                        "domain": domain,
+                    },
+                    indent=2,
+                )
+            cursor = conn.execute(
+                "INSERT INTO credentials "
+                "(username, secret, secret_type, domain, source, via_access_id, discovered_by) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (
+                    username,
+                    secret,
+                    secret_type,
+                    domain,
+                    source,
+                    via_access_id,
+                    discovered_by,
+                ),
+            )
+            cred_id = cursor.lastrowid
+            summary = (
+                f"{domain}\\{username} ({secret_type})"
+                if domain
+                else f"{username} ({secret_type})"
+            )
+            _emit_event(conn, "credential", cred_id, summary, discovered_by)
+            conn.commit()
             return json.dumps(
                 {
-                    "credential_id": existing["id"],
-                    "status": "duplicate_skipped",
+                    "credential_id": cred_id,
                     "username": username,
                     "secret_type": secret_type,
                     "domain": domain,
                 },
                 indent=2,
             )
-        cursor = conn.execute(
-            "INSERT INTO credentials "
-            "(username, secret, secret_type, domain, source, via_access_id, discovered_by) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (
-                username,
-                secret,
-                secret_type,
-                domain,
-                source,
-                via_access_id,
-                discovered_by,
-            ),
-        )
-        cred_id = cursor.lastrowid
-        summary = (
-            f"{domain}\\{username} ({secret_type})"
-            if domain
-            else f"{username} ({secret_type})"
-        )
-        _emit_event(conn, "credential", cred_id, summary, discovered_by)
-        conn.commit()
-        conn.close()
-        return json.dumps(
-            {
-                "credential_id": cred_id,
-                "username": username,
-                "secret_type": secret_type,
-                "domain": domain,
-            },
-            indent=2,
-        )
 
     @mcp.tool()
     def add_vuln(
@@ -1518,48 +1485,46 @@ def register_interim_tools(mcp: FastMCP) -> None:
                           (for kill-chain provenance). None = unauthenticated/recon.
             discovered_by: Skill that found this vulnerability.
         """
-        conn = _get_db()
-        target_id = None
-        if host:
-            target_id = _resolve_target_id(conn, host)
-            if target_id is None:
-                conn.close()
-                return f"ERROR: Target '{host}' not found. Add the target first."
+        with _get_db() as conn:
+            target_id = None
+            if host:
+                target_id = _resolve_target_id(conn, host)
+                if target_id is None:
+                    return f"ERROR: Target '{host}' not found. Add the target first."
 
-        cursor = conn.execute(
-            "INSERT INTO vulns "
-            "(target_id, title, vuln_type, status, severity, endpoint, "
-            "details, evidence_path, via_access_id, discovered_by) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                target_id,
-                title,
-                vuln_type,
-                status,
-                severity,
-                endpoint,
-                details,
-                evidence_path,
-                via_access_id,
-                discovered_by,
-            ),
-        )
-        vuln_id = cursor.lastrowid
-        summary = f"{title} [{severity}]"
-        if host:
-            summary += f" on {host}"
-        _emit_event(conn, "vuln", vuln_id, summary, discovered_by)
-        conn.commit()
-        conn.close()
-        return json.dumps(
-            {
-                "vuln_id": vuln_id,
-                "title": title,
-                "severity": severity,
-                "status": status,
-            },
-            indent=2,
-        )
+            cursor = conn.execute(
+                "INSERT INTO vulns "
+                "(target_id, title, vuln_type, status, severity, endpoint, "
+                "details, evidence_path, via_access_id, discovered_by) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    target_id,
+                    title,
+                    vuln_type,
+                    status,
+                    severity,
+                    endpoint,
+                    details,
+                    evidence_path,
+                    via_access_id,
+                    discovered_by,
+                ),
+            )
+            vuln_id = cursor.lastrowid
+            summary = f"{title} [{severity}]"
+            if host:
+                summary += f" on {host}"
+            _emit_event(conn, "vuln", vuln_id, summary, discovered_by)
+            conn.commit()
+            return json.dumps(
+                {
+                    "vuln_id": vuln_id,
+                    "title": title,
+                    "severity": severity,
+                    "status": status,
+                },
+                indent=2,
+            )
 
     @mcp.tool()
     def add_pivot(
@@ -1580,32 +1545,31 @@ def register_interim_tools(mcp: FastMCP) -> None:
             discovered_by: Skill that identified this path.
             notes: Additional notes.
         """
-        conn = _get_db()
-        cursor = conn.execute(
-            "INSERT INTO pivot_map "
-            "(source, destination, method, status, discovered_by, notes) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (source, destination, method, status, discovered_by, notes),
-        )
-        pivot_id = cursor.lastrowid
-        _emit_event(
-            conn,
-            "pivot",
-            pivot_id,
-            f"{source} -> {destination}",
-            discovered_by,
-        )
-        conn.commit()
-        conn.close()
-        return json.dumps(
-            {
-                "pivot_id": pivot_id,
-                "source": source,
-                "destination": destination,
-                "status": status,
-            },
-            indent=2,
-        )
+        with _get_db() as conn:
+            cursor = conn.execute(
+                "INSERT INTO pivot_map "
+                "(source, destination, method, status, discovered_by, notes) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (source, destination, method, status, discovered_by, notes),
+            )
+            pivot_id = cursor.lastrowid
+            _emit_event(
+                conn,
+                "pivot",
+                pivot_id,
+                f"{source} -> {destination}",
+                discovered_by,
+            )
+            conn.commit()
+            return json.dumps(
+                {
+                    "pivot_id": pivot_id,
+                    "source": source,
+                    "destination": destination,
+                    "status": status,
+                },
+                indent=2,
+            )
 
     @mcp.tool()
     def add_tunnel(
@@ -1633,39 +1597,38 @@ def register_interim_tools(mcp: FastMCP) -> None:
             notes: Additional notes.
             created_by: Skill/agent that created this tunnel.
         """
-        conn = _get_db()
-        cursor = conn.execute(
-            "INSERT INTO tunnels "
-            "(tunnel_type, pivot_host, target_subnet, local_endpoint, "
-            "remote_endpoint, requires_proxychains, notes, created_by) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                tunnel_type,
-                pivot_host,
-                target_subnet,
-                local_endpoint,
-                remote_endpoint,
-                1 if requires_proxychains else 0,
-                notes,
-                created_by,
-            ),
-        )
-        tunnel_id = cursor.lastrowid
-        proxy_note = "proxychains" if requires_proxychains else "transparent"
-        summary = f"{tunnel_type} via {pivot_host} → {target_subnet} ({proxy_note})"
-        _emit_event(conn, "tunnel", tunnel_id, summary, created_by)
-        conn.commit()
-        conn.close()
-        return json.dumps(
-            {
-                "tunnel_id": tunnel_id,
-                "tunnel_type": tunnel_type,
-                "pivot_host": pivot_host,
-                "target_subnet": target_subnet,
-                "requires_proxychains": requires_proxychains,
-            },
-            indent=2,
-        )
+        with _get_db() as conn:
+            cursor = conn.execute(
+                "INSERT INTO tunnels "
+                "(tunnel_type, pivot_host, target_subnet, local_endpoint, "
+                "remote_endpoint, requires_proxychains, notes, created_by) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    tunnel_type,
+                    pivot_host,
+                    target_subnet,
+                    local_endpoint,
+                    remote_endpoint,
+                    1 if requires_proxychains else 0,
+                    notes,
+                    created_by,
+                ),
+            )
+            tunnel_id = cursor.lastrowid
+            proxy_note = "proxychains" if requires_proxychains else "transparent"
+            summary = f"{tunnel_type} via {pivot_host} → {target_subnet} ({proxy_note})"
+            _emit_event(conn, "tunnel", tunnel_id, summary, created_by)
+            conn.commit()
+            return json.dumps(
+                {
+                    "tunnel_id": tunnel_id,
+                    "tunnel_type": tunnel_type,
+                    "pivot_host": pivot_host,
+                    "target_subnet": target_subnet,
+                    "requires_proxychains": requires_proxychains,
+                },
+                indent=2,
+            )
 
     @mcp.tool()
     def add_blocked(
@@ -1686,33 +1649,32 @@ def register_interim_tools(mcp: FastMCP) -> None:
             notes: Additional notes.
             blocked_by: Skill that was blocked.
         """
-        conn = _get_db()
-        target_id = None
-        if host:
-            target_id = _resolve_target_id(conn, host)
+        with _get_db() as conn:
+            target_id = None
+            if host:
+                target_id = _resolve_target_id(conn, host)
 
-        cursor = conn.execute(
-            "INSERT INTO blocked "
-            "(target_id, technique, reason, retry, notes, blocked_by) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (target_id, technique, reason, retry, notes, blocked_by),
-        )
-        blocked_id = cursor.lastrowid
-        summary = technique
-        if host:
-            summary += f" on {host}"
-        summary += f" | {reason} [{retry}]"
-        _emit_event(conn, "blocked", blocked_id, summary, blocked_by)
-        conn.commit()
-        conn.close()
-        return json.dumps(
-            {
-                "blocked_id": blocked_id,
-                "technique": technique,
-                "retry": retry,
-            },
-            indent=2,
-        )
+            cursor = conn.execute(
+                "INSERT INTO blocked "
+                "(target_id, technique, reason, retry, notes, blocked_by) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (target_id, technique, reason, retry, notes, blocked_by),
+            )
+            blocked_id = cursor.lastrowid
+            summary = technique
+            if host:
+                summary += f" on {host}"
+            summary += f" | {reason} [{retry}]"
+            _emit_event(conn, "blocked", blocked_id, summary, blocked_by)
+            conn.commit()
+            return json.dumps(
+                {
+                    "blocked_id": blocked_id,
+                    "technique": technique,
+                    "retry": retry,
+                },
+                indent=2,
+            )
 
 
 # ---------------------------------------------------------------------------
