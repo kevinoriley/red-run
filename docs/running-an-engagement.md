@@ -4,7 +4,7 @@ This page describes how the **CTF orchestrator** drives a penetration test from 
 
 ## Prerequisites
 
-Agent teams requires `--dangerously-skip-permissions` mode. In standard mode, teammate permission requests don't surface to the operator, causing teammates to hang. The orchestrator's `AskUserQuestion` gates still provide human-in-the-loop control for exploitation decisions.
+Agent teams is an experimental feature and currently requires `--dangerously-skip-permissions` mode. In standard mode, teammate permission requests don't always surface to the operator, causing teammates to hang. This is a stability issue with the experimental agent teams feature. The orchestrator's `AskUserQuestion` gates still provide human-in-the-loop control for exploitation decisions.
 
 ```bash
 claude --dangerously-skip-permissions
@@ -12,7 +12,7 @@ claude --dangerously-skip-permissions
 
 For split-pane teammate visibility, start Claude Code inside a tmux session.
 
-> **Note:** This limitation may change if Anthropic fixes permission bubbling in a future agent teams release.
+> **Note:** This is an experimental feature stability issue and may improve as agent teams matures.
 
 ## Starting a Test
 
