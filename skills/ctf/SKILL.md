@@ -335,7 +335,8 @@ mkdir -p engagement/evidence/logs
 ```
 
 Write `engagement/scope.md`. Call `init_engagement(name="...")`.
-Copy `operator/templates/dump-state.sh` to `engagement/dump-state.sh`.
+Copy dump-state script (use Bash `cp`, do NOT read the file):
+`cp operator/templates/dump-state.sh engagement/dump-state.sh && chmod +x engagement/dump-state.sh`
 
 ## Step 2: Reconnaissance
 
