@@ -97,6 +97,11 @@ interim writes: add_credential(), add_vuln(), add_pivot(), add_blocked()
 evidence:       save to engagement/evidence/ with descriptive filenames
 ```
 
+**Tool output files:** Tools like sqlmap, ffuf, and nuclei dump files to cwd.
+Use `-o engagement/evidence/` or equivalent output flag. If a tool has no output
+flag, `cd engagement/evidence/` before running it, or `mv` the output files
+after. Never leave artifacts in the repo root.
+
 ## Task Summary Format
 
 ```

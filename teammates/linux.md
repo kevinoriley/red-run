@@ -75,6 +75,10 @@ interim writes: add_credential(), add_vuln(), add_pivot(), add_blocked()
 evidence:       save to engagement/evidence/ with descriptive filenames
 ```
 
+**Tool output files:** If a tool dumps files to cwd, use its output flag to
+write to `engagement/evidence/`, or `mv` artifacts after. Never leave files
+in the repo root.
+
 ## Task Summary Format
 
 ```
