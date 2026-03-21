@@ -30,9 +30,27 @@ being written. Instead, store templates in `operator/templates/` and reference
 them by path. The orchestrator reads and populates templates at runtime — the
 template content is only loaded when actually needed.
 
+## Orchestrator Variants
+
+Multiple orchestrators coexist in the same repo, sharing state.db, MCP servers,
+and technique skills. Each variant uses a different execution model.
+
+| Variant | Invoke | Status | Execution Model |
+|---------|--------|--------|-----------------|
+| `/red-run-orchestrator` | Keywords ("attack X") + slash command | **Active** (default) | Subagents (ephemeral, one skill per invocation) |
+| `/red-run-ctf` | Slash command only | **Experimental** | Agent teams (persistent teammates, peer messaging) |
+
+**`/red-run-ctf`** requires Claude Code agent teams (experimental). Enable with
+`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in env or settings.json. It uses
+teammate spawn templates from `teammates/` instead of agent definitions from
+`agents/`. See `teammates/README.md` for the template format.
+
+Both orchestrators use the same state.db schema, MCP servers, and technique
+skills. An engagement started with one can be resumed with the other.
+
 ## Architecture
 
-The **orchestrator** is a native Claude Code skill that runs in the main conversation thread. It routes skill execution to **custom domain subagents** — each subagent has MCP access and executes one skill per invocation. All other skills (63 discovery + technique skills) are served on-demand via the **MCP skill-router**.
+The default **orchestrator** (`/red-run-orchestrator`) is a native Claude Code skill that runs in the main conversation thread. It routes skill execution to **custom domain subagents** — each subagent has MCP access and executes one skill per invocation. All other skills (63 discovery + technique skills) are served on-demand via the **MCP skill-router**.
 
 ### Subagent Model
 
@@ -151,7 +169,7 @@ red-run/
   CLAUDE.md               # Development instructions (this file)
   install.sh              # Installs orchestrator, agents, MCP servers
   uninstall.sh            # Removes installed skills, agents, MCP data
-  agents/                 # Custom subagent definitions (installed to ~/.claude/agents/)
+  agents/                 # Custom subagent definitions for /red-run-orchestrator
     network-recon-agent.md
     web-discovery-agent.md
     web-exploit-agent.md
@@ -163,9 +181,22 @@ red-run/
     evasion-agent.md
     credential-cracking-agent.md
     pivoting-agent.md
+  teammates/              # Spawn prompt templates for /red-run-ctf (agent teams)
+    README.md              # Template format and usage docs
+    recon.md               # Network recon + enumeration (haiku)
+    web.md                 # Web discovery + exploitation (sonnet)
+    ad.md                  # AD discovery + exploitation (sonnet)
+    linux.md               # Linux discovery + privesc (sonnet)
+    windows.md             # Windows discovery + privesc (sonnet)
+    pivoting.md            # Tunneling (sonnet, on-demand)
+    evasion.md             # AV/EDR bypass (sonnet, on-demand)
+    spray.md               # Password spraying (haiku, on-demand)
+    cracking.md            # Offline hash cracking (haiku, on-demand)
+    research.md            # Deep analysis (opus, on-demand)
   skills/
     _template/SKILL.md    # Canonical template
-    orchestrator/SKILL.md # Master orchestrator (native skill)
+    orchestrator/SKILL.md # /red-run-orchestrator (subagent-based, default)
+    ctf/SKILL.md          # /red-run-ctf (agent teams, experimental)
     web/                  # Web application attacks
     ad/                   # Active Directory
     credential/           # Credential attacks (password spraying)

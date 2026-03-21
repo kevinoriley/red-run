@@ -91,6 +91,10 @@ The orchestrator still presents routing decisions for operator approval before s
 
 Run from an isolated VM or dedicated pentesting machine. You are responsible for containing Claude on your systems and for any legal consequences under the CFAA or equivalent legislation.
 
+## Experimental: Agent Teams Variant
+
+`/red-run-ctf` is an experimental orchestrator that uses [Claude Code agent teams](https://code.claude.com/docs/en/agent-teams) instead of subagents. Teammates are persistent Claude Code sessions with peer-to-peer messaging and operator visibility via tmux split panes. Requires the experimental agent teams feature flag — see `CLAUDE.md` for setup.
+
 ## Disclaimer
 
 **By using red-run you accept full responsibility for its actions.** This tool runs fully autonomous AI agents that execute offensive security techniques — port scanning, vulnerability exploitation, credential attacks, privilege escalation, and lateral movement — against targets you specify.
