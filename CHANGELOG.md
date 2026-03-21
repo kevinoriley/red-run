@@ -20,8 +20,6 @@
 
 - **SQLite "database is locked" under concurrent writes** — all state-server database connections now use context managers, preventing leaked connections from holding the write lock indefinitely. `busy_timeout` increased from 5s to 30s.
 - **Pivot-first logic** in orchestrator decision flow — the orchestrator now acts immediately when a pivot path and host access are both available, instead of deferring to lower-priority checks.
-- **Temp scripts not executable** — hosts file and clock sync hard stops now `chmod +x` generated scripts before presenting them to the operator.
-- **Tool output dumped to repo root** — teammate templates now instruct agents to use output flags or move artifacts to `engagement/evidence/`.
 
 ### Changed
 
