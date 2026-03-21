@@ -23,21 +23,6 @@ red-run supports multiple orchestrator variants that share the same skills, MCP 
 
 All orchestrators write to the same `engagement/state.db` — an engagement started with one variant can be resumed with another.
 
-## Skills
-
-67 skills across 7 categories — see [Skills Inventory](docs/skills-inventory.md) for the full inventory.
-
-| Category | Count | Coverage |
-|----------|-------|----------|
-| Web | 33 | SQLi, XSS, SSTI, deserialization, SSRF, auth bypass, and more |
-| Active Directory | 16 | Kerberos, ADCS, ACLs, GPO, trust, persistence, lateral movement |
-| Privilege Escalation | 11 | Linux + Windows enumeration and technique skills |
-| Infrastructure | 4 | Network recon, pivoting, container escapes, SMB |
-| Evasion | 1 | AV/EDR bypass, AMSI bypass, custom payloads |
-| Utility | 2 | Orchestrator + retrospective |
-
-Skills are baseline templates researched and built by Claude. Refine them manually or run retrospectives after engagements to improve and hone them to your target landscape and methodology.
-
 ## Documentation
 
 Full documentation is available at the [docs site](https://blacklanternsecurity.github.io/red-run/):
