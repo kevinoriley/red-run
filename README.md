@@ -66,7 +66,7 @@ red-run uses [Claude Code agent teams](https://code.claude.com/docs/en/agent-tea
 - **Operator visibility** — watch all teammates working in split tmux panes, press Escape to interrupt any teammate, type directly to redirect
 - **Shared task list** — coordinated parallel work with the lead assigning all tasks
 
-Agent teams requires Claude Code v2.1.32+ and the experimental feature flag. Add to `.claude/settings.json` (project-level):
+Agent teams requires Claude Code v2.1.32+ and the experimental feature flag. The repo's `.claude/settings.json` already includes this:
 
 ```json
 {
@@ -76,7 +76,7 @@ Agent teams requires Claude Code v2.1.32+ and the experimental feature flag. Add
 }
 ```
 
-For split-pane visibility, start Claude Code inside a tmux session. Without tmux, teammates run in-process (cycle with Shift+Down).
+No manual setup needed — cloning the repo and running `./install.sh` is sufficient. For split-pane teammate visibility, start Claude Code inside a tmux session. Without tmux, teammates run in-process (cycle with Shift+Down).
 
 ## State Dashboard
 
