@@ -310,7 +310,7 @@ tr:hover td { background: var(--bg2); }
   border-radius: 6px; overflow: hidden; min-height: 200px; margin: 12px 0; position: relative;
   cursor: grab; }
 #graph-container.panning { cursor: grabbing; }
-#graph-container svg { display: block; }
+#graph-container svg { display: block; user-select: none; -webkit-user-select: none; }
 .host-card { cursor: default; }
 .host-card-bg { rx: 6; ry: 6; fill: var(--bg2); stroke-width: 2; }
 .host-card-header { fill: var(--bg3); }
