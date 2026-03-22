@@ -1113,8 +1113,8 @@ function renderGraph() {
 
   svgHtml += `</g>`;
 
-  svg.setAttribute('width', totalW);
-  svg.setAttribute('height', totalH);
+  svg.setAttribute('width', '100%');
+  svg.setAttribute('height', Math.max(totalH, container.clientHeight || 400));
   svg.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
   svg.innerHTML = svgHtml;
 
