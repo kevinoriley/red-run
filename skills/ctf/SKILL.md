@@ -374,7 +374,7 @@ After initialization, remind the operator to start the state dashboard:
 ```
 Tip: For real-time engagement visualization, start the state dashboard
 in a separate terminal:
-  python3 operator/state-dashboard/server.py
+  bash operator/state-dashboard/start.sh
 Then open http://127.0.0.1:8099 to see the kill-chain graph, targets,
 credentials, and attack progress update live as teammates work.
 ```
