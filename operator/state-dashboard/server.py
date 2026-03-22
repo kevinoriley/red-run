@@ -699,11 +699,16 @@ function renderGraph() {
     }
   }
 
-  // Hosts reached via provided creds
+  // Hosts reached via provided creds (access records OR successful tested_against)
   const hostsViaProvidedCred = new Set();
   for (const a of state.access) {
     if (providedCredUsernames.has(a.username)) {
       hostsViaProvidedCred.add(a.host);
+    }
+  }
+  for (const c of providedCreds) {
+    for (const t of (c.tested_against || [])) {
+      if (t.works) hostsViaProvidedCred.add(t.host);
     }
   }
 
@@ -943,12 +948,27 @@ function renderGraph() {
   for (const h of hostsViaProvidedCred) {
     const dst = cardById[`host:${h}`];
     if (!dst) continue;
-    // Find which provided cred username
+    // Find which provided cred and how
     const accOnHost = (accessByHost[h] || []).find(a => providedCredUsernames.has(a.username));
-    const credUser = accOnHost ? accOnHost.username : 'provided cred';
-    const accessMethod = accOnHost ? `${credUser} (${accOnHost.access_type})` : credUser;
-    graphEdges.push({ srcCard: cardById['attacker'], dstCard: dst,
-      label: accessMethod, edgeClass: 'card-edge-active', detail: `Access via provided credential: ${credUser}\nMethod: ${accOnHost ? accOnHost.method : 'unknown'}` });
+    if (accOnHost) {
+      const label = `${accOnHost.username} (${accOnHost.access_type})`;
+      graphEdges.push({ srcCard: cardById['attacker'], dstCard: dst,
+        label, edgeClass: 'card-edge-active', detail: `Access via provided credential: ${accOnHost.username}\nMethod: ${accOnHost.method}` });
+    } else {
+      // No access record but tested_against was successful
+      let label = 'provided cred';
+      let detail = 'Authenticated via provided credential';
+      for (const c of providedCreds) {
+        const tested = (c.tested_against || []).find(t => t.host === h && t.works);
+        if (tested) {
+          label = `${c.username} (${tested.service})`;
+          detail = `Authenticated: ${c.username} via ${tested.service}`;
+          break;
+        }
+      }
+      graphEdges.push({ srcCard: cardById['attacker'], dstCard: dst,
+        label, edgeClass: 'card-edge-active', detail });
+    }
   }
 
   // Attacker -> hosts discovered but no access via provided creds (recon)
