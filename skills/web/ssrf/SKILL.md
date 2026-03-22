@@ -68,6 +68,12 @@ Your return summary must include:
 - If the response is fully reflected, start with basic SSRF. If only status
   codes or timing differences are visible, use blind techniques.
 
+**LFI crossover:** If you arrived from the lfi skill because `file_get_contents()`
+or similar accepts `http://` URLs, the injection point is the same LFI parameter.
+Use it as a standard SSRF vector — no parameter discovery needed. The LFI context
+(absolute path reads, known web root) is additional leverage for targeting localhost
+services.
+
 ## Step 1: Assess
 
 If not already provided, determine:

