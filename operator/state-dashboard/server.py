@@ -311,9 +311,10 @@ tr:hover td { background: var(--bg2); }
   cursor: grab; }
 #graph-container.panning { cursor: grabbing; }
 #graph-container svg { display: block; }
-.sankey-band { opacity: 0.55; transition: opacity 0.15s; }
-.sankey-band:hover { opacity: 0.85; }
-.sankey-band.completed { opacity: 0.35; }
+.sankey-band { opacity: 0.7; transition: opacity 0.15s; }
+.sankey-band:hover { opacity: 0.95; }
+.sankey-band.dead-end { opacity: 0.15; }
+.sankey-band.dead-end:hover { opacity: 0.5; }
 .sankey-node rect { stroke-width: 1.5; cursor: default; }
 .sankey-node text { font-family: inherit; fill: var(--text); }
 .sankey-node.completed rect { opacity: 0.7; }
@@ -866,7 +867,7 @@ function renderGraph() {
     connCount[e.from] = (connCount[e.from] || 0) + 1;
     connCount[e.to] = (connCount[e.to] || 0) + 1;
   }
-  const baseNodeW = 160, baseNodeH = 36, layerGap = 240, rowGap = 14, padX = 60, padY = 50;
+  const baseNodeW = 160, baseNodeH = 40, layerGap = 260, rowGap = 50, padX = 60, padY = 50;
 
   function nodeSize(n) {
     const c = Math.max(1, connCount[n.id] || 1);
@@ -992,8 +993,12 @@ function renderGraph() {
       const v = state.vulns.find(v => `vuln:${v.id}` === n.id);
       if (v) {
         if (v.status === 'exploited') return 'completed';
-        if (v.status === 'identified') return 'pending';
         if (v.status === 'blocked') return 'completed';
+        // found/identified vulns with downstream access are part of an active chain
+        const ds = countDownstream(n.id);
+        if (ds > 0) return 'completed';
+        // found vulns still in the graph (survived pruning) are actionable
+        return 'pending';
       }
     }
     if (n.type === 'access') {
@@ -1002,13 +1007,17 @@ function renderGraph() {
       if (a && !a.active) return 'completed';
     }
     if (n.type === 'cred') {
-      // Creds that have successful tested_against are completed
       const c = state.credentials.find(c => `cred:${c.id}` === n.id);
       if (c) {
         const anyWorks = (c.tested_against || []).some(t => t.works);
         if (anyWorks) return 'completed';
-        if (!c.cracked && c.secret_type !== 'plaintext') return 'pending';
+        if (!c.cracked && c.secret_type !== 'password' && c.secret_type !== 'plaintext') return 'pending';
       }
+    }
+    if (n.type === 'host') {
+      // Hosts with active access are completed
+      const hasAccess = state.access.some(a => a.host === n.label && a.active);
+      if (hasAccess) return 'completed';
     }
     return '';
   }
@@ -1032,8 +1041,8 @@ function renderGraph() {
     const d = `M${srcX},${srcY - hw} C${mx},${srcY - hw} ${mx},${tgtY - hw} ${tgtX},${tgtY - hw} `
             + `L${tgtX},${tgtY + hw} C${mx},${tgtY + hw} ${mx},${srcY + hw} ${srcX},${srcY + hw} Z`;
 
-    const isCompleted = e.style === 'confirmed';
-    const cls = 'sankey-band' + (isCompleted ? ' completed' : '');
+    const isDeadEnd = e.color === '#484f58';
+    const cls = 'sankey-band' + (isDeadEnd ? ' dead-end' : '');
     const detail = e.label ? escAttr(e.label) : '';
     svgHtml += `<path class="${cls}" d="${d}" fill="${e.color}" data-detail="${detail}" onmouseenter="showTip(evt)" onmouseleave="hideTip()"/>`;
 
