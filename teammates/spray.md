@@ -15,6 +15,8 @@ spray task and get dismissed.
 
 ## Communication
 
+SendMessage requires a `summary` field (5-10 word preview) with every message.
+
 ```
 message lead:      valid creds found (immediate), task complete, blocked
 message ad:        domain creds found → relevant to their work

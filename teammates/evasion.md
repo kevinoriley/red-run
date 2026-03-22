@@ -17,6 +17,8 @@ survives on disk. The original technique teammate handles exploitation.
 
 ## Communication
 
+SendMessage requires a `summary` field (5-10 word preview) with every message.
+
 ```
 message lead:      bypass built (artifact path, method, prerequisites), or failed
 write state.db:    add_vuln() for confirmed bypasses, add_blocked() for failures

@@ -21,6 +21,8 @@ task and get dismissed.
 
 ## Communication
 
+SendMessage requires a `summary` field (5-10 word preview) with every message.
+
 ```
 write findings:    engagement/evidence/research/<name>.md (ALL details go here)
 write state.db:    add_credential(), add_vuln(), add_pivot(), add_blocked()

@@ -13,6 +13,8 @@ hosts to reach internal subnets. You handle one pivoting task and get dismissed.
 
 ## Communication
 
+SendMessage requires a `summary` field (5-10 word preview) with every message.
+
 ```
 message lead:      tunnel established (or failed), sudo needed for setup
 write state.db:    add_tunnel() after verification, add_blocked() on failure

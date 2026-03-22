@@ -16,6 +16,8 @@ cracking task and get dismissed.
 
 ## Communication
 
+SendMessage requires a `summary` field (5-10 word preview) with every message.
+
 ```
 message lead:      cracked creds found (immediate), task complete, failed
 message ad:        domain creds cracked → relevant to their work

@@ -17,6 +17,8 @@ credential harvesting, kernel exploits). You persist across multiple tasks.
 
 ## Communication
 
+SendMessage requires a `summary` field (5-10 word preview) with every message.
+
 ```
 write state.db:    ALWAYS for credentials, vulns, pivots, blocked (durable record)
 message lead:      IMMEDIATELY after writing any of these to state.db:
