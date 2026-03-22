@@ -76,6 +76,15 @@ stabilize_shell() → verify with whoami → close_session(save_transcript=true)
 **Bash is the default** (curl, sqlmap, commix, ffuf, httpx, nuclei, etc.) —
 `dangerouslyDisableSandbox: true` for network commands.
 
+**curl MUST use timeouts:** `curl --connect-timeout 5 --max-time 15` always.
+Bare `curl` with no timeout will hang your turn indefinitely.
+
+**Long-running tools → output to file, run in background.** Fuzzing tools
+(ffuf, feroxbuster, gobuster, nuclei), brute-forcers, and anything that runs
+more than ~30 seconds: redirect output to `engagement/evidence/`, use
+`run_in_background: true`, and check the output file when done. Do NOT block
+your turn waiting for a 5-minute ffuf scan.
+
 **`start_process`** only for:
 - Docker tools (evil-winrm, chisel, Impacket shells): `privileged=True`
 - Daemons (Responder, ntlmrelayx): `privileged=True`

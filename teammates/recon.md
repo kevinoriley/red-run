@@ -66,6 +66,11 @@ rpcclient, snmpwalk, etc.) — use `dangerouslyDisableSandbox: true` for network
 
 Don't run `which` for Docker-only tools — they're only in the container.
 
+**Long-running tools → output to file, run in background.** Enumeration
+tools (manspider, enum4linux-ng) that run more than ~30 seconds: redirect
+output to `engagement/evidence/`, use `run_in_background: true`, check
+output file when done. Do NOT block your turn on long scans.
+
 ## Scope Boundaries
 
 - Do NOT call `search_skills()` or `list_skills()` — only `get_skill()`.
