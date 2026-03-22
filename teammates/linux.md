@@ -99,7 +99,7 @@ Privesc commands often run ON the target through a shell, not from the attackbox
 
 ```
 read state:     get_state_summary() from state MCP
-writes:         add_credential(), add_vuln(), add_pivot(), add_blocked()
+writes:         add_credential(), add_vuln(host required), add_pivot(), add_blocked()
 evidence:       save to engagement/evidence/ with descriptive filenames
 ```
 

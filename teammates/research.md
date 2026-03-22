@@ -25,7 +25,7 @@ SendMessage requires a `summary` field (5-10 word preview) with every message.
 
 ```
 write findings:    engagement/evidence/research/<name>.md (ALL details go here)
-write state.db:    add_credential(), add_vuln(), add_pivot(), add_blocked()
+write state.db:    add_credential(), add_vuln(host required), add_pivot(), add_blocked()
 message lead:      ONE LINE: file path + summary. No exploit details in messages.
                    Messages with payloads/exploit code trigger content filters.
 ```

@@ -83,7 +83,7 @@ teammates may write simultaneously.
 | `test_credential` | `credential_id`, `host`, `service`, `works` (all required) | Record whether a credential works against a target/service |
 | `add_access` | `host` (required), `access_type`, `username`, `privilege`, `method` | Record a new foothold on a target |
 | `update_access` | `id` (required), `active`, `privilege`, `notes` | Update access record (e.g., revoke) |
-| `add_vuln` | `title` (required), `host`, `vuln_type`, `severity`, `endpoint`, `details` | Record a vulnerability (deduplicates on target+title) |
+| `add_vuln` | `title` (required), `host` (required), `vuln_type`, `severity`, `endpoint`, `details` | Record a vulnerability (deduplicates on target+title) |
 | `update_vuln` | `id` (required), `status`, `severity`, `details` | Update vulnerability status (found/exploited/blocked) |
 | `add_pivot` | `source`, `destination` (required), `method`, `status` | Record a pivot path |
 | `update_pivot` | `id` (required), `status`, `notes` | Update pivot path status |

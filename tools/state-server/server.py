@@ -1081,7 +1081,7 @@ def create_server() -> FastMCP:
     @mcp.tool()
     def add_vuln(
         title: str,
-        host: str = "",
+        host: str,
         vuln_type: str = "",
         status: str = "found",
         severity: str = "medium",
@@ -1099,7 +1099,7 @@ def create_server() -> FastMCP:
 
         Args:
             title: Short vulnerability title (e.g., "SQLi in /search parameter").
-            host: Target host (empty = unassociated).
+            host: Target host (required — must match an existing target).
             vuln_type: Vulnerability class (e.g., "sqli", "xss", "rce").
             status: Status: found, exploited, blocked.
             severity: Severity: info, low, medium, high, critical.
@@ -1111,25 +1111,18 @@ def create_server() -> FastMCP:
             discovered_by: Skill that found this vulnerability.
         """
         with _get_db() as conn:
-            target_id = None
-            if host:
-                target_id = _resolve_target_id(conn, host)
-                if target_id is None:
-                    return f"ERROR: Target '{host}' not found. Add the target first."
+            if not host:
+                return "ERROR: host is required. Every vuln must be associated with a target."
+            target_id = _resolve_target_id(conn, host)
+            if target_id is None:
+                return f"ERROR: Target '{host}' not found. Add the target first."
 
             # Dedup: check for existing vuln with same title on same target
-            if target_id is not None:
-                existing = conn.execute(
-                    "SELECT id, status, severity FROM vulns "
-                    "WHERE target_id = ? AND title = ?",
-                    (target_id, title),
-                ).fetchone()
-            else:
-                existing = conn.execute(
-                    "SELECT id, status, severity FROM vulns "
-                    "WHERE target_id IS NULL AND title = ?",
-                    (title,),
-                ).fetchone()
+            existing = conn.execute(
+                "SELECT id, status, severity FROM vulns "
+                "WHERE target_id = ? AND title = ?",
+                (target_id, title),
+            ).fetchone()
 
             if existing:
                 return json.dumps(
