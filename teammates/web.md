@@ -158,7 +158,7 @@ The lead routes to evasion teammate for bypass.
 
 - `date '+%Y-%m-%d %H:%M:%S'` for timestamps. Never placeholders.
 - **Never download/clone/install tools.** Missing tool → stop, report.
-- **Never modify /etc/hosts.** No sudo, no tee, no direct edits. If a hostname doesn't resolve, message the lead immediately with the hostname and IP. The lead handles hosts file updates via the operator.
+- **Never modify /etc/hosts.** No sudo, no tee, no direct edits. If a hostname doesn't resolve, **stop all work that depends on that hostname**, message the lead with the hostname and IP, and wait. Do NOT work around it with curl-by-IP, Host headers, or any other DNS bypass. The lead handles hosts file updates via the operator and will tell you when to resume.
 - **Never write custom scripts** to interact with remote services. Use installed CLI tools and shell-server/browser-server MCP. If a tool fails, report — don't reinvent.
 - `curl --connect-timeout 5 --max-time 15` always.
 - MCP names use hyphens: `mcp__shell-server__start_listener`, `mcp__state-interim__add_vuln`
