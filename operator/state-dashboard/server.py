@@ -1010,26 +1010,7 @@ function renderGraph() {
   // --- Render SVG ---
   let svgHtml = '<defs></defs>';
 
-  // Draw edges first (behind cards)
-  for (const e of graphEdges) {
-    const sc = e.srcCard, dc = e.dstCard;
-    const sx = sc.x + sc.w;
-    const sy = sc.y + sc.height / 2;
-    const dx = dc.x;
-    const dy = dc.y + dc.height / 2;
-    const mx1 = sx + (dx - sx) * 0.4;
-    const mx2 = sx + (dx - sx) * 0.6;
-    const path = `M${sx},${sy} C${mx1},${sy} ${mx2},${dy} ${dx},${dy}`;
-
-    const detailAttr = escAttr(e.detail);
-    svgHtml += `<path class="card-edge ${e.edgeClass}" d="${path}" data-detail="${detailAttr}" onmouseenter="showTip(evt)" onmouseleave="hideTip()"/>`;
-
-    // Arrowhead
-    const arrowSize = 6;
-    svgHtml += `<polygon points="${dx},${dy} ${dx-arrowSize},${dy-arrowSize/2} ${dx-arrowSize},${dy+arrowSize/2}" fill="${getEdgeColor(e.edgeClass)}" opacity="${e.edgeClass==='card-edge-recon'?'0.5':'1'}"/>`;
-  }
-
-  // Draw cards (on top of edge paths)
+  // Draw cards first
   for (const card of cards) {
     const isActionable = card.sections.some(s => s.glow);
     const gCls = 'host-card node-new' + (isActionable ? ' card-actionable-glow' : '');
@@ -1087,20 +1068,34 @@ function renderGraph() {
     svgHtml += `</g>`;
   }
 
-  // --- Edge labels (drawn after cards so they render on top) ---
+  // --- Edges (paths, arrows, labels — all drawn after cards so they render on top) ---
   for (const e of graphEdges) {
-    if (!e.label) continue;
     const sc = e.srcCard, dc = e.dstCard;
     if (!sc || !dc) continue;
-    const sx = sc.x + CARD_W;
+    const sx = sc.x + sc.w;
     const sy = sc.y + sc.height / 2;
     const dx = dc.x;
     const dy = dc.y + dc.height / 2;
-    const lx = (sx + dx) / 2;
-    const ly = (sy + dy) / 2 - 6;
-    const labelW = Math.min(trunc(e.label, 30).length * 6.5 + 12, COL_GAP - 10);
-    svgHtml += `<rect x="${lx - labelW/2}" y="${ly - 8}" width="${labelW}" height="16" rx="3" fill="#0d1117" fill-opacity="0.92"/>`;
-    svgHtml += `<text class="edge-label" x="${lx}" y="${ly + 4}" text-anchor="middle" font-size="10" fill="${getEdgeColor(e.edgeClass)}" font-weight="600">${esc(trunc(e.label, 30))}</text>`;
+    const mx1 = sx + (dx - sx) * 0.4;
+    const mx2 = sx + (dx - sx) * 0.6;
+    const path = `M${sx},${sy} C${mx1},${sy} ${mx2},${dy} ${dx},${dy}`;
+
+    // Edge path
+    const detailAttr = escAttr(e.detail);
+    svgHtml += `<path class="card-edge ${e.edgeClass}" d="${path}" data-detail="${detailAttr}" onmouseenter="showTip(evt)" onmouseleave="hideTip()"/>`;
+
+    // Arrowhead
+    const arrowSize = 6;
+    svgHtml += `<polygon points="${dx},${dy} ${dx-arrowSize},${dy-arrowSize/2} ${dx-arrowSize},${dy+arrowSize/2}" fill="${getEdgeColor(e.edgeClass)}" opacity="${e.edgeClass==='card-edge-recon'?'0.5':'1'}"/>`;
+
+    // Edge label
+    if (e.label) {
+      const lx = (sx + dx) / 2;
+      const ly = (sy + dy) / 2 - 6;
+      const labelW = Math.min(trunc(e.label, 30).length * 6.5 + 12, COL_GAP - 10);
+      svgHtml += `<rect x="${lx - labelW/2}" y="${ly - 8}" width="${labelW}" height="16" rx="3" fill="#0d1117" fill-opacity="0.92"/>`;
+      svgHtml += `<text class="edge-label" x="${lx}" y="${ly + 4}" text-anchor="middle" font-size="10" fill="${getEdgeColor(e.edgeClass)}" font-weight="600">${esc(trunc(e.label, 30))}</text>`;
+    }
   }
 
   // --- Legend ---
