@@ -1,5 +1,5 @@
 ---
-name: ctf
+name: red-run-ctf
 description: >
   USE THIS SKILL when the user provides a target or list of targets (IPs,
   hostnames, URLs, subnets) and asks to attack, pentest, hack, scan, assess,
