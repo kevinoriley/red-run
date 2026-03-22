@@ -422,15 +422,18 @@ function renderLight() {
 
 function renderCards() {
   const c = document.getElementById('summary-cards');
+  const actionableVulns = state.vulns.filter(v => v.status === 'found');
+  const exploitedVulns = state.vulns.filter(v => v.status === 'exploited');
   const sevCounts = {};
-  state.vulns.forEach(v => { sevCounts[v.severity] = (sevCounts[v.severity]||0) + 1; });
+  actionableVulns.forEach(v => { sevCounts[v.severity] = (sevCounts[v.severity]||0) + 1; });
   const sevStr = ['critical','high','medium','low','info']
     .filter(s => sevCounts[s]).map(s => `${sevCounts[s]} ${s}`).join(', ') || 'none';
   c.innerHTML = [
     card(state.targets.length, 'Targets'),
     card(state.credentials.length, 'Credentials'),
     card(state.access.filter(a=>a.active).length, 'Active Access'),
-    card(state.vulns.length, 'Vulns', sevStr),
+    card(actionableVulns.length, 'Actionable', sevStr),
+    card(exploitedVulns.length, 'Exploited'),
     card(state.pivot_map.length, 'Pivots'),
     card(state.tunnels.filter(t=>t.status==='active').length, 'Tunnels'),
     card(state.blocked.length, 'Blocked'),
@@ -639,17 +642,12 @@ function renderGraph() {
     }
   }
 
-  // Vulns by host (only high/critical for card display)
-  const vulnsByHost = {};
+  // Vulns by host (all statuses)
   const allVulnsByHost = {};
   for (const v of state.vulns) {
     const h = v.host || 'unknown';
     if (!allVulnsByHost[h]) allVulnsByHost[h] = [];
     allVulnsByHost[h].push(v);
-    if (v.severity === 'critical' || v.severity === 'high') {
-      if (!vulnsByHost[h]) vulnsByHost[h] = [];
-      vulnsByHost[h].push(v);
-    }
   }
 
   // Blocked by host
@@ -814,28 +812,23 @@ function renderGraph() {
       sections.push({ title: 'CREDS FOUND', items });
     }
 
-    // VULNS (high/critical only)
-    const vulns = vulnsByHost[host] || [];
-    if (vulns.length) {
-      const items = vulns.map(v => {
-        const isExploited = v.status === 'exploited';
-        const isBlocked = v.status === 'blocked';
-        const color = isExploited ? '#3fb950' : isBlocked ? '#484f58' : v.severity === 'critical' ? '#f85149' : '#d29922';
-        const icon = isExploited ? '\u2713' : isBlocked ? '\u2717' : '\u25A0';
-        const text = v.title;
-        const cls = isExploited ? 'card-item' : isBlocked ? 'card-item-blocked' : 'card-item';
-        const detail = `${v.severity} | ${v.status}\n${v.endpoint||''}\n${v.details||''}`;
-        return { icon, text, cls, detail, color };
-      });
-      sections.push({ title: 'VULNS', items });
-    }
-
-    // ACTIONABLE
+    // ACTIONABLE — found vulns (not blocked), uncracked hashes, identified pivots
     const actionable = getActionable(host);
     if (actionable.length) {
       sections.push({ title: 'ACTIONABLE', items: actionable.map(a => ({
         icon: a.icon, text: a.text, cls: 'card-item-pending', detail: a.detail
       })), glow: true });
+    }
+
+    // EXPLOITED — successfully exploited vulns only
+    const exploitedVulns = (allVulnsByHost[host] || []).filter(v => v.status === 'exploited');
+    if (exploitedVulns.length) {
+      const items = exploitedVulns.map(v => {
+        const text = v.title;
+        const detail = `${v.severity} | exploited\n${v.endpoint||''}\n${v.details||''}`;
+        return { icon: '\u2713', text, cls: 'card-item-active', detail, color: '#3fb950' };
+      });
+      sections.push({ title: 'EXPLOITED', items });
     }
 
     // Calculate height
