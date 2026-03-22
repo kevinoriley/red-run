@@ -81,15 +81,15 @@ your return summary. Do not continue past enumeration.
 
 ## State Management
 
-Call `get_state_summary()` from the state-interim MCP server to read current
+Call `get_state_summary()` from the state MCP server to read current
 engagement state. Use it to:
 - Skip re-testing targets, parameters, or vulns already confirmed
 - Leverage existing credentials or access for this technique
 - Understand what's been tried and failed (check Blocked section)
 
-### Interim Writes
+### State Writes
 
-Write actionable findings **immediately** via state-interim so the orchestrator
+Write actionable findings **immediately** via state so the orchestrator
 can react in real time (via event watcher) instead of waiting for your full
 return summary. Use these tools as you discover findings:
 
@@ -169,7 +169,7 @@ nxc ldap DC01.DOMAIN.LOCAL --port 636
 - LDAP signing not required -> note for relay to LDAP
 - Domain name, DC hostnames, OS versions -> record in the engagement state
 
-**Interim writes:**
+**State writes:**
 - SMB signing disabled → `add_vuln(title="SMB signing disabled on <host>", host="<host>", vuln_type="smb-signing", severity="medium")`
 - LDAP signing not required → `add_vuln(title="LDAP signing not required on <host>", host="<host>", vuln_type="ldap-signing", severity="medium")`
 - Domain name/hostnames discovered → `add_pivot(source="AD discovery", destination="<domain>/<hostname>", method="DNS/SMB enumeration")`
@@ -287,7 +287,7 @@ certipy find 'DOMAIN/user@DC01.DOMAIN.LOCAL' -k \
   -output engagement/evidence/certipy-full-DOMAIN
 ```
 
-**Interim writes:** Vulnerable ADCS templates found →
+**State writes:** Vulnerable ADCS templates found →
 `add_vuln(title="ADCS <ESC_type> on <template>", host="<CA_host>", vuln_type="adcs", severity="high")`.
 
 **Certipy output**: Always use `-output engagement/evidence/certipy-<label>`
@@ -417,7 +417,7 @@ nxc smb DC01.DOMAIN.LOCAL -u 'user' -p 'Password123' -M coerce_plus
 Note all coercion-eligible hosts. WebDAV is especially valuable — it enables
 HTTP-based coercion that works even when SMB signing is enforced.
 
-**Interim writes:** Coercion-eligible hosts →
+**State writes:** Coercion-eligible hosts →
 `add_vuln(title="Coercion: <type> on <host>", host="<host>", vuln_type="coercion", severity="medium")`.
 
 #### Attack Surface Mapping
@@ -496,7 +496,7 @@ DNS A record and Authenticated Users can create records, this is a high-value
 pivot: create an A record pointing to the attackbox, then capture credentials
 when the service authenticates.
 
-**Interim writes:** ADIDNS CreateChild confirmed →
+**State writes:** ADIDNS CreateChild confirmed →
 `add_vuln(title="ADIDNS: Authenticated Users can create DNS records", host="<DC>", vuln_type="adidns-poisoning", severity="critical")`.
 Cross-reference with unreachable hostnames →
 `add_pivot(source="ADIDNS poisoning", destination="<hostname> → attackbox for credential capture", method="Create A record for <hostname> pointing to attackbox, trigger service authentication, capture with Responder")`.
@@ -556,7 +556,7 @@ Get-DomainUser -TrustedToAuth
 Get-DomainComputer -TrustedToAuth
 ```
 
-**Interim writes:** Delegation paths found →
+**State writes:** Delegation paths found →
 `add_pivot(source="<account>", destination="<target_service>", method="<unconstrained|constrained|RBCD> delegation")`.
 
 If found → STOP. Report: DC IP, domain name, delegation type and targets,

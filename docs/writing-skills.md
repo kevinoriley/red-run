@@ -69,7 +69,7 @@ When an engagement directory exists:
 - Save evidence to `engagement/evidence/` with descriptive filenames.
 ```
 
-Skills save evidence files. State writes go through state-interim MCP for critical discoveries — the orchestrator handles full state management.
+Skills save evidence files. State writes go through the state MCP server. Deduplication is at the database level.
 
 #### 3. Scope Boundary
 
@@ -80,13 +80,13 @@ Defines what the skill covers and when to stop. When the skill reaches its scope
 ```markdown
 ## State Management
 
-Call `get_state_summary()` from the state-reader MCP server to read
+Call `get_state_summary()` from the state MCP server to read
 current engagement state.
 ```
 
 Skills read state to avoid re-testing confirmed vulnerabilities, leverage existing credentials, and check what's been tried.
 
-> **State access:** All agents use `state-interim` (read + 5 add-only writes). Skills should include interim write guidance for critical discoveries (credentials, vulns, pivots, blocked items).
+> **State access:** All agents use `state` with full read/write access. Skills should include write guidance for critical discoveries (credentials, vulns, pivots, blocked items).
 
 #### 5. Tool Discovery
 

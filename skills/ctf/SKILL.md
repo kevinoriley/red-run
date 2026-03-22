@@ -92,8 +92,7 @@ allowed:
   mkdir -p engagement/evidence/logs
   Write/Edit to: engagement/scope.md, engagement/config.yaml,
                  engagement/web-proxy.json, engagement/web-proxy.sh
-  state-writer MCP tools (init_engagement, add_target, add_credential, ...)
-  state-reader MCP tools (get_state_summary, get_targets, poll_events, ...)
+  state MCP tools (init_engagement, add_target, add_credential, get_state_summary, poll_events, ...)
   skill-router MCP tools (get_skill, search_skills, list_skills)
   getent hosts <hostname>
   ldapsearch -x (base-scope lockout policy query only)
@@ -252,9 +251,9 @@ When a teammate messages that a task is complete:
 
 ```
 1. Read teammate's summary
-2. Deduplicate: call get_state_summary(), skip findings already in state
-   (teammate wrote via state-interim mid-task)
-3. Record remaining findings via state-writer:
+2. Check existing state: call get_state_summary() to see what's already recorded
+   (DB deduplicates at the DB level, but checking avoids unnecessary writes)
+3. Record findings via state:
    - add_target/add_port for new hosts/ports
    - add_credential for new creds
    - add_access/update_access for access changes
@@ -619,7 +618,7 @@ Walk ALL items, collect every actionable finding, present to operator:
 
 When significant access gained (shell, DA, database):
 1. Collect evidence → `engagement/evidence/`
-2. Update state via state-writer MCP
+2. Update state via state MCP tools
 3. Check objectives against scope.md
 4. Continue chaining or wrap up
 

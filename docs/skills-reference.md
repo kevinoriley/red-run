@@ -17,13 +17,13 @@ The **orchestrator** (`skills/orchestrator/SKILL.md`) takes a target, runs recon
 - `linux-discovery` — Linux host enumeration and privilege escalation assessment
 - `windows-discovery` — Windows host enumeration and privilege escalation assessment
 
-Discovery skills run in agents with **state-interim** access, allowing them to write findings mid-run.
+Discovery skills run in agents with **state** access, allowing them to write findings mid-run.
 
 ### Technique Skills
 
 **Technique skills** exploit specific vulnerability classes. Each covers one technique thoroughly — assessment, confirmation, exploitation, and escalation/pivot routing. There are 62 technique skills across all categories.
 
-Technique skills run in agents with **state-interim** access. They write critical discoveries (captured hashes, credentials, confirmed vulns) mid-run and report all findings in their return summary.
+Technique skills run in agents with **state** access. They write critical discoveries (captured hashes, credentials, confirmed vulns) mid-run and report all findings in their return summary.
 
 ## OPSEC Ratings
 

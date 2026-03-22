@@ -45,27 +45,27 @@ red-run controls agent behavior through layered prompts, not code. Each layer ad
 | **Skill** | `skills/<cat>/<name>/SKILL.md` | `get_skill()` call | Technique methodology, payloads, troubleshooting, inter-skill routing |
 | **Dynamic** | Orchestrator's task prompt | Each agent invocation | Target info, state summary, previous findings, engagement-specific context |
 
-The project layer sets universal rules (always load skills via `get_skill()`, never write state directly). The agent layer constrains to a domain (web-exploit-agent only does web techniques, uses state-interim for critical mid-run writes). The skill layer provides technique depth (exact payloads, variant detection, troubleshooting). The dynamic prompt carries live engagement state (what's been found, what to focus on, what's failed) plus operator-controlled runtime context such as the selected Burp listener for web work.
+The project layer sets universal rules (always load skills via `get_skill()`, never write state directly). The agent layer constrains to a domain (web-exploit-agent only does web techniques, writes directly to state). The skill layer provides technique depth (exact payloads, variant detection, troubleshooting). The dynamic prompt carries live engagement state (what's been found, what to focus on, what's failed) plus operator-controlled runtime context such as the selected Burp listener for web work.
 
 Understanding this stack is essential for extending red-run — whether writing new orchestrators, agents, or skills.
 
 ## Agent → MCP Access
 
-Each agent has access to specific MCP servers. All agents use **state-interim** (read + 5 add-only writes) so they can record critical discoveries mid-run.
+Each agent has access to specific MCP servers. All agents use **state** (full read/write) so they can record discoveries mid-run.
 
 | Agent | MCP Servers |
 |-------|-------------|
-| orchestrator | skill-router, state-reader, state-writer |
-| network-recon | skill-router, nmap-server, shell-server, state-interim |
-| web-discovery | skill-router, shell-server, browser-server, state-interim |
-| web-exploit | skill-router, shell-server, browser-server, state-interim |
-| ad-discovery | skill-router, shell-server, state-interim |
-| ad-exploit | skill-router, shell-server, state-interim |
-| linux-privesc | skill-router, shell-server, state-interim |
-| windows-privesc | skill-router, shell-server, state-interim |
-| password-spray | skill-router, shell-server, state-interim |
-| evasion | skill-router, shell-server, state-interim |
-| credential-cracking | skill-router, state-interim |
+| orchestrator | skill-router, state |
+| network-recon | skill-router, nmap-server, shell-server, state |
+| web-discovery | skill-router, shell-server, browser-server, state |
+| web-exploit | skill-router, shell-server, browser-server, state |
+| ad-discovery | skill-router, shell-server, state |
+| ad-exploit | skill-router, shell-server, state |
+| linux-privesc | skill-router, shell-server, state |
+| windows-privesc | skill-router, shell-server, state |
+| password-spray | skill-router, shell-server, state |
+| evasion | skill-router, shell-server, state |
+| credential-cracking | skill-router, state |
 
 See [Agents](agents.md) for the full agent model and routing table.
 
@@ -105,13 +105,12 @@ See [Engagement State](engagement-state.md) for the database schema and [Running
 State flows through the system in one direction:
 
 1. **Agents discover** findings (vulns, credentials, pivot paths) during skill execution
-2. **All agents** write critical discoveries mid-run via state-interim (5 add-only tools)
+2. **All agents** write discoveries directly to state via the state MCP server
 3. **All agents** report findings in their return summary
-4. **Orchestrator parses** returns, deduplicates interim writes, records remaining state changes via state-writer
-5. **Orchestrator reads** updated state summary to make the next routing decision
-6. **Next agent** reads state via `get_state_summary()` on activation — sees everything discovered so far
+4. **Orchestrator reads** updated state summary to make the next routing decision. Deduplication is at the DB level
+5. **Next agent** reads state via `get_state_summary()` on activation — sees everything discovered so far
 
-This ensures the orchestrator is the single source of truth for engagement state, while discovery agents can share urgent findings (like new credentials) with concurrent agents without waiting for their run to complete.
+All agents and the orchestrator share the same state server with full read/write access, so discoveries are visible immediately to concurrent agents without waiting for any run to complete.
 
 ## Privilege Boundaries
 

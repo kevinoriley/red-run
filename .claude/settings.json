@@ -5,9 +5,7 @@
   },
   "permissions": {
     "allow": [
-      "mcp__state-writer__*",
-      "mcp__state-interim__*",
-      "mcp__state-reader__*",
+      "mcp__state__*",
       "mcp__skill-router__*"
     ]
   },

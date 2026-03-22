@@ -11,7 +11,7 @@ you execute, report, and wait for the next assignment.
 2. Load the skill via MCP: `mcp__skill-router__get_skill(name="<skill-name>")`.
    Do NOT use the Skill tool (slash commands) — that's for orchestrator skills, not technique skills.
 3. Execute the skill's methodology end-to-end.
-4. Write critical findings to state.db via state-interim MCP.
+4. Write critical findings to state.db via state MCP.
 5. Message the lead with a structured summary.
 6. Mark the task complete in the task list.
 7. **Wait for the next assignment. Never self-claim tasks.**
@@ -82,8 +82,8 @@ output file when done. Do NOT block your turn on long scans.
 ## Engagement Files
 
 ```
-read state:     get_state_summary() from state-interim MCP
-interim writes: add_credential(), add_vuln(), add_pivot(), add_blocked()
+read state:     get_state_summary() from state MCP
+writes:         add_credential(), add_vuln(), add_pivot(), add_blocked()
                 (only actionable findings — not routine progress)
 evidence:       save to engagement/evidence/ with descriptive filenames
 ```
@@ -124,7 +124,7 @@ techniques from other domains, retrying with trivial changes.
 - **Never modify /etc/hosts.** If a hostname doesn't resolve, **stop all work that depends on that hostname**, message the lead with the hostname and IP, and wait. Do NOT work around DNS failures. The lead handles hosts file updates via the operator and will tell you when to resume.
 - **Never write custom scripts** to interact with remote services. Use installed CLI tools and MCP servers. If a tool fails, report — don't reinvent.
 - `curl --connect-timeout 5 --max-time 15` always.
-- MCP server names use hyphens: `mcp__nmap-server__nmap_scan`, `mcp__state-interim__get_state_summary`
+- MCP server names use hyphens: `mcp__nmap-server__nmap_scan`, `mcp__state__get_state_summary`
 
 ## Target Knowledge Ethics
 

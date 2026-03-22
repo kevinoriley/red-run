@@ -1,28 +1,18 @@
 """MCP server for SQLite-backed engagement state management.
 
-Runs in three modes controlled by --mode:
-- read:    Read-only tools (get_state_summary, get_targets, etc.)
-           Listed in technique subagents' mcpServers block.
-- interim: Read tools + 5 add-only write tools (add_credential, add_vuln,
-           add_pivot, add_blocked, add_tunnel). Listed in discovery subagents'
-           mcpServers block so they can record actionable findings mid-run
-           without waiting for the orchestrator to parse their return summary.
-- write:   Read + all write tools (add_target, add_credential, etc.)
-           Only accessible to the main thread (orchestrator).
+Single-mode server — all tools (read + write) are always available.
+Every agent and the orchestrator connect to the same instance.
 
-All instances open the same engagement/state.db. SQLite WAL mode handles
-concurrent readers safely. busy_timeout prevents SQLITE_BUSY when the
-orchestrator and an interim-mode agent write concurrently.
+All write operations emit state_events rows for real-time monitoring
+via poll_events(). Deduplication is built into add_vuln() and
+add_credential() to handle concurrent writes from multiple agents.
 
 Usage:
-    uv run python server.py --mode read
-    uv run python server.py --mode interim
-    uv run python server.py --mode write
+    uv run python server.py
 """
 
 from __future__ import annotations
 
-import argparse
 import json
 import sqlite3
 from contextlib import contextmanager
@@ -83,7 +73,7 @@ def _emit_event(
 ) -> None:
     """Insert a state_events row inside the current transaction.
 
-    Called by interim-mode write tools so the orchestrator can poll for
+    Called by all write tools so agents and the orchestrator can poll for
     real-time findings via poll_events().  Silently skips if the table
     doesn't exist (older DBs without the v2 schema).
     """
@@ -98,12 +88,25 @@ def _emit_event(
 
 
 # ---------------------------------------------------------------------------
-# Read tools (registered for both modes)
+# Server setup
 # ---------------------------------------------------------------------------
 
 
-def register_read_tools(mcp: FastMCP) -> None:
-    """Register read-only tools on the MCP server."""
+def create_server() -> FastMCP:
+    """Create and configure the state MCP server."""
+    mcp = FastMCP(
+        "red-run-state",
+        instructions=(
+            "Provides engagement state management for red-run. "
+            "Full read/write access to engagement state. Use write tools "
+            "to record targets, credentials, access, vulns, pivots, and "
+            "blocked items. Use get_state_summary() for a compact overview."
+        ),
+    )
+
+    # ------------------------------------------------------------------
+    # Read tools
+    # ------------------------------------------------------------------
 
     @mcp.tool()
     def get_state_summary(max_lines: int = 200) -> str:
@@ -433,7 +436,7 @@ def register_read_tools(mcp: FastMCP) -> None:
         """Get vulnerabilities.
 
         Args:
-            status: Filter by status (found/active/done, empty = all).
+            status: Filter by status (found/exploited/blocked, empty = all).
             target: Filter by target host (empty = all).
         """
         with _get_db() as conn:
@@ -534,9 +537,9 @@ def register_read_tools(mcp: FastMCP) -> None:
     def poll_events(since_id: int = 0, limit: int = 50) -> str:
         """Poll for state events since a checkpoint.
 
-        Returns new events written by interim-mode agents plus a cursor for
-        the next call.  Use this for real-time monitoring of
-        findings as they happen — call repeatedly with the returned cursor.
+        Returns new events written by agents plus a cursor for the next call.
+        Use this for real-time monitoring of findings as they happen — call
+        repeatedly with the returned cursor.
 
         Args:
             since_id: Last event ID seen (0 = from the beginning).
@@ -565,14 +568,9 @@ def register_read_tools(mcp: FastMCP) -> None:
                 indent=2,
             )
 
-
-# ---------------------------------------------------------------------------
-# Write tools (registered only in write mode)
-# ---------------------------------------------------------------------------
-
-
-def register_write_tools(mcp: FastMCP) -> None:
-    """Register write tools on the MCP server (orchestrator only)."""
+    # ------------------------------------------------------------------
+    # Write tools
+    # ------------------------------------------------------------------
 
     @mcp.tool()
     def init_engagement(name: str = "", mode: str = "ctf") -> str:
@@ -710,12 +708,14 @@ def register_write_tools(mcp: FastMCP) -> None:
                         (target_id, port_num, protocol, state, service, banner),
                     )
 
+            action = "updated" if existing else "created"
+            _emit_event(conn, "target", target_id, f"{host} ({action})", discovered_by)
             conn.commit()
             return json.dumps(
                 {
                     "target_id": target_id,
                     "host": host,
-                    "action": "updated" if existing else "created",
+                    "action": action,
                 },
                 indent=2,
             )
@@ -819,582 +819,8 @@ def register_write_tools(mcp: FastMCP) -> None:
     ) -> str:
         """Add a credential (password, hash, key, token, etc.).
 
-        Args:
-            username: Username or account name.
-            secret: The credential value (password, hash, key, token).
-            secret_type: Type of secret: password, ntlm_hash, aes_key,
-                        kerberos_tgt, kerberos_tgs, ssh_key, token,
-                        certificate, other.
-            domain: Domain (for AD credentials).
-            source: Where this credential was found.
-            via_access_id: Access ID that led to finding this credential
-                          (for kill-chain provenance). None = provided/external.
-            discovered_by: Skill that found this credential.
-        """
-        with _get_db() as conn:
-            existing = conn.execute(
-                "SELECT id FROM credentials "
-                "WHERE username = ? AND secret_type = ? AND secret = ?",
-                (username, secret_type, secret),
-            ).fetchone()
-            if existing:
-                return json.dumps(
-                    {
-                        "credential_id": existing["id"],
-                        "status": "duplicate_skipped",
-                        "username": username,
-                        "secret_type": secret_type,
-                        "domain": domain,
-                    },
-                    indent=2,
-                )
-            cursor = conn.execute(
-                "INSERT INTO credentials "
-                "(username, secret, secret_type, domain, source, via_access_id, discovered_by) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (
-                    username,
-                    secret,
-                    secret_type,
-                    domain,
-                    source,
-                    via_access_id,
-                    discovered_by,
-                ),
-            )
-            cred_id = cursor.lastrowid
-            conn.commit()
-            return json.dumps(
-                {
-                    "credential_id": cred_id,
-                    "username": username,
-                    "secret_type": secret_type,
-                    "domain": domain,
-                },
-                indent=2,
-            )
-
-    @mcp.tool()
-    def update_credential(
-        id: int,
-        cracked: bool | None = None,
-        secret: str = "",
-        notes: str = "",
-    ) -> str:
-        """Update a credential (e.g., mark as cracked, add plaintext).
-
-        Args:
-            id: Credential ID.
-            cracked: Set to true when the hash has been cracked.
-            secret: Updated secret value (e.g., cracked plaintext).
-            notes: Additional notes.
-        """
-        with _get_db() as conn:
-            updates = []
-            params: list = []
-            if cracked is not None:
-                updates.append("cracked = ?")
-                params.append(1 if cracked else 0)
-            if secret:
-                updates.append("secret = ?")
-                params.append(secret)
-            if notes:
-                updates.append("notes = ?")
-                params.append(notes)
-
-            if not updates:
-                return "No fields to update."
-
-            updates.append(f"updated_at = {_now_sql()}")
-            params.append(id)
-            conn.execute(
-                f"UPDATE credentials SET {', '.join(updates)} WHERE id = ?",
-                params,
-            )
-            conn.commit()
-            return json.dumps({"credential_id": id, "updated": True})
-
-    @mcp.tool()
-    def test_credential(
-        credential_id: int,
-        host: str,
-        service: str,
-        works: bool,
-        tested_by: str = "",
-    ) -> str:
-        """Record whether a credential works against a target/service.
-
-        Upserts on (credential_id, target_id, service).
-
-        Args:
-            credential_id: ID of the credential to test.
-            host: Target host (must exist in targets table).
-            service: Service tested (e.g., "smb", "ssh", "rdp", "winrm", "web").
-            works: Whether the credential authenticated successfully.
-            tested_by: Skill that performed the test.
-        """
-        with _get_db() as conn:
-            target_id = _resolve_target_id(conn, host)
-            if target_id is None:
-                return f"ERROR: Target '{host}' not found."
-
-            conn.execute(
-                "INSERT INTO credential_access "
-                "(credential_id, target_id, service, works, tested_by) "
-                "VALUES (?, ?, ?, ?, ?) "
-                "ON CONFLICT(credential_id, target_id, service) DO UPDATE SET "
-                "works = excluded.works, "
-                "tested_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), "
-                "tested_by = excluded.tested_by",
-                (credential_id, target_id, service, 1 if works else 0, tested_by),
-            )
-            conn.commit()
-            return json.dumps(
-                {
-                    "credential_id": credential_id,
-                    "host": host,
-                    "service": service,
-                    "works": works,
-                }
-            )
-
-    @mcp.tool()
-    def add_access(
-        host: str,
-        access_type: str = "shell",
-        username: str = "",
-        privilege: str = "user",
-        method: str = "",
-        session_ref: str = "",
-        discovered_by: str = "",
-        notes: str = "",
-    ) -> str:
-        """Record a new foothold/access on a target.
-
-        Args:
-            host: Target host (must exist in targets table).
-            access_type: Type of access: shell, ssh, winrm, rdp, web_shell,
-                        db, token, vpn, other.
-            username: User/account that has access.
-            privilege: Privilege level: user, admin, root, system, service,
-                      domain_admin, other.
-            method: How access was gained (e.g., "XXE -> webshell -> rev shell").
-            session_ref: Reference to shell-server session ID if applicable.
-            discovered_by: Skill that gained access.
-            notes: Additional notes.
-        """
-        with _get_db() as conn:
-            target_id = _resolve_target_id(conn, host)
-            if target_id is None:
-                return f"ERROR: Target '{host}' not found."
-
-            cursor = conn.execute(
-                "INSERT INTO access "
-                "(target_id, access_type, username, privilege, method, "
-                "session_ref, discovered_by, notes) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    target_id,
-                    access_type,
-                    username,
-                    privilege,
-                    method,
-                    session_ref,
-                    discovered_by,
-                    notes,
-                ),
-            )
-            access_id = cursor.lastrowid
-            conn.commit()
-            return json.dumps(
-                {
-                    "access_id": access_id,
-                    "host": host,
-                    "access_type": access_type,
-                    "privilege": privilege,
-                },
-                indent=2,
-            )
-
-    @mcp.tool()
-    def update_access(
-        id: int,
-        active: bool | None = None,
-        privilege: str = "",
-        notes: str = "",
-    ) -> str:
-        """Update access record (e.g., revoke, update privilege level).
-
-        Args:
-            id: Access record ID.
-            active: Set to false to mark access as revoked.
-            privilege: Updated privilege level.
-            notes: Additional notes.
-        """
-        with _get_db() as conn:
-            updates = []
-            params: list = []
-            if active is not None:
-                updates.append("active = ?")
-                params.append(1 if active else 0)
-            if privilege:
-                updates.append("privilege = ?")
-                params.append(privilege)
-            if notes:
-                updates.append("notes = ?")
-                params.append(notes)
-
-            if not updates:
-                return "No fields to update."
-
-            updates.append(f"updated_at = {_now_sql()}")
-            params.append(id)
-            conn.execute(
-                f"UPDATE access SET {', '.join(updates)} WHERE id = ?",
-                params,
-            )
-            conn.commit()
-            return json.dumps({"access_id": id, "updated": True})
-
-    @mcp.tool()
-    def add_vuln(
-        title: str,
-        host: str = "",
-        vuln_type: str = "",
-        status: str = "found",
-        severity: str = "medium",
-        endpoint: str = "",
-        details: str = "",
-        evidence_path: str = "",
-        via_access_id: int | None = None,
-        discovered_by: str = "",
-    ) -> str:
-        """Add a confirmed vulnerability.
-
-        Args:
-            title: Short vulnerability title (e.g., "SQLi in /search parameter").
-            host: Target host (empty = unassociated).
-            vuln_type: Vulnerability class (e.g., "sqli", "xss", "rce").
-            status: Status: found, active, done.
-            severity: Severity: info, low, medium, high, critical.
-            endpoint: Affected endpoint/URL/path.
-            details: Technical details.
-            evidence_path: Path to evidence file in engagement/evidence/.
-            via_access_id: Access ID that led to finding this vuln
-                          (for kill-chain provenance). None = unauthenticated/recon.
-            discovered_by: Skill that found this vulnerability.
-        """
-        with _get_db() as conn:
-            target_id = None
-            if host:
-                target_id = _resolve_target_id(conn, host)
-                if target_id is None:
-                    return f"ERROR: Target '{host}' not found. Add the target first."
-
-            cursor = conn.execute(
-                "INSERT INTO vulns "
-                "(target_id, title, vuln_type, status, severity, endpoint, "
-                "details, evidence_path, via_access_id, discovered_by) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    target_id,
-                    title,
-                    vuln_type,
-                    status,
-                    severity,
-                    endpoint,
-                    details,
-                    evidence_path,
-                    via_access_id,
-                    discovered_by,
-                ),
-            )
-            vuln_id = cursor.lastrowid
-            conn.commit()
-            return json.dumps(
-                {
-                    "vuln_id": vuln_id,
-                    "title": title,
-                    "severity": severity,
-                    "status": status,
-                },
-                indent=2,
-            )
-
-    @mcp.tool()
-    def update_vuln(
-        id: int,
-        status: str = "",
-        severity: str = "",
-        details: str = "",
-    ) -> str:
-        """Update vulnerability (e.g., change status to 'done' after exploitation).
-
-        Args:
-            id: Vulnerability ID.
-            status: Updated status (found/active/done).
-            severity: Updated severity.
-            details: Updated details.
-        """
-        with _get_db() as conn:
-            updates = []
-            params: list = []
-            if status:
-                updates.append("status = ?")
-                params.append(status)
-            if severity:
-                updates.append("severity = ?")
-                params.append(severity)
-            if details:
-                updates.append("details = ?")
-                params.append(details)
-
-            if not updates:
-                return "No fields to update."
-
-            updates.append(f"updated_at = {_now_sql()}")
-            params.append(id)
-            conn.execute(
-                f"UPDATE vulns SET {', '.join(updates)} WHERE id = ?",
-                params,
-            )
-            conn.commit()
-            return json.dumps({"vuln_id": id, "updated": True})
-
-    @mcp.tool()
-    def add_pivot(
-        source: str,
-        destination: str,
-        method: str = "",
-        status: str = "identified",
-        discovered_by: str = "",
-        notes: str = "",
-    ) -> str:
-        """Add a pivot path (what leads where).
-
-        Args:
-            source: Source (e.g., "SQLi on 10.10.10.5:/search").
-            destination: Destination (e.g., "DB creds for 10.10.10.1:mssql").
-            method: How the pivot works.
-            status: Status: identified, exploited, blocked.
-            discovered_by: Skill that identified this path.
-            notes: Additional notes.
-        """
-        with _get_db() as conn:
-            cursor = conn.execute(
-                "INSERT INTO pivot_map "
-                "(source, destination, method, status, discovered_by, notes) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (source, destination, method, status, discovered_by, notes),
-            )
-            pivot_id = cursor.lastrowid
-            conn.commit()
-            return json.dumps(
-                {
-                    "pivot_id": pivot_id,
-                    "source": source,
-                    "destination": destination,
-                    "status": status,
-                },
-                indent=2,
-            )
-
-    @mcp.tool()
-    def update_pivot(
-        id: int,
-        status: str = "",
-        notes: str = "",
-    ) -> str:
-        """Update a pivot path status.
-
-        Args:
-            id: Pivot ID.
-            status: Updated status (identified/exploited/blocked).
-            notes: Updated notes.
-        """
-        with _get_db() as conn:
-            updates = []
-            params: list = []
-            if status:
-                updates.append("status = ?")
-                params.append(status)
-            if notes:
-                updates.append("notes = ?")
-                params.append(notes)
-
-            if not updates:
-                return "No fields to update."
-
-            params.append(id)
-            conn.execute(
-                f"UPDATE pivot_map SET {', '.join(updates)} WHERE id = ?",
-                params,
-            )
-            conn.commit()
-            return json.dumps({"pivot_id": id, "updated": True})
-
-    @mcp.tool()
-    def add_blocked(
-        technique: str,
-        reason: str,
-        host: str = "",
-        retry: str = "no",
-        notes: str = "",
-        blocked_by: str = "",
-    ) -> str:
-        """Record a blocked/failed technique attempt.
-
-        Args:
-            technique: Technique that was attempted (e.g., "kerberoasting").
-            reason: Why it failed.
-            host: Target host (empty = not host-specific).
-            retry: Retry assessment: no, later, with_context.
-            notes: Additional notes.
-            blocked_by: Skill that was blocked.
-        """
-        with _get_db() as conn:
-            target_id = None
-            if host:
-                target_id = _resolve_target_id(conn, host)
-
-            cursor = conn.execute(
-                "INSERT INTO blocked "
-                "(target_id, technique, reason, retry, notes, blocked_by) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (target_id, technique, reason, retry, notes, blocked_by),
-            )
-            blocked_id = cursor.lastrowid
-            conn.commit()
-            return json.dumps(
-                {
-                    "blocked_id": blocked_id,
-                    "technique": technique,
-                    "retry": retry,
-                },
-                indent=2,
-            )
-
-    @mcp.tool()
-    def add_tunnel(
-        tunnel_type: str = "other",
-        pivot_host: str = "",
-        target_subnet: str = "",
-        local_endpoint: str = "",
-        remote_endpoint: str = "",
-        requires_proxychains: bool = False,
-        notes: str = "",
-        created_by: str = "",
-    ) -> str:
-        """Record an established tunnel.
-
-        Args:
-            tunnel_type: Tunnel type: ssh_local, ssh_dynamic, ssh_remote,
-                        ssh_tun, sshuttle, ligolo, chisel, socat, other.
-            pivot_host: Host being pivoted through.
-            target_subnet: Target subnet reachable via tunnel (e.g., "172.16.0.0/24").
-            local_endpoint: Local endpoint (e.g., "socks5://127.0.0.1:1080",
-                           "ligolo0 TUN", "127.0.0.1:8080").
-            remote_endpoint: Remote endpoint on/through the pivot.
-            requires_proxychains: True if tools need proxychains (SOCKS-based),
-                                 false for transparent tunnels (sshuttle, ligolo, ssh_tun).
-            notes: Additional notes.
-            created_by: Skill/agent that created this tunnel.
-        """
-        with _get_db() as conn:
-            cursor = conn.execute(
-                "INSERT INTO tunnels "
-                "(tunnel_type, pivot_host, target_subnet, local_endpoint, "
-                "remote_endpoint, requires_proxychains, notes, created_by) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    tunnel_type,
-                    pivot_host,
-                    target_subnet,
-                    local_endpoint,
-                    remote_endpoint,
-                    1 if requires_proxychains else 0,
-                    notes,
-                    created_by,
-                ),
-            )
-            tunnel_id = cursor.lastrowid
-            conn.commit()
-            return json.dumps(
-                {
-                    "tunnel_id": tunnel_id,
-                    "tunnel_type": tunnel_type,
-                    "pivot_host": pivot_host,
-                    "target_subnet": target_subnet,
-                    "requires_proxychains": requires_proxychains,
-                },
-                indent=2,
-            )
-
-    @mcp.tool()
-    def update_tunnel(
-        id: int,
-        status: str = "",
-        notes: str = "",
-    ) -> str:
-        """Update a tunnel (e.g., mark as down or closed).
-
-        Args:
-            id: Tunnel ID.
-            status: Updated status (active/down/closed).
-            notes: Updated notes.
-        """
-        with _get_db() as conn:
-            updates = []
-            params: list = []
-            if status:
-                updates.append("status = ?")
-                params.append(status)
-            if notes:
-                updates.append("notes = ?")
-                params.append(notes)
-
-            if not updates:
-                return "No fields to update."
-
-            updates.append(f"updated_at = {_now_sql()}")
-            params.append(id)
-            conn.execute(
-                f"UPDATE tunnels SET {', '.join(updates)} WHERE id = ?",
-                params,
-            )
-            conn.commit()
-            return json.dumps({"tunnel_id": id, "updated": True})
-
-
-# ---------------------------------------------------------------------------
-# Interim tools (registered only in interim mode — all agents)
-# ---------------------------------------------------------------------------
-
-
-def register_interim_tools(mcp: FastMCP) -> None:
-    """Register add-only write tools for agents.
-
-    Interim mode gives agents the ability to record actionable findings
-    (credentials, vulns, pivot paths, blocked techniques, tunnels) mid-run
-    so the orchestrator can see them immediately via the event watcher —
-    without waiting for the agent's full return summary.
-
-    Only 5 add-only tools are exposed. No update tools, no target/port/access
-    management, no lifecycle tools. The orchestrator remains the authoritative
-    writer for everything else.
-    """
-
-    @mcp.tool()
-    def add_credential(
-        username: str = "",
-        secret: str = "",
-        secret_type: str = "password",
-        domain: str = "",
-        source: str = "",
-        via_access_id: int | None = None,
-        discovered_by: str = "",
-    ) -> str:
-        """Add a credential (password, hash, key, token, etc.).
+        Deduplicates on (username, secret_type, secret). Returns existing
+        record if duplicate found.
 
         Args:
             username: Username or account name.
@@ -1458,6 +884,201 @@ def register_interim_tools(mcp: FastMCP) -> None:
             )
 
     @mcp.tool()
+    def update_credential(
+        id: int,
+        cracked: bool | None = None,
+        secret: str = "",
+        notes: str = "",
+    ) -> str:
+        """Update a credential (e.g., mark as cracked, add plaintext).
+
+        Args:
+            id: Credential ID.
+            cracked: Set to true when the hash has been cracked.
+            secret: Updated secret value (e.g., cracked plaintext).
+            notes: Additional notes.
+        """
+        with _get_db() as conn:
+            updates = []
+            params: list = []
+            if cracked is not None:
+                updates.append("cracked = ?")
+                params.append(1 if cracked else 0)
+            if secret:
+                updates.append("secret = ?")
+                params.append(secret)
+            if notes:
+                updates.append("notes = ?")
+                params.append(notes)
+
+            if not updates:
+                return "No fields to update."
+
+            updates.append(f"updated_at = {_now_sql()}")
+            params.append(id)
+            conn.execute(
+                f"UPDATE credentials SET {', '.join(updates)} WHERE id = ?",
+                params,
+            )
+            _emit_event(conn, "credential_update", id, f"credential #{id} updated")
+            conn.commit()
+            return json.dumps({"credential_id": id, "updated": True})
+
+    @mcp.tool()
+    def test_credential(
+        credential_id: int,
+        host: str,
+        service: str,
+        works: bool,
+        tested_by: str = "",
+    ) -> str:
+        """Record whether a credential works against a target/service.
+
+        Upserts on (credential_id, target_id, service).
+
+        Args:
+            credential_id: ID of the credential to test.
+            host: Target host (must exist in targets table).
+            service: Service tested (e.g., "smb", "ssh", "rdp", "winrm", "web").
+            works: Whether the credential authenticated successfully.
+            tested_by: Skill that performed the test.
+        """
+        with _get_db() as conn:
+            target_id = _resolve_target_id(conn, host)
+            if target_id is None:
+                return f"ERROR: Target '{host}' not found."
+
+            conn.execute(
+                "INSERT INTO credential_access "
+                "(credential_id, target_id, service, works, tested_by) "
+                "VALUES (?, ?, ?, ?, ?) "
+                "ON CONFLICT(credential_id, target_id, service) DO UPDATE SET "
+                "works = excluded.works, "
+                "tested_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), "
+                "tested_by = excluded.tested_by",
+                (credential_id, target_id, service, 1 if works else 0, tested_by),
+            )
+            result_str = "works" if works else "fails"
+            _emit_event(
+                conn, "credential_test", credential_id,
+                f"cred #{credential_id} {result_str} on {host}:{service}",
+                tested_by,
+            )
+            conn.commit()
+            return json.dumps(
+                {
+                    "credential_id": credential_id,
+                    "host": host,
+                    "service": service,
+                    "works": works,
+                }
+            )
+
+    @mcp.tool()
+    def add_access(
+        host: str,
+        access_type: str = "shell",
+        username: str = "",
+        privilege: str = "user",
+        method: str = "",
+        session_ref: str = "",
+        discovered_by: str = "",
+        notes: str = "",
+    ) -> str:
+        """Record a new foothold/access on a target.
+
+        Args:
+            host: Target host (must exist in targets table).
+            access_type: Type of access: shell, ssh, winrm, rdp, web_shell,
+                        db, token, vpn, other.
+            username: User/account that has access.
+            privilege: Privilege level: user, admin, root, system, service,
+                      domain_admin, other.
+            method: How access was gained (e.g., "XXE -> webshell -> rev shell").
+            session_ref: Reference to shell-server session ID if applicable.
+            discovered_by: Skill that gained access.
+            notes: Additional notes.
+        """
+        with _get_db() as conn:
+            target_id = _resolve_target_id(conn, host)
+            if target_id is None:
+                return f"ERROR: Target '{host}' not found."
+
+            cursor = conn.execute(
+                "INSERT INTO access "
+                "(target_id, access_type, username, privilege, method, "
+                "session_ref, discovered_by, notes) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    target_id,
+                    access_type,
+                    username,
+                    privilege,
+                    method,
+                    session_ref,
+                    discovered_by,
+                    notes,
+                ),
+            )
+            access_id = cursor.lastrowid
+            _emit_event(
+                conn, "access", access_id,
+                f"{username}@{host} [{privilege}] via {access_type}",
+                discovered_by,
+            )
+            conn.commit()
+            return json.dumps(
+                {
+                    "access_id": access_id,
+                    "host": host,
+                    "access_type": access_type,
+                    "privilege": privilege,
+                },
+                indent=2,
+            )
+
+    @mcp.tool()
+    def update_access(
+        id: int,
+        active: bool | None = None,
+        privilege: str = "",
+        notes: str = "",
+    ) -> str:
+        """Update access record (e.g., revoke, update privilege level).
+
+        Args:
+            id: Access record ID.
+            active: Set to false to mark access as revoked.
+            privilege: Updated privilege level.
+            notes: Additional notes.
+        """
+        with _get_db() as conn:
+            updates = []
+            params: list = []
+            if active is not None:
+                updates.append("active = ?")
+                params.append(1 if active else 0)
+            if privilege:
+                updates.append("privilege = ?")
+                params.append(privilege)
+            if notes:
+                updates.append("notes = ?")
+                params.append(notes)
+
+            if not updates:
+                return "No fields to update."
+
+            updates.append(f"updated_at = {_now_sql()}")
+            params.append(id)
+            conn.execute(
+                f"UPDATE access SET {', '.join(updates)} WHERE id = ?",
+                params,
+            )
+            _emit_event(conn, "access_update", id, f"access #{id} updated")
+            conn.commit()
+            return json.dumps({"access_id": id, "updated": True})
+
+    @mcp.tool()
     def add_vuln(
         title: str,
         host: str = "",
@@ -1472,11 +1093,15 @@ def register_interim_tools(mcp: FastMCP) -> None:
     ) -> str:
         """Add a confirmed vulnerability.
 
+        Deduplicates on (target_id, title). If a vuln with the same title
+        already exists for the same target, returns the existing record
+        instead of creating a duplicate.
+
         Args:
             title: Short vulnerability title (e.g., "SQLi in /search parameter").
             host: Target host (empty = unassociated).
             vuln_type: Vulnerability class (e.g., "sqli", "xss", "rce").
-            status: Status: found, active, done.
+            status: Status: found, exploited, blocked.
             severity: Severity: info, low, medium, high, critical.
             endpoint: Affected endpoint/URL/path.
             details: Technical details.
@@ -1491,6 +1116,32 @@ def register_interim_tools(mcp: FastMCP) -> None:
                 target_id = _resolve_target_id(conn, host)
                 if target_id is None:
                     return f"ERROR: Target '{host}' not found. Add the target first."
+
+            # Dedup: check for existing vuln with same title on same target
+            if target_id is not None:
+                existing = conn.execute(
+                    "SELECT id, status, severity FROM vulns "
+                    "WHERE target_id = ? AND title = ?",
+                    (target_id, title),
+                ).fetchone()
+            else:
+                existing = conn.execute(
+                    "SELECT id, status, severity FROM vulns "
+                    "WHERE target_id IS NULL AND title = ?",
+                    (title,),
+                ).fetchone()
+
+            if existing:
+                return json.dumps(
+                    {
+                        "vuln_id": existing["id"],
+                        "status": "duplicate_skipped",
+                        "existing_status": existing["status"],
+                        "existing_severity": existing["severity"],
+                        "title": title,
+                    },
+                    indent=2,
+                )
 
             cursor = conn.execute(
                 "INSERT INTO vulns "
@@ -1525,6 +1176,50 @@ def register_interim_tools(mcp: FastMCP) -> None:
                 },
                 indent=2,
             )
+
+    @mcp.tool()
+    def update_vuln(
+        id: int,
+        status: str = "",
+        severity: str = "",
+        details: str = "",
+    ) -> str:
+        """Update vulnerability (e.g., change status after exploitation).
+
+        Args:
+            id: Vulnerability ID.
+            status: Updated status (found/exploited/blocked).
+            severity: Updated severity.
+            details: Updated details.
+        """
+        with _get_db() as conn:
+            updates = []
+            params: list = []
+            if status:
+                updates.append("status = ?")
+                params.append(status)
+            if severity:
+                updates.append("severity = ?")
+                params.append(severity)
+            if details:
+                updates.append("details = ?")
+                params.append(details)
+
+            if not updates:
+                return "No fields to update."
+
+            updates.append(f"updated_at = {_now_sql()}")
+            params.append(id)
+            conn.execute(
+                f"UPDATE vulns SET {', '.join(updates)} WHERE id = ?",
+                params,
+            )
+            summary = f"vuln #{id}"
+            if status:
+                summary += f" -> {status}"
+            _emit_event(conn, "vuln_update", id, summary)
+            conn.commit()
+            return json.dumps({"vuln_id": id, "updated": True})
 
     @mcp.tool()
     def add_pivot(
@@ -1567,6 +1262,89 @@ def register_interim_tools(mcp: FastMCP) -> None:
                     "source": source,
                     "destination": destination,
                     "status": status,
+                },
+                indent=2,
+            )
+
+    @mcp.tool()
+    def update_pivot(
+        id: int,
+        status: str = "",
+        notes: str = "",
+    ) -> str:
+        """Update a pivot path status.
+
+        Args:
+            id: Pivot ID.
+            status: Updated status (identified/exploited/blocked).
+            notes: Updated notes.
+        """
+        with _get_db() as conn:
+            updates = []
+            params: list = []
+            if status:
+                updates.append("status = ?")
+                params.append(status)
+            if notes:
+                updates.append("notes = ?")
+                params.append(notes)
+
+            if not updates:
+                return "No fields to update."
+
+            params.append(id)
+            conn.execute(
+                f"UPDATE pivot_map SET {', '.join(updates)} WHERE id = ?",
+                params,
+            )
+            _emit_event(conn, "pivot_update", id, f"pivot #{id} -> {status}")
+            conn.commit()
+            return json.dumps({"pivot_id": id, "updated": True})
+
+    @mcp.tool()
+    def add_blocked(
+        technique: str,
+        reason: str,
+        host: str = "",
+        retry: str = "no",
+        notes: str = "",
+        blocked_by: str = "",
+    ) -> str:
+        """Record a blocked/failed technique attempt.
+
+        Args:
+            technique: Technique that was attempted (e.g., "kerberoasting").
+            reason: Why it failed.
+            host: Target host (empty = not host-specific).
+            retry: Retry assessment: no, later, with_context.
+            notes: Additional notes.
+            blocked_by: Skill that was blocked.
+        """
+        with _get_db() as conn:
+            target_id = None
+            if host:
+                target_id = _resolve_target_id(conn, host)
+                if target_id is None:
+                    return f"ERROR: Target '{host}' not found. Add the target first."
+
+            cursor = conn.execute(
+                "INSERT INTO blocked "
+                "(target_id, technique, reason, retry, notes, blocked_by) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (target_id, technique, reason, retry, notes, blocked_by),
+            )
+            blocked_id = cursor.lastrowid
+            summary = technique
+            if host:
+                summary += f" on {host}"
+            summary += f" | {reason} [{retry}]"
+            _emit_event(conn, "blocked", blocked_id, summary, blocked_by)
+            conn.commit()
+            return json.dumps(
+                {
+                    "blocked_id": blocked_id,
+                    "technique": technique,
+                    "retry": retry,
                 },
                 indent=2,
             )
@@ -1631,119 +1409,46 @@ def register_interim_tools(mcp: FastMCP) -> None:
             )
 
     @mcp.tool()
-    def add_blocked(
-        technique: str,
-        reason: str,
-        host: str = "",
-        retry: str = "no",
+    def update_tunnel(
+        id: int,
+        status: str = "",
         notes: str = "",
-        blocked_by: str = "",
     ) -> str:
-        """Record a blocked/failed technique attempt.
+        """Update a tunnel (e.g., mark as down or closed).
 
         Args:
-            technique: Technique that was attempted (e.g., "kerberoasting").
-            reason: Why it failed.
-            host: Target host (empty = not host-specific).
-            retry: Retry assessment: no, later, with_context.
-            notes: Additional notes.
-            blocked_by: Skill that was blocked.
+            id: Tunnel ID.
+            status: Updated status (active/down/closed).
+            notes: Updated notes.
         """
         with _get_db() as conn:
-            target_id = None
-            if host:
-                target_id = _resolve_target_id(conn, host)
+            updates = []
+            params: list = []
+            if status:
+                updates.append("status = ?")
+                params.append(status)
+            if notes:
+                updates.append("notes = ?")
+                params.append(notes)
 
-            cursor = conn.execute(
-                "INSERT INTO blocked "
-                "(target_id, technique, reason, retry, notes, blocked_by) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (target_id, technique, reason, retry, notes, blocked_by),
+            if not updates:
+                return "No fields to update."
+
+            updates.append(f"updated_at = {_now_sql()}")
+            params.append(id)
+            conn.execute(
+                f"UPDATE tunnels SET {', '.join(updates)} WHERE id = ?",
+                params,
             )
-            blocked_id = cursor.lastrowid
-            summary = technique
-            if host:
-                summary += f" on {host}"
-            summary += f" | {reason} [{retry}]"
-            _emit_event(conn, "blocked", blocked_id, summary, blocked_by)
+            _emit_event(conn, "tunnel_update", id, f"tunnel #{id} -> {status}")
             conn.commit()
-            return json.dumps(
-                {
-                    "blocked_id": blocked_id,
-                    "technique": technique,
-                    "retry": retry,
-                },
-                indent=2,
-            )
-
-
-# ---------------------------------------------------------------------------
-# Server creation and entrypoint
-# ---------------------------------------------------------------------------
-
-
-def create_server(mode: str) -> FastMCP:
-    """Create and configure the state MCP server.
-
-    Args:
-        mode: "read" for read-only tools, "interim" for read + 4 add-only
-              write tools, "write" for read + all write tools.
-    """
-    names = {
-        "read": "red-run-state-reader",
-        "interim": "red-run-state-interim",
-        "write": "red-run-state-writer",
-    }
-    name = names[mode]
-
-    instructions_map = {
-        "read": (
-            "Provides engagement state management for red-run. "
-            "Read-only access to engagement state (targets, credentials, "
-            "access, vulns, pivot map, blocked). Use get_state_summary() "
-            "for a compact overview."
-        ),
-        "interim": (
-            "Provides engagement state management for red-run. "
-            "Read access plus 5 add-only write tools (add_credential, "
-            "add_vuln, add_pivot, add_blocked, add_tunnel) for discovery "
-            "agents to record actionable findings mid-run. Use "
-            "get_state_summary() for a compact overview."
-        ),
-        "write": (
-            "Provides engagement state management for red-run. "
-            "Full read/write access to engagement state. Use write tools "
-            "to record targets, credentials, access, vulns, pivots, and "
-            "blocked items. Use get_state_summary() for a compact overview."
-        ),
-    }
-
-    mcp = FastMCP(name, instructions=instructions_map[mode])
-
-    # Read tools always registered
-    register_read_tools(mcp)
-
-    # Interim tools for agents
-    if mode == "interim":
-        register_interim_tools(mcp)
-
-    # Full write tools for orchestrator
-    if mode == "write":
-        register_write_tools(mcp)
+            return json.dumps({"tunnel_id": id, "updated": True})
 
     return mcp
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="State MCP server")
-    parser.add_argument(
-        "--mode",
-        choices=["read", "interim", "write"],
-        required=True,
-        help="Server mode: 'read' for read-only, 'interim' for read + 5 add-only writes, 'write' for read+write",
-    )
-    args = parser.parse_args()
-    server = create_server(args.mode)
+    server = create_server()
     server.run()
 
 

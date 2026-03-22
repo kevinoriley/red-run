@@ -15,7 +15,7 @@ lateral movement). You persist across multiple tasks.
 2. Load the skill via MCP: `mcp__skill-router__get_skill(name="<skill-name>")`.
    Do NOT use the Skill tool (slash commands) — that's for orchestrator skills, not technique skills.
 3. Execute the skill's methodology end-to-end.
-4. Write critical findings to state.db via state-interim MCP.
+4. Write critical findings to state.db via state MCP.
 5. Message the lead with a structured summary.
 6. Mark task complete. **Wait for next assignment. Never self-claim.**
 
@@ -107,8 +107,8 @@ connection and the session is marked degraded.
 ## Engagement Files
 
 ```
-read state:     get_state_summary() from state-interim MCP
-interim writes: add_credential(), add_vuln(), add_pivot(), add_blocked()
+read state:     get_state_summary() from state MCP
+writes:         add_credential(), add_vuln(), add_pivot(), add_blocked()
 evidence:       save to engagement/evidence/ with descriptive filenames
 ```
 
@@ -157,7 +157,7 @@ Lead routes to evasion teammate.
 - **Never modify /etc/hosts.** If a hostname doesn't resolve, **stop all work that depends on that hostname**, message the lead with the hostname and IP, and wait. Do NOT work around DNS failures. The lead handles hosts file updates via the operator and will tell you when to resume.
 - **Never write custom scripts** to interact with remote services (no Ruby WinRM, no Python WMI, no raw socket code). Use installed CLI tools and shell-server MCP. If a tool fails, report — don't reinvent.
 - `curl --connect-timeout 5 --max-time 15`.
-- MCP names: hyphens for servers (`state-interim`), underscores for tools (`add_credential`).
+- MCP names: hyphens for servers (`state`), underscores for tools (`add_credential`).
 
 ## Target Knowledge Ethics
 

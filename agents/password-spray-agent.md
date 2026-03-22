@@ -17,7 +17,7 @@ mcpServers:
   - skill-router
   - shell-server
   - rdp-server
-  - state-interim
+  - state
 model: haiku
 ---
 
@@ -104,7 +104,7 @@ is to spray and return, not establish shells.
 
 ## Engagement Files
 
-- **State**: Call `get_state_summary()` from the state-interim MCP to read
+- **State**: Call `get_state_summary()` from the state MCP to read
   current engagement state.
 - **Interim writes**: Write valid credentials immediately when found:
   `add_credential()` for each confirmed valid login. This lets the

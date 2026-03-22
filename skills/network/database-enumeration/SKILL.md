@@ -52,7 +52,7 @@ This skill covers database enumeration and quick-win access checks only.
 Call `get_state_summary()` on activation. Skip services already enumerated.
 Leverage any known credentials.
 
-**Interim writes** — write critical discoveries immediately via state-interim:
+**State writes** — write critical discoveries immediately:
 - Default/empty credentials → `add_credential()`
 - Unauthenticated access → `add_vuln(severity="high")`
 - Command execution (xp_cmdshell, UDF, COPY PROGRAM) → `add_vuln(severity="critical")`
@@ -114,7 +114,7 @@ mssqlclient.py sa:''@TARGET_IP -windows-auth
 # In SQL shell: enable_xp_cmdshell / xp_cmdshell whoami
 ```
 
-**Interim:** sa creds → `add_credential(service="mssql")` · NTLM info → `add_pivot()` · xp_cmdshell → `add_vuln(severity="critical")`
+**State write:** sa creds → `add_credential(service="mssql")` · NTLM info → `add_pivot()` · xp_cmdshell → `add_vuln(severity="critical")`
 
 ## Step 2: MySQL (Port 3306)
 
@@ -133,7 +133,7 @@ mysql -h TARGET_IP -u root -p'' -e "SELECT @@plugin_dir; SELECT * FROM mysql.fun
 mysql -h TARGET_IP -u root -p'' -e "SHOW GRANTS FOR CURRENT_USER();"
 ```
 
-**Interim:** root creds → `add_credential(service="mysql")` · UDF/FILE privilege → `add_vuln(severity="critical")`
+**State write:** root creds → `add_credential(service="mysql")` · UDF/FILE privilege → `add_vuln(severity="critical")`
 
 ## Step 3: PostgreSQL (Port 5432)
 
@@ -149,7 +149,7 @@ psql -h TARGET_IP -U postgres -c "SELECT current_setting('is_superuser');"
 psql -h TARGET_IP -U postgres -c "COPY (SELECT '') TO PROGRAM 'id';"
 ```
 
-**Interim:** postgres creds → `add_credential(service="postgresql")` · trust auth → `add_vuln(severity="high")` · COPY PROGRAM → `add_vuln(severity="critical")`
+**State write:** postgres creds → `add_credential(service="postgresql")` · trust auth → `add_vuln(severity="high")` · COPY PROGRAM → `add_vuln(severity="critical")`
 
 ## Step 4: Oracle (Port 1521)
 
@@ -161,7 +161,7 @@ odat all -s TARGET_IP -p 1521
 
 Default credentials: `SCOTT/TIGER`, `SYS/CHANGE_ON_INSTALL`, `SYSTEM/MANAGER`.
 
-**Interim:** default creds → `add_credential(service="oracle")` · DBA access → `add_vuln(severity="critical")`
+**State write:** default creds → `add_credential(service="oracle")` · DBA access → `add_vuln(severity="critical")`
 
 ## Step 5: MongoDB (Port 27017)
 
@@ -171,7 +171,7 @@ mongosh --host TARGET_IP --eval "show dbs"
 mongosh --host TARGET_IP --eval "db.adminCommand({listDatabases:1})"
 ```
 
-**Interim:** unauthenticated access → `add_vuln(name="MongoDB unauthenticated access", severity="high")`
+**State write:** unauthenticated access → `add_vuln(name="MongoDB unauthenticated access", severity="high")`
 
 ## Step 6: Redis (Port 6379)
 
@@ -204,7 +204,7 @@ REDIS
 redis-cli -h TARGET_IP info replication
 ```
 
-**Interim:** unauth access → `add_vuln(severity="high")` · webshell/SSH key written → `add_vuln(severity="critical")`
+**State write:** unauth access → `add_vuln(severity="high")` · webshell/SSH key written → `add_vuln(severity="critical")`
 
 ## Escalate or Pivot
 

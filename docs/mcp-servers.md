@@ -28,26 +28,15 @@ All servers are configured in `.mcp.json` at the repo root:
       "command": "uv",
       "args": ["run", "--directory", "tools/browser-server", "python", "server.py"]
     },
-    "state-reader": {
+    "state": {
       "command": "uv",
-      "args": ["run", "--directory", "tools/state-server", "python", "server.py",
-               "--mode", "read"]
-    },
-    "state-interim": {
-      "command": "uv",
-      "args": ["run", "--directory", "tools/state-server", "python", "server.py",
-               "--mode", "interim"]
-    },
-    "state-writer": {
-      "command": "uv",
-      "args": ["run", "--directory", "tools/state-server", "python", "server.py",
-               "--mode", "write"]
+      "args": ["run", "--directory", "tools/state-server", "python", "server.py"]
     }
   }
 }
 ```
 
-> **Note:** The state-server runs as three separate instances with different `--mode` flags. All three share the same `engagement/state.db` file. See [Engagement State](engagement-state.md) for details.
+> **Note:** The state-server runs as a single instance with full read/write access. See [Engagement State](engagement-state.md) for details.
 
 ---
 
@@ -185,19 +174,13 @@ Headless Chromium automation via Playwright. Handles CSRF tokens, session cookie
 
 ## state-server
 
-**Location:** `tools/state-server/` · **3 instances, up to 24 tools**
+**Location:** `tools/state-server/` · **1 instance, full read/write tools**
 
-SQLite-backed engagement state management. The same server runs as three instances in different modes — each exposes a different set of tools depending on the agent's role.
+SQLite-backed engagement state management. A single server instance provides full read/write access to all agents and the orchestrator.
 
-| Mode | Instance | Used By | Access |
-|------|----------|---------|--------|
-| `read` | state-reader | (retained for fallback) | 8 read-only tools |
-| `interim` | state-interim | All agents | 8 read + 5 add-only writes |
-| `write` | state-writer | Orchestrator | 8 read + all write/update tools |
+SQLite WAL mode + `busy_timeout=5000` handles concurrent access safely. Deduplication is at the database level (UNIQUE constraints and ON CONFLICT clauses).
 
-All three instances open the same `engagement/state.db`. SQLite WAL mode + `busy_timeout=5000` handles concurrency safely.
-
-See [Engagement State](engagement-state.md) for the full schema, mode architecture, and how state drives vulnerability chaining.
+See [Engagement State](engagement-state.md) for the full schema and how state drives vulnerability chaining.
 
 ---
 

@@ -16,7 +16,7 @@ tools:
 mcpServers:
   - skill-router
   - shell-server
-  - state-interim
+  - state
 model: sonnet
 ---
 
@@ -145,7 +145,7 @@ send_command(session_id=..., command="id")
 
 ## Engagement Files
 
-- **State**: Call `get_state_summary()` from the state-interim MCP to read
+- **State**: Call `get_state_summary()` from the state MCP to read
   current engagement state.
 - **Interim writes**: Write findings immediately when actionable by a
   different agent type: credentials → `add_credential()`, vulns → `add_vuln()`,

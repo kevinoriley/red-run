@@ -48,7 +48,7 @@ domain subagent (preferred) or inline via `get_skill()` (fallback).
 2. Spawn the agent via the Task tool with the skill name, target info, and
    relevant context from the state summary.
 3. Wait for the agent to return with findings.
-4. Parse the return summary and record findings using state-writer MCP tools.
+4. Parse the return summary and record findings using state MCP tools.
 
 ### Fallback Path: Inline Execution
 
@@ -255,7 +255,7 @@ while objectives_not_met:
     END TURN — user is free to interact
 
     # Notifications arrive asynchronously:
-    # - Watcher fires → process interim findings, spawn follow-up + new watcher
+    # - Watcher fires → process new findings, spawn follow-up + new watcher
     # - Agent completes → Post-Skill Checkpoint, next routing decision
     # - User messages → respond, poll_events() as supplementary check
 ```
@@ -283,8 +283,8 @@ skill (inline) instead of ad-hoc cracking in a built-in sub-agent.
 
 ### Event Monitoring
 
-All agents write critical discoveries mid-run via state-interim MCP tools. Each
-interim write (credential, vuln, pivot, blocked, tunnel) also emits a row to
+All agents write critical discoveries mid-run via state MCP tools. Each
+write (credential, vuln, pivot, blocked, tunnel) also emits a row to
 the `state_events` table. The orchestrator uses a **background event watcher** to
 get push notifications when agents find something — zero context burn, and the
 user stays free to interact while agents work.
@@ -336,12 +336,9 @@ When a skill completes and returns control to the orchestrator:
 0. **Poll events:** Call `poll_events(since_id=<event_cursor>)` and display any
    new findings as a timeline (see Event Monitoring above). Update the cursor.
 1. Parse the subagent's return summary for new findings
-2. **Deduplicate interim writes**: All agents use state-interim MCP and may
-   have already written credentials, vulns, pivots, or blocked entries mid-run.
-   Before calling `add_credential()`, `add_vuln()`, `add_pivot()`, or
-   `add_blocked()`, call `get_state_summary()` and check if the finding already
-   exists in state. Skip writes that would duplicate what the agent already
-   recorded.
+2. **Check existing state**: Call `get_state_summary()` to see what's already
+   recorded. The database deduplicates at the DB level, but checking first
+   avoids unnecessary write calls.
 3. Call structured write tools to record state changes:
    - New hosts/ports → `add_target()` / `add_port()`
    - New credentials → `add_credential()`
@@ -598,7 +595,7 @@ mkdir -p engagement/evidence/logs
 - <goals>
 ```
 
-**engagement/state.db** — initialize via state-writer MCP:
+**engagement/state.db** — initialize via state MCP:
 
 Call `init_engagement(name="<engagement name>")` to create the SQLite state
 database.
@@ -649,7 +646,7 @@ present the scan selection hard stop:
 
 - **Import existing results**: Ask for the file path (the "Other" text input
   captures this). Read the XML file, parse it for hosts/ports/services, and
-  record findings directly via state-writer MCP tools (`add_target`,
+  record findings directly via state MCP tools (`add_target`,
   `add_port`). Skip spawning network-recon-agent entirely.
 
 - **Custom scan**: The operator's text input describes the scan. Pass it
@@ -737,7 +734,7 @@ Do not execute netexec or ldapsearch commands inline.
 ### Update State
 
 After each agent returns, parse the return summary and record findings using
-state-writer MCP tools (`add_target`, `add_port`, `add_credential`, `add_vuln`,
+state MCP tools (`add_target`, `add_port`, `add_credential`, `add_vuln`,
 etc.). Then call `get_state_summary()` to check for new findings before routing
 to the next skill.
 
@@ -760,11 +757,11 @@ prevents wasted agent invocations.
 
 ### Vhost Discovery Routing
 
-When web-discovery (or any agent) reports discovered vhosts — via interim event
+When web-discovery (or any agent) reports discovered vhosts — via state event
 or return summary — the orchestrator owns routing. Agents do NOT enumerate
 discovered vhosts themselves.
 
-1. Collect vhost names from the agent's return or interim events.
+1. Collect vhost names from the agent's return or state events.
 2. For each vhost, run `getent hosts <hostname>`.
 3. If ANY vhost does not resolve, trigger the **Hosts File Update** hard stop.
 4. After hosts resolve, spawn a **new web-discovery-agent** per vhost with the
@@ -949,7 +946,7 @@ callout:
 ```
 
 Do not interrupt the running agent — it continues enumeration normally. The
-flag is already in state via the agent's interim write.
+flag is already in state via the agent's state write.
 
 **Lateral movement and privesc re-check:** After every privilege escalation
 (user → root/SYSTEM/admin), the next agent spawn includes the directive again.
@@ -1174,16 +1171,16 @@ all agents in a single message** — this ensures true parallel execution.
 #### 2. Wait for First Return
 
 Background agents auto-notify on completion. The event watcher runs alongside
-parallel agents and surfaces interim discoveries in real time.
+parallel agents and surfaces discoveries in real time.
 
-**Act on actionable interims immediately — do not wait for agents to finish.**
+**Act on actionable events immediately — do not wait for agents to finish.**
 When the watcher fires, check the Actionable Event Criteria table. If the
 event is actionable (credential, high/critical vuln, flag, vhost, pivot),
 present the follow-up to the operator via `AskUserQuestion` and spawn the
 recommended agent on approval — even while the original agents are still
-running. This is the entire point of interim writes: early routing.
+running. This is the entire point of state writes: early routing.
 
-Interim-spawned agents do NOT resolve the parallel run — the original agents
+Event-spawned agents do NOT resolve the parallel run — the original agents
 keep running and still go through Race Resolution when they return. Spawn a
 new watcher after processing each notification.
 
@@ -1195,7 +1192,7 @@ When an agent returns, apply the standard Post-Skill Checkpoint steps 0–6
 **Case 1 — Succeeded:**
 The returning agent achieved its goal (credential obtained, access gained,
 foothold established).
-1. Record all findings via state-writer MCP tools.
+1. Record all findings via state MCP tools.
 2. `TaskStop` the other running agent(s) pursuing the same goal.
 3. Check the killed agent's partial output (via `TaskOutput` with
    `block: false`) for bonus findings — credentials, hosts, or vulns discovered
@@ -1227,19 +1224,15 @@ Multiple agents achieve the goal (rare but possible).
 
 #### 4. State Consistency Rules
 
-- **All agents** use state-interim MCP and can write 5 add-only tables
-  mid-run: credentials, vulns, pivots, blocked, tunnels. This ensures
-  critical discoveries (captured hashes, confirmed vulns, new pivot paths)
-  reach the orchestrator immediately via event watcher — not just at agent
-  return.
+- **All agents** have full state MCP access and write discoveries mid-run.
+  This ensures critical findings (captured hashes, confirmed vulns, new pivot
+  paths) reach the orchestrator immediately via event watcher — not just at
+  agent return.
 - The orchestrator processes agent returns **one at a time**, even when agents
-  ran in parallel. It deduplicates findings that agents already wrote via
-  interim before recording remaining state changes.
+  ran in parallel. The database deduplicates at the DB level.
 - Evidence filenames are skill-prefixed (e.g., `kerberoasting-tgs-hashes.txt`,
   `acl-abuse-dacl-modify.log`) — no collision risk from parallel agents.
-- SQLite WAL mode + busy_timeout handles concurrent readers and interim
-  writers safely. No write conflicts are possible because interim agents
-  only INSERT (never UPDATE) and the orchestrator serializes its writes.
+- SQLite WAL mode + busy_timeout handles concurrent writers safely.
 
 **When writing `.sh` scripts** (temp scripts, proxy snippets, etc.), always `chmod +x` the file after creating it.
 
@@ -1482,7 +1475,7 @@ skipping — the operator can override when high-value usernames are found.
 4. If skip: log and continue. Otherwise: spawn **password-spray-agent** in
    background with selected tier, services, usernames, and lockout policy
 5. **Immediately continue** the engagement loop — spraying runs independently.
-   The event watcher catches valid credentials mid-spray via state-interim.
+   The event watcher catches valid credentials mid-spray via state.
 
 ### Hashes Found
 
@@ -1540,7 +1533,7 @@ because the operator needs to see hash details and file paths.
 When significant access is gained (shell, domain admin, database):
 
 1. **Collect evidence** — save proof to `engagement/evidence/`
-2. **Update state** — call state-writer MCP tools to record new access, credentials, and vulns
+2. **Update state** — call state MCP tools to record new access, credentials, and vulns
 3. **Check objectives** — have we met the engagement goals?
 4. **Continue or wrap up** — if objectives met, move to reporting. If not,
    continue chaining.
@@ -1572,7 +1565,7 @@ After recon, rank targets by exploitability:
 
 **Phase 3 — Work the highest-value target:**
 Route through discovery → technique skills for the top-priority target. When
-you gain access or get blocked, record state changes via state-writer MCP and move to the next target.
+you gain access or get blocked, record state changes via state MCP and move to the next target.
 
 **Phase 4 — Cross-pollinate:**
 After each target yields credentials or access, check the engagement state for
@@ -1601,7 +1594,7 @@ exhausted or objectives are met.
 ### State Management for Multiple Targets
 
 The engagement state database tracks all targets in structured tables. Use the
-state-interim MCP tools to query across targets:
+state MCP tools to query across targets:
 
 - `get_state_summary()` — full overview of all targets, access, credentials,
   vulns, and pivot paths in one view

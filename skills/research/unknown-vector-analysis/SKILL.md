@@ -78,7 +78,7 @@ IDA Pro, Ghidra for complex binary RE), note it and return.
 
 ## State Management
 
-Call `get_state_summary()` from the state-interim MCP server to read current
+Call `get_state_summary()` from the state MCP server to read current
 engagement state. Use it to:
 - Understand what was already attempted and failed
 - Check current access level and method on the target

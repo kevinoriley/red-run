@@ -40,7 +40,7 @@ multiple tasks until dismissed:
 - Model is specified by the orchestrator in the spawn instruction, not in the template
 - Persistent teammates handle multiple skills across tasks
 - On-demand teammates handle one task and get dismissed
-- All teammates write critical findings to state.db via state-interim MCP
+- All teammates write critical findings to state.db via state MCP
 - All teammates message the lead on task completion — never self-claim new tasks
 
 ## Relationship to v1 agent definitions

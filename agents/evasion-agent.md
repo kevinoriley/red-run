@@ -17,7 +17,7 @@ mcpServers:
   - skill-router
   - shell-server
   - rdp-server
-  - state-interim
+  - state
 model: sonnet
 ---
 
@@ -118,7 +118,7 @@ objdump, and all other build tools. If it runs and exits, use Bash.
 
 ## Engagement Files
 
-- **State**: Call `get_state_summary()` from the state-interim MCP to read
+- **State**: Call `get_state_summary()` from the state MCP to read
   current engagement state.
 - **Interim writes**: Write critical discoveries immediately so the
   orchestrator can act without waiting for your return: confirmed bypasses

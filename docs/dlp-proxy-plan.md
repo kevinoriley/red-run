@@ -202,8 +202,7 @@ dlp-proxy internally connects to (NOT in .mcp.json):
     shell-server   → detokenize commands, tokenize output
     browser-server → detokenize URLs, tokenize page content
     rdp-server     → detokenize hosts, tokenize text output
-    state-writer   → pass-through (already tokenized)
-    state-interim  → pass-through (already tokenized)
+    state          → pass-through (already tokenized)
 ```
 
 ### Components to build
@@ -299,8 +298,7 @@ parameter is always sensitive — tokenize by parameter name, not by content.
 | shell-server | `command` param in start_process/send_command | all output (command results from target) |
 | browser-server | `url` param | page content, cookies, JS results |
 | rdp-server | `host` param | text output only (screenshots are binary — Phase 3) |
-| state-writer | pass-through (already tokenized) | pass-through |
-| state-interim | pass-through (already tokenized) | pass-through |
+| state | pass-through (already tokenized) | pass-through |
 | safe_bash | full command | full output |
 
 ### What Phase 2 does NOT solve

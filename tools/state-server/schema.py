@@ -9,7 +9,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 SCHEMA_SQL = """\
 PRAGMA journal_mode=WAL;
@@ -103,7 +103,7 @@ CREATE TABLE IF NOT EXISTS vulns (
     title         TEXT NOT NULL,
     vuln_type     TEXT NOT NULL DEFAULT '',
     status        TEXT NOT NULL DEFAULT 'found'
-                  CHECK (status IN ('found', 'active', 'done')),
+                  CHECK (status IN ('found', 'exploited', 'blocked')),
     severity      TEXT NOT NULL DEFAULT 'medium'
                   CHECK (severity IN ('info', 'low', 'medium', 'high', 'critical')),
     endpoint      TEXT NOT NULL DEFAULT '',
@@ -218,6 +218,54 @@ def _migrate_v2_to_v3(conn: sqlite3.Connection) -> None:
         """)
 
 
+def _migrate_v5_to_v6(conn: sqlite3.Connection) -> None:
+    """Migrate schema from v5 to v6: change vuln status lifecycle.
+
+    Old statuses: found, active, done
+    New statuses: found, exploited, blocked
+
+    Mapping: active -> exploited, done -> exploited, found stays.
+    Recreates vulns table with new CHECK constraint (SQLite can't ALTER CHECK).
+    """
+    conn.executescript("""
+        ALTER TABLE vulns RENAME TO _vulns_old;
+
+        CREATE TABLE vulns (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            target_id     INTEGER REFERENCES targets(id) ON DELETE SET NULL,
+            title         TEXT NOT NULL,
+            vuln_type     TEXT NOT NULL DEFAULT '',
+            status        TEXT NOT NULL DEFAULT 'found'
+                          CHECK (status IN ('found', 'exploited', 'blocked')),
+            severity      TEXT NOT NULL DEFAULT 'medium'
+                          CHECK (severity IN ('info', 'low', 'medium', 'high', 'critical')),
+            endpoint      TEXT NOT NULL DEFAULT '',
+            details       TEXT NOT NULL DEFAULT '',
+            evidence_path TEXT NOT NULL DEFAULT '',
+            via_access_id INTEGER REFERENCES access(id) ON DELETE SET NULL,
+            discovered_by TEXT NOT NULL DEFAULT '',
+            created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+            updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+        );
+
+        INSERT INTO vulns (id, target_id, title, vuln_type, status, severity,
+                          endpoint, details, evidence_path, via_access_id,
+                          discovered_by, created_at, updated_at)
+            SELECT id, target_id, title, vuln_type,
+                   CASE status
+                       WHEN 'active' THEN 'exploited'
+                       WHEN 'done' THEN 'exploited'
+                       ELSE status
+                   END,
+                   severity, endpoint, details, evidence_path, via_access_id,
+                   discovered_by, created_at, updated_at
+            FROM _vulns_old;
+
+        DROP TABLE _vulns_old;
+    """)
+    conn.commit()
+
+
 def _migrate_v4_to_v5(conn: sqlite3.Connection) -> None:
     """Migrate schema from v4 to v5: add mode column to engagement."""
     cols = [r[1] for r in conn.execute("PRAGMA table_info(engagement)").fetchall()]
@@ -264,6 +312,8 @@ def init_db(db_path: str | Path) -> sqlite3.Connection:
         _migrate_v3_to_v4(conn)
     if current_version <= 4:
         _migrate_v4_to_v5(conn)
+    if current_version <= 5:
+        _migrate_v5_to_v6(conn)
 
     conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     conn.commit()

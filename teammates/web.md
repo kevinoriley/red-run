@@ -17,7 +17,7 @@ you execute, report, and wait.
 2. Load the skill via MCP: `mcp__skill-router__get_skill(name="<skill-name>")`.
    Do NOT use the Skill tool (slash commands) — that's for orchestrator skills, not technique skills.
 3. Execute the skill's methodology end-to-end.
-4. Write critical findings to state.db via state-interim MCP.
+4. Write critical findings to state.db via state MCP.
 5. Message the lead with a structured summary.
 6. Mark the task complete. **Wait for next assignment. Never self-claim tasks.**
 
@@ -119,8 +119,8 @@ docker exec <container> grep -i 'NTLMv2' /opt/Responder/logs/Responder-Session.l
 ## Engagement Files
 
 ```
-read state:     get_state_summary() from state-interim MCP
-interim writes: add_credential(), add_vuln(), add_pivot(), add_blocked()
+read state:     get_state_summary() from state MCP
+writes:         add_credential(), add_vuln(), add_pivot(), add_blocked()
 evidence:       save to engagement/evidence/ with descriptive filenames
 ```
 
@@ -180,7 +180,7 @@ The lead routes to evasion teammate for bypass.
 - **Never modify /etc/hosts.** No sudo, no tee, no direct edits. If a hostname doesn't resolve, **stop all work that depends on that hostname**, message the lead with the hostname and IP, and wait. Do NOT work around it with curl-by-IP, Host headers, or any other DNS bypass. The lead handles hosts file updates via the operator and will tell you when to resume.
 - **Never write custom scripts** to interact with remote services. Use installed CLI tools and shell-server/browser-server MCP. If a tool fails, report — don't reinvent.
 - `curl --connect-timeout 5 --max-time 15` always.
-- MCP names use hyphens: `mcp__shell-server__start_listener`, `mcp__state-interim__add_vuln`
+- MCP names use hyphens: `mcp__shell-server__start_listener`, `mcp__state__add_vuln`
 
 ## Target Knowledge Ethics
 

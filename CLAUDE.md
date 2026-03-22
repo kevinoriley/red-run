@@ -72,20 +72,20 @@ The orchestrator spawns domain-specific subagents for each skill invocation:
 
 | Agent | Domain | MCP Servers | Skills |
 |-------|--------|-------------|--------|
-| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, rdp-server, state-interim | network-recon, smb-enumeration, database-enumeration, remote-access-enumeration, infrastructure-enumeration, smb-exploitation (haiku) |
-| `pivoting-agent` | Pivoting | skill-router, shell-server, rdp-server, state-interim | pivoting-tunneling (sonnet) |
-| `web-discovery-agent` | Web discovery | skill-router, shell-server, browser-server, rdp-server, state-interim | web-discovery |
-| `web-exploit-agent` | Web exploitation | skill-router, shell-server, browser-server, rdp-server, state-interim | All web technique skills |
-| `ad-discovery-agent` | AD discovery | skill-router, shell-server, rdp-server, state-interim | ad-discovery |
-| `ad-exploit-agent` | AD exploitation | skill-router, shell-server, rdp-server, state-interim | All AD technique skills |
-| `password-spray-agent` | Credential spraying | skill-router, shell-server, rdp-server, state-interim | password-spraying (haiku) |
-| `linux-privesc-agent` | Linux privesc | skill-router, shell-server, state-interim | Linux discovery + privesc + container escapes |
-| `windows-privesc-agent` | Windows privesc | skill-router, shell-server, rdp-server, state-interim | Windows discovery + privesc |
-| `evasion-agent` | AV/EDR evasion | skill-router, shell-server, rdp-server, state-interim | av-edr-evasion |
-| `credential-cracking-agent` | Credential cracking | skill-router, state-interim | credential-cracking (haiku, local-only) |
-| `research-agent` | Deep analysis | skill-router, shell-server, state-interim | unknown-vector-analysis (opus) |
+| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, rdp-server, state | network-recon, smb-enumeration, database-enumeration, remote-access-enumeration, infrastructure-enumeration, smb-exploitation (haiku) |
+| `pivoting-agent` | Pivoting | skill-router, shell-server, rdp-server, state | pivoting-tunneling (sonnet) |
+| `web-discovery-agent` | Web discovery | skill-router, shell-server, browser-server, rdp-server, state | web-discovery |
+| `web-exploit-agent` | Web exploitation | skill-router, shell-server, browser-server, rdp-server, state | All web technique skills |
+| `ad-discovery-agent` | AD discovery | skill-router, shell-server, rdp-server, state | ad-discovery |
+| `ad-exploit-agent` | AD exploitation | skill-router, shell-server, rdp-server, state | All AD technique skills |
+| `password-spray-agent` | Credential spraying | skill-router, shell-server, rdp-server, state | password-spraying (haiku) |
+| `linux-privesc-agent` | Linux privesc | skill-router, shell-server, state | Linux discovery + privesc + container escapes |
+| `windows-privesc-agent` | Windows privesc | skill-router, shell-server, rdp-server, state | Windows discovery + privesc |
+| `evasion-agent` | AV/EDR evasion | skill-router, shell-server, rdp-server, state | av-edr-evasion |
+| `credential-cracking-agent` | Credential cracking | skill-router, state | credential-cracking (haiku, local-only) |
+| `research-agent` | Deep analysis | skill-router, shell-server, state | unknown-vector-analysis (opus) |
 
-Each invocation: agent loads one skill via `get_skill()`, executes methodology, saves evidence, and returns findings. The orchestrator parses the return summary, records state changes via the state-writer MCP, and makes the next routing decision. All agents use state-interim for mid-run writes of critical discoveries (credentials, vulns, pivots, blocked). The orchestrator deduplicates interim writes against return summaries.
+Each invocation: agent loads one skill via `get_skill()`, executes methodology, saves evidence, and returns findings. The orchestrator parses the return summary and makes the next routing decision. All agents and the orchestrator share the same state MCP server with full read/write access. Deduplication is handled at the database level.
 
 **Inline fallback**: If subagents aren't installed, the orchestrator **DOES NOT** load skills inline via `get_skill()` in the main thread. STOP and have the operator fix the issue. Skills are only loaded inline when explicitly requested by the operator.
 
@@ -98,14 +98,12 @@ Agent source files live in `agents/` (version controlled), installed to `~/.clau
 | skill-router | `tools/skill-router/` | Semantic skill discovery and loading (ChromaDB + embeddings) |
 | nmap-server | `tools/nmap-server/` | Dockerized nmap scanning with input validation |
 | shell-server | `tools/shell-server/` | TCP listener, reverse shell, local interactive process manager, privileged Docker execution |
-| state-reader | `tools/state-server/` | Read-only engagement state queries (retained for fallback) |
-| state-interim | `tools/state-server/` | Read + 5 add-only writes (all agents) |
-| state-writer | `tools/state-server/` | Full engagement state management (orchestrator only) |
+| state | `tools/state-server/` | Full read/write engagement state (all agents + orchestrator) |
 | browser-server | `tools/browser-server/` | Headless browser automation (web agents) |
 | rdp-server | `tools/rdp-server/` | Headless RDP automation via aardwolf (windows-privesc-agent) |
 | state-dashboard | `operator/state-dashboard/` | Read-only web dashboard for state.db (operator use, not MCP) |
 
-The state-reader, state-interim, and state-writer are three instances of the same server running in different modes. All agents use state-interim to write critical discoveries (credentials, vulns, pivots, blocked) mid-run. The orchestrator uses state-writer for full read/write access. See each server's `README.md` for tool details.
+The state server runs as a single instance with full read/write access for all agents and the orchestrator. See the server's `README.md` for tool details.
 
 ### Skill Types
 - **Orchestrator** (`skills/orchestrator/`): Takes a target, runs recon, routes to discovery skills
@@ -142,9 +140,9 @@ engagement/
     └── logs/         # Subagent JSONL transcripts (captured by SubagentStop hook)
 ```
 
-**Orchestrator responsibility:** Creates engagement directory, initializes state.db, manages state via state-writer MCP, parses subagent returns, chains vulns toward impact.
+**Orchestrator responsibility:** Creates engagement directory, initializes state.db, manages state via state MCP, parses subagent returns, chains vulns toward impact.
 
-**Subagent responsibility:** Read state via `get_state_summary()`, save evidence to `engagement/evidence/`, report all findings in return summary. All agents write critical discoveries mid-run via state-interim (credentials, vulns, pivots, blocked). The orchestrator deduplicates interim writes against return summaries.
+**Subagent responsibility:** Read state via `get_state_summary()`, save evidence to `engagement/evidence/`, report all findings in return summary. All agents write directly to state via the state MCP server. Deduplication is handled at the database level.
 
 ### State Management
 
@@ -153,9 +151,8 @@ Engagement state lives in `engagement/state.db` (SQLite, managed by state-server
 **Rules:**
 - `get_state_summary()` produces a compact markdown summary (~200 lines) for subagent consumption
 - Subagents call `get_state_summary()` on activation, report findings in their return summary
-- All agents write critical discoveries mid-run via state-interim; each write emits a `state_events` row
-- Orchestrator polls `poll_events()` for real-time visibility, parses returns, deduplicates interim writes
-- Orchestrator uses state summary + pivot map to chain vulns toward impact
+- All agents write directly to state; each write emits a `state_events` row. Deduplication is at the DB level
+- Orchestrator polls `poll_events()` for real-time visibility and uses state summary + pivot map to chain vulns toward impact
 
 ## Documentation Rules
 
@@ -240,7 +237,7 @@ red-run/
       pyproject.toml       # Python dependencies (mcp, playwright, markdownify)
     state-server/         # MCP server (SQLite engagement state)
       README.md            # Server documentation
-      server.py           # FastMCP server — runs as state-reader (read) or state-writer (read+write)
+      server.py           # FastMCP server — full read/write engagement state
       schema.py           # SQLite schema creation and migration
       pyproject.toml       # Python dependencies (mcp)
     hooks/                # Claude Code hooks
