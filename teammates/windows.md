@@ -147,6 +147,7 @@ Payload caught → **stop, don't retry.** Return structured AV-blocked context:
 
 - `date '+%Y-%m-%d %H:%M:%S'` for timestamps.
 - **Never download/clone/install tools.**
+- **Never modify /etc/hosts.** If a hostname doesn't resolve, message the lead with the hostname and IP. The lead handles hosts file updates via the operator.
 - `curl --connect-timeout 5 --max-time 15`.
 - MCP names: hyphens for servers, underscores for tools.
 
