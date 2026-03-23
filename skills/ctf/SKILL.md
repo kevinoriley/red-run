@@ -256,8 +256,13 @@ When a teammate messages that a task is complete:
 
 ```
 1. Read teammate's summary
-2. Check existing state: call get_state_summary() to see what's already recorded
-   (DB deduplicates at the DB level, but checking avoids unnecessary writes)
+2. Deduplicate: call get_vulns() and compare teammate findings against existing
+   records. If a teammate reported a finding that matches an existing vuln on the
+   same host (same vulnerability, different wording), use update_vuln() on the
+   existing record instead of add_vuln(). This is a judgment call — "LFI file read"
+   and "LFI via absolute path" are the same vuln; "SQLi in /login" and "SQLi in
+   /admin" are not. When in doubt, update the existing record's details rather
+   than creating a duplicate.
 3. Record findings via state:
    - add_target/add_port for new hosts/ports
    - add_credential for new creds

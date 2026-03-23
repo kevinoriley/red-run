@@ -758,13 +758,9 @@ function renderGraph() {
   const sevOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
   function getActionable(host) {
     const items = [];
-    const hostVulns = allVulnsByHost[host] || [];
-    // vuln_types already exploited on this host — suppress found dupes from actionable
-    const exploitedTypes = new Set(hostVulns.filter(v => v.status === 'exploited' && v.vuln_type).map(v => v.vuln_type));
     const blockedTechniques = new Set((blockedByHost[host] || []).filter(b => b.retry === 'no').map(b => b.technique));
-    for (const v of hostVulns.slice().sort((a,b) => (sevOrder[a.severity]??9) - (sevOrder[b.severity]??9))) {
-      if (v.status === 'found' && v.severity !== 'info' && !blockedTechniques.has(v.title)
-          && !(v.vuln_type && exploitedTypes.has(v.vuln_type))) {
+    for (const v of (allVulnsByHost[host] || []).slice().sort((a,b) => (sevOrder[a.severity]??9) - (sevOrder[b.severity]??9))) {
+      if (v.status === 'found' && v.severity !== 'info' && !blockedTechniques.has(v.title)) {
         const sevColor = v.severity === 'critical' ? '#f85149' : v.severity === 'high' ? '#d29922' : '#8b949e';
         items.push({ icon: '\u26A0', text: v.title, detail: `${v.severity} | ${v.status}\n${v.details||''}`, color: sevColor });
       }
