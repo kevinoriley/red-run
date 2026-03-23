@@ -1190,10 +1190,19 @@ def create_server() -> FastMCP:
 
             # Dedup: check for existing vuln with same title on same target
             existing = conn.execute(
-                "SELECT id, status, severity FROM vulns "
+                "SELECT id, status, severity, title FROM vulns "
                 "WHERE target_id = ? AND title = ?",
                 (target_id, title),
             ).fetchone()
+
+            # Secondary dedup: same vuln_type on same target (catches
+            # near-duplicate titles like "LFI in /foo" vs "LFI via /foo")
+            if not existing and vuln_type:
+                existing = conn.execute(
+                    "SELECT id, status, severity, title FROM vulns "
+                    "WHERE target_id = ? AND vuln_type = ?",
+                    (target_id, vuln_type),
+                ).fetchone()
 
             if existing:
                 return json.dumps(
@@ -1202,7 +1211,8 @@ def create_server() -> FastMCP:
                         "status": "duplicate_skipped",
                         "existing_status": existing["status"],
                         "existing_severity": existing["severity"],
-                        "title": title,
+                        "existing_title": existing["title"],
+                        "submitted_title": title,
                     },
                     indent=2,
                 )

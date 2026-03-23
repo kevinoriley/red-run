@@ -28,10 +28,12 @@ uv run --directory tools/state-server python server.py
 returns `{"status": "duplicate_skipped", "credential_id": N}` without creating
 a new row or emitting an event.
 
-**Vulnerabilities:** `add_vuln` checks for an existing row matching
-`(target_id, title)` before INSERT. If a duplicate exists, it returns
+**Vulnerabilities:** `add_vuln` deduplicates in two passes: first by
+`(target_id, title)`, then by `(target_id, vuln_type)` if `vuln_type` is set.
+The type-based check catches near-duplicate titles (e.g., "LFI in /foo" vs
+"LFI via /foo" both have `vuln_type="lfi"`). If a duplicate exists, it returns
 `{"status": "duplicate_skipped", "vuln_id": N}` with the existing record's
-status and severity.
+title, status, and severity.
 
 ### Event emission
 
