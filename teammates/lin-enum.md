@@ -106,6 +106,9 @@ evidence:       save to engagement/evidence/ with descriptive filenames
   pass its ID for chain provenance tracking
 - `add_access(via_access_id=)` — if you escalated from a prior access session
   (e.g., user→admin→root), pass the prior access ID
+- `add_vuln(via_access_id=)` — pass the `access_id` from your task assignment
+  to link findings to the session that found them (required for access chain graph)
+- `add_credential(via_access_id=)` — pass `access_id` when creds are found during a session
 - `add_vuln(ip=, title=, ...)` — `ip` is required.
 - `add_credential(secret_type=)` — valid types: `password`, `ntlm_hash`,
   `net_ntlm`, `aes_key`, `kerberos_tgt`, `kerberos_tgs`, `dcc2`, `ssh_key`,

@@ -176,8 +176,9 @@ RIGHT:  "Discovery found: basic PHP content blocked by content inspection.
 **Chain provenance — include in EVERY task assignment:**
 - `credential_id: <N>` — when the task uses a specific credential. Teammate
   passes as `via_credential_id=N` to `add_access()`.
-- `access_id: <N>` — when the task escalates from a specific access session.
-  Teammate passes as `via_access_id=N` to `add_access()`.
+- `access_id: <N>` — when the task operates from a specific access session.
+  Teammate passes as `via_access_id=N` to `add_access()`, `add_vuln()`,
+  and `add_credential()`. This links findings to the session that produced them.
 
 Example task context:
 ```
@@ -262,11 +263,12 @@ When a teammate messages that a task is complete:
    and "LFI via absolute path" are the same vuln; "SQLi in /login" and "SQLi in
    /admin" are not. When in doubt, update the existing record's details rather
    than creating a duplicate.
-3. Record findings via state:
+3. Record findings via state (provenance links are critical for the access chain graph):
    - add_target/add_port for new hosts/ports
-   - add_credential for new creds
-   - add_access(via_credential_id=N) for access changes — link to the credential used
-   - add_vuln/update_vuln for confirmed vulns
+   - add_credential(via_access_id=N, via_vuln_id=M) for new creds — link to session
+     and vuln that produced them
+   - add_access(via_credential_id=N, via_access_id=M) for access changes
+   - add_vuln(via_access_id=N) for confirmed vulns — link to the session that found them
    - add_pivot for new paths
    - add_blocked for failed techniques (see retry policy)
 4. UPDATE VULN STATUS based on technique outcome:
