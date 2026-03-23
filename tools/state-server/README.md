@@ -28,12 +28,13 @@ uv run --directory tools/state-server python server.py
 returns `{"status": "duplicate_skipped", "credential_id": N}` without creating
 a new row or emitting an event.
 
-**Vulnerabilities:** `add_vuln` deduplicates in two passes: first by
-`(target_id, title)`, then by `(target_id, vuln_type)` if `vuln_type` is set.
-The type-based check catches near-duplicate titles (e.g., "LFI in /foo" vs
-"LFI via /foo" both have `vuln_type="lfi"`). If a duplicate exists, it returns
-`{"status": "duplicate_skipped", "vuln_id": N}` with the existing record's
-title, status, and severity.
+**Vulnerabilities:** `add_vuln` deduplicates on exact `(target_id, title)`
+match — returns `{"status": "duplicate_skipped"}` without inserting. When
+`vuln_type` is set and another vuln with the same type exists on the target,
+the insert proceeds but the response includes `"warning": "possible_duplicate"`
+with the existing record's ID and title. This lets the orchestrator decide
+whether two vulns of the same type are genuinely distinct (e.g., SQLi on
+different endpoints) or near-duplicates (e.g., LFI with different wording).
 
 ### Event emission
 

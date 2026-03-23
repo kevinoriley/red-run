@@ -1188,21 +1188,12 @@ def create_server() -> FastMCP:
             if target_id is None:
                 return f"ERROR: Target '{ip}' not found. Add the target first."
 
-            # Dedup: check for existing vuln with same title on same target
+            # Dedup: exact title match on same target — hard block
             existing = conn.execute(
                 "SELECT id, status, severity, title FROM vulns "
                 "WHERE target_id = ? AND title = ?",
                 (target_id, title),
             ).fetchone()
-
-            # Secondary dedup: same vuln_type on same target (catches
-            # near-duplicate titles like "LFI in /foo" vs "LFI via /foo")
-            if not existing and vuln_type:
-                existing = conn.execute(
-                    "SELECT id, status, severity, title FROM vulns "
-                    "WHERE target_id = ? AND vuln_type = ?",
-                    (target_id, vuln_type),
-                ).fetchone()
 
             if existing:
                 return json.dumps(
@@ -1216,6 +1207,18 @@ def create_server() -> FastMCP:
                     },
                     indent=2,
                 )
+
+            # Soft dedup: same vuln_type on same target — insert but warn.
+            # Two SQLi on different endpoints are legitimate; two LFI with
+            # different wording are probably the same. The server can't
+            # judge, so it inserts and flags for the orchestrator to review.
+            type_match = None
+            if vuln_type:
+                type_match = conn.execute(
+                    "SELECT id, title FROM vulns "
+                    "WHERE target_id = ? AND vuln_type = ?",
+                    (target_id, vuln_type),
+                ).fetchone()
 
             cursor = conn.execute(
                 "INSERT INTO vulns "
@@ -1240,13 +1243,18 @@ def create_server() -> FastMCP:
                 summary += f" on {ip}"
             _emit_event(conn, "vuln", vuln_id, summary, discovered_by)
             conn.commit()
+            result = {
+                "vuln_id": vuln_id,
+                "title": title,
+                "severity": severity,
+                "status": status,
+            }
+            if type_match:
+                result["warning"] = "possible_duplicate"
+                result["existing_vuln_id"] = type_match["id"]
+                result["existing_title"] = type_match["title"]
             return json.dumps(
-                {
-                    "vuln_id": vuln_id,
-                    "title": title,
-                    "severity": severity,
-                    "status": status,
-                },
+                result,
                 indent=2,
             )
 
