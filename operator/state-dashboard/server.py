@@ -318,6 +318,7 @@ tr:hover td { background: var(--bg2); }
   cursor: grab; }
 #graph-container.fullscreen { position: fixed; top: 0; left: 0; right: 0; bottom: 0;
   z-index: 100; margin: 0; border-radius: 0; border: none; min-height: unset; }
+#graph-container.fullscreen svg { height: 100% !important; }
 .graph-expand-btn { position: absolute; top: 6px; right: 6px; z-index: 6;
   background: var(--bg3); color: var(--dim); border: 1px solid var(--border);
   border-radius: 4px; padding: 3px 8px; font-family: inherit; font-size: 11px;
@@ -1295,7 +1296,7 @@ function renderGraph() {
   ].join('');
 
   svg.setAttribute('width', '100%');
-  svg.setAttribute('height', Math.max(totalH, container.clientHeight || 400));
+  svg.setAttribute('height', totalH);
   svg.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
   svg.innerHTML = svgHtml;
 
