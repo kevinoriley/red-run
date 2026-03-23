@@ -168,11 +168,16 @@ def create_server() -> FastMCP:
                 sections.append("_(none)_")
             sections.append("")
 
-            # Credentials
+            # Credentials — skip uncracked capture hashes (net_ntlm, kerberos_tgs,
+            # dcc2, webapp_hash) to keep summary compact. They're still in the DB
+            # and visible via get_credentials(). Show them once cracked.
             sections.append("## Credentials\n")
             creds = conn.execute(
                 "SELECT id, username, secret, secret_type, domain, cracked, notes "
-                "FROM credentials ORDER BY id"
+                "FROM credentials "
+                "WHERE cracked = 1 "
+                "   OR secret_type NOT IN ('net_ntlm', 'kerberos_tgs', 'dcc2', 'webapp_hash') "
+                "ORDER BY id"
             ).fetchall()
             for c in creds:
                 display_secret = c["secret"]
@@ -208,6 +213,13 @@ def create_server() -> FastMCP:
                 sections.append(f"- {' | '.join(parts)}")
             if not creds:
                 sections.append("_(none)_")
+            # Note hidden uncracked hashes
+            hidden = conn.execute(
+                "SELECT COUNT(*) as cnt FROM credentials "
+                "WHERE cracked = 0 AND secret_type IN ('net_ntlm', 'kerberos_tgs', 'dcc2', 'webapp_hash')"
+            ).fetchone()["cnt"]
+            if hidden:
+                sections.append(f"_({hidden} uncracked hash(es) hidden — use get_credentials() to view)_")
             sections.append("")
 
             # Access
