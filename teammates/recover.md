@@ -20,10 +20,19 @@ recovery task and get dismissed.
 SendMessage requires a `summary` field (5-10 word preview) with every message.
 
 ```
+message state-mgr: ALL state writes — credential updates as cracked (real-time).
+                   Use structured [action] protocol (see below).
 message lead:      recovered creds found (immediate), task complete, failed
 message ad:        domain creds cracked → relevant to their work
-write state.db:    update_credential(id, cracked=True, secret=plaintext) for EACH cracked hash
 ```
+
+### State Writes via state-mgr
+
+All state writes go through state-mgr. Send structured messages:
+```
+[update-cred] id=<N> cracked=true secret=<plaintext>
+```
+Send each cracked credential immediately when found — don't batch.
 
 ## Recovery Approach
 

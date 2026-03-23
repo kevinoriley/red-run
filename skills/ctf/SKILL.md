@@ -72,7 +72,10 @@ allowed:
   mkdir -p engagement/evidence/logs
   Write/Edit to: engagement/scope.md, engagement/config.yaml,
                  engagement/web-proxy.json, engagement/web-proxy.sh
-  state MCP tools (init_engagement, add_target, add_credential, get_state_summary, poll_events, ...)
+  state MCP read tools (init_engagement, close_engagement, get_state_summary,
+                       get_vulns, get_credentials, get_access, get_targets,
+                       get_pivot_map, get_blocked, get_chain, get_tunnels, poll_events)
+  message state-mgr for all state writes (add_target, add_port, add_credential, etc.)
   skill-router MCP tools (get_skill, search_skills, list_skills)
   getent hosts <hostname>
   ldapsearch -x (base-scope lockout policy query only)
@@ -89,6 +92,12 @@ forbidden (route to teammates):
 ### Teammate Map
 
 Read spawn templates from `teammates/` at runtime via the Read tool.
+
+**Infrastructure teammate** (spawned at engagement start, persists entire engagement):
+
+| Template | Name | Domain | Model | Role |
+|----------|------|--------|-------|------|
+| `teammates/state-mgr.md` | state-mgr | State management | sonnet | Sole writer to state.db. All teammates message state-mgr for writes. Handles dedup, graph coherence, provenance linking. |
 
 **Enumeration teammates** (spawn when domain becomes relevant, persist):
 
@@ -175,10 +184,10 @@ RIGHT:  "Discovery found: basic PHP content blocked by content inspection.
 
 **Chain provenance — include in EVERY task assignment:**
 - `credential_id: <N>` — when the task uses a specific credential. Teammate
-  passes as `via_credential_id=N` to `add_access()`.
+  includes `via_credential_id=N` in state-mgr messages.
 - `access_id: <N>` — when the task operates from a specific access session.
-  Teammate passes as `via_access_id=N` to `add_access()`, `add_vuln()`,
-  and `add_credential()`. This links findings to the session that produced them.
+  Teammate includes `via_access_id=N` in state-mgr messages for access, vulns,
+  and credentials. This links findings to the session that produced them.
 
 Example task context:
 ```
@@ -205,8 +214,8 @@ Append to every task assigned to a teammate with shell access on a host:
 FLAG CAPTURE (do this FIRST, before enumeration):
 Check: Linux: /root/root.txt, /root/proof.txt, /home/*/user.txt, /home/*/local.txt
        Windows: C:\Users\Administrator\Desktop\root.txt, C:\Users\*\Desktop\user.txt
-If found, IMMEDIATELY call add_vuln(target=<HOST>, title="FLAG: <filename> (<user>)",
-  vuln_type="flag", severity="critical", details="<contents>")
+If found, IMMEDIATELY message state-mgr:
+  [add-vuln] ip=<HOST> title="FLAG: <filename> (<user>)" vuln_type=flag severity=critical details="<contents>"
 Then continue skill methodology.
 ```
 
@@ -234,14 +243,21 @@ while objectives_not_met:
 
     # Teammate messages arrive asynchronously — ACT ON THEM:
     on_teammate_message:
-        if task_complete → Post-Task Checkpoint, next routing decision
-        if mid_task_finding:
-            call get_state_summary()
-            run decision_logic on new state (especially pivots, creds, flags)
-            if actionable → assign follow-up to available teammate immediately
-            do NOT wait for the reporting teammate to finish its current task
-        if blocked → record add_blocked(), find alternative
-        if flag → prominent callout to operator
+        if from state-mgr:
+            if [new-vuln] → run decision logic (new finding to route)
+            if [new-cred] → trigger "Untested credentials" routing
+            if [new-access] → trigger host discovery routing
+            if [chain-gap] → resolve by providing missing provenance context
+            if [vuln-review] → operator dedup judgment
+        if from domain teammate:
+            if task_complete → Post-Task Checkpoint, next routing decision
+            if mid_task_finding:
+                call get_state_summary()
+                run decision_logic on new state (especially pivots, creds, flags)
+                if actionable → assign follow-up to available teammate immediately
+                do NOT wait for the reporting teammate to finish its current task
+            if blocked → message state-mgr: [add-blocked], find alternative
+            if flag → prominent callout to operator
 ```
 
 **Teammate messages are the notification channel.** When a teammate messages
@@ -256,34 +272,29 @@ When a teammate messages that a task is complete:
 
 ```
 1. Read teammate's summary
-2. Deduplicate: call get_vulns() and compare teammate findings against existing
-   records. If a teammate reported a finding that matches an existing vuln on the
-   same host (same vulnerability, different wording), use update_vuln() on the
-   existing record instead of add_vuln(). This is a judgment call — "LFI file read"
-   and "LFI via absolute path" are the same vuln; "SQLi in /login" and "SQLi in
-   /admin" are not. When in doubt, update the existing record's details rather
-   than creating a duplicate.
-3. Record findings via state (provenance links are critical for the access chain graph):
-   - add_target/add_port for new hosts/ports
-   - add_credential(via_access_id=N, via_vuln_id=M) for new creds — link to session
-     and vuln that produced them
-   - add_access(via_credential_id=N, via_access_id=M) for access changes
-   - add_vuln(via_access_id=N) for confirmed vulns — link to the session that found them
-   - add_pivot for new paths
-   - add_blocked for failed techniques (see retry policy)
-4. UPDATE VULN STATUS based on technique outcome:
-   - Technique succeeded (access gained, creds extracted) → update_vuln(status="exploited")
-   - Technique exhausted methodology and failed → update_vuln(status="blocked")
+2. Message state-mgr with structured writes for anything the teammate reported
+   that isn't already in state (teammates message state-mgr directly for
+   mid-task findings, but the lead ensures completeness here):
+   - [add-target] / [add-port] for new hosts/ports
+   - [add-cred] with via_access_id, via_vuln_id for provenance
+   - [add-access] with via_credential_id, via_access_id for chain links
+   - [add-vuln] with via_access_id for confirmed vulns
+   - [add-pivot] for new paths
+   - [add-blocked] for failed techniques (see retry policy)
+   State-mgr handles dedup judgment and responds with IDs.
+3. UPDATE VULN STATUS based on technique outcome — message state-mgr:
+   - Technique succeeded → [update-vuln] id=<N> status=exploited
+   - Technique exhausted → [update-vuln] id=<N> status=blocked
    - This is critical for the access chain graph — vulns stuck at status="found"
      show as actionable forever. Close the loop.
-6. Retry policy for blocked:
+4. Retry policy for blocked:
    - Discovery agent blocked → retry: "with_context" (technique skill has deeper methodology)
    - Technique agent exhausted → retry: "no"
    - Needs new context (creds, access) → retry: "later"
-7. Record tool workarounds in target notes via update_target(notes=...)
-8. Check for new usernames → trigger Usernames Found hard stop if needed
-9. get_state_summary() → run Decision Logic → present next actions
-10. If 2+ independent paths: use Parallel Path format
+5. Record tool workarounds: message state-mgr [update-target] ip=<ip> notes="<workaround>"
+6. Check for new usernames → trigger Usernames Found hard stop if needed
+7. get_state_summary() → run Decision Logic → present next actions
+8. If 2+ independent paths: use Parallel Path format
 ```
 
 ## Parallel Execution
@@ -375,6 +386,22 @@ mkdir -p engagement/evidence/logs
 Write `engagement/scope.md`. Call `init_engagement(name="...")`.
 Copy dump-state script (use Bash `cp`, do NOT read the file):
 `cp operator/templates/dump-state.sh engagement/dump-state.sh && chmod +x engagement/dump-state.sh`
+
+### Spawn state-mgr
+
+**Immediately after init_engagement**, spawn the state-mgr teammate. It must
+be alive before any other teammate starts work.
+
+```
+1. Read teammates/state-mgr.md via Read tool
+2. Spawn teammate named 'state-mgr' with template content. Use sonnet.
+3. Confirm state-mgr is responsive (it will call get_state_summary() on activation)
+```
+
+All subsequent state writes from the lead and teammates go through state-mgr
+via structured messages. The lead still calls `init_engagement()` and
+`close_engagement()` directly (one-time setup, not a write pattern). The lead
+still calls all state read tools directly.
 
 After initialization, remind the operator to start the state dashboard:
 ```
@@ -480,8 +507,8 @@ When state shows a pivot (additional NIC, new subnet) AND you have access to the
       Pivot host: <host>. Target subnet: <subnet>.
       Access: <evil-winrm/ssh/shell + user + creds>.
       Tool preference: SSH > sshuttle > ligolo > chisel."
-   b. After tunnel established → record via add_tunnel() if teammate didn't
-   c. Update pivot status to "exploited" via update_pivot()
+   b. After tunnel established → message state-mgr: [add-tunnel] if teammate didn't
+   c. Message state-mgr: [update-pivot] to mark as exploited
    d. Assign recon teammate: network-recon on the internal subnet
 3. Include tunnel context in ALL subsequent tasks targeting hosts behind tunnel:
    "Tunnel active: <type> via <pivot-host> → <subnet>
@@ -559,17 +586,16 @@ Walk ALL items, collect every actionable finding, present to operator:
 **Hosts File Update:**
 ```
 1. Collect unresolvable hostnames + IPs
-2. Copy operator/templates/hosts-update.sh → temp_hosts-update.sh
+2. Bash: cp operator/templates/hosts-update.sh temp_hosts-update.sh && chmod +x temp_hosts-update.sh
 3. Replace TARGET_IP="FILL_IN" with the actual IP
 4. Replace entries array with literal strings (no variable refs):
    entries=(
        "10.10.10.5  DC01.corp.local corp.local"
        "10.10.10.5  web.corp.local"
    )
-5. chmod +x temp_hosts-update.sh
-6. Present: "Run: sudo bash ./temp_hosts-update.sh"
-7. Wait for confirmation. Block all tasks.
-8. Verify with getent, clean up script
+5. Present: "Run: sudo bash ./temp_hosts-update.sh"
+6. Wait for confirmation. Block all tasks.
+7. Verify with getent, clean up script
 ```
 
 **Usernames Found** (never auto-spray):
@@ -593,7 +619,7 @@ Walk ALL items, collect every actionable finding, present to operator:
    Export → print hash file + hashcat command, wait for plaintext
    Skip → continue other paths
 4. When plaintext arrives (from recover teammate OR operator):
-   update_credential(id=<hash_id>, cracked=True, secret="<plaintext>")
+   message state-mgr: [update-cred] id=<hash_id> cracked=true secret=<plaintext>
    Then trigger "Untested credentials" routing (item 4 in Decision Logic)
 ```
 
@@ -613,18 +639,18 @@ Walk ALL items, collect every actionable finding, present to operator:
 
 **AV Bypass** (teammate returns AV/EDR Blocked):
 ```
-1. add_blocked(retry="with_context")
+1. Message state-mgr: [add-blocked] retry=with_context
 2. Spawn bypass teammate with detection context
 3. On return with bypass artifact:
    Reassign original skill to original teammate + bypass context:
    "Use AV-safe artifact at <path>. Method: <bypass>. Prerequisites: <if any>.
     Do NOT generate a new artifact."
-4. Bypass failed → add_blocked(retry="no"), move on
+4. Bypass failed → message state-mgr: [add-blocked] retry=no, move on
 ```
 
 **Unknown Vector** (technique teammate says standard patterns don't match):
 ```
-1. add_blocked(retry="with_context")
+1. Message state-mgr: [add-blocked] retry=with_context
 2. Spawn research teammate with artifact path + prior analysis summary
 3. Research teammate writes findings to engagement/evidence/research/<name>.md
    and messages with just the file path + one-line summary
@@ -632,14 +658,14 @@ Walk ALL items, collect every actionable finding, present to operator:
 5. Route based on findings:
    Technique succeeded → record findings
    Known vuln class identified → assign to technique teammate
-   No vector → add_blocked(retry="no"), move on
+   No vector → message state-mgr: [add-blocked] retry=no, move on
 ```
 
 ## Step 5: Post-Access
 
 When significant access gained (shell, DA, database):
 1. Collect evidence → `engagement/evidence/`
-2. Update state via state MCP tools
+2. Message state-mgr with any remaining state updates
 3. Check objectives against scope.md
 4. Continue chaining or wrap up
 

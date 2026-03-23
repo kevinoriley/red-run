@@ -161,7 +161,11 @@ def _build_state(db_path: Path) -> dict:
         vulns = _rows(
             conn,
             "SELECT v.*, t.ip FROM vulns v "
-            "LEFT JOIN targets t ON t.id = v.target_id ORDER BY v.id",
+            "LEFT JOIN targets t ON t.id = v.target_id "
+            "ORDER BY CASE v.severity "
+            "WHEN 'critical' THEN 0 WHEN 'high' THEN 1 "
+            "WHEN 'medium' THEN 2 WHEN 'low' THEN 3 "
+            "WHEN 'info' THEN 4 ELSE 5 END, v.id",
         )
         pivot_map = _rows(conn, "SELECT * FROM pivot_map ORDER BY id")
         tunnels = _rows(conn, "SELECT * FROM tunnels ORDER BY id")
@@ -293,11 +297,11 @@ td .cell { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vert
 tr:hover td { background: var(--bg2); }
 .badge { display: inline-block; padding: 1px 6px; border-radius: 3px;
   font-size: 11px; font-weight: 600; }
-.sev-critical { background: var(--red); color: #fff; }
-.sev-high { background: var(--orange); color: #fff; }
+.sev-critical { background: var(--purple); color: #000; }
+.sev-high { background: var(--red); color: #000; }
 .sev-medium { background: var(--yellow); color: #000; }
-.sev-low { background: var(--blue); color: #fff; }
-.sev-info { background: var(--gray); color: #fff; }
+.sev-low { background: var(--blue); color: #000; }
+.sev-info { background: var(--gray); color: #000; }
 .status-active { color: var(--green); }
 .status-revoked, .status-down, .status-closed { color: var(--dim); text-decoration: line-through; }
 .status-exploited { color: var(--green); }
@@ -632,25 +636,37 @@ function renderFlowGraph() {
     nodeById[node.id] = node;
   }
 
-  // Credentials → ASSET nodes
+  // Credentials → ASSET nodes (collapsed by username+domain)
+  const credGroupKey = c => `${(c.domain||'').toLowerCase()}\\${(c.username||'').toLowerCase()}`;
+  const credGroups = {};  // key → [cred, ...]
+  const credNodeMap = {};  // cred.id → canonical node id (for edge redirection)
   for (const c of state.credentials) {
     if (c.in_graph === 0) continue;
-    // Skip uncracked capture hashes (noisy)
     if (!c.cracked && ['net_ntlm','kerberos_tgs','dcc2','webapp_hash'].includes(c.secret_type)) continue;
-    const label = c.domain ? `${c.domain}\\${c.username}` : c.username;
+    const key = credGroupKey(c);
+    if (!credGroups[key]) credGroups[key] = [];
+    credGroups[key].push(c);
+  }
+  for (const [key, creds] of Object.entries(credGroups)) {
+    const primary = creds[0];
+    const label = primary.domain ? `${primary.domain}\\${primary.username}` : primary.username;
+    const types = [...new Set(creds.map(c => c.secret_type + (c.cracked ? '✓' : '')))].join(', ');
+    const sources = creds.map(c => `${c.secret_type}: ${c.source}`).join('\n');
+    const canonicalId = `cred:${primary.id}`;
     const node = {
-      id: `cred:${c.id}`, type: 'asset',
+      id: canonicalId, type: 'asset',
       label: label,
-      sublabel: c.secret_type + (c.cracked ? ' (cracked)' : ''),
+      sublabel: types,
       hostLabel: '',
-      detail: `${label} (${c.secret_type})\nsource: ${c.source}`,
+      detail: `${label}\n${sources}`,
       borderColor: '#8b949e',
       headerColor: '#30363d',
       headerText: 'CREDENTIAL',
-      chain_order: c.chain_order || 0,
+      chain_order: Math.min(...creds.map(c => c.chain_order || 0)),
     };
     nodes.push(node);
-    nodeById[node.id] = node;
+    nodeById[canonicalId] = node;
+    for (const c of creds) credNodeMap[c.id] = canonicalId;
   }
 
   // Vulns → ACTION (exploited) or ASSET (found, medium+)
@@ -659,7 +675,7 @@ function renderFlowGraph() {
     if (v.severity === 'info') continue;
     const isAction = v.status === 'exploited';
     const techniqueLabel = v.technique_id ? `[${v.technique_id}] ` : '';
-    const sevColors = { critical: '#f85149', high: '#d29922', medium: '#8b949e', low: '#8b949e' };
+    const sevColors = { critical: '#bc8cff', high: '#f85149', medium: '#d29922', low: '#8b949e' };
     const node = {
       id: `vuln:${v.id}`, type: isAction ? 'action' : 'asset',
       label: `${techniqueLabel}${trunc(v.title, 35)}`,
@@ -714,8 +730,9 @@ function renderFlowGraph() {
   // credential → access (used cred to gain access) — access IS the action, direct edge
   for (const a of state.access) {
     if (a.in_graph === 0) continue;
-    if (a.via_credential_id && nodeById[`cred:${a.via_credential_id}`]) {
-      edges.push({ from: `cred:${a.via_credential_id}`, to: `access:${a.id}`, color: '#3fb950' });
+    const credNode = a.via_credential_id && credNodeMap[a.via_credential_id];
+    if (credNode && nodeById[credNode]) {
+      edges.push({ from: credNode, to: `access:${a.id}`, color: '#3fb950' });
     }
     if (a.via_access_id && nodeById[`access:${a.via_access_id}`]) {
       // Route through intermediate exploited vuln if one exists on the parent access
@@ -729,9 +746,12 @@ function renderFlowGraph() {
   }
 
   // access → credential (found cred during access) — INSERT action node
+  // Track edges already created to avoid duplicates from collapsed creds
+  const credEdgeSeen = new Set();
   for (const c of state.credentials) {
     if (c.in_graph === 0) continue;
-    if (!nodeById[`cred:${c.id}`]) continue;
+    const credDst = credNodeMap[c.id];
+    if (!credDst || !nodeById[credDst]) continue;
     if (c.via_access_id && nodeById[`access:${c.via_access_id}`]) {
       const src = (c.source || '').toLowerCase();
       let actionLabel = 'Credential Found';
@@ -744,16 +764,22 @@ function renderFlowGraph() {
       // Route through intermediate exploited vuln if one exists on the parent access
       const ivuln = exploitedVulnByAccess[c.via_access_id];
       const sourceId = (ivuln && nodeById[ivuln]) ? ivuln : `access:${c.via_access_id}`;
+      const edgeKey = `${sourceId}->${credDst}`;
+      if (credEdgeSeen.has(edgeKey)) continue;
+      credEdgeSeen.add(edgeKey);
       const srcNode = nodeById[sourceId];
-      const dstNode = nodeById[`cred:${c.id}`];
-      insertAction(sourceId, `cred:${c.id}`, actionLabel, '#58a6ff',
+      const dstNode = nodeById[credDst];
+      insertAction(sourceId, credDst, actionLabel, '#58a6ff',
         srcNode.chain_order, dstNode.chain_order);
     }
     // vuln → credential — INSERT action node
     if (c.via_vuln_id && nodeById[`vuln:${c.via_vuln_id}`]) {
+      const edgeKey = `vuln:${c.via_vuln_id}->${credDst}`;
+      if (credEdgeSeen.has(edgeKey)) continue;
+      credEdgeSeen.add(edgeKey);
       const srcNode = nodeById[`vuln:${c.via_vuln_id}`];
-      const dstNode = nodeById[`cred:${c.id}`];
-      insertAction(`vuln:${c.via_vuln_id}`, `cred:${c.id}`, 'Hash Capture', '#58a6ff',
+      const dstNode = nodeById[credDst];
+      insertAction(`vuln:${c.via_vuln_id}`, credDst, 'Hash Capture', '#58a6ff',
         srcNode.chain_order, dstNode.chain_order);
     }
   }
@@ -963,8 +989,11 @@ function renderFlowGraph() {
     '<span class="legend-item"><svg width="12" height="12"><rect width="12" height="12" rx="3" fill="none" stroke="#238636" stroke-width="2"/></svg>Exploited vuln</span>',
   ].join('');
 
-  svg.setAttribute('width', totalW);
-  svg.setAttribute('height', totalH);
+  svg.setAttribute('width', '100%');
+  // Height: at least the content, but fill available container space
+  const containerH = container.clientHeight || 200;
+  const svgH = Math.max(totalH, containerH);
+  svg.setAttribute('height', svgH);
   svg.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
   svg.innerHTML = svgHtml;
 
@@ -1017,9 +1046,11 @@ function _setupGraphZoomPan(svg, container, contentW, contentH) {
   });
   window.addEventListener('mousemove', function(ev) {
     if (!dragging || !dragStart) return;
-    const rect = svg.getBoundingClientRect();
-    const dx = (ev.clientX - dragStart.x) / rect.width * _graphVB.w;
-    const dy = (ev.clientY - dragStart.y) / rect.height * _graphVB.h;
+    // Use SVG CTM for accurate pixel-to-viewBox mapping (accounts for preserveAspectRatio)
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return;
+    const dx = (ev.clientX - dragStart.x) / ctm.a;
+    const dy = (ev.clientY - dragStart.y) / ctm.d;
     _graphVB.x = dragStart.vx - dx;
     _graphVB.y = dragStart.vy - dy;
     applyVB();

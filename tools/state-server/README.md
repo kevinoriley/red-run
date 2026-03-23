@@ -42,18 +42,29 @@ All write operations emit rows into the `state_events` table. Agents and the
 orchestrator can poll for new events via `poll_events(since_id)` for real-time
 monitoring of findings as they happen.
 
+### Client-side dedup (agent teams)
+
+In the agent teams orchestrator (`/red-run-ctf`), all state writes are routed
+through the `state-mgr` teammate, which applies LLM-level semantic dedup
+before writing. This catches cases that server-side string matching cannot
+(e.g., "LFI file read" vs "LFI via absolute path" are the same finding).
+Server-side dedup (exact title hard block, `vuln_type` soft warning) remains
+as a safety net but is not the primary dedup mechanism.
+
 ### Concurrent writes
 
 SQLite WAL mode + `PRAGMA busy_timeout=30000` handles concurrent writers
 safely. The 30-second timeout accommodates agent teams where multiple
-teammates may write simultaneously.
+teammates may write simultaneously. In practice, with state-mgr as the sole
+writer, contention is minimal.
 
 ### Typical workflow
 
 1. Orchestrator calls `init_engagement()` to create `engagement/state.db`
-2. Orchestrator records targets, ports via write tools
-3. Agents call `get_state_summary()` on activation to read current state
-4. Agents record findings directly via write tools (credentials, vulns, pivots, blocked)
+2. **Agent teams:** state-mgr teammate is the sole writer — other teammates send
+   structured messages to state-mgr, which writes to state.db after dedup
+3. **Legacy:** Agents record findings directly via write tools
+4. All agents/teammates call `get_state_summary()` on activation to read current state
 5. Orchestrator reads state to decide next actions
 
 ## Tools

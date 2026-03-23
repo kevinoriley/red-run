@@ -1,5 +1,5 @@
 ---
-name: legacy
+name: red-run-legacy
 description: >
   Legacy subagent-based orchestrator. Superseded by /red-run-ctf (agent teams).
   Use /red-run-legacy to invoke manually. Does not auto-trigger.

@@ -26,21 +26,20 @@ SendMessage requires a `summary` field (5-10 word preview) with every message.
 
 ```
 write findings:    engagement/evidence/research/<name>.md (ALL details go here)
-write state.db:    add_credential(), add_vuln(ip required), add_pivot(), add_blocked()
+message state-mgr: ALL state writes — credentials, vulns, blocked.
+                   Use structured [action] protocol (see below).
 message lead:      ONE LINE: file path + summary. No technique details in messages.
                    Messages with technique code trigger content filters.
 ```
 
-**State DB parameter reference** (avoid validation errors):
-- `add_vuln(ip=, title=, ...)` — `ip` is required.
-- `add_credential(secret_type=)` — valid types: `password`, `ntlm_hash`,
-  `net_ntlm`, `aes_key`, `kerberos_tgt`, `kerberos_tgs`, `dcc2`, `ssh_key`,
-  `token`, `certificate`, `webapp_hash`, `dpapi`, `other`
-- `add_credential(secret=)` — required, no empty secrets
-- `add_vuln(status=)` — valid: `found`, `exploited`, `blocked`
-- `add_vuln(severity=)` — valid: `info`, `low`, `medium`, `high`, `critical`
-- If `add_vuln` returns `"warning": "possible_duplicate"`, check `existing_title`
-  — if it's the same finding, use `update_vuln(id=existing_vuln_id)` instead
+### State Writes via state-mgr
+
+All state writes go through state-mgr. Send structured messages:
+```
+[add-vuln] ip=<ip> title="<title>" vuln_type=<type> severity=<sev> via_access_id=<N> details="<details>"
+[add-cred] username=<user> secret=<secret> secret_type=<type> source="<source>" via_access_id=<N>
+[add-blocked] ip=<ip> technique="<name>" reason="<why>" retry=<no|later|with_context>
+```
 
 ## Web Research
 

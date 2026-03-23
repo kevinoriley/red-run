@@ -100,7 +100,12 @@ Agent source files live in `agents/` (version controlled), installed to `~/.clau
 | rdp-server | `tools/rdp-server/` | Headless RDP automation via aardwolf (windows-privesc-agent) |
 | state-dashboard | `operator/state-dashboard/` | Read-only web dashboard for state.db (operator use, not MCP) |
 
-The state server runs as a single instance with full read/write access for all agents and the orchestrator. See the server's `README.md` for tool details.
+The state server runs as a single instance. In the agent teams orchestrator
+(`/red-run-ctf`), all state writes are centralized through the **state-mgr
+teammate** — the sole writer to state.db. Other teammates and the lead send
+structured messages to state-mgr instead of calling write tools directly.
+State reads remain direct (any teammate can call `get_state_summary()`, etc.).
+See the server's `README.md` for tool details.
 
 ### Skill Types
 - **Orchestrator** (`skills/orchestrator/`): Takes a target, runs recon, routes to discovery skills
@@ -146,9 +151,10 @@ engagement/
 Engagement state lives in `engagement/state.db` (SQLite, managed by state-server MCP). Tables: targets, ports, credentials, credential_access, access, vulns, pivot_map, blocked, tunnels, state_events.
 
 **Rules:**
-- `get_state_summary()` produces a compact markdown summary (~200 lines) for subagent consumption
-- Subagents call `get_state_summary()` on activation, report findings in their return summary
-- All agents write directly to state; each write emits a `state_events` row. Deduplication is at the DB level
+- `get_state_summary()` produces a compact markdown summary (~200 lines) for subagent/teammate consumption
+- Teammates call `get_state_summary()` on activation; state reads are direct (any teammate, any time)
+- **Agent teams (`/red-run-ctf`):** All state writes are centralized through the `state-mgr` teammate. Teammates and the lead send structured `[action]` messages to state-mgr instead of calling write tools directly. state-mgr applies LLM-level dedup, enforces graph coherence, and confirms writes with IDs. DB-level dedup remains as a safety net.
+- **Legacy (`/red-run-legacy`):** All agents write directly to state; each write emits a `state_events` row. Deduplication is at the DB level.
 - Orchestrator polls `poll_events()` for real-time visibility and uses state summary + pivot map to chain vulns toward impact
 
 ## Documentation Rules
@@ -191,6 +197,7 @@ red-run/
     pivoting-agent.md
   teammates/              # Spawn prompt templates for /red-run-ctf (agent teams)
     README.md              # Template format and usage docs
+    state-mgr.md           # Centralized state writer, dedup, graph coherence (sonnet)
     net-enum.md            # Network recon + service enumeration (sonnet)
     web-enum.md            # Web app discovery (sonnet)
     web-ops.md             # Web technique execution (sonnet)

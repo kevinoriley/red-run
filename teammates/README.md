@@ -13,6 +13,12 @@ or agent definitions — they're prompt templates.
 
 ## Teammate types
 
+**Infrastructure** — spawned at engagement start, persists entire engagement:
+
+| File | Name | Domain | Model |
+|------|------|--------|-------|
+| `state-mgr.md` | state-mgr | Centralized state writer, dedup, graph coherence | sonnet |
+
 **Enumeration** — spawn when domain becomes relevant, persist across tasks:
 
 | File | Name | Domain | Model |
@@ -49,7 +55,8 @@ or agent definitions — they're prompt templates.
 - Enum teammates discover and report — they don't exercise findings
 - Ops teammates exercise assigned vulns — they don't discover new ones
 - On-demand teammates handle one task and get dismissed
-- All teammates write critical findings to state.db via state MCP
+- All state writes go through state-mgr via structured `[action]` messages
+- Teammates read state directly (get_state_summary, get_vulns, etc.)
 - All teammates message the lead on task completion — never self-claim new tasks
 
 ## Relationship to v1 agent definitions

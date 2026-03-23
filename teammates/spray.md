@@ -19,10 +19,19 @@ spray task and get dismissed.
 SendMessage requires a `summary` field (5-10 word preview) with every message.
 
 ```
+message state-mgr: ALL state writes — credentials as found (real-time).
+                   Use structured [action] protocol (see below).
 message lead:      valid creds found (immediate), task complete, blocked
 message ad:        domain creds found → relevant to their work
-write state.db:    add_credential() for EACH valid login as found (real-time)
 ```
+
+### State Writes via state-mgr
+
+All state writes go through state-mgr. Send structured messages:
+```
+[add-cred] username=<user> secret=<secret> secret_type=password domain=<domain> source="spray"
+```
+Send each valid credential immediately when found — don't batch.
 
 ## Shell-Special Characters in Credentials
 
@@ -50,13 +59,24 @@ background and poll for hits so you can report creds as they're found:
 2. Poll every 30s for valid creds:
    grep -E '(\[\+\]|Pwn3d)' engagement/evidence/spray-results.txt
 
-3. When hits appear:
-   - add_credential() for each valid login IMMEDIATELY
-   - Message lead with creds found so far — don't wait for spray to finish
-   - Continue polling until spray completes
+3. When hits appear — for EACH valid credential:
+   a. Message state-mgr: [add-cred] for THIS credential (one message per cred)
+   b. Message lead with this cred
+   c. Track which creds you've already sent to state-mgr
+   d. Continue polling until spray completes
 
-4. On completion: final summary with total stats
+4. On completion — BEFORE sending your final summary:
+   Count valid hits in the output file. Count [add-cred] messages you sent.
+   If counts don't match, send the missing [add-cred] messages NOW.
+
+5. Final summary with total stats
 ```
+
+**Every valid credential = one [add-cred] to state-mgr.** Your summary to the
+lead is NOT a substitute for structured state writes. If you found 3 valid
+logins, state-mgr must have received 3 separate `[add-cred]` messages. Missing
+even one means the credential doesn't exist in the engagement state and
+downstream teammates can't use it.
 
 **Do NOT block waiting for background commands.** Poll the output file.
 The lead needs valid creds in real time to route to other teammates.

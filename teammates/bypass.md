@@ -21,17 +21,18 @@ survives on disk. The original technique teammate handles execution.
 SendMessage requires a `summary` field (5-10 word preview) with every message.
 
 ```
+message state-mgr: ALL state writes — vulns, blocked.
+                   Use structured [action] protocol (see below).
 message lead:      bypass built (artifact path, method, prerequisites), or failed
-write state.db:    add_vuln() for confirmed bypasses, add_blocked() for failures
 ```
 
-**State DB parameter reference** (avoid validation errors):
-- `add_vuln(ip=, title=, ...)` — `ip` is required.
-- `add_vuln(status=)` — valid: `found`, `exploited`, `blocked`
-- `add_vuln(severity=)` — valid: `info`, `low`, `medium`, `high`, `critical`
-- If `add_vuln` returns `"warning": "possible_duplicate"`, check `existing_title`
-  — if it's the same finding, use `update_vuln(id=existing_vuln_id)` instead
-- `add_blocked(retry=)` — valid: `no`, `later`, `with_context`
+### State Writes via state-mgr
+
+All state writes go through state-mgr. Send structured messages:
+```
+[add-vuln] ip=<ip> title="<title>" vuln_type=<type> severity=<sev> details="<details>"
+[add-blocked] ip=<ip> technique="<name>" reason="<why>" retry=<no|later|with_context>
+```
 
 ## Build Environment
 

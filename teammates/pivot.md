@@ -17,8 +17,17 @@ hosts to reach internal subnets. You handle one pivoting task and get dismissed.
 SendMessage requires a `summary` field (5-10 word preview) with every message.
 
 ```
+message state-mgr: ALL state writes — tunnel records, blocked.
+                   Use structured [action] protocol (see below).
 message lead:      tunnel established (or failed), sudo needed for setup
-write state.db:    add_tunnel() after verification, add_blocked() on failure
+```
+
+### State Writes via state-mgr
+
+All state writes go through state-mgr. Send structured messages:
+```
+[add-tunnel] tunnel_type=<type> remote_host=<ip> remote_network=<cidr> local_port=<N> via_access_id=<N>
+[add-blocked] ip=<ip> technique="pivoting" reason="<why>" retry=<no|later|with_context>
 ```
 
 ## Tunnel Tool Preference Order
