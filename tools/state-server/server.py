@@ -258,8 +258,6 @@ def create_server() -> FastMCP:
                     f"[{v['severity']}]",
                     host,
                 ]
-                if v["endpoint"]:
-                    parts.append(v["endpoint"])
                 if v["details"]:
                     parts.append(v["details"][:80])
                 sections.append(f"- {' | '.join(parts)}")
@@ -1086,7 +1084,6 @@ def create_server() -> FastMCP:
         vuln_type: str = "",
         status: str = "found",
         severity: str = "medium",
-        endpoint: str = "",
         details: str = "",
         evidence_path: str = "",
         via_access_id: int | None = None,
@@ -1104,7 +1101,6 @@ def create_server() -> FastMCP:
             vuln_type: Vulnerability class (e.g., "sqli", "xss", "rce").
             status: Status: found, exploited, blocked.
             severity: Severity: info, low, medium, high, critical.
-            endpoint: Affected endpoint/URL/path.
             details: Technical details.
             evidence_path: Path to evidence file in engagement/evidence/.
             via_access_id: Access ID that led to finding this vuln
@@ -1139,16 +1135,15 @@ def create_server() -> FastMCP:
 
             cursor = conn.execute(
                 "INSERT INTO vulns "
-                "(target_id, title, vuln_type, status, severity, endpoint, "
+                "(target_id, title, vuln_type, status, severity, "
                 "details, evidence_path, via_access_id, discovered_by) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     target_id,
                     title,
                     vuln_type,
                     status,
                     severity,
-                    endpoint,
                     details,
                     evidence_path,
                     via_access_id,

@@ -461,7 +461,7 @@ const TABLE_DEFS = [
     cols: ['host','username','access_type','privilege','method','active','session_ref'],
     fmt: { active: r => `<span class="status-${r.active?'active':'revoked'}">${r.active?'active':'revoked'}</span>` }},
   { id: 'vulns', title: 'Vulns', key: 'vulns',
-    cols: ['title','severity','status','host','endpoint','vuln_type','details'],
+    cols: ['title','severity','status','host','vuln_type','details'],
     fmt: { severity: r => `<span class="badge sev-${r.severity}">${r.severity}</span>`,
            details: r => r.details || '' }},
   { id: 'pivot_map', title: 'Pivot Map', key: 'pivot_map',
@@ -828,7 +828,7 @@ function renderGraph() {
     if (exploitedVulns.length) {
       const items = exploitedVulns.map(v => {
         const text = v.title;
-        const detail = `${v.severity} | exploited\n${v.endpoint||''}\n${v.details||''}`;
+        const detail = `${v.severity} | exploited\n${v.details||''}`;
         return { icon: '\u2713', text, cls: 'card-item-active', detail, color: '#3fb950' };
       });
       sections.push({ title: 'EXPLOITED', items });

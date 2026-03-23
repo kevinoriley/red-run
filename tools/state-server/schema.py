@@ -9,7 +9,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 SCHEMA_SQL = """\
 PRAGMA journal_mode=WAL;
@@ -107,7 +107,6 @@ CREATE TABLE IF NOT EXISTS vulns (
                   CHECK (status IN ('found', 'exploited', 'blocked')),
     severity      TEXT NOT NULL DEFAULT 'medium'
                   CHECK (severity IN ('info', 'low', 'medium', 'high', 'critical')),
-    endpoint      TEXT NOT NULL DEFAULT '',
     details       TEXT NOT NULL DEFAULT '',
     evidence_path TEXT NOT NULL DEFAULT '',
     via_access_id INTEGER REFERENCES access(id) ON DELETE SET NULL,
@@ -217,6 +216,44 @@ def _migrate_v2_to_v3(conn: sqlite3.Connection) -> None:
 
             DROP TABLE _state_events_old;
         """)
+
+
+def _migrate_v7_to_v8(conn: sqlite3.Connection) -> None:
+    """Migrate schema from v7 to v8: drop endpoint column from vulns."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(vulns)").fetchall()]
+    if "endpoint" not in cols:
+        return
+    conn.executescript("""
+        ALTER TABLE vulns RENAME TO _vulns_old;
+
+        CREATE TABLE vulns (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            target_id     INTEGER REFERENCES targets(id) ON DELETE SET NULL,
+            title         TEXT NOT NULL,
+            vuln_type     TEXT NOT NULL DEFAULT '',
+            status        TEXT NOT NULL DEFAULT 'found'
+                          CHECK (status IN ('found', 'exploited', 'blocked')),
+            severity      TEXT NOT NULL DEFAULT 'medium'
+                          CHECK (severity IN ('info', 'low', 'medium', 'high', 'critical')),
+            details       TEXT NOT NULL DEFAULT '',
+            evidence_path TEXT NOT NULL DEFAULT '',
+            via_access_id INTEGER REFERENCES access(id) ON DELETE SET NULL,
+            discovered_by TEXT NOT NULL DEFAULT '',
+            created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+            updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+        );
+
+        INSERT INTO vulns (id, target_id, title, vuln_type, status, severity,
+                          details, evidence_path, via_access_id,
+                          discovered_by, created_at, updated_at)
+            SELECT id, target_id, title, vuln_type, status, severity,
+                   details, evidence_path, via_access_id,
+                   discovered_by, created_at, updated_at
+            FROM _vulns_old;
+
+        DROP TABLE _vulns_old;
+    """)
+    conn.commit()
 
 
 def _migrate_v6_to_v7(conn: sqlite3.Connection) -> None:
@@ -358,6 +395,8 @@ def init_db(db_path: str | Path) -> sqlite3.Connection:
         _migrate_v5_to_v6(conn)
     if current_version <= 6:
         _migrate_v6_to_v7(conn)
+    if current_version <= 7:
+        _migrate_v7_to_v8(conn)
 
     conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     conn.commit()
