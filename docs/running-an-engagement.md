@@ -212,16 +212,14 @@ When tools fail on hostname resolution, the orchestrator follows the same hostna
 
 ## Monitoring During Engagement
 
-### Agent Dashboard
+### Monitoring
 
-Two options for watching agents — see [Dashboard and Monitoring](dashboard-and-monitoring.md) for full details.
+**Agent teams** — each teammate runs in its own tmux pane. Watch all teammates working in parallel, press Escape to interrupt any teammate, type directly to redirect. Start Claude Code inside a tmux session for split-pane mode.
 
-**Agent teams (default)** — each teammate runs in its own tmux pane. Watch all teammates working in parallel, press Escape to interrupt any teammate, type directly to redirect. Start Claude Code inside a tmux session for split-pane mode.
-
-**Built-in terminal dashboard** — lightweight read-only terminal viewer for legacy subagent runs:
+**State dashboard** — real-time web dashboard showing the access chain graph, targets, credentials, and assessment progress. Start in a separate terminal:
 
 ```bash
-bash operator/agent-dashboard/dashboard.sh
+bash operator/state-dashboard/start.sh
 ```
 
 Teammates communicate findings directly via peer-to-peer messaging and write to state.db for durability. No event watcher needed — teammate messages are the notification channel.

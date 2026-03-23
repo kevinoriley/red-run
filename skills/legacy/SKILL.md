@@ -192,8 +192,7 @@ JSONL transcript (do NOT cache the session directory — compactions change it):
 find ~/.claude/projects/-$(pwd | tr / - | sed 's/^-//')/*/subagents/ \
   -name "agent-<agentId>.jsonl" 2>/dev/null
 ```
-The agent dashboard auto-discovers spawned agents — no manual registration needed.
-Print: `Watch live: bash operator/agent-dashboard/dashboard.sh`
+For live agent monitoring, use [agentsee](https://github.com/blacklanternsecurity/agentsee).
 
 **Context passing — do NOT override skill methodology.** When routing to a
 technique agent, pass discovery-phase findings as **informational context**,

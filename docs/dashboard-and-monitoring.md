@@ -27,77 +27,9 @@ Add to `.claude/settings.json` (project-level):
 }
 ```
 
-## Built-in Terminal Dashboard
+## Legacy Terminal Dashboard
 
-The built-in dashboard (`operator/agent-dashboard/tail-agent.py`) is a lightweight, read-only terminal viewer that parses Claude Code's raw JSONL transcripts. No server, no npm, no dependencies beyond Python 3. It's useful for observation of legacy subagent runs or as a supplementary view.
-
-### Single-Agent Modes
-
-```bash
-# One-shot — print formatted output and exit
-python3 operator/agent-dashboard/tail-agent.py <output_file>
-
-# Follow — live-tail like tail -f (Ctrl-C to stop)
-python3 operator/agent-dashboard/tail-agent.py -f <output_file>
-
-# Pipe — read from stdin
-tail -f <output_file> | python3 operator/agent-dashboard/tail-agent.py
-```
-
-### Multi-Agent Dashboard
-
-The curses-based dashboard shows multiple agents side by side in a split-pane terminal view. It auto-discovers new agents from Claude Code's tasks directory and subagent JSONL directories:
-
-```bash
-# Auto-discover agents (recommended)
-bash operator/agent-dashboard/dashboard.sh
-
-# Explicit label:path pairs
-python3 operator/agent-dashboard/tail-agent.py --dashboard web:path1 ad:path2
-```
-
-The dashboard starts with "Waiting for agents..." and picks up new agents automatically as they spawn.
-
-### Keybindings
-
-| Key | Action |
-|-----|--------|
-| `Tab` | Switch to next pane |
-| `Shift-Tab` | Switch to previous pane |
-| `j` / `Down` | Scroll down |
-| `k` / `Up` | Scroll up |
-| `PgDn` | Page down |
-| `PgUp` | Page up |
-| `G` / `End` | Jump to bottom (resume live follow) |
-| `g` / `Home` | Jump to top |
-| `q` / `Ctrl-C` | Quit |
-
-The status bar shows `LIVE` when auto-following new output or `scrolled +N` when scrolled up. Scrolling to the bottom re-enables live follow.
-
-### Color Coding
-
-| Color | Category | Content |
-|-------|----------|---------|
-| Cyan | Agent reasoning | Text output from the agent's thinking and analysis |
-| Yellow (bold, `▶` prefix) | Shell/Bash commands | `send_command`, `start_process`, `start_listener`, Bash tool calls |
-| Dim | Tool calls | Skill loads, state queries, file reads/writes, browser actions |
-
-In dashboard mode, each pane header uses a rotating color palette (cyan, green, magenta, yellow) with the focused pane highlighted in reverse video.
-
-### Output Format
-
-The dashboard parses JSONL lines with `"type":"assistant"` and formats tool calls as compact one-liners:
-
-| Format | Source |
-|--------|--------|
-| `SHELL[sid] command` | `send_command` |
-| `LISTEN port=N label=X` | `start_listener` |
-| `PROC command` | `start_process` |
-| `BASH (description) command` | Bash tool |
-| `SKILL get_skill(name)` | skill-router calls |
-| `STATE get_summary` | state-server calls |
-| `BROWSER navigate(url=...)` | browser-server calls |
-| `READ/WRITE/EDIT path` | Built-in file tools |
+The terminal-based agent dashboard (JSONL transcript viewer for legacy subagent runs) has been removed from this repo. If you need it for `/red-run-legacy` subagent monitoring, it's available in the [agentsee](https://github.com/blacklanternsecurity/agentsee) repo.
 
 ## Transcript Capture
 

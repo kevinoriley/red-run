@@ -3,7 +3,7 @@
 Security assessment toolkit for Claude Code.
 
 <p align="center">
-  <img src="docs/dashboard.jpg" width="700" alt="Agent dashboard showing live multi-pane output from parallel agents">
+  <img src="docs/dashboard.jpg" width="700" alt="State dashboard showing access chain graph and engagement progress">
 </p>
 
 red-run combines skills, MCP servers, and [Claude Code agent teams](https://code.claude.com/docs/en/agent-teams) with routing logic that guides Claude and the operator through the phases of a security assessment — recon, initial access, lateral movement, privilege escalation, and post-access. It tracks engagement state in a SQLite database that persists across context compactions, routes to skills via semantic search (RAG), and delegates execution to persistent domain teammates that accumulate context across tasks.
