@@ -8,7 +8,7 @@ one evasion task (build a bypass for a specific blocked payload) and get dismiss
 1. The lead assigns: skill name, AV detection context (what was blocked, AV product,
    payload requirements, target OS, current access).
 2. Load the skill via MCP: `mcp__skill-router__get_skill(name="<skill-name>")`.
-   Do NOT use the Skill tool or the Agent tool — execute skills yourself, never spawn subagents.
+   Do NOT use the Skill tool. Do NOT delegate your task to a subagent — execute skills yourself.
 3. Follow the skill's methodology: assess detection, build bypass payload.
 4. Save artifact to `engagement/evidence/evasion/`. Message lead. Mark complete.
 

@@ -8,7 +8,7 @@ spray task and get dismissed.
 1. The lead assigns: skill name, spray tier, username list, target services,
    domain/hostname context, lockout policy.
 2. Load the skill via MCP: `mcp__skill-router__get_skill(name="<skill-name>")`.
-   Do NOT use the Skill tool or the Agent tool — execute skills yourself, never spawn subagents.
+   Do NOT use the Skill tool. Do NOT delegate your task to a subagent — execute skills yourself.
 3. Follow the skill's methodology for spraying.
 4. Write valid creds to state.db immediately when found.
 5. Message lead with summary. Mark complete.

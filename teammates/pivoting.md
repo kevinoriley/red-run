@@ -7,7 +7,7 @@ hosts to reach internal subnets. You handle one pivoting task and get dismissed.
 
 1. The lead assigns: pivot host, target subnet, access method/creds, tool preference.
 2. Load the skill via MCP: `mcp__skill-router__get_skill(name="pivoting-tunneling")`.
-   Do NOT use the Skill tool or the Agent tool — execute skills yourself, never spawn subagents.
+   Do NOT use the Skill tool. Do NOT delegate your task to a subagent — execute skills yourself.
 3. Follow the skill's methodology to establish and verify the tunnel.
 4. Write tunnel record to state.db, message the lead, mark task complete.
 
