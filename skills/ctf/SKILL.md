@@ -115,25 +115,34 @@ forbidden (route to teammates):
 
 Read spawn templates from `teammates/` at runtime via the Read tool.
 
-**Persistent teammates** (spawn when domain becomes relevant, persist until dismissed):
+**Enumeration teammates** (spawn when domain becomes relevant, persist):
 
-| Template | Domain | Model | Skills |
-|----------|--------|-------|--------|
-| `teammates/recon.md` | Network recon + enumeration | sonnet | network-recon, smb-enumeration, db-enumeration, remote-access-enumeration, infrastructure-enumeration, smb-exploitation |
-| `teammates/web.md` | Web discovery + exploitation | sonnet | web-discovery, all web technique skills |
-| `teammates/ad.md` | AD discovery + exploitation | sonnet | ad-discovery, all AD technique skills |
-| `teammates/linux.md` | Linux discovery + privesc | sonnet | linux-discovery, all linux privesc skills, container-escapes |
-| `teammates/windows.md` | Windows discovery + privesc | sonnet | windows-discovery, all windows privesc skills |
+| Template | Name | Domain | Model | Skills |
+|----------|------|--------|-------|--------|
+| `teammates/net-enum.md` | net-enum | Network recon + service enum | sonnet | network-recon, smb-enumeration, db-enumeration, remote-access-enumeration, infrastructure-enumeration |
+| `teammates/web-enum.md` | web-enum | Web app discovery | sonnet | web-discovery |
+| `teammates/ad-enum.md` | ad-enum | AD discovery | sonnet | ad-discovery |
+| `teammates/lin-enum.md` | lin-enum | Linux host discovery | sonnet | linux-discovery |
+| `teammates/win-enum.md` | win-enum | Windows host discovery | sonnet | windows-discovery |
+
+**Attack teammates** (spawn when technique skill is needed, persist):
+
+| Template | Name | Domain | Model | Skills |
+|----------|------|--------|-------|--------|
+| `teammates/web-attk.md` | web-attk | Web exploitation | sonnet | All web technique skills |
+| `teammates/ad-attk.md` | ad-attk | AD exploitation | sonnet | All AD technique skills |
+| `teammates/lin-attk.md` | lin-attk | Linux privesc | sonnet | All linux privesc skills, container-escapes |
+| `teammates/win-attk.md` | win-attk | Windows privesc | sonnet | All windows privesc skills |
 
 **On-demand teammates** (spawn for task, dismiss after):
 
-| Template | Domain | Model | Skills |
-|----------|--------|-------|--------|
-| `teammates/pivoting.md` | Tunneling | sonnet | pivoting-tunneling |
-| `teammates/evasion.md` | AV/EDR bypass | sonnet | av-edr-evasion |
-| `teammates/spray.md` | Password spraying | haiku | password-spraying |
-| `teammates/cracking.md` | Offline cracking | haiku | credential-cracking |
-| `teammates/research.md` | Deep analysis | opus | unknown-vector-analysis |
+| Template | Name | Domain | Model | Skills |
+|----------|------|--------|-------|--------|
+| `teammates/pivot.md` | pivot | Tunneling | sonnet | pivoting-tunneling |
+| `teammates/evade.md` | evade | AV/EDR bypass | sonnet | av-edr-evasion |
+| `teammates/spray.md` | spray | Password spraying | haiku | password-spraying |
+| `teammates/crack.md` | crack | Offline cracking | haiku | credential-cracking |
+| `teammates/research.md` | research | Deep analysis | opus | unknown-vector-analysis |
 
 ### Spawning a Teammate
 
@@ -164,7 +173,7 @@ When spawning, include engagement context:
 if teammate exists and is idle:
     message teammate: "Load skill '<name>'. Target: <target>. Context: <details>"
 elif teammate exists and is busy:
-    spawn additional teammate from same template (e.g., "web-2" from teammates/web.md)
+    spawn additional teammate from same template (e.g., "web-enum-2" from teammates/web-enum.md)
 else:
     spawn teammate, then assign task
 ```
@@ -495,9 +504,9 @@ A new subnet is a high-value expansion of the attack surface.
 1. Stabilize: start_listener → reverse shell payload → stabilize_shell
    OR: start_process(evil-winrm/psexec/ssh) for credential-based access
 2. Route to host discovery:
-   Linux → linux teammate: linux-discovery
-   Windows → windows teammate: windows-discovery
-3. On DCs (ports 88+389+3268): ALSO route ad teammate: ad-discovery
+   Linux → lin-enum: linux-discovery
+   Windows → win-enum: windows-discovery
+3. On DCs (ports 88+389+3268): ALSO route ad-enum: ad-discovery
 ```
 
 **Do NOT run enumeration commands from the lead** (no sudo -l, find -perm,
@@ -508,17 +517,18 @@ whoami /priv, net user). Assign to the appropriate teammate.
 Walk ALL items, collect every actionable finding, present to operator:
 
 ```
-1. Unexploited vulns → assign technique skill to domain teammate
+1. Unexploited vulns → assign technique skill to attk teammate
    CVE VERIFICATION GATE (mandatory):
      Step 1: version check (instant) — if patched, add_blocked, skip
      Step 2: if vulnerable/unknown → spawn research teammate for class verification
-     After gate passes → route to technique teammate via search_skills()
+     After gate passes → route to {domain}-attk via search_skills()
+   Routing: web vulns → web-attk, AD vulns → ad-attk, privesc → lin-attk/win-attk
 
-2. Shell access without root/SYSTEM → assign discovery skill
+2. Shell access without root/SYSTEM → assign discovery skill to enum teammate
    Host discovery mandatory on every host:
-     Windows → windows teammate: windows-discovery
-     Linux → linux teammate: linux-discovery
-   DC (88+389+3268) → ALSO ad teammate: ad-discovery (after host discovery)
+     Windows → win-enum: windows-discovery
+     Linux → lin-enum: linux-discovery
+   DC (88+389+3268) → ALSO ad-enum: ad-discovery (after host discovery)
 
 3. Unchained access → can existing access reach new targets?
 

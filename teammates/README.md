@@ -6,39 +6,48 @@ or agent definitions — they're prompt templates.
 
 ## How they work
 
-1. Orchestrator decides to spawn a teammate (e.g., web services found → need web teammate)
-2. Orchestrator reads `teammates/web.md` via the Read tool
+1. Orchestrator decides to spawn a teammate (e.g., web vuln found → need web-attk)
+2. Orchestrator reads `teammates/web-attk.md` via the Read tool
 3. Orchestrator creates a teammate using the template content as the spawn prompt
 4. Teammate inherits the lead's MCP servers, permissions, and CLAUDE.md
 
 ## Teammate types
 
-**Persistent** — spawned when their domain becomes relevant, persist across
-multiple tasks until dismissed:
+**Enumeration** — spawn when domain becomes relevant, persist across tasks:
 
-| File | Domain | Model |
-|------|--------|-------|
-| `recon.md` | Network recon + service enumeration | sonnet |
-| `web.md` | Web discovery + exploitation | sonnet |
-| `ad.md` | AD discovery + exploitation | sonnet |
-| `linux.md` | Linux discovery + privilege escalation | sonnet |
-| `windows.md` | Windows discovery + privilege escalation | sonnet |
+| File | Name | Domain | Model |
+|------|------|--------|-------|
+| `net-enum.md` | net-enum | Network recon + service enumeration | sonnet |
+| `web-enum.md` | web-enum | Web app discovery | sonnet |
+| `ad-enum.md` | ad-enum | AD discovery (BloodHound, LDAP, ADCS) | sonnet |
+| `lin-enum.md` | lin-enum | Linux host discovery | sonnet |
+| `win-enum.md` | win-enum | Windows host discovery | sonnet |
 
-**On-demand** — spawned for specific tasks, dismissed when done:
+**Attack** — spawn when technique skill is needed, persist across tasks:
 
-| File | Domain | Model |
-|------|--------|-------|
-| `pivoting.md` | Network tunneling | sonnet |
-| `evasion.md` | AV/EDR bypass payload building | sonnet |
-| `spray.md` | Password spraying | haiku |
-| `cracking.md` | Offline hash cracking | haiku |
-| `research.md` | Deep analysis of custom/unknown vectors | opus |
+| File | Name | Domain | Model |
+|------|------|--------|-------|
+| `web-attk.md` | web-attk | Web exploitation techniques | sonnet |
+| `ad-attk.md` | ad-attk | AD exploitation techniques | sonnet |
+| `lin-attk.md` | lin-attk | Linux privesc exploitation | sonnet |
+| `win-attk.md` | win-attk | Windows privesc exploitation | sonnet |
+
+**On-demand** — spawn for specific tasks, dismiss when done:
+
+| File | Name | Domain | Model |
+|------|------|--------|-------|
+| `pivot.md` | pivot | Network tunneling | sonnet |
+| `evade.md` | evade | AV/EDR bypass | sonnet |
+| `spray.md` | spray | Password spraying | haiku |
+| `crack.md` | crack | Offline hash cracking | haiku |
+| `research.md` | research | Deep analysis | opus |
 
 ## Template conventions
 
 - No YAML frontmatter — teammates inherit config from the lead
 - Model is specified by the orchestrator in the spawn instruction, not in the template
-- Persistent teammates handle multiple skills across tasks
+- Enum teammates discover and report — they don't exploit
+- Attk teammates exploit assigned vulns — they don't discover new ones
 - On-demand teammates handle one task and get dismissed
 - All teammates write critical findings to state.db via state MCP
 - All teammates message the lead on task completion — never self-claim new tasks
