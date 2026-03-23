@@ -717,10 +717,12 @@ function renderFlowGraph() {
     if (c.via_access_id && nodeById[`access:${c.via_access_id}`]) {
       const src = (c.source || '').toLowerCase();
       let actionLabel = 'Credential Found';
-      if (/spray|reuse/.test(src)) actionLabel = 'Password Spray';
+      if (/scf|desktop\.ini|coerci|responder/.test(src)) actionLabel = 'NTLM Coercion';
+      else if (/spray|reuse/.test(src)) actionLabel = 'Password Spray';
       else if (/crack/.test(src)) actionLabel = 'Hash Recovery';
-      else if (/runas|config|file|enum/.test(src)) actionLabel = 'Credential Discovery';
+      else if (/runas|config|enum/.test(src)) actionLabel = 'Credential Discovery';
       else if (/dump|extract|secret/.test(src)) actionLabel = 'Credential Extraction';
+      else if (/lfi|unc|file/.test(src)) actionLabel = 'File Coercion';
       const srcNode = nodeById[`access:${c.via_access_id}`];
       const dstNode = nodeById[`cred:${c.id}`];
       insertAction(`access:${c.via_access_id}`, `cred:${c.id}`, actionLabel, '#58a6ff',
