@@ -1065,6 +1065,30 @@ function renderGraph() {
     db: 'db', token: 'token', vpn: 'vpn'
   };
 
+  // --- Precise chain edges from via_credential_id ---
+  // Track which access records have precise edges so heuristics can skip them
+  const preciseAccessIds = new Set();
+  for (const a of state.access) {
+    if (!a.via_credential_id) continue;
+    const cred = state.credentials.find(c => c.id === a.via_credential_id);
+    if (!cred) continue;
+    // Find where the credential came from (which host's access found it)
+    let srcHost = null;
+    if (cred.via_access_id) {
+      const srcAccess = state.access.find(sa => sa.id === cred.via_access_id);
+      if (srcAccess) srcHost = srcAccess.ip;
+    }
+    const srcCard = srcHost ? cardById[`host:${srcHost}`] : cardById['attacker'];
+    const dstCard = cardById[`host:${a.ip}`];
+    if (srcCard && dstCard && srcCard !== dstCard) {
+      preciseAccessIds.add(a.id);
+      const label = accessTypeLabels[a.access_type] || shortEdgeLabel(a.method) || a.access_type;
+      graphEdges.push({ srcCard, dstCard,
+        shortLabel: label, edgeClass: a.active ? 'card-edge-active' : 'card-edge-blocked',
+        detail: `${cred.domain ? cred.domain+'\\\\' : ''}${cred.username} (cred #${cred.id}) → ${a.username}@${a.ip}\n${a.method}` });
+    }
+  }
+
   // Attacker -> hosts with access via provided creds
   for (const h of hostsViaProvidedCred) {
     const dst = cardById[`host:${h}`];
@@ -1096,7 +1120,7 @@ function renderGraph() {
     if (pivotDestHosts.has(t.ip)) continue;
     const dst = cardById[`host:${t.ip}`];
     if (!dst) continue;
-    const activeAccess = (accessByHost[t.ip] || []).filter(a => a.active);
+    const activeAccess = (accessByHost[t.ip] || []).filter(a => a.active && !preciseAccessIds.has(a.id));
     if (activeAccess.length) {
       const acc = activeAccess[0];
       const label = accessTypeLabels[acc.access_type] || shortEdgeLabel(acc.method) || acc.access_type || 'access';
