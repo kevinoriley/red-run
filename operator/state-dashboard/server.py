@@ -315,7 +315,7 @@ tr:hover td { background: var(--bg2); }
 /* Access chain graph — Host Card Topology */
 #graph-container { background: var(--bg2); border: 1px solid var(--border);
   border-radius: 6px; overflow: hidden; min-height: 200px; margin: 12px 0; position: relative;
-  cursor: grab; transition: all 0.2s ease; }
+  cursor: grab; }
 #graph-container.fullscreen { position: fixed; top: 0; left: 0; right: 0; bottom: 0;
   z-index: 100; margin: 0; border-radius: 0; border: none; min-height: unset; }
 .graph-expand-btn { position: absolute; top: 6px; right: 6px; z-index: 6;
@@ -590,8 +590,8 @@ function toggleGraphFullscreen() {
   const btn = document.getElementById('graph-expand-btn');
   c.classList.toggle('fullscreen');
   btn.textContent = c.classList.contains('fullscreen') ? '\u2716' : '\u26F6';
-  // Defer render until after CSS transition completes so container has final dimensions
-  setTimeout(() => renderGraph(), 220);
+  // Double-rAF: first frame applies the layout change, second frame reads correct dimensions
+  requestAnimationFrame(() => requestAnimationFrame(() => renderGraph()));
 }
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
