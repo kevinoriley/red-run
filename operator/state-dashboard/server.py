@@ -372,7 +372,7 @@ tr:hover td { background: var(--bg2); }
 <div class="section">
   <h2 onclick="toggleSection('graph')">Access Chain <button class="refresh-btn" onclick="event.stopPropagation(); refreshAll()">Refresh</button></h2>
   <div id="graph-body" class="section-body">
-    <div id="graph-container"><button class="graph-expand-btn" onclick="toggleGraphFullscreen()" id="graph-expand-btn" title="Toggle fullscreen">&#x26F6;</button><svg id="graph"></svg><div class="graph-legend" id="graph-legend"></div></div>
+    <div id="graph-container"><button class="graph-expand-btn" onclick="toggleGraphFullscreen()" id="graph-expand-btn" title="Toggle fullscreen">&#x26F6;</button><svg id="graph"></svg><div class="graph-legend" id="graph-legend"></div><div class="tooltip" id="graph-tooltip"></div></div>
     <div class="tooltip" id="tooltip"></div>
   </div>
 </div>
@@ -795,7 +795,10 @@ function renderGraph() {
     for (const v of (allVulnsByHost[host] || []).slice().sort((a,b) => (sevOrder[a.severity]??9) - (sevOrder[b.severity]??9))) {
       if (v.status === 'found' && v.severity !== 'info' && !blockedTechniques.has(v.title)) {
         const sevColor = v.severity === 'critical' ? '#f85149' : v.severity === 'high' ? '#d29922' : '#8b949e';
-        items.push({ icon: '\u26A0', text: v.title, detail: `${v.severity} | ${v.status}\n${v.details||''}`, color: sevColor });
+        const detailParts = [v.title, `${v.severity} | ${v.status}`];
+        if (v.vuln_type) detailParts.push(`type: ${v.vuln_type}`);
+        if (v.details) detailParts.push(v.details);
+        items.push({ icon: '\u26A0', text: v.title, detail: detailParts.join('\n'), color: sevColor });
       }
     }
     // Uncracked hashes
@@ -860,8 +863,10 @@ function renderGraph() {
     if (exploitedVulns.length) {
       const items = exploitedVulns.map(v => {
         const text = v.title;
-        const detail = `${v.severity} | exploited\n${v.details||''}`;
-        return { icon: '\u2713', text, cls: 'card-item-active', detail, color: '#3fb950' };
+        const detailParts = [v.title, `${v.severity} | exploited`];
+        if (v.vuln_type) detailParts.push(`type: ${v.vuln_type}`);
+        if (v.details) detailParts.push(v.details);
+        return { icon: '\u2713', text, cls: 'card-item-active', detail: detailParts.join('\n'), color: '#3fb950' };
       });
       sections.push({ title: 'EXPLOITED', items });
     }
@@ -1315,7 +1320,9 @@ function _setupGraphZoomPan(svg, container, contentW, contentH) {
 function showTip(evt) {
   const detail = evt.currentTarget.dataset.detail;
   if (!detail) return;
-  const tip = document.getElementById('tooltip');
+  // Use graph-tooltip when inside fullscreen graph, else regular tooltip
+  const inGraph = evt.currentTarget.closest('#graph-container');
+  const tip = inGraph ? document.getElementById('graph-tooltip') : document.getElementById('tooltip');
   tip.textContent = detail;
   tip.style.display = 'block';
   // Position fixed relative to viewport — immune to container scroll/overflow
@@ -1331,7 +1338,10 @@ function showTip(evt) {
   tip.style.left = tx + 'px';
   tip.style.top = ty + 'px';
 }
-function hideTip() { document.getElementById('tooltip').style.display = 'none'; }
+function hideTip() {
+  document.getElementById('tooltip').style.display = 'none';
+  document.getElementById('graph-tooltip').style.display = 'none';
+}
 
 // Initial fetch
 fetch('/api/state').then(r=>r.json()).then(d => { state = d; render(); });
