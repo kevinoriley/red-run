@@ -38,6 +38,29 @@ PASS=$(cat /tmp/claude-1000/cred.txt)
 
 Do NOT use `start_process` for spraying tools — they're all run-and-exit CLI.
 
+**Background sprays with polling.** Sprays take minutes — run them in
+background and poll for hits so you can report creds as they're found:
+
+```
+1. Run spray in background, redirect output:
+   nxc smb <target> -u users.txt -p passwords.txt --continue-on-success \
+     > engagement/evidence/spray-results.txt 2>&1
+   (run_in_background: true)
+
+2. Poll every 30s for valid creds:
+   grep -E '(\[\+\]|Pwn3d)' engagement/evidence/spray-results.txt
+
+3. When hits appear:
+   - add_credential() for each valid login IMMEDIATELY
+   - Message lead with creds found so far — don't wait for spray to finish
+   - Continue polling until spray completes
+
+4. On completion: final summary with total stats
+```
+
+**Do NOT block waiting for background commands.** Poll the output file.
+The lead needs valid creds in real time to route to other teammates.
+
 ## Scope Boundaries
 
 - Do NOT call `search_skills()` or `list_skills()` — only `get_skill()`.
