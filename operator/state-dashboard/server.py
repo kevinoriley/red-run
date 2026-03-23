@@ -675,47 +675,71 @@ function renderFlowGraph() {
     nodeById[node.id] = node;
   }
 
-  // --- Build edges from provenance ---
-  // access ← credential (used cred to gain access)
+  // --- Build edges from provenance, synthesize action nodes for transitions ---
+  let actionSeq = 0;
+
+  // Helper: create a synthetic action node between src and dst
+  function insertAction(fromId, toId, actionLabel, color, srcCol, dstCol) {
+    actionSeq++;
+    const aid = `action:${actionSeq}`;
+    const midCol = (srcCol + dstCol) / 2;
+    const node = {
+      id: aid, type: 'action',
+      label: actionLabel, sublabel: '', hostLabel: '',
+      detail: actionLabel,
+      borderColor: color,
+      headerColor: color === '#3fb950' ? '#238636' : color === '#58a6ff' ? '#1f6feb' : '#d29922',
+      headerText: 'ACTION',
+      chain_order: midCol,
+    };
+    nodes.push(node);
+    nodeById[aid] = node;
+    edges.push({ from: fromId, to: aid, color });
+    edges.push({ from: aid, to: toId, color });
+  }
+
+  // credential → access (used cred to gain access) — access IS the action, direct edge
   for (const a of state.access) {
     if (a.in_graph === 0) continue;
     if (a.via_credential_id && nodeById[`cred:${a.via_credential_id}`]) {
-      edges.push({ from: `cred:${a.via_credential_id}`, to: `access:${a.id}`,
-        color: '#3fb950', label: a.access_type });
+      edges.push({ from: `cred:${a.via_credential_id}`, to: `access:${a.id}`, color: '#3fb950' });
     }
     if (a.via_access_id && nodeById[`access:${a.via_access_id}`]) {
-      edges.push({ from: `access:${a.via_access_id}`, to: `access:${a.id}`,
-        color: '#3fb950', label: trunc(a.method, 20) || 'escalation' });
+      edges.push({ from: `access:${a.via_access_id}`, to: `access:${a.id}`, color: '#3fb950' });
     }
   }
-  // credential ← access (found cred during access)
+
+  // access → credential (found cred during access) — INSERT action node
   for (const c of state.credentials) {
     if (c.in_graph === 0) continue;
     if (!nodeById[`cred:${c.id}`]) continue;
     if (c.via_access_id && nodeById[`access:${c.via_access_id}`]) {
-      // Derive action label from source field
       const src = (c.source || '').toLowerCase();
-      let label = 'found';
-      if (/spray|reuse/.test(src)) label = 'spray';
-      else if (/crack/.test(src)) label = 'cracked';
-      else if (/runas|config|file|enum/.test(src)) label = 'discovery';
-      else if (/dump|extract|secret/.test(src)) label = 'extracted';
-      edges.push({ from: `access:${c.via_access_id}`, to: `cred:${c.id}`,
-        color: '#58a6ff', label });
+      let actionLabel = 'Credential Found';
+      if (/spray|reuse/.test(src)) actionLabel = 'Password Spray';
+      else if (/crack/.test(src)) actionLabel = 'Hash Recovery';
+      else if (/runas|config|file|enum/.test(src)) actionLabel = 'Credential Discovery';
+      else if (/dump|extract|secret/.test(src)) actionLabel = 'Credential Extraction';
+      const srcNode = nodeById[`access:${c.via_access_id}`];
+      const dstNode = nodeById[`cred:${c.id}`];
+      insertAction(`access:${c.via_access_id}`, `cred:${c.id}`, actionLabel, '#58a6ff',
+        srcNode.chain_order, dstNode.chain_order);
     }
-    // credential ← vuln (vuln exploitation produced credential)
+    // vuln → credential — INSERT action node
     if (c.via_vuln_id && nodeById[`vuln:${c.via_vuln_id}`]) {
-      edges.push({ from: `vuln:${c.via_vuln_id}`, to: `cred:${c.id}`,
-        color: '#58a6ff', label: 'captured' });
+      const srcNode = nodeById[`vuln:${c.via_vuln_id}`];
+      const dstNode = nodeById[`cred:${c.id}`];
+      insertAction(`vuln:${c.via_vuln_id}`, `cred:${c.id}`, 'Hash Capture', '#58a6ff',
+        srcNode.chain_order, dstNode.chain_order);
     }
   }
-  // vuln ← access (found/exploited vuln during access)
+
+  // access → vuln (found/exploited vuln during access) — direct edge (vuln IS the finding)
   for (const v of state.vulns) {
     if (v.in_graph === 0) continue;
     if (v.severity === 'info') continue;
     if (v.via_access_id && nodeById[`access:${v.via_access_id}`] && nodeById[`vuln:${v.id}`]) {
-      edges.push({ from: `access:${v.via_access_id}`, to: `vuln:${v.id}`,
-        color: '#e3b341', label: v.vuln_type || 'vuln' });
+      edges.push({ from: `access:${v.via_access_id}`, to: `vuln:${v.id}`, color: '#e3b341' });
     }
   }
 
@@ -804,17 +828,11 @@ function renderFlowGraph() {
     // Build meaningful tooltip
     const srcLabel = src.label || src.id;
     const dstLabel = dst.label || dst.id;
-    const detailAttr = escAttr(`${srcLabel} \u2192 ${dstLabel}${e.label ? '\nAction: ' + e.label : ''}`);
+    const detailAttr = escAttr(`${srcLabel} \u2192 ${dstLabel}`);
     svgHtml += `<path class="flow-edge" d="${path}" stroke="${e.color}" data-detail="${detailAttr}" onmouseenter="showTip(event)" onmouseleave="hideTip()"/>`;
     // Arrowhead pointing right
     const as = 6;
     svgHtml += `<polygon points="${dx},${dy} ${dx-as},${dy-as/2} ${dx-as},${dy+as/2}" fill="${e.color}"/>`;
-    // Edge label
-    if (e.label) {
-      const lx = (sx + dx) / 2;
-      const ly = (sy + dy) / 2 - 8;
-      svgHtml += `<text x="${lx}" y="${ly}" text-anchor="middle" fill="${e.color}" font-size="9" font-weight="600" style="pointer-events:none">${esc(e.label)}</text>`;
-    }
   }
 
   // Draw nodes
@@ -842,12 +860,10 @@ function renderFlowGraph() {
   const legend = document.getElementById('graph-legend');
   legend.innerHTML = [
     '<span class="legend-dim">NODES</span>',
+    '<span class="legend-item"><svg width="12" height="12"><rect width="12" height="12" rx="3" fill="none" stroke="#3fb950" stroke-width="2"/></svg>Access</span>',
     '<span class="legend-item"><svg width="12" height="12"><rect width="12" height="12" rx="3" fill="none" stroke="#1f6feb" stroke-width="2"/></svg>Action</span>',
-    '<span class="legend-item"><svg width="12" height="12"><rect width="12" height="12" rx="6" fill="none" stroke="#8b949e" stroke-width="1.5"/></svg>Asset</span>',
-    '<span class="legend-dim" style="margin-left:8px;">EDGES</span>',
-    '<span class="legend-item"><svg width="20" height="12"><line x1="0" y1="6" x2="20" y2="6" stroke="#3fb950" stroke-width="2"/></svg>Access gained</span>',
-    '<span class="legend-item"><svg width="20" height="12"><line x1="0" y1="6" x2="20" y2="6" stroke="#58a6ff" stroke-width="2"/></svg>Credential found</span>',
-    '<span class="legend-item"><svg width="20" height="12"><line x1="0" y1="6" x2="20" y2="6" stroke="#e3b341" stroke-width="2"/></svg>Vuln found</span>',
+    '<span class="legend-item"><svg width="12" height="12"><rect width="12" height="12" rx="6" fill="none" stroke="#8b949e" stroke-width="1.5"/></svg>Credential</span>',
+    '<span class="legend-item"><svg width="12" height="12"><rect width="12" height="12" rx="3" fill="none" stroke="#238636" stroke-width="2"/></svg>Exploited vuln</span>',
   ].join('');
 
   svg.setAttribute('width', totalW);
