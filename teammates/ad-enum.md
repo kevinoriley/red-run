@@ -34,6 +34,8 @@ message lead:      IMMEDIATELY after writing any of these to state.db:
                    - task complete
                    The message is what triggers the lead to check state and act.
                    Do NOT just write to state.db silently — the lead needs the message.
+                   Mid-task findings should be messaged AS FOUND — do not
+                   batch into the final report.
 message web:       found web-exploitable service via AD enum
 message linux/win: lateral movement achieved → access details
 ```

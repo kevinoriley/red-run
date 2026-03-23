@@ -27,11 +27,14 @@ SendMessage requires a `summary` field (5-10 word preview) with every message.
 write state.db:   ALWAYS for credentials, vulns, pivots, blocked (durable record)
 message lead:     IMMEDIATELY after writing any of these to state.db:
                   - credentials captured
+                  - new vhost or hostname discovered
                   - pivot found (new subnet, additional NIC)
                   - blocked/stalled, need context
                   - task complete
                   The message is what triggers the lead to check state and act.
                   Do NOT just write to state.db silently — the lead needs the message.
+                   Mid-task findings should be messaged AS FOUND — do not
+                   batch into the final report.
 message teammate: credential found → ad/web teammate; new subnet → pivoting
 ```
 

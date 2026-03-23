@@ -384,19 +384,20 @@ def init_db(db_path: str | Path) -> sqlite3.Connection:
     # Apply base schema (CREATE IF NOT EXISTS — safe for existing DBs)
     conn.executescript(SCHEMA_SQL)
 
-    # Run migrations for existing databases
-    if current_version == 2:
-        _migrate_v2_to_v3(conn)
-    if current_version <= 3:
-        _migrate_v3_to_v4(conn)
-    if current_version <= 4:
-        _migrate_v4_to_v5(conn)
-    if current_version <= 5:
-        _migrate_v5_to_v6(conn)
-    if current_version <= 6:
-        _migrate_v6_to_v7(conn)
-    if current_version <= 7:
-        _migrate_v7_to_v8(conn)
+    # Run migrations for existing databases (skip fresh DBs — base schema is current)
+    if 0 < current_version < SCHEMA_VERSION:
+        if current_version == 2:
+            _migrate_v2_to_v3(conn)
+        if current_version <= 3:
+            _migrate_v3_to_v4(conn)
+        if current_version <= 4:
+            _migrate_v4_to_v5(conn)
+        if current_version <= 5:
+            _migrate_v5_to_v6(conn)
+        if current_version <= 6:
+            _migrate_v6_to_v7(conn)
+        if current_version <= 7:
+            _migrate_v7_to_v8(conn)
 
     conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     conn.commit()

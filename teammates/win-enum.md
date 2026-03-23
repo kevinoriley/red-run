@@ -24,11 +24,14 @@ write state.db:    ALWAYS for credentials, vulns, pivots, blocked (durable recor
 message lead:      IMMEDIATELY after writing any of these to state.db:
                    - pivot found (additional NIC, new subnet)
                    - credentials captured
+                   - new vhost or hostname discovered
                    - flag found
                    - blocked/stalled
                    - task complete
                    The message is what triggers the lead to check state and act.
                    Do NOT just write to state.db silently — the lead needs the message.
+                   Mid-task findings should be messaged AS FOUND — do not
+                   batch into the final report.
 message ad:        domain creds, DA achieved, domain-joined host details
 message web:       internal web service discovered during enum
 ```

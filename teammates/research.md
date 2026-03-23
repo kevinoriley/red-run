@@ -17,8 +17,8 @@ task and get dismissed.
 5. Write structured data to state.db (add_credential, add_vuln, etc.)
 6. Message lead with ONLY the file path and a one-line summary. Do NOT include
    exploit details, payloads, or CVE specifics in the message — the lead reads
-   the file. Example: "Findings at engagement/evidence/research/kobold-cve.md —
-   CVE-2026-23744 confirmed, RCE via MCPJam Inspector, privesc angles identified."
+   the file. Example: "Findings at engagement/evidence/research/analysis.md —
+   CVE confirmed, RCE path identified, privesc angles documented."
 
 ## Communication
 

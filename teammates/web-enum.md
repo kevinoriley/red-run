@@ -29,11 +29,14 @@ write state.db:    ALWAYS for credentials, vulns, pivots, blocked (durable recor
 message lead:      IMMEDIATELY after writing any of these to state.db:
                    - vulnerability confirmed
                    - credentials captured
+                   - new vhost or hostname discovered
                    - flag found
                    - blocked/stalled
                    - task complete
                    The message is what triggers the lead to check state and act.
                    Do NOT just write to state.db silently — the lead needs the message.
+                   Mid-task findings should be messaged AS FOUND — do not
+                   batch into the final report.
 message ad:        domain creds found via web enumeration
 ```
 
