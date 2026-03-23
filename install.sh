@@ -64,7 +64,8 @@ MCP_RDP_SERVER="${REPO_DIR}/tools/rdp-server"
 
 # Only the orchestrator is installed as a native Claude Code skill.
 # Everything else is served on-demand via the MCP skill-router.
-NATIVE_SKILLS=("ctf" "legacy")
+NATIVE_SKILLS=("ctf")
+INSTALL_LEGACY=false
 
 MODE="symlink"
 REBUILD_DOCKER=false
@@ -72,11 +73,25 @@ for arg in "$@"; do
     case "$arg" in
         --copy) MODE="copy" ;;
         --rebuild) REBUILD_DOCKER=true ;;
+        --legacy) INSTALL_LEGACY=true ;;
     esac
 done
 
+if [[ "$INSTALL_LEGACY" == "false" ]]; then
+    echo -n "Install legacy subagent orchestrator? (N/y) "
+    read -r legacy_answer
+    if [[ "$legacy_answer" =~ ^[Yy] ]]; then
+        INSTALL_LEGACY=true
+    fi
+fi
+
+if [[ "$INSTALL_LEGACY" == "true" ]]; then
+    NATIVE_SKILLS+=("legacy")
+fi
+
 mkdir -p "${SKILLS_DST}" "${AGENTS_DST}"
 
+echo ""
 echo "This may take 5 minutes or more, depending on your connection speed."
 echo ""
 
@@ -129,34 +144,39 @@ for skill_name in "${NATIVE_SKILLS[@]}"; do
     fi
 done
 
-# --- Step 3: Install custom subagents ---
-echo ""
-echo "Installing custom subagents..."
+# --- Step 3: Install custom subagents (legacy only) ---
 agent_count=0
-for agent_file in "${AGENTS_SRC}"/*.md; do
-    [[ -f "$agent_file" ]] || continue
-    agent_basename="$(basename "$agent_file")"
-    dest_file="${AGENTS_DST}/${agent_basename}"
+if [[ "$INSTALL_LEGACY" == "true" ]]; then
+    echo ""
+    echo "Installing custom subagents..."
+    for agent_file in "${AGENTS_SRC}"/*.md; do
+        [[ -f "$agent_file" ]] || continue
+        agent_basename="$(basename "$agent_file")"
+        dest_file="${AGENTS_DST}/${agent_basename}"
 
-    rm -f "$dest_file"
-    if [[ "$MODE" == "symlink" ]]; then
-        ln -s "$agent_file" "$dest_file"
-    else
-        cp "$agent_file" "$dest_file"
-    fi
+        rm -f "$dest_file"
+        if [[ "$MODE" == "symlink" ]]; then
+            ln -s "$agent_file" "$dest_file"
+        else
+            cp "$agent_file" "$dest_file"
+        fi
 
-    echo "  ${agent_basename} -> ${agent_file}"
-    agent_count=$((agent_count + 1))
-done
+        echo "  ${agent_basename} -> ${agent_file}"
+        agent_count=$((agent_count + 1))
+    done
 
-# Validate agent installs
-for agent_file in "${AGENTS_DST}"/*.md; do
-    [[ -f "$agent_file" ]] || continue
-    if [[ ! -r "$agent_file" ]]; then
-        echo "ERROR: Broken agent: ${agent_file}" >&2
-        exit 1
-    fi
-done
+    # Validate agent installs
+    for agent_file in "${AGENTS_DST}"/*.md; do
+        [[ -f "$agent_file" ]] || continue
+        if [[ ! -r "$agent_file" ]]; then
+            echo "ERROR: Broken agent: ${agent_file}" >&2
+            exit 1
+        fi
+    done
+else
+    # Clean up any previously installed agents
+    rm -f "${AGENTS_DST}"/*.md 2>/dev/null
+fi
 
 # --- Step 4: Set up MCP servers ---
 echo ""
@@ -242,7 +262,9 @@ fi
 # --- Summary ---
 echo ""
 echo "Installed ${native_count} native skill(s) to ${SKILLS_DST}/ (${MODE} mode)"
-echo "Installed ${agent_count} custom subagent(s) to ${AGENTS_DST}/"
+if [[ "$INSTALL_LEGACY" == "true" ]]; then
+    echo "Installed ${agent_count} custom subagent(s) to ${AGENTS_DST}/"
+fi
 echo "63 technique/discovery skills served via MCP skill-router"
 echo "nmap MCP server ready (Dockerized nmap)"
 echo "shell MCP server ready (TCP listener + reverse shell + privileged Docker)"

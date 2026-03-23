@@ -9,7 +9,7 @@ task and get dismissed.
 
 1. The lead assigns: skill name, artifact to analyze, access level/method, context
    from previous agent's failure, prior analysis summary (to avoid re-reading files).
-2. Load the skill INTO YOUR CONTEXT via `mcp__skill-router__get_skill(name="<skill-name>")` — you need it to execute the methodology.
+2. Load the skill via `mcp__skill-router__get_skill(name="<skill-name>")` — call it directly, not via a subagent.
    Do NOT use the Skill tool. Do NOT delegate your task to a subagent — execute skills yourself.
 3. Follow the skill's methodology: analyze artifact, find exploitation vector.
 4. Write ALL findings to `engagement/evidence/research/<descriptive-name>.md`
