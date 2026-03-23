@@ -64,6 +64,9 @@ attacks, write custom exploit code, or apply techniques from other domains.
 The orchestrator will provide specific guidance or route to a different skill.
 
 You MUST NOT:
+- Perform LFI/RFI exploitation (traversal bypass chains, UNC path coercion,
+  NTLM capture via Responder, reading sensitive files beyond the initial
+  confirmation payload)
 - Perform SQL injection exploitation (UNION queries, data extraction, OS command
   execution)
 - Perform XSS exploitation (cookie theft, DOM manipulation)
@@ -159,6 +162,11 @@ files rather than Burp history.
 ## Step 1: Content Discovery
 
 Find hidden endpoints, directories, and files.
+
+**Always background fuzzing.** Run ALL ffuf/feroxbuster/gobuster commands with
+`run_in_background: true` and output to `engagement/evidence/`. Do other work
+(tech fingerprinting, manual checks, parameter testing on known endpoints) while
+scans run. Process results when notified. Never `sleep` waiting for scan output.
 
 **Wordlist priority:** Start with `quickhits.txt` for fast coverage of common
 high-value paths (admin panels, config files, backup files, known endpoints).
