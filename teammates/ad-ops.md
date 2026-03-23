@@ -142,6 +142,8 @@ evidence:       save to engagement/evidence/ with descriptive filenames
 - `add_credential(secret=)` — required, no empty secrets
 - `add_vuln(status=)` — valid: `found`, `exploited`, `blocked`
 - `add_vuln(severity=)` — valid: `info`, `low`, `medium`, `high`, `critical`
+- If `add_vuln` returns `"warning": "possible_duplicate"`, check `existing_title`
+  — if it's the same finding, use `update_vuln(id=existing_vuln_id)` instead
 
 **Tool output files:** Many AD tools (certipy, bloodhound-python, impacket)
 dump files to the current working directory. Always use `-out engagement/evidence/`

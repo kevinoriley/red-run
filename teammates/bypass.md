@@ -29,6 +29,8 @@ write state.db:    add_vuln() for confirmed bypasses, add_blocked() for failures
 - `add_vuln(ip=, title=, ...)` — `ip` is required.
 - `add_vuln(status=)` — valid: `found`, `exploited`, `blocked`
 - `add_vuln(severity=)` — valid: `info`, `low`, `medium`, `high`, `critical`
+- If `add_vuln` returns `"warning": "possible_duplicate"`, check `existing_title`
+  — if it's the same finding, use `update_vuln(id=existing_vuln_id)` instead
 - `add_blocked(retry=)` — valid: `no`, `later`, `with_context`
 
 ## Build Environment
