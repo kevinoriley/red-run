@@ -326,28 +326,16 @@ tr:hover td { background: var(--bg2); }
 .graph-expand-btn:hover { color: var(--accent); border-color: var(--accent); }
 #graph-container.panning { cursor: grabbing; }
 #graph-container svg { display: block; user-select: none; -webkit-user-select: none; }
-.host-card { cursor: default; }
-.host-card-bg { rx: 6; ry: 6; fill: var(--bg2); stroke-width: 2; }
-.host-card-header { fill: var(--bg3); }
-.card-section-header { font-size: 10px; text-transform: uppercase; fill: var(--dim); font-weight: 600; letter-spacing: 0.5px; }
-.card-section-line { stroke: var(--border); stroke-width: 0.5; }
-.card-item { font-size: 11px; fill: var(--text); }
-.card-item-active { fill: var(--green); }
-.card-item-blocked { fill: var(--red); text-decoration: line-through; }
-.card-item-pending { fill: var(--yellow); }
-@keyframes pulseGlow {
-  0%, 100% { filter: drop-shadow(0 0 2px var(--yellow)); }
-  50% { filter: drop-shadow(0 0 8px var(--yellow)); }
-}
-.card-actionable-glow { animation: pulseGlow 2s ease-in-out infinite; }
-.node-new { animation: fadeIn 0.5s ease-in; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-.card-edge { fill: none; stroke-width: 3; }
-.card-edge-active { stroke: var(--green); stroke-dasharray: none; }
-.card-edge-pending { stroke: var(--yellow); stroke-dasharray: 6 3; }
-.card-edge-blocked { stroke: var(--red); stroke-dasharray: 6 3; }
-.card-edge-recon { stroke: var(--dim); stroke-dasharray: 3 4; stroke-width: 1; opacity: 0.5; }
-.edge-label { font-size: 9px; pointer-events: none; }
+.flow-node { cursor: default; }
+.flow-action { rx: 8; ry: 8; stroke-width: 2; }
+.flow-asset { rx: 14; ry: 14; stroke-width: 1.5; }
+.flow-action-header { font-size: 10px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+.flow-node-title { font-size: 11px; font-weight: 600; }
+.flow-node-detail { font-size: 10px; }
+.flow-edge { fill: none; stroke-width: 2; marker-end: url(#flow-arrow); }
+.flow-edge-active { stroke: #3fb950; }
+.flow-edge-pending { stroke: #e3b341; stroke-dasharray: 6 3; }
+.flow-edge-blocked { stroke: #f85149; stroke-dasharray: 6 3; }
 .graph-legend { position: absolute; bottom: 6px; left: 6px; right: 6px;
   background: var(--bg2); border-top: 1px solid var(--border); padding: 4px 8px;
   font-size: 10px; color: var(--text); display: flex; gap: 8px; align-items: center;
@@ -431,7 +419,7 @@ function showContent() {
 function render() {
   showContent();
   renderCards();
-  renderGraph();
+  renderFlowGraph();
   renderTables();
 }
 function renderLight() {
@@ -593,7 +581,7 @@ function toggleGraphFullscreen() {
   btn.textContent = c.classList.contains('fullscreen') ? '\u2716' : '\u26F6';
   // Reset persisted viewBox so graph re-fits to new container size
   _graphVB = null;
-  requestAnimationFrame(() => requestAnimationFrame(() => renderGraph()));
+  requestAnimationFrame(() => requestAnimationFrame(() => renderFlowGraph()));
 }
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
@@ -602,714 +590,240 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// --- Access Chain Graph (Host Card Topology) ---
-function renderGraph() {
+// --- Graph View Toggle ---
+
+// --- Access Chain Graph (Flow View) ---
+function renderFlowGraph() {
   const svg = document.getElementById('graph');
   const container = document.getElementById('graph-container');
-  if (!state || (!state.targets.length && !state.vulns.length)) {
-    svg.innerHTML = '<text x="50%" y="50" text-anchor="middle" fill="#8b949e" font-size="13">No data for graph</text>';
+  if (!state || (!state.access.length && !state.credentials.length && !state.vulns.length)) {
+    svg.innerHTML = '<text x="50%" y="50" text-anchor="middle" fill="#8b949e" font-size="13">No chain data — provenance links (via_credential_id, via_access_id) needed</text>';
     svg.setAttribute('width', container.clientWidth);
     svg.setAttribute('height', 100);
     return;
   }
 
-  // --- Helpers ---
   function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function escAttr(s) { return esc(s).replace(/"/g,'&quot;'); }
   function trunc(s, max) { s = String(s||''); return s.length > max ? s.slice(0, max-1)+'\u2026' : s; }
 
-  const providedPattern = /\b(provided|scope|pre-engagement|given|initial|pentest|operator)\b/i;
-  const targetHosts = state.targets.map(t => t.ip);
+  // --- Build nodes ---
+  const nodes = []; // { id, type, label, sublabel, detail, color, borderColor, chain_order, row }
+  const nodeById = {};
+  const edges = []; // { from, to, color }
 
-  // --- Build per-host data ---
-  // Provided credentials
-  const providedCreds = state.credentials.filter(c => c.source && providedPattern.test(c.source));
-  const providedCredUsernames = new Set(providedCreds.map(c => c.username));
-
-  // Access by host
-  const accessByHost = {};
+  // Access → ACTION nodes
   for (const a of state.access) {
-    if (!accessByHost[a.ip]) accessByHost[a.ip] = [];
-    accessByHost[a.ip].push(a);
+    if (a.in_graph === 0) continue;
+    const host = a.ip || '';
+    const techniqueLabel = a.technique_id ? `[${a.technique_id}] ` : '';
+    const node = {
+      id: `access:${a.id}`, type: 'action',
+      label: `${techniqueLabel}${a.username} (${a.privilege})`,
+      sublabel: trunc(a.method || a.access_type, 40),
+      hostLabel: host,
+      detail: `${a.username}@${host} [${a.access_type}, ${a.privilege}]\n${a.method}`,
+      borderColor: a.active ? '#3fb950' : '#f85149',
+      headerColor: '#1f6feb',
+      headerText: a.access_type.toUpperCase(),
+      chain_order: a.chain_order || 0,
+    };
+    nodes.push(node);
+    nodeById[node.id] = node;
   }
 
-  // Creds associated with each host via multiple heuristics
-  const credsByHost = {};
+  // Credentials → ASSET nodes
   for (const c of state.credentials) {
-    if (providedPattern.test(c.source || '')) continue; // skip provided creds
-    let assigned = false;
-    // 1. via_access_id links to an access record on a host
-    if (c.via_access_id) {
-      const linkedAccess = state.access.find(a => a.id === c.via_access_id);
-      if (linkedAccess) {
-        if (!credsByHost[linkedAccess.ip]) credsByHost[linkedAccess.ip] = [];
-        credsByHost[linkedAccess.ip].push(c);
-        assigned = true;
-      }
-    }
-    // 2. source mentions a host
-    if (!assigned && c.source) {
-      for (const h of targetHosts) {
-        if (c.source.includes(h)) {
-          if (!credsByHost[h]) credsByHost[h] = [];
-          credsByHost[h].push(c);
-          assigned = true;
-          break;
-        }
-      }
-    }
-    // 3. discovered_by agent working on a host (match agent name to access host)
-    if (!assigned && c.discovered_by) {
-      for (const h of targetHosts) {
-        if (c.discovered_by.includes(h)) {
-          if (!credsByHost[h]) credsByHost[h] = [];
-          credsByHost[h].push(c);
-          assigned = true;
-          break;
-        }
-      }
-    }
-    // 4. tested_against with works=true
-    if (!assigned) {
-      for (const ta of (c.tested_against || [])) {
-        if (ta.works && ta.ip) {
-          if (!credsByHost[ta.ip]) credsByHost[ta.ip] = [];
-          credsByHost[ta.ip].push(c);
-          assigned = true;
-          break;
-        }
-      }
-    }
+    if (c.in_graph === 0) continue;
+    // Skip uncracked capture hashes (noisy)
+    if (!c.cracked && ['net_ntlm','kerberos_tgs','dcc2','webapp_hash'].includes(c.secret_type)) continue;
+    const label = c.domain ? `${c.domain}\\${c.username}` : c.username;
+    const node = {
+      id: `cred:${c.id}`, type: 'asset',
+      label: label,
+      sublabel: c.secret_type + (c.cracked ? ' (cracked)' : ''),
+      hostLabel: '',
+      detail: `${label} (${c.secret_type})\nsource: ${c.source}`,
+      borderColor: '#8b949e',
+      headerColor: '#30363d',
+      headerText: 'CREDENTIAL',
+      chain_order: c.chain_order || 0,
+    };
+    nodes.push(node);
+    nodeById[node.id] = node;
   }
 
-  // Vulns by host (all statuses)
-  // Orphaned vulns (target_id=NULL, host=unknown) get assigned to the sole
-  // target when there's exactly one — avoids invisible vulns on the graph.
-  const allVulnsByHost = {};
-  const soleHost = targetHosts.length === 1 ? targetHosts[0] : null;
+  // Vulns → ACTION (exploited) or ASSET (found, medium+)
   for (const v of state.vulns) {
-    let h = v.ip || 'unknown';
-    if (h === 'unknown' && soleHost) h = soleHost;
-    if (!allVulnsByHost[h]) allVulnsByHost[h] = [];
-    allVulnsByHost[h].push(v);
+    if (v.in_graph === 0) continue;
+    if (v.severity === 'info') continue;
+    const isAction = v.status === 'exploited';
+    const techniqueLabel = v.technique_id ? `[${v.technique_id}] ` : '';
+    const sevColors = { critical: '#f85149', high: '#d29922', medium: '#8b949e', low: '#8b949e' };
+    const node = {
+      id: `vuln:${v.id}`, type: isAction ? 'action' : 'asset',
+      label: `${techniqueLabel}${trunc(v.title, 35)}`,
+      sublabel: `${v.severity} | ${v.status}`,
+      hostLabel: v.ip || '',
+      detail: `${v.title}\n${v.severity} | ${v.status}${v.vuln_type ? '\ntype: ' + v.vuln_type : ''}${v.details ? '\n' + v.details : ''}`,
+      borderColor: isAction ? '#3fb950' : (sevColors[v.severity] || '#8b949e'),
+      headerColor: isAction ? '#238636' : '#d29922',
+      headerText: isAction ? 'EXPLOITED' : v.severity.toUpperCase(),
+      chain_order: v.chain_order || 0,
+    };
+    nodes.push(node);
+    nodeById[node.id] = node;
   }
 
-  // Blocked by host
-  const blockedByHost = {};
-  for (const b of state.blocked) {
-    let h = b.ip || 'unknown';
-    if (h === 'unknown' && soleHost) h = soleHost;
-    if (!blockedByHost[h]) blockedByHost[h] = [];
-    blockedByHost[h].push(b);
-  }
-
-  // Pivots: parse source/dest to host names
-  const pivotEdges = []; // { srcHost, dstHost, method, status, detail }
-  const pivotDestHosts = new Set();
-  for (const p of state.pivot_map) {
-    let srcHost = null;
-    if (targetHosts.includes(p.source)) {
-      srcHost = p.source;
-    } else {
-      for (const h of targetHosts) {
-        if (p.source.includes(h)) { srcHost = h; break; }
-      }
-    }
-    // Fall back: find access on source host
-    if (!srcHost) {
-      for (const a of state.access) {
-        if (a.active && (a.ip === p.source || p.source.includes(a.ip))) {
-          srcHost = a.ip; break;
-        }
-      }
-    }
-    let dstHost = null;
-    if (targetHosts.includes(p.destination)) {
-      dstHost = p.destination;
-    } else {
-      for (const h of targetHosts) {
-        if (p.destination.includes(h)) { dstHost = h; break; }
-        const prefix = h.split('.').slice(0,3).join('.');
-        if (p.destination.includes(prefix + '.')) { dstHost = h; break; }
-      }
-    }
-    if (srcHost && dstHost) {
-      const methodShort = trunc((p.method || 'pivot').split(/[.\-,]/)[0].trim(), 30);
-      pivotEdges.push({ srcHost, dstHost, method: methodShort, status: p.status,
-        detail: `${p.method || 'pivot'} (${p.status})` });
-      pivotDestHosts.add(dstHost);
-    }
-  }
-
-  // Hosts reached via provided creds (access records OR successful tested_against)
-  const hostsViaProvidedCred = new Set();
+  // --- Build edges from provenance ---
   for (const a of state.access) {
-    if (providedCredUsernames.has(a.username)) {
-      hostsViaProvidedCred.add(a.ip);
+    if (a.in_graph === 0) continue;
+    if (a.via_credential_id && nodeById[`cred:${a.via_credential_id}`]) {
+      edges.push({ from: `cred:${a.via_credential_id}`, to: `access:${a.id}`, color: '#3fb950' });
+    }
+    if (a.via_access_id && nodeById[`access:${a.via_access_id}`]) {
+      edges.push({ from: `access:${a.via_access_id}`, to: `access:${a.id}`, color: '#3fb950' });
     }
   }
-  for (const c of providedCreds) {
-    for (const t of (c.tested_against || [])) {
-      if (t.works) hostsViaProvidedCred.add(t.ip);
+  for (const c of state.credentials) {
+    if (c.in_graph === 0) continue;
+    if (c.via_access_id && nodeById[`access:${c.via_access_id}`] && nodeById[`cred:${c.id}`]) {
+      edges.push({ from: `access:${c.via_access_id}`, to: `cred:${c.id}`, color: '#58a6ff' });
+    }
+  }
+  for (const v of state.vulns) {
+    if (v.in_graph === 0) continue;
+    if (v.severity === 'info') continue;
+    if (v.via_access_id && nodeById[`access:${v.via_access_id}`] && nodeById[`vuln:${v.id}`]) {
+      edges.push({ from: `access:${v.via_access_id}`, to: `vuln:${v.id}`, color: '#e3b341' });
     }
   }
 
-  // --- Column assignment ---
-  // Col 0: attacker
-  // Col 1: hosts directly reachable (not pivot destinations, OR reached via provided creds)
-  // Col 2+: hosts only reachable via pivots from col N-1
-  const hostCol = {};
-  const col1Hosts = [];
-  const remainHosts = [];
-  for (const t of state.targets) {
-    if (!pivotDestHosts.has(t.ip)) {
-      hostCol[t.ip] = 1;
-      col1Hosts.push(t.ip);
-    } else {
-      remainHosts.push(t.ip);
+  // --- Assign rows ---
+  // Use chain_order if set, else BFS depth
+  const hasOrder = nodes.some(n => n.chain_order > 0);
+  if (hasOrder) {
+    // Group by chain_order
+    for (const n of nodes) {
+      n.row = n.chain_order || 999; // unordered go to bottom
     }
-  }
-  // BFS through pivots for deeper columns
-  let frontier = new Set(col1Hosts);
-  let curCol = 1;
-  while (remainHosts.length && curCol < 10) {
-    const nextFrontier = new Set();
-    for (let i = remainHosts.length - 1; i >= 0; i--) {
-      const h = remainHosts[i];
-      const reachable = pivotEdges.some(pe => pe.dstHost === h && frontier.has(pe.srcHost));
-      if (reachable) {
-        hostCol[h] = curCol + 1;
-        nextFrontier.add(h);
-        remainHosts.splice(i, 1);
-      }
-    }
-    if (nextFrontier.size === 0) break;
-    frontier = nextFrontier;
-    curCol++;
-  }
-  // Any remaining go to col 1
-  for (const h of remainHosts) { hostCol[h] = 1; }
-
-  // --- Build actionable items per host ---
-  const sevOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
-  function getActionable(host) {
-    const items = [];
-    const blockedTechniques = new Set((blockedByHost[host] || []).filter(b => b.retry === 'no').map(b => b.technique));
-    for (const v of (allVulnsByHost[host] || []).slice().sort((a,b) => (sevOrder[a.severity]??9) - (sevOrder[b.severity]??9))) {
-      if (v.status === 'found' && v.severity !== 'info' && !blockedTechniques.has(v.title)) {
-        const sevColor = v.severity === 'critical' ? '#f85149' : v.severity === 'high' ? '#d29922' : '#8b949e';
-        const detailParts = [v.title, `${v.severity} | ${v.status}`];
-        if (v.vuln_type) detailParts.push(`type: ${v.vuln_type}`);
-        if (v.details) detailParts.push(v.details);
-        items.push({ icon: '\u26A0', text: v.title, detail: detailParts.join('\n'), color: sevColor });
-      }
-    }
-    // Uncracked hashes
-    for (const c of (credsByHost[host] || [])) {
-      if (!c.cracked && c.secret_type !== 'password' && c.secret_type !== 'plaintext') {
-        const label = c.domain ? `${c.domain}\\${c.username}` : c.username;
-        items.push({ icon: '#', text: `${label} (${c.secret_type}, uncracked)`, detail: `source: ${c.source}` });
-      }
-    }
-    // Identified pivots originating from this host
-    for (const pe of pivotEdges) {
-      if (pe.srcHost === host && pe.status === 'identified') {
-        items.push({ icon: '\u2192', text: `Pivot to ${pe.dstHost}: ${pe.method}`, detail: pe.detail });
-      }
-    }
-    return items;
-  }
-
-  // --- Card content builder (returns { html, height }) ---
-  const CARD_W = 280;
-  const CARD_PAD = 10;
-  const HEADER_H = 38;
-  const SECTION_HEADER_H = 18;
-  const ITEM_H = 16;
-  const SECTION_GAP = 4;
-  const MIN_CARD_H = 80;
-
-  function buildCardContent(host, target) {
-    let sections = [];
-
-    // ACCESS section — chain-ordered by via_access_id + credential-mediated links
-    const accesses = accessByHost[host] || [];
-    if (accesses.length) {
-      const byId = Object.fromEntries(accesses.map(a => [a.id, a]));
-      const childOf = {};  // parent_access_id -> [child_access_ids]
-
-      // Build parent-child links from:
-      // 1. via_access_id (direct privesc: access → access)
-      // 2. via_credential_id → credential.via_access_id (cred-mediated: access → found cred → used for access)
-      for (const a of accesses) {
-        let parentId = null;
-        if (a.via_access_id && byId[a.via_access_id]) {
-          parentId = a.via_access_id;
-        } else if (a.via_credential_id) {
-          const cred = state.credentials.find(c => c.id === a.via_credential_id);
-          if (cred && cred.via_access_id && byId[cred.via_access_id]) {
-            parentId = cred.via_access_id;
-          }
-        }
-        if (parentId) {
-          if (!childOf[parentId]) childOf[parentId] = [];
-          childOf[parentId].push(a.id);
+  } else {
+    // BFS from roots (nodes with no incoming edges)
+    const incoming = new Set();
+    for (const e of edges) incoming.add(e.to);
+    const roots = nodes.filter(n => !incoming.has(n.id));
+    const visited = new Set();
+    const queue = roots.map(n => ({ id: n.id, depth: 0 }));
+    for (const n of nodes) n.row = 999;
+    while (queue.length) {
+      const { id, depth } = queue.shift();
+      if (visited.has(id)) continue;
+      visited.add(id);
+      if (nodeById[id]) nodeById[id].row = depth;
+      for (const e of edges) {
+        if (e.from === id && !visited.has(e.to)) {
+          queue.push({ id: e.to, depth: depth + 1 });
         }
       }
-
-      // Find roots (no parent link on this host)
-      const hasParent = new Set();
-      for (const kids of Object.values(childOf)) kids.forEach(id => hasParent.add(id));
-      const roots = accesses.filter(a => !hasParent.has(a.id)).map(a => a.id);
-
-      // DFS to flatten chain with depth
-      const ordered = [];
-      const visited = new Set();
-      function walkAccess(id, depth) {
-        if (visited.has(id)) return;
-        visited.add(id);
-        const a = byId[id];
-        if (!a) return;
-        ordered.push({ ...a, _depth: depth });
-        for (const cid of (childOf[id] || [])) walkAccess(cid, depth + 1);
-      }
-      for (const rid of roots) walkAccess(rid, 0);
-      for (const a of accesses) { if (!visited.has(a.id)) ordered.push({ ...a, _depth: 0 }); }
-
-      const items = ordered.map(a => {
-        const icon = a._depth > 0 ? '\u2192' : (a.active ? '\u2713' : '\u2717');
-        const cls = a.active ? 'card-item-active' : 'card-item-blocked';
-        const prefix = a._depth > 0 ? '\u00A0'.repeat(a._depth * 2) : '';
-        const methodBrief = trunc(a.method || '', 25);
-        const text = `${prefix}${a.username} (${a.privilege})${methodBrief ? ' \u2190 ' + methodBrief : ''}`;
-        const detail = `${a.username} [${a.access_type}, ${a.privilege}]\n${a.method}`;
-        return { icon, text, cls, detail };
-      });
-      sections.push({ title: 'ACCESS', items });
-    } else {
-      sections.push({ title: 'ACCESS', items: [{ icon: '\u2014', text: '(none yet)', cls: 'card-item', detail: '' }] });
-    }
-
-    // CREDS FOUND
-    const creds = credsByHost[host] || [];
-    if (creds.length) {
-      const items = creds.map(c => {
-        const label = c.domain ? `${c.domain}\\${c.username}` : c.username;
-        const icon = c.cracked ? '\u25CF' : '\u25CB';
-        const srcBrief = trunc(c.source || '', 25);
-        const text = `${label} (${c.secret_type})${srcBrief ? ' \u2190 ' + srcBrief : ''}`;
-        const detail = `${c.secret_type}${c.cracked ? ' (cracked)' : ''}\nsource: ${c.source}`;
-        return { icon, text, cls: 'card-item', detail };
-      });
-      sections.push({ title: 'CREDS FOUND', items });
-    }
-
-    // EXPLOITED — successfully exploited vulns (above actionable = "done" first)
-    const exploitedVulns = (allVulnsByHost[host] || []).filter(v => v.status === 'exploited');
-    if (exploitedVulns.length) {
-      const items = exploitedVulns.map(v => {
-        const text = v.title;
-        const detailParts = [v.title, `${v.severity} | exploited`];
-        if (v.vuln_type) detailParts.push(`type: ${v.vuln_type}`);
-        if (v.details) detailParts.push(v.details);
-        return { icon: '\u2713', text, cls: 'card-item-active', detail: detailParts.join('\n'), color: '#3fb950' };
-      });
-      sections.push({ title: 'EXPLOITED', items });
-    }
-
-    // ACTIONABLE — found vulns (not blocked), uncracked hashes, identified pivots
-    const actionable = getActionable(host);
-    if (actionable.length) {
-      sections.push({ title: 'ACTIONABLE', items: actionable.map(a => ({
-        icon: a.icon, text: a.text, cls: 'card-item-pending', detail: a.detail,
-        color: a.color
-      })), glow: true });
-    }
-
-    // Calculate height
-    let h = HEADER_H;
-    for (const s of sections) {
-      h += SECTION_HEADER_H + s.items.length * ITEM_H + SECTION_GAP;
-    }
-    h = Math.max(MIN_CARD_H, h + CARD_PAD);
-
-    return { sections, height: h };
-  }
-
-  // --- Build card data ---
-  const cards = []; // { id, host, col, label, subtitle, borderColor, sections, height, x, y, w }
-
-  // Attacker card
-  const attackerSections = [];
-  if (providedCreds.length) {
-    attackerSections.push({ title: 'PROVIDED CREDS', items: providedCreds.map(c => {
-      const label = c.domain ? `${c.domain}\\${c.username}` : c.username;
-      return { icon: '\u25CF', text: `${label} (${c.secret_type})`, cls: 'card-item', detail: `source: ${c.source}` };
-    }) });
-  }
-  let attackerH = HEADER_H;
-  for (const s of attackerSections) { attackerH += SECTION_HEADER_H + s.items.length * ITEM_H + SECTION_GAP; }
-  attackerH = attackerSections.length ? Math.max(MIN_CARD_H, attackerH + CARD_PAD) : HEADER_H + 4;
-  const ATTACKER_W = attackerSections.length ? CARD_W : 120;
-
-  cards.push({
-    id: 'attacker', host: null, col: 0,
-    label: 'ATTACKER', subtitle: '',
-    borderColor: '#f85149',
-    sections: attackerSections, height: attackerH,
-    x: 0, y: 0, w: ATTACKER_W
-  });
-
-  // Host cards
-  for (const t of state.targets) {
-    const col = hostCol[t.ip] || 1;
-    const hasActiveAccess = (accessByHost[t.ip] || []).some(a => a.active);
-    const actionable = getActionable(t.ip);
-    let borderColor = '#58a6ff'; // discovered
-    if (hasActiveAccess) borderColor = '#3fb950';
-    else if (actionable.length) borderColor = '#e3b341';
-
-    // Resolve hostname and IP for display
-    // Sources: host field, notes, port banners (LDAP often has "Hostname: X")
-    const hostIsIP = /^\d+\.\d+\.\d+\.\d+$/.test(t.ip);
-    let hostname = '';
-    let ip = '';
-
-    // Collect all text to search: notes + port banners
-    const searchText = [t.notes || ''];
-    for (const p of (t.ports || [])) {
-      if (p.banner) searchText.push(p.banner);
-    }
-    const allText = searchText.join(' | ');
-
-    if (hostIsIP) {
-      ip = t.ip;
-      // Try "Hostname: X" from banners first (most reliable)
-      const hnMatch = allText.match(/[Hh]ostname:\s*([A-Za-z0-9_-]+)/);
-      if (hnMatch) {
-        // Combine with domain if available
-        const domMatch = allText.match(/[Dd]omain:\s*([A-Za-z0-9._-]+\.[a-z]{2,})/);
-        hostname = domMatch ? `${hnMatch[1]}.${domMatch[1]}` : hnMatch[1];
-      } else {
-        // Fall back to FQDN pattern in notes (e.g., "DC01.pirate.htb")
-        const fqdnMatch = allText.match(/\b([A-Za-z][A-Za-z0-9_-]*\.[A-Za-z0-9._-]+\.[a-z]{2,})\b/);
-        if (fqdnMatch) hostname = fqdnMatch[1];
-      }
-    } else {
-      hostname = t.ip;
-      // Extract IP from notes/banners
-      const ipMatch = allText.match(/(?:IP|ip)[:\s]*(\d+\.\d+\.\d+\.\d+)/);
-      if (ipMatch) ip = ipMatch[1];
-      else {
-        const anyIP = allText.match(/(\d+\.\d+\.\d+\.\d+)/);
-        if (anyIP) ip = anyIP[1];
-      }
-    }
-
-    // Label: "HOSTNAME (IP)" or just one if the other is missing
-    const headerLabel = hostname && ip ? `${hostname} (${ip})`
-                      : hostname ? hostname : ip;
-    const subtitle = [t.os, t.role].filter(Boolean).join(' \u00B7 ');
-
-    const { sections, height } = buildCardContent(t.ip, t);
-
-    cards.push({
-      id: `host:${t.ip}`, host: t.ip, col,
-      label: headerLabel, subtitle,
-      borderColor,
-      sections, height,
-      x: 0, y: 0, w: CARD_W
-    });
-  }
-
-  // --- Layout: columns ---
-  const COL_GAP = 180;
-  const ROW_GAP = 30;
-  const PAD = 40;
-
-  const maxCol = Math.max(...cards.map(c => c.col));
-  const columns = {};
-  for (const c of cards) {
-    if (!columns[c.col]) columns[c.col] = [];
-    columns[c.col].push(c);
-  }
-
-  // Position cards within columns
-  const colHeights = {};
-  for (let col = 0; col <= maxCol; col++) {
-    const group = columns[col] || [];
-    let y = PAD;
-    for (const card of group) {
-      card.x = PAD + col * (CARD_W + COL_GAP);
-      card.y = y;
-      y += card.height + ROW_GAP;
-    }
-    colHeights[col] = y - ROW_GAP + PAD;
-  }
-
-  // Vertically center columns relative to tallest
-  const maxColHeight = Math.max(...Object.values(colHeights));
-  for (let col = 0; col <= maxCol; col++) {
-    const group = columns[col] || [];
-    const offset = (maxColHeight - (colHeights[col] || 0)) / 2;
-    for (const card of group) {
-      card.y += offset;
     }
   }
 
-  // --- Build edges ---
-  const graphEdges = []; // { srcCard, dstCard, label, edgeClass, detail }
-  const cardById = {};
-  for (const c of cards) cardById[c.id] = c;
+  // --- Layout ---
+  const NODE_W = 220;
+  const NODE_H = 56;
+  const H_GAP = 24;
+  const V_GAP = 50;
+  const PAD = 30;
 
-  // Helper: extract short label for edge pill from method text.
-  // Two tiers: access mechanism (how you interact) before transport/delivery
-  // (how it got there). "PHP webshell via SMB write" → "webshell" not "smb".
-  function shortEdgeLabel(text) {
-    if (!text) return '';
-    const t = text.toLowerCase();
-    // Tier 1: access mechanism — what the attacker interacts with
-    if (t.includes('webshell') || t.includes('web shell') || t.includes('cmd.php') || t.includes('cmd.aspx') || t.includes('cmd.jsp')) return 'webshell';
-    if (t.includes('reverse shell') || t.includes('rev shell') || t.includes('revshell')) return 'revshell';
-    if (t.includes('winrm') || t.includes('evil-winrm')) return 'winrm';
-    if (t.includes('psexec')) return 'psexec';
-    if (t.includes('wmiexec') || t.includes('wmi')) return 'wmi';
-    if (t.includes('dcom')) return 'dcom';
-    if (t.includes('rdp')) return 'rdp';
-    if (t.includes('ssh') && !t.includes('ssh tunnel') && !t.includes('ssh -')) return 'ssh';
-    // Tier 2: transport/delivery/technique
-    if (t.includes('chisel')) return 'chisel';
-    if (t.includes('ligolo')) return 'ligolo';
-    if (t.includes('sshuttle')) return 'sshuttle';
-    if (t.includes('ssh tunnel') || t.includes('ssh -')) return 'ssh tunnel';
-    if (t.includes('smb')) return 'smb';
-    if (t.includes('dns record') || t.includes('dns')) return 'dns';
-    if (t.includes('constrained delegation') || t.includes('s4u')) return 'delegation';
-    if (t.includes('kerberoast') || t.includes('tgs')) return 'kerberoast';
-    if (t.includes('crack')) return 'crack';
-    if (t.includes('tunnel') || t.includes('socks')) return 'tunnel';
-    if (t.includes('relay')) return 'relay';
-    if (t.includes('pivot')) return 'pivot';
-    if (t.includes('recon') || t.includes('discover')) return 'recon';
-    // Fall back: skip hostnames/IPs/filler, take first method-like word
-    const words = text.split(/[\s(,]+/);
-    for (const w of words) {
-      if (/^\d+\.\d+/.test(w)) continue;
-      if (/^[A-Z0-9_-]+\./i.test(w)) continue;
-      if (/^(the|a|an|on|in|to|via|from|for|has|need|with)$/i.test(w)) continue;
-      return w.slice(0, 12);
+  // Group nodes by row
+  const rowMap = {};
+  for (const n of nodes) {
+    if (!rowMap[n.row]) rowMap[n.row] = [];
+    rowMap[n.row].push(n);
+  }
+  const rowKeys = Object.keys(rowMap).map(Number).sort((a, b) => a - b);
+
+  // Assign x, y positions
+  let totalW = 0;
+  let y = PAD;
+  for (const rk of rowKeys) {
+    const rowNodes = rowMap[rk];
+    const rowW = rowNodes.length * NODE_W + (rowNodes.length - 1) * H_GAP;
+    if (rowW > totalW) totalW = rowW;
+    let x = PAD;
+    for (const n of rowNodes) {
+      n.x = x;
+      n.y = y;
+      x += NODE_W + H_GAP;
     }
-    return 'pivot';
+    y += NODE_H + V_GAP;
   }
+  totalW += PAD * 2;
+  const totalH = y + PAD;
 
-  // Map access_type enum to display label. Specific types are used directly;
-  // generic types (shell, other) fall through to method text parsing.
-  const accessTypeLabels = {
-    web_shell: 'webshell', ssh: 'ssh', winrm: 'winrm', rdp: 'rdp',
-    db: 'db', token: 'token', vpn: 'vpn'
-  };
-
-  // --- Precise chain edges from via_credential_id ---
-  // Track which access records have precise edges so heuristics can skip them
-  const preciseAccessIds = new Set();
-  for (const a of state.access) {
-    if (!a.via_credential_id) continue;
-    const cred = state.credentials.find(c => c.id === a.via_credential_id);
-    if (!cred) continue;
-    // Find where the credential came from (which host's access found it)
-    let srcHost = null;
-    if (cred.via_access_id) {
-      const srcAccess = state.access.find(sa => sa.id === cred.via_access_id);
-      if (srcAccess) srcHost = srcAccess.ip;
-    }
-    const srcCard = srcHost ? cardById[`host:${srcHost}`] : cardById['attacker'];
-    const dstCard = cardById[`host:${a.ip}`];
-    if (srcCard && dstCard && srcCard !== dstCard) {
-      preciseAccessIds.add(a.id);
-      const label = accessTypeLabels[a.access_type] || shortEdgeLabel(a.method) || a.access_type;
-      graphEdges.push({ srcCard, dstCard,
-        shortLabel: label, edgeClass: a.active ? 'card-edge-active' : 'card-edge-blocked',
-        detail: `${cred.domain ? cred.domain+'\\\\' : ''}${cred.username} (cred #${cred.id}) → ${a.username}@${a.ip}\n${a.method}` });
-    }
+  // Center each row horizontally
+  for (const rk of rowKeys) {
+    const rowNodes = rowMap[rk];
+    const rowW = rowNodes.length * NODE_W + (rowNodes.length - 1) * H_GAP;
+    const offset = (totalW - rowW) / 2 - PAD;
+    for (const n of rowNodes) n.x += offset;
   }
-
-  // Attacker -> hosts with access via provided creds
-  for (const h of hostsViaProvidedCred) {
-    const dst = cardById[`host:${h}`];
-    if (!dst) continue;
-    const accOnHost = (accessByHost[h] || []).find(a => providedCredUsernames.has(a.username));
-    if (accOnHost) {
-      graphEdges.push({ srcCard: cardById['attacker'], dstCard: dst,
-        shortLabel: accessTypeLabels[accOnHost.access_type] || shortEdgeLabel(accOnHost.method) || accOnHost.access_type, edgeClass: 'card-edge-active',
-        detail: `${accOnHost.username} (${accOnHost.access_type})\nMethod: ${accOnHost.method}` });
-    } else {
-      let shortLabel = 'auth';
-      let detail = 'Authenticated via provided credential';
-      for (const c of providedCreds) {
-        const tested = (c.tested_against || []).find(t => t.ip === h && t.works);
-        if (tested) {
-          shortLabel = tested.service;
-          detail = `${c.username} via ${tested.service}`;
-          break;
-        }
-      }
-      graphEdges.push({ srcCard: cardById['attacker'], dstCard: dst,
-        shortLabel, edgeClass: 'card-edge-active', detail });
-    }
-  }
-
-  // Attacker -> hosts discovered but no access via provided creds (recon)
-  for (const t of state.targets) {
-    if (hostsViaProvidedCred.has(t.ip)) continue;
-    if (pivotDestHosts.has(t.ip)) continue;
-    const dst = cardById[`host:${t.ip}`];
-    if (!dst) continue;
-    const activeAccess = (accessByHost[t.ip] || []).filter(a => a.active && !preciseAccessIds.has(a.id));
-    if (activeAccess.length) {
-      const acc = activeAccess[0];
-      const label = accessTypeLabels[acc.access_type] || shortEdgeLabel(acc.method) || acc.access_type || 'access';
-      const detail = `${acc.username} (${acc.access_type}, ${acc.privilege})\n${acc.method}`;
-      graphEdges.push({ srcCard: cardById['attacker'], dstCard: dst,
-        shortLabel: label, edgeClass: 'card-edge-active', detail });
-    } else {
-      graphEdges.push({ srcCard: cardById['attacker'], dstCard: dst,
-        shortLabel: '', edgeClass: 'card-edge-recon', detail: 'Discovered via recon' });
-    }
-  }
-
-  // Pivot edges — deduplicate: if an exploited pivot exists between two hosts,
-  // skip identified pivots between the same pair (they're superseded)
-  const exploitedPivotPairs = new Set();
-  for (const pe of pivotEdges) {
-    if (pe.status === 'exploited') exploitedPivotPairs.add(`${pe.srcHost}|${pe.dstHost}`);
-  }
-  for (const pe of pivotEdges) {
-    const src = cardById[`host:${pe.srcHost}`];
-    const dst = cardById[`host:${pe.dstHost}`];
-    if (!src || !dst) continue;
-    // Skip identified/pending pivots when an exploited pivot already covers this pair
-    if (pe.status !== 'exploited' && exploitedPivotPairs.has(`${pe.srcHost}|${pe.dstHost}`)) continue;
-    let edgeClass = 'card-edge-pending';
-    if (pe.status === 'exploited') edgeClass = 'card-edge-active';
-    else if (pe.status === 'blocked') edgeClass = 'card-edge-blocked';
-    graphEdges.push({ srcCard: src, dstCard: dst,
-      shortLabel: shortEdgeLabel(pe.method), edgeClass, detail: pe.detail });
-  }
-
-  // --- SVG dimensions ---
-  const svgW = PAD * 2 + (maxCol + 1) * CARD_W + maxCol * COL_GAP;
-  const svgH = Math.max(200, maxColHeight);
-  const totalW = Math.max(svgW, 700);
-  const totalH = svgH;
 
   // --- Render SVG ---
-  let svgHtml = '<defs></defs>';
+  let svgHtml = `<defs>
+    <marker id="flow-arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8b949e"/>
+    </marker>
+  </defs>`;
 
-  // Draw cards first
-  for (const card of cards) {
-    const isActionable = card.sections.some(s => s.glow);
-    const gCls = 'host-card node-new' + (isActionable ? ' card-actionable-glow' : '');
+  // Draw edges first (behind nodes)
+  for (const e of edges) {
+    const src = nodeById[e.from];
+    const dst = nodeById[e.to];
+    if (!src || !dst) continue;
+    const sx = src.x + NODE_W / 2;
+    const sy = src.y + NODE_H;
+    const dx = dst.x + NODE_W / 2;
+    const dy = dst.y;
+    const my = sy + (dy - sy) * 0.5;
+    const path = `M${sx},${sy} C${sx},${my} ${dx},${my} ${dx},${dy}`;
+    const detailAttr = escAttr(e.from + ' \u2192 ' + e.to);
+    svgHtml += `<path class="flow-edge" d="${path}" stroke="${e.color}" data-detail="${detailAttr}" onmouseenter="showTip(event)" onmouseleave="hideTip()"/>`;
+    // Arrowhead
+    svgHtml += `<polygon points="${dx},${dy} ${dx-5},${dy-7} ${dx+5},${dy-7}" fill="${e.color}"/>`;
+  }
 
-    svgHtml += `<g class="${gCls}">`;
-
-    // Card background with left border accent
-    svgHtml += `<rect class="host-card-bg" x="${card.x}" y="${card.y}" width="${card.w}" height="${card.height}" stroke="${card.borderColor}"/>`;
-    // Left accent bar
-    svgHtml += `<rect x="${card.x}" y="${card.y}" width="4" height="${card.height}" rx="2" fill="${card.borderColor}"/>`;
-
-    // Header background
-    svgHtml += `<rect class="host-card-header" x="${card.x + 4}" y="${card.y}" width="${card.w - 4}" height="${HEADER_H}" rx="0"/>`;
-    // Top-right corner rounding for header
-    svgHtml += `<rect class="host-card-header" x="${card.x + 4}" y="${card.y}" width="${card.w - 10}" height="${HEADER_H}" rx="0"/>`;
-    svgHtml += `<rect x="${card.x + card.w - 6}" y="${card.y}" width="6" height="6" rx="6" fill="var(--bg3)"/>`;
-
-    // Header text via foreignObject
-    svgHtml += `<foreignObject x="${card.x + 10}" y="${card.y + 4}" width="${card.w - 20}" height="${HEADER_H - 4}">`;
-    svgHtml += `<div xmlns="http://www.w3.org/1999/xhtml" style="font-size:12px;font-weight:700;color:#c9d1d9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:inherit;">${esc(card.label)}</div>`;
-    if (card.subtitle) {
-      svgHtml += `<div xmlns="http://www.w3.org/1999/xhtml" style="font-size:10px;color:#8b949e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:inherit;">${esc(card.subtitle)}</div>`;
-    }
-    svgHtml += `</foreignObject>`;
-
-    // Sections
-    let curY = card.y + HEADER_H + 4;
-    for (const section of card.sections) {
-      // Section header line
-      svgHtml += `<line class="card-section-line" x1="${card.x + 10}" y1="${curY}" x2="${card.x + card.w - 10}" y2="${curY}"/>`;
-      curY += 3;
-      svgHtml += `<text class="card-section-header" x="${card.x + 12}" y="${curY + 10}">${esc(section.title)}</text>`;
-      curY += SECTION_HEADER_H;
-
-      // Items via foreignObject for text wrapping
-      const itemsH = section.items.length * ITEM_H;
-      svgHtml += `<foreignObject x="${card.x + 10}" y="${curY}" width="${card.w - 20}" height="${itemsH + 4}">`;
-      svgHtml += `<div xmlns="http://www.w3.org/1999/xhtml" style="font-family:inherit;">`;
-      for (const item of section.items) {
-        const cls = item.cls || 'card-item';
-        let color = '#c9d1d9';
-        if (cls === 'card-item-active') color = '#3fb950';
-        else if (cls === 'card-item-blocked') color = '#f85149';
-        else if (cls === 'card-item-pending') color = '#e3b341';
-        if (item.color) color = item.color;
-        const decoration = cls === 'card-item-blocked' ? 'line-through' : 'none';
-        const truncText = trunc(item.text, 35);
-        const detailAttr = escAttr(item.detail || item.text);
-        svgHtml += `<div data-detail="${detailAttr}" onmouseenter="showTip(event)" onmouseleave="hideTip()" style="font-size:11px;color:${color};text-decoration:${decoration};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:${ITEM_H}px;line-height:${ITEM_H}px;cursor:default;font-family:inherit;">${esc(item.icon)} ${esc(truncText)}</div>`;
-      }
-      svgHtml += `</div></foreignObject>`;
-      curY += itemsH + SECTION_GAP;
-    }
-
+  // Draw nodes
+  for (const n of nodes) {
+    svgHtml += `<g class="flow-node">`;
+    // Background rect
+    const bgFill = '#0d1117';
+    svgHtml += `<rect class="${n.type === 'action' ? 'flow-action' : 'flow-asset'}" x="${n.x}" y="${n.y}" width="${NODE_W}" height="${NODE_H}" fill="${bgFill}" stroke="${n.borderColor}"/>`;
+    // Header bar
+    svgHtml += `<rect x="${n.x}" y="${n.y}" width="${NODE_W}" height="18" rx="${n.type === 'action' ? 8 : 14}" fill="${n.headerColor}"/>`;
+    svgHtml += `<rect x="${n.x}" y="${n.y + 9}" width="${NODE_W}" height="9" fill="${n.headerColor}"/>`;
+    // Header text
+    svgHtml += `<text class="flow-action-header" x="${n.x + 8}" y="${n.y + 13}" fill="#fff">${esc(n.headerText)}${n.hostLabel ? '  ' + esc(n.hostLabel) : ''}</text>`;
+    // Content via foreignObject
+    const detailAttr = escAttr(n.detail);
+    svgHtml += `<foreignObject x="${n.x + 6}" y="${n.y + 20}" width="${NODE_W - 12}" height="${NODE_H - 24}" data-detail="${detailAttr}" onmouseenter="showTip(event)" onmouseleave="hideTip()">`;
+    svgHtml += `<div xmlns="http://www.w3.org/1999/xhtml" style="font-family:inherit;">`;
+    svgHtml += `<div style="font-size:11px;font-weight:600;color:#c9d1d9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(n.label)}</div>`;
+    svgHtml += `<div style="font-size:10px;color:#8b949e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(n.sublabel)}</div>`;
+    svgHtml += `</div></foreignObject>`;
     svgHtml += `</g>`;
   }
 
-  // --- Edges (paths, arrows, labels — all drawn after cards so they render on top) ---
-  for (const e of graphEdges) {
-    const sc = e.srcCard, dc = e.dstCard;
-    if (!sc || !dc) continue;
-    const sx = sc.x + sc.w;
-    const sy = sc.y + sc.height / 2;
-    const dx = dc.x;
-    const dy = dc.y + dc.height / 2;
-    const mx1 = sx + (dx - sx) * 0.4;
-    const mx2 = sx + (dx - sx) * 0.6;
-    const path = `M${sx},${sy} C${mx1},${sy} ${mx2},${dy} ${dx},${dy}`;
-
-    // Edge path
-    const detailAttr = escAttr(e.detail);
-    svgHtml += `<path class="card-edge ${e.edgeClass}" d="${path}" data-detail="${detailAttr}" onmouseenter="showTip(evt)" onmouseleave="hideTip()"/>`;
-
-    // Arrowhead
-    const arrowSize = 6;
-    svgHtml += `<polygon points="${dx},${dy} ${dx-arrowSize},${dy-arrowSize/2} ${dx-arrowSize},${dy+arrowSize/2}" fill="${getEdgeColor(e.edgeClass)}" opacity="${e.edgeClass==='card-edge-recon'?'0.5':'1'}"/>`;
-
-    // Edge label pill (short label, full detail on hover)
-    if (e.shortLabel) {
-      const lx = (sx + dx) / 2;
-      const ly = (sy + dy) / 2;
-      const pillText = e.shortLabel;
-      const pillW = pillText.length * 7 + 14;
-      const pillH = 18;
-      const edgeCol = getEdgeColor(e.edgeClass);
-      const detailAttr = escAttr(e.detail);
-      svgHtml += `<g data-detail="${detailAttr}" onmouseenter="showTip(evt)" onmouseleave="hideTip()" style="cursor:default">`;
-      svgHtml += `<rect x="${lx - pillW/2}" y="${ly - pillH/2}" width="${pillW}" height="${pillH}" rx="${pillH/2}" fill="#0d1117" stroke="${edgeCol}" stroke-width="1.5"/>`;
-      svgHtml += `<text x="${lx}" y="${ly + 4}" text-anchor="middle" font-size="10" fill="${edgeCol}" font-weight="600">${esc(pillText)}</text>`;
-      svgHtml += `</g>`;
-    }
-  }
-
-  // --- Legend (HTML overlay, not in SVG) ---
-  const legendEl = document.getElementById('graph-legend');
-  legendEl.innerHTML = [
-    '<span class="legend-dim">CARDS</span>',
-    ...[ ['#3fb950','Has Access'], ['#e3b341','Actionable'], ['#58a6ff','Discovered'] ].map(
-      ([c,l]) => `<span class="legend-item"><span style="display:inline-block;width:12px;height:12px;border:2px solid ${c};border-radius:3px;background:#161b22;"></span>${l}</span>`
-    ),
+  // Legend
+  const legend = document.getElementById('graph-legend');
+  legend.innerHTML = [
+    '<span class="legend-dim">NODES</span>',
+    '<span class="legend-item"><svg width="12" height="12"><rect width="12" height="12" rx="3" fill="none" stroke="#1f6feb" stroke-width="2"/></svg>Action</span>',
+    '<span class="legend-item"><svg width="12" height="12"><rect width="12" height="12" rx="6" fill="none" stroke="#8b949e" stroke-width="1.5"/></svg>Asset</span>',
     '<span class="legend-dim" style="margin-left:8px;">EDGES</span>',
-    ...[ ['#3fb950','','Active'], ['#e3b341','6 3','Identified'], ['#f85149','6 3','Blocked'] ].map(
-      ([c,d,l]) => `<span class="legend-item"><svg width="20" height="12"><line x1="0" y1="6" x2="20" y2="6" stroke="${c}" stroke-width="2"${d?` stroke-dasharray="${d}"`:''}/></svg>${l}</span>`
-    ),
+    '<span class="legend-item"><svg width="20" height="12"><line x1="0" y1="6" x2="20" y2="6" stroke="#3fb950" stroke-width="2"/></svg>Access gained</span>',
+    '<span class="legend-item"><svg width="20" height="12"><line x1="0" y1="6" x2="20" y2="6" stroke="#58a6ff" stroke-width="2"/></svg>Credential found</span>',
+    '<span class="legend-item"><svg width="20" height="12"><line x1="0" y1="6" x2="20" y2="6" stroke="#e3b341" stroke-width="2"/></svg>Vuln found</span>',
   ].join('');
 
   svg.setAttribute('width', '100%');
@@ -1317,18 +831,11 @@ function renderGraph() {
   svg.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
   svg.innerHTML = svgHtml;
 
-  // --- Zoom & Pan ---
   _setupGraphZoomPan(svg, container, totalW, totalH);
 }
 
-function getEdgeColor(cls) {
-  if (cls === 'card-edge-active') return '#3fb950';
-  if (cls === 'card-edge-pending') return '#e3b341';
-  if (cls === 'card-edge-blocked') return '#f85149';
-  return '#8b949e';
-}
 
-// Zoom/pan state — kept outside renderGraph so it survives re-renders
+// Zoom/pan state — kept outside renderFlowGraph so it survives re-renders
 let _graphVB = null; // { x, y, w, h }
 let _graphPanSetup = false;
 
@@ -1366,7 +873,7 @@ function _setupGraphZoomPan(svg, container, contentW, contentH) {
   container.addEventListener('mousedown', function(ev) {
     if (ev.button !== 0) return;
     // Don't start pan if clicking inside a card item
-    if (ev.target.closest('.host-card')) return;
+    if (ev.target.closest('.flow-node')) return;
     dragging = true;
     dragStart = { x: ev.clientX, y: ev.clientY, vx: _graphVB.x, vy: _graphVB.y };
     container.classList.add('panning');
