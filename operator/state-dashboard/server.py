@@ -699,6 +699,18 @@ function renderFlowGraph() {
     edges.push({ from: aid, to: toId, color });
   }
 
+  // --- Intermediate vuln detection ---
+  // When an exploited vuln shares via_access_id with a downstream node (access or
+  // credential), the vuln is the technique that produced the result. Route through
+  // it: access → vuln → downstream, instead of parallel branches.
+  const exploitedVulnByAccess = {};  // access_id → vuln node id
+  for (const v of state.vulns) {
+    if (v.in_graph === 0 || v.severity === 'info') continue;
+    if (v.status === 'exploited' && v.via_access_id && nodeById[`vuln:${v.id}`]) {
+      exploitedVulnByAccess[v.via_access_id] = `vuln:${v.id}`;
+    }
+  }
+
   // credential → access (used cred to gain access) — access IS the action, direct edge
   for (const a of state.access) {
     if (a.in_graph === 0) continue;
@@ -706,7 +718,13 @@ function renderFlowGraph() {
       edges.push({ from: `cred:${a.via_credential_id}`, to: `access:${a.id}`, color: '#3fb950' });
     }
     if (a.via_access_id && nodeById[`access:${a.via_access_id}`]) {
-      edges.push({ from: `access:${a.via_access_id}`, to: `access:${a.id}`, color: '#3fb950' });
+      // Route through intermediate exploited vuln if one exists on the parent access
+      const ivuln = exploitedVulnByAccess[a.via_access_id];
+      if (ivuln && nodeById[ivuln]) {
+        edges.push({ from: ivuln, to: `access:${a.id}`, color: '#3fb950' });
+      } else {
+        edges.push({ from: `access:${a.via_access_id}`, to: `access:${a.id}`, color: '#3fb950' });
+      }
     }
   }
 
@@ -723,9 +741,12 @@ function renderFlowGraph() {
       else if (/runas|config|enum/.test(src)) actionLabel = 'Credential Discovery';
       else if (/dump|extract|secret/.test(src)) actionLabel = 'Credential Extraction';
       else if (/lfi|unc|file/.test(src)) actionLabel = 'File Coercion';
-      const srcNode = nodeById[`access:${c.via_access_id}`];
+      // Route through intermediate exploited vuln if one exists on the parent access
+      const ivuln = exploitedVulnByAccess[c.via_access_id];
+      const sourceId = (ivuln && nodeById[ivuln]) ? ivuln : `access:${c.via_access_id}`;
+      const srcNode = nodeById[sourceId];
       const dstNode = nodeById[`cred:${c.id}`];
-      insertAction(`access:${c.via_access_id}`, `cred:${c.id}`, actionLabel, '#58a6ff',
+      insertAction(sourceId, `cred:${c.id}`, actionLabel, '#58a6ff',
         srcNode.chain_order, dstNode.chain_order);
     }
     // vuln → credential — INSERT action node
@@ -795,9 +816,41 @@ function renderFlowGraph() {
       : a.id.startsWith('access:') ? 'access' : 'asset';
     const bType = b.id.startsWith('vuln:') ? 'vuln' : b.id.startsWith('action:') ? 'action'
       : b.id.startsWith('access:') ? 'access' : 'asset';
-    return (typeSortOrder[aType] || 9) - (typeSortOrder[bType] || 9);
+    return (typeSortOrder[aType] ?? 9) - (typeSortOrder[bType] ?? 9);
   }
   for (const ck of colKeys) colMap[ck].sort(nodeSort);
+
+  // Crossing reduction: barycenter pass — reorder nodes in each column
+  // based on average y-position of neighbors in the previous column.
+  // First assign temporary y from type-sort, then refine left-to-right.
+  {
+    // Build adjacency: for each node, collect neighbor ids
+    const prevOf = {};  // nodeId → [neighbor ids in previous column]
+    for (const e of edges) {
+      const src = nodeById[e.from], dst = nodeById[e.to];
+      if (!src || !dst) continue;
+      if (src.col < dst.col) { if (!prevOf[dst.id]) prevOf[dst.id] = []; prevOf[dst.id].push(src.id); }
+      if (dst.col < src.col) { if (!prevOf[src.id]) prevOf[src.id] = []; prevOf[src.id].push(dst.id); }
+    }
+    // Assign initial y from type-sort order
+    for (const ck of colKeys) {
+      colMap[ck].forEach((n, i) => { n._tmpY = i; });
+    }
+    // Left-to-right pass: reorder by barycenter of predecessors
+    for (let ci = 1; ci < colKeys.length; ci++) {
+      const col = colMap[colKeys[ci]];
+      for (const n of col) {
+        const preds = (prevOf[n.id] || []).map(pid => nodeById[pid]).filter(Boolean);
+        if (preds.length > 0) {
+          n._bary = preds.reduce((s, p) => s + p._tmpY, 0) / preds.length;
+        } else {
+          n._bary = n._tmpY;
+        }
+      }
+      col.sort((a, b) => a._bary - b._bary);
+      col.forEach((n, i) => { n._tmpY = i; });
+    }
+  }
 
   // Assign x, y positions — columns go left-to-right, nodes stack vertically
   let totalH = 0;
