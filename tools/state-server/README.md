@@ -69,6 +69,7 @@ teammates may write simultaneously.
 | `get_vulns` | `status` (optional), `target` (optional) | Confirmed vulnerabilities |
 | `get_pivot_map` | `status` (optional) | Pivot path edges (what leads where) |
 | `get_blocked` | `target` (optional) | Failed technique attempts |
+| `get_chain` | (none) | Walk provenance links to build the access chain |
 | `get_tunnels` | `status` (optional), `pivot_host` (optional) | Active tunnels |
 | `poll_events` | `since_id` (default 0), `limit` (default 50) | Poll for state events since a cursor (real-time monitoring) |
 
@@ -84,7 +85,7 @@ teammates may write simultaneously.
 | `add_credential` | `username`, `secret`, `secret_type`, `domain`, `source` | Record a credential (deduplicates on username+type+secret) |
 | `update_credential` | `id` (required), `cracked`, `secret`, `notes` | Update credential (e.g., mark hash as cracked) |
 | `test_credential` | `credential_id`, `ip`, `service`, `works` (all required) | Record whether a credential works against a target/service |
-| `add_access` | `ip` (required), `access_type`, `username`, `privilege`, `method` | Record a new foothold on a target |
+| `add_access` | `ip` (required), `access_type`, `username`, `privilege`, `method`, `via_credential_id` | Record a new foothold on a target (chain provenance via credential) |
 | `update_access` | `id` (required), `active`, `privilege`, `notes` | Update access record (e.g., revoke) |
 | `add_vuln` | `title` (required), `ip` (required), `vuln_type`, `severity`, `details` | Record a vulnerability (deduplicates on target+title) |
 | `update_vuln` | `id` (required), `status`, `severity`, `details` | Update vulnerability status (found/exploited/blocked) |

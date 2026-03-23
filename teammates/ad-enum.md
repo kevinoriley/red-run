@@ -114,6 +114,8 @@ evidence:       save to engagement/evidence/ with descriptive filenames
   passed to `add_target()`. Hostname lookup also works if `hostname` was set.
 - `update_target(ip=, hostname=, os=, role=)` — set `hostname` to associate
   a DNS name with an IP-based target
+- `add_access(via_credential_id=)` — if you used a credential to gain access,
+  pass its ID for chain provenance tracking
 - `add_vuln(ip=, title=, ...)` — `ip` is required.
 - `add_credential(secret_type=)` — valid types: `password`, `ntlm_hash`,
   `net_ntlm`, `aes_key`, `kerberos_tgt`, `kerberos_tgs`, `dcc2`, `ssh_key`,

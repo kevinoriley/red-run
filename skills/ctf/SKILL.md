@@ -173,6 +173,13 @@ RIGHT:  "Discovery found: basic PHP content blocked by content inspection.
          The skill's full bypass methodology has not been tested yet."
 ```
 
+When assigning a task that uses a specific credential, include the credential
+ID so the teammate can link the chain:
+```
+"Use credential #3 (S.Moon, password). Pass via_credential_id=3 to add_access()
+ when access is gained."
+```
+
 ### Dismissing Teammates
 
 ```
@@ -250,7 +257,7 @@ When a teammate messages that a task is complete:
 3. Record findings via state:
    - add_target/add_port for new hosts/ports
    - add_credential for new creds
-   - add_access/update_access for access changes
+   - add_access(via_credential_id=N) for access changes — link to the credential used
    - add_vuln/update_vuln for confirmed vulns
    - add_pivot for new paths
    - add_blocked for failed techniques (see retry policy)
