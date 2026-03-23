@@ -29,6 +29,10 @@ sanitization pass to reduce AUP filter sensitivity.
   post-exploitation → post-access. State DB values (`exploited`, `blocked`,
   `cracked`) and technique taxonomy (Kerberoasting, SQL injection, etc.)
   are unchanged.
+- **State schema `host` column renamed to `ip`**, `hostname` column added.
+  All tool parameters renamed `host` → `ip`. Migration v8→v9 handles
+  existing databases. `_resolve_target_id` matches on both `ip` and
+  `hostname` so teammates can reference targets either way.
 - **Skill directory renamed**: `skills/orchestrator/` → `skills/legacy/`,
   `skills/ctf/` is the new default. Run `./install.sh` to update.
 - **agentsee removed** from project settings and `.mcp.json`. Agent teams
@@ -73,8 +77,22 @@ sanitization pass to reduce AUP filter sensitivity.
 - **Vuln deduplication** in state-server — `add_vuln()` deduplicates on
   (target\_id, title), returning existing records instead of creating
   duplicates.
-- **Required fields enforcement** — `add_vuln()` requires `host`,
+- **Required fields enforcement** — `add_vuln()` requires `ip`,
   `add_credential()` requires `secret`. Prevents orphaned records.
+- **Hostname support on targets** — `update_target(ip=, hostname=)` associates
+  DNS names with IP-based targets. State summary shows `ip (hostname)` format.
+- **Vuln type-based soft dedup** — `add_vuln()` returns a `possible_duplicate`
+  warning when another vuln with the same `vuln_type` exists on the target.
+  Teammates and orchestrator decide whether to keep or merge. Exact title
+  match remains a hard block.
+- **Fullscreen access chain graph** — expand button (top-right) toggles the
+  graph to fill the viewport. Escape key exits. Re-renders to fit new
+  dimensions.
+- **Enriched vuln tooltips** — mouseover on graph vuln items now shows title,
+  severity, status, vuln\_type, and details.
+- **Spray teammate background polling** — sprays run in background with
+  periodic output file polling, reporting valid creds to the lead in real
+  time instead of blocking until completion.
 - **Multi-orchestrator architecture** — orchestrator variants coexist in the
   same repo sharing state.db, MCP servers, and technique skills. Planned:
   `/red-run-notouch` (DLP-safe), `/red-run-train` (training mode).
@@ -125,6 +143,10 @@ sanitization pass to reduce AUP filter sensitivity.
 - **Graph container clipping** during pan/drag operations.
 - **Capture hash noise** — unrecovered capture hashes hidden from state
   summary and dashboard to reduce clutter.
+- **Fullscreen tooltip rendering** — tooltip now renders inside the graph
+  container so it stays visible above the fullscreen overlay.
+- **Fullscreen exit re-render** — graph re-renders after CSS transition
+  completes so it fits the restored container size.
 
 ## [1.0.0] — 2026-02-22
 

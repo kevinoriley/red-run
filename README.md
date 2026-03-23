@@ -19,7 +19,7 @@ red-run supports multiple orchestrator variants that share the same skills, MCP 
 | `/red-run-ctf` | `/red-run-ctf` | **Active** | CTF and lab environments. Agent teams with persistent teammates, full autonomy. |
 | `/red-run-legacy` | `/red-run-legacy` only | **Legacy** | Original subagent-based orchestrator. Ephemeral agents, one skill per invocation. |
 | `/red-run-notouch` | `/red-run-notouch` only | **Planned** | DLP-safe mode. The operator executes commands in separate tmux panes and reports sanitized output back to the orchestrator. No client data touches Anthropic servers. |
-| `/red-run-train` | `/red-run-train` only | **Planned** | Training mode. Guided walkthrough with explanations at each step. Designed for learning offensive methodology with AI assistance. |
+| `/red-run-train` | `/red-run-train` only | **Planned** | Training mode. Guided walkthrough with explanations at each step. Designed for learning security assessment methodology with AI assistance. |
 
 All orchestrators write to the same `engagement/state.db` — an engagement started with one variant can be resumed with another.
 
@@ -57,7 +57,7 @@ See [dependencies](docs/dependencies.md) for the full list of required tools and
 
 ## Agent Teams
 
-red-run uses [Claude Code agent teams](https://code.claude.com/docs/en/agent-teams) to coordinate multiple Claude Code sessions working together. The orchestrator runs as the team lead, spawning persistent domain teammates (recon, web, AD, Linux/Windows privesc) that each get their own tmux pane. Benefits over the legacy subagent model:
+red-run uses [Claude Code agent teams](https://code.claude.com/docs/en/agent-teams) to coordinate multiple Claude Code sessions working together. The orchestrator runs as the team lead, spawning persistent domain teammates that each get their own tmux pane. Teammates are split into enumeration (net-enum, web-enum, ad-enum, lin-enum, win-enum) and operations (web-ops, ad-ops, lin-ops, win-ops) pairs for parallel discovery and technique execution, plus on-demand specialists (pivot, bypass, spray, recover, research). Benefits over the legacy subagent model:
 
 - **Persistent context** — teammates accumulate knowledge across tasks instead of starting fresh each time
 - **Peer-to-peer messaging** — teammates notify each other directly (e.g., web teammate finds domain creds → messages AD teammate)
@@ -76,17 +76,17 @@ Agent teams requires the Claude Code experimental feature flag. The repo's `.cla
 
 No manual setup needed — cloning the repo and running `./install.sh` is sufficient. For split-pane teammate visibility, start Claude Code inside a tmux session. Without tmux, teammates run in-process (cycle with Shift+Down - this is not recommended for optimal control).
 
-**Known limitation:** Agent teams is an experimental feature and currently requires `--dangerously-skip-permissions` mode. In standard mode, teammate permission requests don't always surface to the operator, causing teammates to hang. This is a stability issue with the experimental agent teams feature. The orchestrator's `AskUserQuestion` gates still provide human-in-the-loop control for exploitation decisions. This may improve as agent teams matures.
+**Known limitation:** Agent teams is an experimental feature and currently requires `--dangerously-skip-permissions` mode. In standard mode, teammate permission requests don't always surface to the operator, causing teammates to hang. This is a stability issue with the experimental agent teams feature. The orchestrator's `AskUserQuestion` gates still provide human-in-the-loop control for technique decisions. This may improve as agent teams matures.
 
 ## State Dashboard
 
-Browser-based read-only dashboard for `engagement/state.db` with a kill-chain attack graph and live SSE updates:
+Browser-based read-only dashboard for `engagement/state.db` with an access chain graph and live SSE updates:
 
 ```bash
 python3 operator/state-dashboard/server.py [--port 8099] [--db engagement/state.db]
 ```
 
-Open `http://127.0.0.1:8099` to see targets, credentials, access, vulns, pivots, tunnels, blocked techniques, and an event timeline — all updating in real-time as agents work.
+Open `http://127.0.0.1:8099` to see targets, credentials, access, vulns, pivots, tunnels, blocked techniques, and an event timeline — all updating in real-time as teammates work. The access chain graph supports fullscreen mode for detailed review.
 
 To access from a host machine (when red-run is in a VM), generate an auth token — the server will bind to `0.0.0.0` and require the token to access any page:
 
@@ -104,7 +104,7 @@ Agent teams requires `--dangerously-skip-permissions` due to a stability issue w
 claude --dangerously-skip-permissions
 ```
 
-The orchestrator presents routing decisions for operator approval before assigning exploitation tasks. An optional nftables firewall is available in `operator/engagement-firewall/` for operators who want OS-level network isolation.
+The orchestrator presents routing decisions for operator approval before assigning technique tasks. An optional nftables firewall is available in `operator/engagement-firewall/` for operators who want OS-level network isolation.
 
 Run from an isolated VM or dedicated pentesting machine. You are responsible for containing Claude on your systems and for any legal consequences under the CFAA or equivalent legislation.
 
