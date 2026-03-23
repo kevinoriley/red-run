@@ -786,6 +786,17 @@ function renderFlowGraph() {
   }
   const colKeys = Object.keys(colMap).map(Number).sort((a, b) => a - b);
 
+  // Sort within each column: exploited vulns first, then actions, then access, then creds
+  const typeSortOrder = { 'vuln': 0, 'action': 1, 'access': 2, 'asset': 3 };
+  function nodeSort(a, b) {
+    const aType = a.id.startsWith('vuln:') ? 'vuln' : a.id.startsWith('action:') ? 'action'
+      : a.id.startsWith('access:') ? 'access' : 'asset';
+    const bType = b.id.startsWith('vuln:') ? 'vuln' : b.id.startsWith('action:') ? 'action'
+      : b.id.startsWith('access:') ? 'access' : 'asset';
+    return (typeSortOrder[aType] || 9) - (typeSortOrder[bType] || 9);
+  }
+  for (const ck of colKeys) colMap[ck].sort(nodeSort);
+
   // Assign x, y positions — columns go left-to-right, nodes stack vertically
   let totalH = 0;
   let x = PAD;
