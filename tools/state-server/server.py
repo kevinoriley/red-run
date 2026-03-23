@@ -576,6 +576,119 @@ def create_server() -> FastMCP:
             return json.dumps(_rows_to_dicts(rows), indent=2)
 
     @mcp.tool()
+    def get_chain() -> str:
+        """Walk provenance links to build the access chain.
+
+        Reconstructs how initial credentials led to access sessions,
+        which yielded new credentials, which unlocked further access.
+        Returns an ordered list of chain steps plus any orphaned records
+        that have no provenance links.
+        """
+        with _get_db() as conn:
+            creds = {
+                r["id"]: dict(r)
+                for r in conn.execute(
+                    "SELECT c.id, c.username, c.secret_type, c.domain, "
+                    "c.via_access_id, c.source FROM credentials c"
+                ).fetchall()
+            }
+            accesses = {
+                r["id"]: dict(r)
+                for r in conn.execute(
+                    "SELECT a.id, a.username, a.access_type, a.privilege, "
+                    "a.method, a.via_credential_id, a.active, "
+                    "t.ip FROM access a JOIN targets t ON a.target_id = t.id"
+                ).fetchall()
+            }
+            vulns = [
+                dict(r)
+                for r in conn.execute(
+                    "SELECT v.id, v.title, v.vuln_type, v.status, v.severity, "
+                    "v.via_access_id, t.ip FROM vulns v "
+                    "LEFT JOIN targets t ON v.target_id = t.id"
+                ).fetchall()
+            ]
+
+            # BFS from roots
+            steps: list[dict] = []
+            visited_creds: set[int] = set()
+            visited_access: set[int] = set()
+            step_num = 0
+
+            def add_cred(cid: int, depth: int, via_type: str = "", via_id: int = 0):
+                nonlocal step_num
+                if cid in visited_creds:
+                    return
+                visited_creds.add(cid)
+                c = creds[cid]
+                step_num += 1
+                label = c["domain"] + "\\" + c["username"] if c["domain"] else c["username"]
+                label += f" ({c['secret_type']})"
+                steps.append({
+                    "step": step_num, "type": "credential", "id": cid,
+                    "label": label, "depth": depth,
+                    **({"via": {"type": via_type, "id": via_id}} if via_type else {}),
+                })
+                # Follow: access records that used this credential
+                for a in accesses.values():
+                    if a.get("via_credential_id") == cid:
+                        add_access(a["id"], depth + 1, "credential", cid)
+
+            def add_access(aid: int, depth: int, via_type: str = "", via_id: int = 0):
+                nonlocal step_num
+                if aid in visited_access:
+                    return
+                visited_access.add(aid)
+                a = accesses[aid]
+                step_num += 1
+                label = f"{a['username']}@{a['ip']} [{a['privilege']}] {a['access_type']}"
+                steps.append({
+                    "step": step_num, "type": "access", "id": aid,
+                    "label": label, "depth": depth,
+                    "active": bool(a.get("active")),
+                    **({"via": {"type": via_type, "id": via_id}} if via_type else {}),
+                })
+                # Follow: credentials found via this access
+                for c in creds.values():
+                    if c.get("via_access_id") == aid:
+                        add_cred(c["id"], depth + 1, "access", aid)
+                # Follow: vulns found via this access
+                for v in vulns:
+                    if v.get("via_access_id") == aid:
+                        step_num += 1
+                        steps.append({
+                            "step": step_num, "type": "vuln", "id": v["id"],
+                            "label": f"{v['title']} [{v['severity']}]",
+                            "depth": depth + 1, "status": v["status"],
+                            "via": {"type": "access", "id": aid},
+                        })
+
+            # Root credentials: no via_access_id (provided/initial)
+            for cid, c in creds.items():
+                if not c.get("via_access_id"):
+                    add_cred(cid, 0)
+
+            # Root accesses: no via_credential_id (unauthenticated RCE, etc.)
+            for aid, a in accesses.items():
+                if not a.get("via_credential_id"):
+                    add_access(aid, 0)
+
+            # Orphans: records not reached by BFS
+            orphan_creds = [
+                {"type": "credential", "id": cid, "label": f"{c['username']} ({c['secret_type']})"}
+                for cid, c in creds.items() if cid not in visited_creds
+            ]
+            orphan_access = [
+                {"type": "access", "id": aid, "label": f"{a['username']}@{a['ip']}"}
+                for aid, a in accesses.items() if aid not in visited_access
+            ]
+
+            return json.dumps({
+                "chain": steps,
+                "orphans": orphan_creds + orphan_access,
+            }, indent=2)
+
+    @mcp.tool()
     def poll_events(since_id: int = 0, limit: int = 50) -> str:
         """Poll for state events since a checkpoint.
 
