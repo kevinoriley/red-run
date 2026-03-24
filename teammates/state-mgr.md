@@ -23,14 +23,14 @@ Pure state management.
 
 ```
 [add-vuln] ip=<ip> title="<title>" vuln_type=<type> severity=<sev>
-  via_access_id=<N> details="<details>" discovered_by=<teammate>
+  via_access_id=<N> via_credential_id=<M> details="<details>" discovered_by=<teammate>
 
 [update-vuln] id=<N> status=<status> details="<additional details>"
 
 [add-cred] username=<user> secret=<secret> secret_type=<type>
   domain=<domain> source="<source>" via_access_id=<N> via_vuln_id=<M>
 
-[update-cred] id=<N> cracked=true secret=<plaintext>
+[update-cred] id=<N> cracked=true secret=<plaintext> via_vuln_id=<M>
 
 [add-access] ip=<ip> method=<method> user=<user> level=<user|admin|root|system>
   via_credential_id=<N> via_access_id=<M>
@@ -218,10 +218,10 @@ add_target(ip, hostname, os, role, notes, ports, discovered_by)
 update_target(ip, hostname, os, role, notes)
 add_port(ip, port, protocol, service, banner)
 add_credential(username, secret, secret_type, domain, source, via_access_id, via_vuln_id, discovered_by)
-update_credential(id, cracked, secret, notes)
+update_credential(id, cracked, secret, notes, via_vuln_id)
 add_access(ip, access_type, username, privilege, method, via_credential_id, via_access_id, discovered_by)
 update_access(id, active, privilege, notes)
-add_vuln(title, ip, vuln_type, severity, details, status, via_access_id, discovered_by)
+add_vuln(title, ip, vuln_type, severity, details, status, via_access_id, via_credential_id, discovered_by)
 update_vuln(id, status, severity, details, in_graph)
 add_pivot(source, destination, method, status, discovered_by)
 update_pivot(id, status, notes)

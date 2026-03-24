@@ -1077,14 +1077,17 @@ def create_server() -> FastMCP:
         cracked: bool | None = None,
         secret: str = "",
         notes: str = "",
+        via_vuln_id: int | None = None,
     ) -> str:
-        """Update a credential (e.g., mark as cracked, add plaintext).
+        """Update a credential (e.g., mark as cracked, add provenance).
 
         Args:
             id: Credential ID.
             cracked: Set to true when the hash has been cracked.
             secret: Updated secret value (e.g., cracked plaintext).
             notes: Additional notes.
+            via_vuln_id: Link credential to the vuln that produced it
+                        (settable post-creation for provenance fixes).
         """
         with _get_db() as conn:
             updates = []
@@ -1098,6 +1101,9 @@ def create_server() -> FastMCP:
             if notes:
                 updates.append("notes = ?")
                 params.append(notes)
+            if via_vuln_id is not None:
+                updates.append("via_vuln_id = ?")
+                params.append(via_vuln_id)
 
             if not updates:
                 return "No fields to update."
@@ -1312,6 +1318,7 @@ def create_server() -> FastMCP:
         details: str = "",
         evidence_path: str = "",
         via_access_id: int | None = None,
+        via_credential_id: int | None = None,
         technique_id: str = "",
         chain_order: int = 0,
         discovered_by: str = "",
@@ -1332,6 +1339,9 @@ def create_server() -> FastMCP:
             evidence_path: Path to evidence file in engagement/evidence/.
             via_access_id: Access ID that led to finding this vuln
                           (for chain provenance). None = unauthenticated/recon.
+            via_credential_id: Credential ID that led to finding this vuln
+                              (e.g., password reuse discovered by spraying a
+                              cracked credential). None = not credential-sourced.
             technique_id: ATT&CK technique ID (e.g., "T1190" for exploit
                          public-facing app). Empty = unknown.
             discovered_by: Skill that found this vulnerability.
@@ -1384,9 +1394,9 @@ def create_server() -> FastMCP:
             cursor = conn.execute(
                 "INSERT INTO vulns "
                 "(target_id, title, vuln_type, status, severity, "
-                "details, evidence_path, via_access_id, technique_id, "
-                "chain_order, discovered_by) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "details, evidence_path, via_access_id, via_credential_id, "
+                "technique_id, chain_order, discovered_by) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     target_id,
                     title,
@@ -1396,6 +1406,7 @@ def create_server() -> FastMCP:
                     details,
                     evidence_path,
                     via_access_id,
+                    via_credential_id,
                     technique_id,
                     chain_order,
                     discovered_by,

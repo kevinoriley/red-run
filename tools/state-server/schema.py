@@ -9,7 +9,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-SCHEMA_VERSION = 16
+SCHEMA_VERSION = 17
 
 SCHEMA_SQL = """\
 PRAGMA journal_mode=WAL;
@@ -118,7 +118,8 @@ CREATE TABLE IF NOT EXISTS vulns (
                   CHECK (severity IN ('info', 'low', 'medium', 'high', 'critical')),
     details       TEXT NOT NULL DEFAULT '',
     evidence_path TEXT NOT NULL DEFAULT '',
-    via_access_id INTEGER REFERENCES access(id) ON DELETE SET NULL,
+    via_access_id    INTEGER REFERENCES access(id) ON DELETE SET NULL,
+    via_credential_id INTEGER REFERENCES credentials(id) ON DELETE SET NULL,
     technique_id  TEXT NOT NULL DEFAULT '',
     in_graph     INTEGER NOT NULL DEFAULT 1,
     chain_order   INTEGER NOT NULL DEFAULT 0,
@@ -382,6 +383,17 @@ def _migrate_v3_to_v4(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_v16_to_v17(conn: sqlite3.Connection) -> None:
+    """Migrate schema from v16 to v17: add via_credential_id to vulns."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(vulns)").fetchall()]
+    if "via_credential_id" not in cols:
+        conn.execute(
+            "ALTER TABLE vulns ADD COLUMN via_credential_id INTEGER "
+            "REFERENCES credentials(id) ON DELETE SET NULL"
+        )
+    conn.commit()
+
+
 def _migrate_v15_to_v16(conn: sqlite3.Connection) -> None:
     """Migrate schema from v15 to v16: add via_vuln_id to credentials."""
     cols = [r[1] for r in conn.execute("PRAGMA table_info(credentials)").fetchall()]
@@ -549,6 +561,8 @@ def init_db(db_path: str | Path) -> sqlite3.Connection:
             _migrate_v14_to_v15(conn)
         if current_version <= 15:
             _migrate_v15_to_v16(conn)
+        if current_version <= 16:
+            _migrate_v16_to_v17(conn)
 
     conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     conn.commit()
