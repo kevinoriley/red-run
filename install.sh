@@ -211,7 +211,6 @@ run_uv_sync "nmap-server" "${MCP_NMAP_SERVER}"
 # Build Docker image for nmap
 if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
     if docker_needs_rebuild red-run-nmap:latest "${MCP_NMAP_SERVER}/Dockerfile"; then
-        local hash
         hash=$(sha256sum "${MCP_NMAP_SERVER}/Dockerfile" | cut -d' ' -f1)
         run_with_spin "nmap-server" "Building Docker image..." \
             docker build -t red-run-nmap:latest --label "red-run.dockerfile-hash=${hash}" "${MCP_NMAP_SERVER}" --quiet
@@ -231,7 +230,6 @@ run_uv_sync "shell-server" "${MCP_SHELL_SERVER}"
 # Build Docker image for shell-server (privileged mode)
 if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
     if docker_needs_rebuild red-run-shell:latest "${MCP_SHELL_SERVER}/Dockerfile"; then
-        local hash
         hash=$(sha256sum "${MCP_SHELL_SERVER}/Dockerfile" | cut -d' ' -f1)
         run_with_spin "shell-server" "Building Docker image..." \
             docker build -t red-run-shell:latest --label "red-run.dockerfile-hash=${hash}" "${MCP_SHELL_SERVER}" --quiet
