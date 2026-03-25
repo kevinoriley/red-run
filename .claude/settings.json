@@ -6,7 +6,11 @@
   "permissions": {
     "allow": [
       "mcp__state__*",
-      "mcp__skill-router__*"
+      "mcp__skill-router__*",
+      "mcp__shell-server__*",
+      "mcp__nmap-server__*",
+      "mcp__browser-server__*",
+      "mcp__rdp-server__*"
     ]
   },
   "hooks": {
