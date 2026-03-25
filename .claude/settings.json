@@ -17,7 +17,6 @@
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR\"/tools/shell-server/start.sh",
-            "async": true,
             "timeout": 30
           }
         ]
