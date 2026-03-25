@@ -656,12 +656,21 @@ Source code is a force multiplier — it reveals vulns that discovery can't
 find (hardcoded creds, auth bypass, hidden endpoints, injection sinks).
 Act the moment it's reported, don't wait for other decision logic items.
 
-1. IMMEDIATELY spawn research teammate with `source-code-review` skill
-   Pass: source path on attackbox, framework hints, what access produced it
+1. CLONE/DOWNLOAD FIRST (lead or existing teammate, NOT research):
+   - Git repo: assign the reporting teammate or net-enum to clone it
+     to engagement/evidence/source/<repo-name>/
+   - .git dump: assign web-ops or web-enum to run git-dumper, save to
+     engagement/evidence/source/
+   - LFI reads: files should already be in engagement/evidence/
+   - Share access: assign net-enum to copy source tree locally
+   Do NOT spawn research until source is on the attackbox. Opus tokens
+   are expensive — don't waste them on git clone or file transfers.
+2. SPAWN research teammate with `source-code-review` skill
+   Pass: LOCAL source path on attackbox, framework hints, context
    Research teammate uses Explore subagents for parsing, opus for judgment
-2. Run in PARALLEL with any technique execution already in progress
+3. Run in PARALLEL with any technique execution already in progress
    Source review informs all other paths — don't serialize behind it
-3. When findings arrive: route confirmed vulns to technique teammates,
+4. When findings arrive: route confirmed vulns to technique teammates,
    add hardcoded creds to state, update attack surface
 ```
 
