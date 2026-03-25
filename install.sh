@@ -288,4 +288,8 @@ if [[ "$config_warnings" -eq 0 ]]; then
     echo ""
     echo "  Tip: tmux recommended — agent teams spawn multiple long-running"
     echo "  teammates that benefit from persistent terminal sessions."
+    echo ""
+    echo "  Then type a slash command to start an orchestrator:"
+    echo "    /red-run-ctf       # agent teams (recommended)"
+    echo "    /red-run-legacy    # subagent-based (legacy)"
 fi
