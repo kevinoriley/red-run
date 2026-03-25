@@ -71,6 +71,9 @@ The lead provides your access method in the task:
 
 ## Shell-Server MCP
 
+If shell-server tools are unavailable or return connection errors, message the
+lead: "shell-server MCP not connected — need operator intervention" and STOP.
+
 For privesc techniques that spawn new shells:
 ```
 start_listener(port) → execute technique with reverse shell callback →

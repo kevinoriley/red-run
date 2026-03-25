@@ -96,6 +96,9 @@ Use curl/Bash for: raw HTTP with precise headers, injection tests.
 
 ## Shell-Server MCP
 
+If shell-server tools are unavailable or return connection errors, message the
+lead: "shell-server MCP not connected — need operator intervention" and STOP.
+
 When technique achieves RCE → **shell upgrade is the immediate priority**:
 ```
 start_listener(port) → send callback through vuln → list_sessions() →

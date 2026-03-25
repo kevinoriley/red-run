@@ -102,6 +102,9 @@ Assessment: retry-later (skill works after clock sync)
 
 ## Shell-Server MCP
 
+If shell-server tools are unavailable or return connection errors, message the
+lead: "shell-server MCP not connected — need operator intervention" and STOP.
+
 For code execution (GPO abuse, SCCM, etc.):
 ```
 start_listener(port) → trigger callback → list_sessions() → stabilize_shell() →

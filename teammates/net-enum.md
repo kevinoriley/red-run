@@ -93,6 +93,9 @@ Scan types (match lead's instruction exactly):
 
 ## Shell-Server MCP
 
+If shell-server tools are unavailable or return connection errors, message the
+lead: "shell-server MCP not connected — need operator intervention" and STOP.
+
 For reverse shells when a skill achieves RCE:
 ```
 start_listener(port) → trigger callback → list_sessions() → stabilize_shell() →

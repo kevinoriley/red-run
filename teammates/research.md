@@ -61,6 +61,9 @@ Deep analysis requires interactive shell to examine artifacts.
 
 ## Shell-Server MCP
 
+If shell-server tools are unavailable or return connection errors, message the
+lead: "shell-server MCP not connected — need operator intervention" and STOP.
+
 For exploitation producing new shells:
 ```
 start_listener(port) → execute exploit → list_sessions() →

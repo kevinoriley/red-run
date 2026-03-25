@@ -76,6 +76,9 @@ If shell is unstable (drops, no TTY), report this immediately.
 
 ## Shell-Server MCP
 
+If shell-server tools are unavailable or return connection errors, message the
+lead: "shell-server MCP not connected — need operator intervention" and STOP.
+
 For privesc techniques that spawn new shells (PwnKit, kernel techniques, sudo abuse):
 ```
 start_listener(port) → execute technique with reverse shell callback →

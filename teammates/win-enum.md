@@ -84,6 +84,9 @@ The lead provides your access method in the task:
 
 ## Shell-Server MCP
 
+If shell-server tools are unavailable or return connection errors, message the
+lead: "shell-server MCP not connected — need operator intervention" and STOP.
+
 For enumeration tools that need interactive sessions:
 ```
 start_process(command, privileged, startup_delay) → send_command() → read results
