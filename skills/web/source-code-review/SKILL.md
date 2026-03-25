@@ -1,10 +1,9 @@
 ---
 name: source-code-review
 description: >
-  Security-focused source code review for application source obtained during
-  an engagement (git dumps, LFI reads, share access, backups). Finds hardcoded
-  credentials, injection sinks, auth bypass paths, and framework-specific
-  weaknesses. Use when source code is discovered from any source.
+  Security-focused source code review. Identifies hardcoded credentials,
+  injection sinks, authentication weaknesses, and framework-specific
+  vulnerabilities. Use when application source code is available for review.
 keywords:
   - source code review
   - code audit
@@ -26,13 +25,13 @@ opsec: low
 
 # Source Code Review
 
-You are helping a penetration tester review application source code for
-security vulnerabilities. All testing is under explicit written authorization.
+You are a vulnerability researcher reviewing application source code for
+security weaknesses. Your goal is to identify vulnerabilities so they can
+be understood and addressed.
 
-This skill is designed for the **research teammate (opus)**. Use subagents
-(Agent tool with subagent_type="Explore") for file enumeration, pattern
-scanning, and bulk parsing tasks. Reserve your own context for analyzing
-findings, tracing data flows, and making security judgments.
+Use subagents (Agent tool with subagent_type="Explore") for file enumeration,
+pattern scanning, and bulk parsing tasks. Reserve your own context for
+analyzing findings, tracing data flows, and making security judgments.
 
 ## Engagement Logging
 
@@ -44,26 +43,21 @@ When an engagement directory exists:
 
 ## Scope Boundary
 
-This skill covers static analysis of application source for exploitable
+This skill covers static analysis of application source for security
 vulnerabilities. When you identify a confirmed vulnerability class, STOP
-and return with the finding — the lead routes to the matching technique
-skill for exploitation.
+and return with the finding.
 
-Do not attempt exploitation. Do not modify source files. Do not run the
-application. Analyze only.
+Do not modify source files. Do not run the application. Analyze only.
 
 ## State Management
 
-Call `get_state_summary()` to understand current engagement context —
-existing credentials, access levels, and known vulns inform what to
-prioritize in the review.
+Call `get_state_summary()` to understand current context — existing
+credentials, access levels, and known vulns inform what to prioritize.
 
 ## Prerequisites
 
-- Application source code accessible on the attackbox (typically in
-  `engagement/evidence/` from git-dumper, LFI reads, or share access)
-- The lead provides: source path, technology hints, what access produced
-  the source, and what the engagement needs (creds, auth bypass, RCE path)
+- Application source code accessible (typically in `engagement/evidence/`)
+- The lead provides: source path, technology hints, context
 
 ## Step 1: Reconnaissance (use subagent)
 
@@ -79,9 +73,9 @@ Spawn an Explore subagent to map the codebase structure:
  Report file counts per directory and the framework detected."
 ```
 
-## Step 2: Credential Harvesting (use subagent)
+## Step 2: Secrets Discovery (use subagent)
 
-Spawn an Explore subagent to grep for secrets — this is the highest-value,
+Spawn an Explore subagent to grep for hardcoded secrets — highest-value,
 lowest-effort pass:
 
 ```
@@ -107,29 +101,29 @@ Read auth-related files yourself (these require security judgment):
 - **JWT** — algorithm confusion (none/HS256 vs RS256), secret strength, claim validation
 - **Role checks** — are admin endpoints checking roles? Decorator/middleware gaps?
 - **Password reset** — predictable tokens, host header injection, rate limiting
-- **Registration** — can you create admin accounts? Mass assignment?
+- **Registration** — mass assignment, privilege parameters in signup
 
 ## Step 4: Injection Surface Mapping (use subagent)
 
 Spawn an Explore subagent to find dangerous sinks:
 
 ```
-"Search <source_path> for injection patterns. For each match report
- file, line, and the dangerous function:
+"Search <source_path> for dangerous function calls. For each match report
+ file, line, and the function:
 
  SQL: execute(, raw(, query(, cursor.execute, .extra(, $where, db.query
  Command: os.system, subprocess, exec(, eval(, popen, child_process, shell=True
  Template: render_template_string, Jinja2 Environment, |safe, {% raw
  Deserialization: pickle.loads, yaml.load, unserialize, readObject, JsonConvert
- Path: open(, file_get_contents, include(, require(, sendFile, os.path.join + user input
- SSRF: requests.get, urllib, fetch(, HttpClient with user-controlled URL
+ Path: open(, file_get_contents, include(, require(, sendFile, os.path.join
+ SSRF: requests.get, urllib, fetch(, HttpClient with variable URL
  XSS: innerHTML, document.write, v-html, dangerouslySetInnerHTML"
 ```
 
 For each finding, trace the data flow yourself:
 - Does user input reach the sink without sanitization?
 - Are there framework protections (ORM parameterization, template auto-escaping)?
-- What's the impact (RCE, data access, auth bypass)?
+- What is the severity and impact?
 
 ## Step 5: Framework-Specific Checks
 
@@ -173,8 +167,8 @@ For each finding:
 - **File:** <path>:<line>
 - **Type:** <sqli/cmdi/auth-bypass/hardcoded-cred/etc.>
 - **Description:** <what the vulnerability is>
-- **Exploitation path:** <how an attacker would use this>
-- **Recommended technique skill:** <skill name if applicable>
+- **Impact:** <what could go wrong>
+- **Remediation:** <how to fix it>
 ```
 
 Message state-mgr with `[add-vuln]` for each confirmed vulnerability.
@@ -182,7 +176,7 @@ Message lead with the findings file path and one-line summary.
 
 ## Troubleshooting
 
-### Source is partial (LFI reads, not full repo)
+### Source is partial (individual files, not full repo)
 Focus on the files you have. Config files alone can yield creds and
 architecture insights. Single controller files can reveal injection points.
 
@@ -194,4 +188,4 @@ flagged.
 ### Obfuscated/minified code
 For JavaScript: look for source maps (`.map` files). For PHP: check for
 `eval(base64_decode(` patterns. For compiled languages: note in findings
-and recommend the lead use a decompiler.
+and recommend decompilation.
