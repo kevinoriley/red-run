@@ -1029,7 +1029,6 @@ function renderFlowGraph() {
     '<span class="legend-item"><svg width="12" height="12"><rect width="12" height="12" rx="3" fill="none" stroke="#3fb950" stroke-width="2"/></svg>Access</span>',
     '<span class="legend-item"><svg width="12" height="12"><rect width="12" height="12" rx="3" fill="none" stroke="#1f6feb" stroke-width="2"/></svg>Action</span>',
     '<span class="legend-item"><svg width="12" height="12"><rect width="12" height="12" rx="6" fill="none" stroke="#8b949e" stroke-width="1.5"/></svg>Credential</span>',
-    '<span class="legend-item"><svg width="12" height="12"><rect width="12" height="12" rx="3" fill="none" stroke="#1f6feb" stroke-width="2"/></svg>Exploited vuln</span>',
   ].join('');
 
   svg.setAttribute('width', '100%');
