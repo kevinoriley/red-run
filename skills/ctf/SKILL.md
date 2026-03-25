@@ -254,7 +254,7 @@ while objectives_not_met:
         if from state-mgr:
             if [new-vuln] → run decision logic (new finding to route)
             if [new-cred] → trigger "Untested credentials" routing
-            if [new-access] → trigger host discovery routing
+            if [new-access] → trigger Execution Achieved hard stop IMMEDIATELY
             if [chain-gap] → resolve by providing missing provenance context
             if [vuln-review] → operator dedup judgment
         if from domain teammate:
@@ -560,22 +560,6 @@ Do NOT wait for other decision logic items to complete before acting on pivots.
 A new subnet is a high-value expansion of the assessment surface.
 ```
 
-**Execution achieved → shell upgrade → host discovery (mandatory):**
-```
-1. SHELL UPGRADE FIRST. When any RCE/command injection is confirmed, the
-   IMMEDIATE next step is establishing an interactive shell:
-   - start_listener → reverse shell callback → stabilize_shell
-   - OR: start_process(evil-winrm/psexec/ssh) for credential-based access
-   Do NOT enumerate through curl, web APIs, or command injection one-liners.
-   A proper shell is faster, richer, and cheaper on tokens.
-2. Spawn host-specific discovery teammate:
-   Linux → lin-enum-<host> from teammates/lin-enum.md
-   Windows → win-enum-<host> from teammates/win-enum.md
-   (e.g., lin-enum-web01, win-enum-dc01)
-   Each host gets its own enum teammate — don't queue behind another host.
-3. On DCs (ports 88+389+3268): ALSO route ad-enum: ad-discovery
-```
-
 **Do NOT run enumeration commands from the lead** (no sudo -l, find -perm,
 whoami /priv, net user). Assign to the appropriate teammate.
 
@@ -591,11 +575,7 @@ Walk ALL items, collect every actionable finding, present to operator:
      After gate passes → route to {domain}-ops via search_skills()
    Routing: web vulns → web-ops, AD vulns → ad-ops, privesc → lin-ops/win-ops
 
-2. Shell access without root/SYSTEM → spawn per-host enum teammate
-   Host discovery mandatory on every host (one teammate per host):
-     Windows → win-enum-<host>: windows-discovery
-     Linux → lin-enum-<host>: linux-discovery
-   DC (88+389+3268) → ALSO ad-enum: ad-discovery (after host discovery)
+2. Shell access without root/SYSTEM → Execution Achieved hard stop (see below)
 
 3. Unchained access → can existing access reach new targets?
 
@@ -630,6 +610,34 @@ Walk ALL items, collect every actionable finding, present to operator:
 ```
 
 ### Hard Stops
+
+**Execution Achieved** (highest priority — act IMMEDIATELY, do not queue):
+```
+Trigger: [new-access] from state-mgr, or teammate reports shell/login gained.
+This is the most important state change in an engagement. Do NOT wait for
+the reporting teammate's current task to complete. Do NOT wait for other
+decision logic items. Act on this THE MOMENT it arrives.
+
+1. SHELL UPGRADE (if not already interactive):
+   - start_listener → reverse shell callback → stabilize_shell
+   - OR: start_process(evil-winrm/psexec/ssh) for credential-based access
+   Do NOT enumerate through curl, web APIs, or command injection one-liners.
+   A proper shell is faster, richer, and cheaper on tokens.
+
+2. SPAWN HOST ENUM (parallel with everything else):
+   Windows → win-enum-<host> from teammates/win-enum.md
+   Linux → lin-enum-<host> from teammates/lin-enum.md
+   Each host gets its own enum teammate — don't queue behind another host.
+   Include access_id and credential_id in the task assignment.
+
+3. DC CHECK (ports 88+389+3268 on this target):
+   If DC → ALSO spawn ad-enum with authenticated enumeration task.
+   Domain user on a DC unlocks BloodHound, ADCS, ACL, delegation, GPO.
+
+4. Continue other in-progress tasks in parallel — enum teammates work
+   independently. Do NOT serialize behind web-ops, ad-ops, or any other
+   teammate that's still working.
+```
 
 **Hosts File Update:**
 ```
