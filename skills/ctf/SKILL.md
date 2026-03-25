@@ -579,13 +579,21 @@ Walk ALL items, collect every actionable finding, present to operator:
 
 3. Unchained access → can existing access reach new targets?
 
-4. Untested credentials → trigger Usernames Found hard stop
-   **New credential priority order** (fast/simple before complex):
-     a. Password reuse test across all known users (single spray command)
-     b. Authenticated service access (SMB shares, WinRM, SSH, web logins)
-     c. Authenticated web reads (LFI with creds, config files)
-     d. Authenticated AD enumeration (BloodHound, ADCS, ACLs)
-     e. Complex chains (coercion relay, delegation) — last resort
+4. Untested credentials → trigger Credential Context Enumeration + Usernames Found
+   **For each new credential, spawn a dedicated teammate to enumerate AS that user.**
+   One teammate per user identity — named `net-enum-<username>` (or `web-enum-<username>`
+   if the credential is web-only). This teammate's sole job is to discover what this
+   specific identity can access:
+     a. SMB shares readable/writable by this user (`nxc smb <targets> -u <user> -p <pass> --shares`)
+     b. Services this user can authenticate to (WinRM, SSH, RDP, MSSQL, web apps)
+     c. Files and directories opened by this user's permissions
+     d. Web application roles/data accessible with this user's session
+     e. AD context: group memberships, ACLs, delegation rights, owned objects
+   The credential unlocks something specific — the teammate finds WHAT.
+
+   **In parallel**, run password reuse and standard credential tests:
+     f. Password reuse spray across all known users (single spray command)
+     g. Complex chains (coercion relay, delegation) — last resort
 
 5. Unrecovered hashes → trigger Hashes Found hard stop
 
