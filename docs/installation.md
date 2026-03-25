@@ -39,7 +39,7 @@ The installer runs five steps:
 
 **6. Browser setup** — Installs Chromium via Playwright (~150MB) for headless browser automation.
 
-**7. Config verification** — Checks that `.mcp.json` and `.claude/settings.json` are properly configured.
+**7. Config verification** — Checks that `.mcp.json` and `.claude/settings.json` are properly configured. Project settings include `ANTHROPIC_DEFAULT_SONNET_MODEL=claude-sonnet-4-6[1m]` so all sonnet teammates spawn with 1M context by default.
 
 ### Attackbox dependencies
 
