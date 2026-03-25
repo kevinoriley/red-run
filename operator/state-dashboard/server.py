@@ -812,9 +812,16 @@ function renderFlowGraph() {
         edges.push({ from: vulnSrc, to: credDst, color: '#58a6ff' });
       } else {
         // Found vuln (asset) still needs a synthetic action between vuln and credential
+        const src = (c.source || '').toLowerCase();
+        let vulnActionLabel = 'Credential Capture';
+        if (/hash|roast|asrep|tgs|ntlm/.test(src)) vulnActionLabel = 'Hash Capture';
+        else if (/dump|extract|secret|lsass/.test(src)) vulnActionLabel = 'Credential Extraction';
+        else if (/idor|chat|admin|portal|api/.test(src)) vulnActionLabel = 'Data Access';
+        else if (/crack/.test(src)) vulnActionLabel = 'Hash Recovery';
+        else if (/config|env|backup/.test(src)) vulnActionLabel = 'Credential Discovery';
         const srcNode = nodeById[vulnSrc];
         const dstNode = nodeById[credDst];
-        insertAction(vulnSrc, credDst, 'Hash Capture', '#58a6ff',
+        insertAction(vulnSrc, credDst, vulnActionLabel, '#58a6ff',
           srcNode.chain_order, dstNode.chain_order);
       }
     }
