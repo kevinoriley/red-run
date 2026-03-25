@@ -44,6 +44,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 # Resolve engagement directory relative to the project root, not the server's
 # own directory.  uv run --directory changes cwd to tools/shell-server/, so
@@ -1241,6 +1243,59 @@ def create_server() -> FastMCP:
             for ts, direction, data in session.transcript:
                 prefix = ">>>" if direction == "send" else "<<<"
                 f.write(f"[{ts}] {prefix}\n{data}\n\n")
+
+    # --- HTTP endpoints for run.sh session management ---
+
+    @mcp.custom_route("/status", methods=["GET"])
+    async def status(request: Request) -> JSONResponse:
+        """Session summary for run.sh startup check."""
+        sess_list = []
+        for sid, s in sessions.items():
+            if s.status == "closed":
+                continue
+            if s.session_type == "local":
+                addr = f"local (PID {s.remote_addr[1]})"
+            else:
+                addr = f"{s.remote_addr[0]}:{s.remote_addr[1]}"
+            sess_list.append({
+                "id": sid,
+                "label": s.label,
+                "addr": addr,
+                "platform": s.platform or "unknown",
+                "connected_at": s.connected_at.isoformat(),
+            })
+        return JSONResponse({"sessions": sess_list, "count": len(sess_list)})
+
+    @mcp.custom_route("/clear", methods=["POST"])
+    async def clear(request: Request) -> JSONResponse:
+        """Close all sessions and listeners."""
+        closed = []
+        for sid, s in list(sessions.items()):
+            if s.status != "closed":
+                closed.append(sid)
+                s.status = "closed"
+                try:
+                    if s.session_type == "local":
+                        if s.container_name:
+                            subprocess.run(
+                                ["docker", "kill", s.container_name],
+                                capture_output=True, timeout=5,
+                            )
+                        if s.process:
+                            os.killpg(os.getpgid(s.process.pid), signal.SIGTERM)
+                    elif s.conn:
+                        s.conn.close()
+                except Exception:
+                    pass
+        for lid, listener in list(listeners.items()):
+            try:
+                listener.status = "closed"
+                listener.sock.close()
+            except Exception:
+                pass
+        sessions.clear()
+        listeners.clear()
+        return JSONResponse({"cleared": len(closed), "session_ids": closed})
 
     return mcp
 
