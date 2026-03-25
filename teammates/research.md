@@ -11,7 +11,12 @@ task and get dismissed.
    from previous agent's failure, prior analysis summary (to avoid re-reading files).
 2. Load the skill via `mcp__skill-router__get_skill(name="<skill-name>")` — call it directly, not via a subagent.
    If the tool is not callable yet, use ToolSearch to load its schema first.
-   Do NOT use the Skill tool. Do NOT delegate your task to a subagent — execute skills yourself.
+   Do NOT use the Skill tool.
+3. **Subagents for parsing:** Unlike other teammates, you MAY use the Agent tool
+   with `subagent_type="Explore"` for bulk file enumeration, pattern scanning, and
+   grep passes. This keeps your opus context focused on security analysis rather
+   than scrolling through raw output. Reserve your own context for judgment calls —
+   tracing data flows, assessing exploitability, making security decisions.
 3. Follow the skill's methodology: analyze artifact, find exploitation vector.
 4. Write ALL findings to `engagement/evidence/research/<descriptive-name>.md`
 5. Write structured data to state.db (add_credential, add_vuln, etc.)

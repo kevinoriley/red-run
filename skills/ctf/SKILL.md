@@ -604,15 +604,20 @@ Walk ALL items, collect every actionable finding, present to operator:
      else:
        note: need access to pivot host first — pursue via other chains
 
-7. Blocked items:
+7. Source code discovered (git dump, LFI reads, share access, backups):
+   → spawn research teammate with `source-code-review` skill
+   → pass: source path, framework hints, what access produced it
+   → research teammate uses subagents for parsing, opus for security judgment
+
+8. Blocked items:
    retry "with_context" → assign technique skill (deeper methodology)
    retry "later" → context changed, retry with new context
    retry "no" → only revisit with fundamentally new access
    retry "with_context" + custom/unknown → spawn research teammate
 
-8. Progress toward objectives — are we closer to scope.md goals?
+9. Progress toward objectives — are we closer to scope.md goals?
 
-9. No routing match → search_skills() → validate → assign to domain teammate
+10. No routing match → search_skills() → validate → assign to domain teammate
 ```
 
 ### Hard Stops
