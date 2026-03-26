@@ -52,8 +52,16 @@ All notable changes to red-run will be documented in this file. Format follows [
 - **Killboard** — scorecard for tracking CTF results at `docs/killboard.md`.
 - **Auto-rebuild Docker images** — install.sh compares Dockerfile SHA-256
   hash against image label, rebuilds automatically when Dockerfile changes.
+- **`via_vuln_id` on access table** (schema v18) — access records can now
+  link back to the vulnerability that produced them (e.g., RCE vuln → shell,
+  privesc vuln → root). Chain BFS follows vuln→access edges, rendering full
+  provenance graphs. `add_access` and `update_access` accept `via_vuln_id`.
 
 ### Changed
+
+- **`state-dashboard` renamed to `state-viewer`** — folder, scripts, docs,
+  and CI references all updated. Consistent naming: state-viewer (dashboard),
+  state-server (MCP), state-mgr (teammate).
 
 - **Exploited vulns render as action nodes** in dashboard graph — single node
   instead of vuln + vuln-action pair. Direct edges to credentials from
