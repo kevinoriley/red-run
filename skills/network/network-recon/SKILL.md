@@ -70,15 +70,15 @@ You MUST NOT:
 
 ## State Management
 
-Call `get_state_summary()` from the state-interim MCP server to read current
+Call `get_state_summary()` from the state MCP server to read current
 engagement state. Use it to:
 - Skip re-testing targets, parameters, or vulns already confirmed
 - Leverage existing credentials or access for this technique
 - Understand what's been tried and failed (check Blocked section)
 
-### Interim Writes
+### State Writes
 
-Write actionable findings **immediately** via state-interim so the orchestrator
+Write actionable findings **immediately** via state so the orchestrator
 can react in real time (via event watcher) instead of waiting for your full
 return summary. Use these tools as you discover findings:
 

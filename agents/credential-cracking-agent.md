@@ -15,7 +15,7 @@ tools:
   - Glob
 mcpServers:
   - skill-router
-  - state-interim
+  - state
 model: haiku
 ---
 
@@ -96,7 +96,7 @@ Check these in order:
 
 ## Engagement Files
 
-- **State**: Call `get_state_summary()` from the state-interim MCP to read
+- **State**: Call `get_state_summary()` from the state MCP to read
   current engagement state.
 - **Interim writes**: Write cracked credentials immediately when found:
   `add_credential()` for each cracked hash. This lets the orchestrator route

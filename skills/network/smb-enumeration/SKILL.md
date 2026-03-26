@@ -76,7 +76,7 @@ Call `get_state_summary()` to read current engagement state. Use it to:
 - Leverage existing credentials for authenticated enumeration (Step 7)
 - Check what's been tried and failed (Blocked section)
 
-**Interim writes** — write critical discoveries immediately via state-interim:
+**State writes** — write critical discoveries immediately:
 - SMB signing disabled → `add_vuln(title="SMB signing disabled on <host>", host="<host>", vuln_type="smb-signing", severity="medium")`
 - Null session or guest access → `add_vuln(title="SMB null/guest access on <host>", host="<host>", vuln_type="null-session", severity="medium")`
 - EternalBlue confirmed → `add_vuln(title="MS17-010 EternalBlue on <host>", host="<host>", vuln_type="rce", severity="critical")`

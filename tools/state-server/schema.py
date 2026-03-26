@@ -9,7 +9,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 18
 
 SCHEMA_SQL = """\
 PRAGMA journal_mode=WAL;
@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS engagement (
 
 CREATE TABLE IF NOT EXISTS targets (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    host          TEXT NOT NULL UNIQUE,
+    ip            TEXT NOT NULL UNIQUE,
+    hostname      TEXT NOT NULL DEFAULT '',
     os            TEXT NOT NULL DEFAULT '',
     role          TEXT NOT NULL DEFAULT '',
     notes         TEXT NOT NULL DEFAULT '',
@@ -54,13 +55,17 @@ CREATE TABLE IF NOT EXISTS credentials (
     username      TEXT NOT NULL DEFAULT '',
     secret        TEXT NOT NULL DEFAULT '',
     secret_type   TEXT NOT NULL DEFAULT 'password'
-                  CHECK (secret_type IN ('password', 'ntlm_hash', 'aes_key',
-                         'kerberos_tgt', 'kerberos_tgs', 'ssh_key', 'token',
-                         'certificate', 'other')),
+                  CHECK (secret_type IN ('password', 'ntlm_hash', 'net_ntlm',
+                         'aes_key', 'kerberos_tgt', 'kerberos_tgs', 'dcc2',
+                         'ssh_key', 'token', 'certificate', 'webapp_hash',
+                         'dpapi', 'other')),
     domain        TEXT NOT NULL DEFAULT '',
     source        TEXT NOT NULL DEFAULT '',
     cracked       INTEGER NOT NULL DEFAULT 0,
     via_access_id INTEGER REFERENCES access(id) ON DELETE SET NULL,
+    via_vuln_id   INTEGER REFERENCES vulns(id) ON DELETE SET NULL,
+    in_graph     INTEGER NOT NULL DEFAULT 1,
+    chain_order   INTEGER NOT NULL DEFAULT 0,
     notes         TEXT NOT NULL DEFAULT '',
     discovered_by TEXT NOT NULL DEFAULT '',
     created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
@@ -83,13 +88,19 @@ CREATE TABLE IF NOT EXISTS access (
     target_id     INTEGER NOT NULL REFERENCES targets(id) ON DELETE CASCADE,
     access_type   TEXT NOT NULL DEFAULT 'shell'
                   CHECK (access_type IN ('shell', 'ssh', 'winrm', 'rdp',
-                         'web_shell', 'db', 'token', 'vpn', 'other')),
+                         'web_shell', 'smb', 'db', 'token', 'vpn', 'other')),
     username      TEXT NOT NULL DEFAULT '',
     privilege     TEXT NOT NULL DEFAULT 'user'
                   CHECK (privilege IN ('user', 'admin', 'root', 'system',
                          'service', 'domain_admin', 'other')),
     method        TEXT NOT NULL DEFAULT '',
     session_ref   TEXT NOT NULL DEFAULT '',
+    via_credential_id INTEGER REFERENCES credentials(id) ON DELETE SET NULL,
+    via_access_id INTEGER REFERENCES access(id) ON DELETE SET NULL,
+    via_vuln_id   INTEGER REFERENCES vulns(id) ON DELETE SET NULL,
+    technique_id  TEXT NOT NULL DEFAULT '',
+    in_graph     INTEGER NOT NULL DEFAULT 1,
+    chain_order   INTEGER NOT NULL DEFAULT 0,
     active        INTEGER NOT NULL DEFAULT 1,
     notes         TEXT NOT NULL DEFAULT '',
     discovered_by TEXT NOT NULL DEFAULT '',
@@ -103,13 +114,16 @@ CREATE TABLE IF NOT EXISTS vulns (
     title         TEXT NOT NULL,
     vuln_type     TEXT NOT NULL DEFAULT '',
     status        TEXT NOT NULL DEFAULT 'found'
-                  CHECK (status IN ('found', 'active', 'done')),
+                  CHECK (status IN ('found', 'exploited', 'blocked')),
     severity      TEXT NOT NULL DEFAULT 'medium'
                   CHECK (severity IN ('info', 'low', 'medium', 'high', 'critical')),
-    endpoint      TEXT NOT NULL DEFAULT '',
     details       TEXT NOT NULL DEFAULT '',
     evidence_path TEXT NOT NULL DEFAULT '',
-    via_access_id INTEGER REFERENCES access(id) ON DELETE SET NULL,
+    via_access_id    INTEGER REFERENCES access(id) ON DELETE SET NULL,
+    via_credential_id INTEGER REFERENCES credentials(id) ON DELETE SET NULL,
+    technique_id  TEXT NOT NULL DEFAULT '',
+    in_graph     INTEGER NOT NULL DEFAULT 1,
+    chain_order   INTEGER NOT NULL DEFAULT 0,
     discovered_by TEXT NOT NULL DEFAULT '',
     created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
@@ -218,6 +232,133 @@ def _migrate_v2_to_v3(conn: sqlite3.Connection) -> None:
         """)
 
 
+def _migrate_v7_to_v8(conn: sqlite3.Connection) -> None:
+    """Migrate schema from v7 to v8: drop endpoint column from vulns."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(vulns)").fetchall()]
+    if "endpoint" not in cols:
+        return
+    conn.executescript("""
+        ALTER TABLE vulns RENAME TO _vulns_old;
+
+        CREATE TABLE vulns (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            target_id     INTEGER REFERENCES targets(id) ON DELETE SET NULL,
+            title         TEXT NOT NULL,
+            vuln_type     TEXT NOT NULL DEFAULT '',
+            status        TEXT NOT NULL DEFAULT 'found'
+                          CHECK (status IN ('found', 'exploited', 'blocked')),
+            severity      TEXT NOT NULL DEFAULT 'medium'
+                          CHECK (severity IN ('info', 'low', 'medium', 'high', 'critical')),
+            details       TEXT NOT NULL DEFAULT '',
+            evidence_path TEXT NOT NULL DEFAULT '',
+            via_access_id INTEGER REFERENCES access(id) ON DELETE SET NULL,
+            discovered_by TEXT NOT NULL DEFAULT '',
+            created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+            updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+        );
+
+        INSERT INTO vulns (id, target_id, title, vuln_type, status, severity,
+                          details, evidence_path, via_access_id,
+                          discovered_by, created_at, updated_at)
+            SELECT id, target_id, title, vuln_type, status, severity,
+                   details, evidence_path, via_access_id,
+                   discovered_by, created_at, updated_at
+            FROM _vulns_old;
+
+        DROP TABLE _vulns_old;
+    """)
+    conn.commit()
+
+
+def _migrate_v6_to_v7(conn: sqlite3.Connection) -> None:
+    """Migrate schema from v6 to v7: expand credential secret_type.
+
+    Adds net_ntlm, dcc2, webapp_hash, dpapi to the CHECK constraint.
+    Recreates credentials table (SQLite can't ALTER CHECK).
+    """
+    conn.executescript("""
+        ALTER TABLE credentials RENAME TO _credentials_old;
+
+        CREATE TABLE credentials (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            username      TEXT NOT NULL DEFAULT '',
+            secret        TEXT NOT NULL DEFAULT '',
+            secret_type   TEXT NOT NULL DEFAULT 'password'
+                          CHECK (secret_type IN ('password', 'ntlm_hash', 'net_ntlm',
+                                 'aes_key', 'kerberos_tgt', 'kerberos_tgs', 'dcc2',
+                                 'ssh_key', 'token', 'certificate', 'webapp_hash',
+                                 'dpapi', 'other')),
+            domain        TEXT NOT NULL DEFAULT '',
+            source        TEXT NOT NULL DEFAULT '',
+            cracked       INTEGER NOT NULL DEFAULT 0,
+            via_access_id INTEGER REFERENCES access(id) ON DELETE SET NULL,
+            notes         TEXT NOT NULL DEFAULT '',
+            discovered_by TEXT NOT NULL DEFAULT '',
+            created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+            updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+        );
+
+        INSERT INTO credentials (id, username, secret, secret_type, domain, source,
+                                cracked, via_access_id, notes, discovered_by,
+                                created_at, updated_at)
+            SELECT id, username, secret, secret_type, domain, source,
+                   cracked, via_access_id, notes, discovered_by,
+                   created_at, updated_at
+            FROM _credentials_old;
+
+        DROP TABLE _credentials_old;
+    """)
+    conn.commit()
+
+
+def _migrate_v5_to_v6(conn: sqlite3.Connection) -> None:
+    """Migrate schema from v5 to v6: change vuln status lifecycle.
+
+    Old statuses: found, active, done
+    New statuses: found, exploited, blocked
+
+    Mapping: active -> exploited, done -> exploited, found stays.
+    Recreates vulns table with new CHECK constraint (SQLite can't ALTER CHECK).
+    """
+    conn.executescript("""
+        ALTER TABLE vulns RENAME TO _vulns_old;
+
+        CREATE TABLE vulns (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            target_id     INTEGER REFERENCES targets(id) ON DELETE SET NULL,
+            title         TEXT NOT NULL,
+            vuln_type     TEXT NOT NULL DEFAULT '',
+            status        TEXT NOT NULL DEFAULT 'found'
+                          CHECK (status IN ('found', 'exploited', 'blocked')),
+            severity      TEXT NOT NULL DEFAULT 'medium'
+                          CHECK (severity IN ('info', 'low', 'medium', 'high', 'critical')),
+            endpoint      TEXT NOT NULL DEFAULT '',
+            details       TEXT NOT NULL DEFAULT '',
+            evidence_path TEXT NOT NULL DEFAULT '',
+            via_access_id INTEGER REFERENCES access(id) ON DELETE SET NULL,
+            discovered_by TEXT NOT NULL DEFAULT '',
+            created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+            updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+        );
+
+        INSERT INTO vulns (id, target_id, title, vuln_type, status, severity,
+                          endpoint, details, evidence_path, via_access_id,
+                          discovered_by, created_at, updated_at)
+            SELECT id, target_id, title, vuln_type,
+                   CASE status
+                       WHEN 'active' THEN 'exploited'
+                       WHEN 'done' THEN 'exploited'
+                       ELSE status
+                   END,
+                   severity, endpoint, details, evidence_path, via_access_id,
+                   discovered_by, created_at, updated_at
+            FROM _vulns_old;
+
+        DROP TABLE _vulns_old;
+    """)
+    conn.commit()
+
+
 def _migrate_v4_to_v5(conn: sqlite3.Connection) -> None:
     """Migrate schema from v4 to v5: add mode column to engagement."""
     cols = [r[1] for r in conn.execute("PRAGMA table_info(engagement)").fetchall()]
@@ -243,6 +384,155 @@ def _migrate_v3_to_v4(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_v17_to_v18(conn: sqlite3.Connection) -> None:
+    """Migrate schema from v17 to v18: add via_vuln_id to access."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(access)").fetchall()]
+    if "via_vuln_id" not in cols:
+        conn.execute(
+            "ALTER TABLE access ADD COLUMN via_vuln_id INTEGER "
+            "REFERENCES vulns(id) ON DELETE SET NULL"
+        )
+    conn.commit()
+
+
+def _migrate_v16_to_v17(conn: sqlite3.Connection) -> None:
+    """Migrate schema from v16 to v17: add via_credential_id to vulns."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(vulns)").fetchall()]
+    if "via_credential_id" not in cols:
+        conn.execute(
+            "ALTER TABLE vulns ADD COLUMN via_credential_id INTEGER "
+            "REFERENCES credentials(id) ON DELETE SET NULL"
+        )
+    conn.commit()
+
+
+def _migrate_v15_to_v16(conn: sqlite3.Connection) -> None:
+    """Migrate schema from v15 to v16: add via_vuln_id to credentials."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(credentials)").fetchall()]
+    if "via_vuln_id" not in cols:
+        conn.execute(
+            "ALTER TABLE credentials ADD COLUMN via_vuln_id INTEGER "
+            "REFERENCES vulns(id) ON DELETE SET NULL"
+        )
+    conn.commit()
+
+
+def _migrate_v14_to_v15(conn: sqlite3.Connection) -> None:
+    """Migrate schema from v14 to v15: rename in_report to in_graph."""
+    for table in ("access", "vulns", "credentials"):
+        cols = [r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
+        if "in_report" in cols and "in_graph" not in cols:
+            conn.execute(f"ALTER TABLE {table} RENAME COLUMN in_report TO in_graph")
+    conn.commit()
+
+
+def _migrate_v13_to_v14(conn: sqlite3.Connection) -> None:
+    """Migrate schema from v13 to v14: add chain_order for flow graph ordering."""
+    for table in ("access", "vulns", "credentials"):
+        cols = [r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
+        if "chain_order" not in cols:
+            conn.execute(
+                f"ALTER TABLE {table} ADD COLUMN chain_order INTEGER NOT NULL DEFAULT 0"
+            )
+    conn.commit()
+
+
+def _migrate_v12_to_v13(conn: sqlite3.Connection) -> None:
+    """Migrate schema from v12 to v13: add technique_id and in_graph columns."""
+    for table in ("access", "vulns"):
+        cols = [r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
+        if "technique_id" not in cols:
+            conn.execute(
+                f"ALTER TABLE {table} ADD COLUMN technique_id TEXT NOT NULL DEFAULT ''"
+            )
+        if "in_graph" not in cols:
+            conn.execute(
+                f"ALTER TABLE {table} ADD COLUMN in_graph INTEGER NOT NULL DEFAULT 1"
+            )
+    # credentials gets in_graph only (no technique_id — creds are assets, not actions)
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(credentials)").fetchall()]
+    if "in_graph" not in cols:
+        conn.execute(
+            "ALTER TABLE credentials ADD COLUMN in_graph INTEGER NOT NULL DEFAULT 1"
+        )
+    conn.commit()
+
+
+def _migrate_v11_to_v12(conn: sqlite3.Connection) -> None:
+    """Migrate schema from v11 to v12: add smb to access_type CHECK constraint.
+
+    SQLite can't ALTER CHECK, so recreate the access table.
+    """
+    conn.executescript("""
+        ALTER TABLE access RENAME TO _access_old;
+
+        CREATE TABLE access (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            target_id     INTEGER NOT NULL REFERENCES targets(id) ON DELETE CASCADE,
+            access_type   TEXT NOT NULL DEFAULT 'shell'
+                          CHECK (access_type IN ('shell', 'ssh', 'winrm', 'rdp',
+                                 'web_shell', 'smb', 'db', 'token', 'vpn', 'other')),
+            username      TEXT NOT NULL DEFAULT '',
+            privilege     TEXT NOT NULL DEFAULT 'user'
+                          CHECK (privilege IN ('user', 'admin', 'root', 'system',
+                                 'service', 'domain_admin', 'other')),
+            method        TEXT NOT NULL DEFAULT '',
+            session_ref   TEXT NOT NULL DEFAULT '',
+            via_credential_id INTEGER REFERENCES credentials(id) ON DELETE SET NULL,
+            via_access_id INTEGER REFERENCES access(id) ON DELETE SET NULL,
+            active        INTEGER NOT NULL DEFAULT 1,
+            notes         TEXT NOT NULL DEFAULT '',
+            discovered_by TEXT NOT NULL DEFAULT '',
+            created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+            updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+        );
+
+        INSERT INTO access (id, target_id, access_type, username, privilege,
+                           method, session_ref, via_credential_id, via_access_id,
+                           active, notes, discovered_by, created_at, updated_at)
+            SELECT id, target_id, access_type, username, privilege,
+                   method, session_ref, via_credential_id, via_access_id,
+                   active, notes, discovered_by,
+                   COALESCE(created_at, strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+                   COALESCE(updated_at, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+            FROM _access_old;
+        DROP TABLE _access_old;
+    """)
+    conn.commit()
+
+
+def _migrate_v10_to_v11(conn: sqlite3.Connection) -> None:
+    """Migrate schema from v10 to v11: add via_access_id to access for privesc chains."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(access)").fetchall()]
+    if "via_access_id" not in cols:
+        conn.execute(
+            "ALTER TABLE access ADD COLUMN via_access_id INTEGER "
+            "REFERENCES access(id) ON DELETE SET NULL"
+        )
+    conn.commit()
+
+
+def _migrate_v9_to_v10(conn: sqlite3.Connection) -> None:
+    """Migrate schema from v9 to v10: add via_credential_id to access."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(access)").fetchall()]
+    if "via_credential_id" not in cols:
+        conn.execute(
+            "ALTER TABLE access ADD COLUMN via_credential_id INTEGER "
+            "REFERENCES credentials(id) ON DELETE SET NULL"
+        )
+    conn.commit()
+
+
+def _migrate_v8_to_v9(conn: sqlite3.Connection) -> None:
+    """Migrate schema from v8 to v9: add hostname column, rename host to ip."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(targets)").fetchall()]
+    if "hostname" not in cols:
+        conn.execute("ALTER TABLE targets ADD COLUMN hostname TEXT NOT NULL DEFAULT ''")
+    if "host" in cols:
+        conn.execute("ALTER TABLE targets RENAME COLUMN host TO ip")
+    conn.commit()
+
+
 def init_db(db_path: str | Path) -> sqlite3.Connection:
     """Create or open the state database and apply schema.
 
@@ -257,13 +547,40 @@ def init_db(db_path: str | Path) -> sqlite3.Connection:
     # Apply base schema (CREATE IF NOT EXISTS — safe for existing DBs)
     conn.executescript(SCHEMA_SQL)
 
-    # Run migrations for existing databases
-    if current_version == 2:
-        _migrate_v2_to_v3(conn)
-    if current_version <= 3:
-        _migrate_v3_to_v4(conn)
-    if current_version <= 4:
-        _migrate_v4_to_v5(conn)
+    # Run migrations for existing databases (skip fresh DBs — base schema is current)
+    if 0 < current_version < SCHEMA_VERSION:
+        if current_version == 2:
+            _migrate_v2_to_v3(conn)
+        if current_version <= 3:
+            _migrate_v3_to_v4(conn)
+        if current_version <= 4:
+            _migrate_v4_to_v5(conn)
+        if current_version <= 5:
+            _migrate_v5_to_v6(conn)
+        if current_version <= 6:
+            _migrate_v6_to_v7(conn)
+        if current_version <= 7:
+            _migrate_v7_to_v8(conn)
+        if current_version <= 8:
+            _migrate_v8_to_v9(conn)
+        if current_version <= 9:
+            _migrate_v9_to_v10(conn)
+        if current_version <= 10:
+            _migrate_v10_to_v11(conn)
+        if current_version <= 11:
+            _migrate_v11_to_v12(conn)
+        if current_version <= 12:
+            _migrate_v12_to_v13(conn)
+        if current_version <= 13:
+            _migrate_v13_to_v14(conn)
+        if current_version <= 14:
+            _migrate_v14_to_v15(conn)
+        if current_version <= 15:
+            _migrate_v15_to_v16(conn)
+        if current_version <= 16:
+            _migrate_v16_to_v17(conn)
+        if current_version <= 17:
+            _migrate_v17_to_v18(conn)
 
     conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     conn.commit()

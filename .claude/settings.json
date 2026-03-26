@@ -1,6 +1,32 @@
 {
   "enableAllProjectMcpServers": true,
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-6[1m]"
+  },
+  "permissions": {
+    "allow": [
+      "mcp__state__*",
+      "mcp__skill-router__*",
+      "mcp__shell-server__*",
+      "mcp__nmap-server__*",
+      "mcp__browser-server__*",
+      "mcp__rdp-server__*"
+    ]
+  },
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/tools/shell-server/start.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
     "SubagentStop": [
       {
         "matcher": "(network-recon|web-(discovery|exploit)|ad-(discovery|exploit)|password-spray|(linux|windows)-privesc|evasion|credential-cracking|pivoting|research)-agent",
@@ -8,6 +34,17 @@
           {
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/save-agent-log.sh"
+          }
+        ]
+      }
+    ],
+    "TeammateIdle": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/save-teammate-log.sh"
           }
         ]
       }

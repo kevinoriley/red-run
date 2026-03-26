@@ -44,22 +44,22 @@ The orchestrator uses this table to match skills to agents. Each agent has acces
 
 | Agent | Domain | MCP Servers | Skills |
 |-------|--------|-------------|--------|
-| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, **state-interim** | network-recon, smb-exploitation, pivoting-tunneling |
-| `web-discovery-agent` | Web discovery | skill-router, shell-server, browser-server, **state-interim** | web-discovery |
-| `web-exploit-agent` | Web exploitation | skill-router, shell-server, browser-server, **state-interim** | All web technique skills (32) |
-| `ad-discovery-agent` | AD discovery | skill-router, shell-server, **state-interim** | ad-discovery |
-| `ad-exploit-agent` | AD exploitation | skill-router, shell-server, **state-interim** | All AD technique skills (15) |
-| `linux-privesc-agent` | Linux privesc | skill-router, shell-server, **state-interim** | linux-discovery + 4 technique skills, container-escapes |
-| `windows-privesc-agent` | Windows privesc | skill-router, shell-server, **state-interim** | windows-discovery + 5 technique skills |
-| `password-spray-agent` | Credential spraying | skill-router, shell-server, **state-interim** | password-spraying |
-| `evasion-agent` | AV/EDR evasion | skill-router, shell-server, **state-interim** | av-edr-evasion |
-| `credential-cracking-agent` | Credential cracking | skill-router, **state-interim** | credential-cracking |
+| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, **state** | network-recon, smb-exploitation, pivoting-tunneling |
+| `web-discovery-agent` | Web discovery | skill-router, shell-server, browser-server, **state** | web-discovery |
+| `web-exploit-agent` | Web exploitation | skill-router, shell-server, browser-server, **state** | All web technique skills (32) |
+| `ad-discovery-agent` | AD discovery | skill-router, shell-server, **state** | ad-discovery |
+| `ad-exploit-agent` | AD exploitation | skill-router, shell-server, **state** | All AD technique skills (15) |
+| `linux-privesc-agent` | Linux privesc | skill-router, shell-server, **state** | linux-discovery + 4 technique skills, container-escapes |
+| `windows-privesc-agent` | Windows privesc | skill-router, shell-server, **state** | windows-discovery + 5 technique skills |
+| `password-spray-agent` | Credential spraying | skill-router, shell-server, **state** | password-spraying |
+| `evasion-agent` | AV/EDR evasion | skill-router, shell-server, **state** | av-edr-evasion |
+| `credential-cracking-agent` | Credential cracking | skill-router, **state** | credential-cracking |
 
-> **Note:** All agents use the **state-interim** MCP server, which gives them read access plus five add-only write tools (`add_credential`, `add_vuln`, `add_pivot`, `add_blocked`, `add_tunnel`). This ensures critical discoveries (captured hashes, confirmed vulns, new pivot paths) reach the orchestrator immediately via event watcher.
+> **Note:** All agents use the **state** MCP server with full read/write access. This ensures critical discoveries (captured hashes, confirmed vulns, new pivot paths) reach the orchestrator immediately via event watcher.
 
 ## Discovery vs Technique Agents
 
-Agents fall into two categories with different responsibilities, but all share the same state access level (state-interim).
+Agents fall into two categories with different responsibilities, but all share the same state access level (full read/write via state).
 
 ### Discovery Agents
 
@@ -75,13 +75,9 @@ Technique agents **exploit specific vulnerabilities**. All findings are reported
 
 ### Shared State Access
 
-All agents use the **state-interim** MCP server, giving them:
+All agents use the **state** MCP server with full read/write access. Each write emits a `state_events` row for real-time monitoring. Deduplication is handled at the database level.
 
-- Full read access to engagement state
-- Five add-only write tools: `add_credential()`, `add_vuln()`, `add_pivot()`, `add_blocked()`, `add_tunnel()`
-- Each write emits a `state_events` row for real-time monitoring
-
-Agents write critical discoveries mid-run so the orchestrator can act on them immediately via the event watcher — without waiting for the agent to finish. This is especially important for technique agents that capture hashes or credentials during exploitation.
+Agents write discoveries directly to state so the orchestrator can act on them immediately via the event watcher — without waiting for the agent to finish. This is especially important for technique agents that capture hashes or credentials during exploitation.
 
 ## Model Selection
 
@@ -99,18 +95,15 @@ All other agents use the default model, which handles complex exploitation reaso
 
 ```mermaid
 graph LR
-    O[Orchestrator] -->|read + write| SW[(state-writer)]
-    A[All Agents] -->|read + 5 adds| SI[(state-interim)]
+    O[Orchestrator] -->|read + write| S[(state)]
+    A[All Agents] -->|read + write| S
 
-    SW --> DB[(state.db)]
-    SI --> DB
+    S --> DB[(state.db)]
 ```
 
-Both MCP server modes access the same SQLite database. WAL mode and `busy_timeout=5000` handle concurrent access safely.
+All agents and the orchestrator share a single state MCP server with full read/write access to the same SQLite database. WAL mode and `busy_timeout=5000` handle concurrent access safely. Deduplication is handled at the database level.
 
-**Orchestrator** (state-writer): Full read/write access. Creates targets, records access, updates vulnerabilities. The sole authority for engagement state.
-
-**All agents** (state-interim): Read everything, write critical discoveries immediately. When any agent finds credentials, captures hashes, or confirms a vulnerability mid-run, it writes them so the orchestrator can act via the event watcher without waiting for agent completion. The orchestrator deduplicates interim writes against return summaries.
+When any agent finds credentials, captures hashes, or confirms a vulnerability mid-run, it writes them directly so the orchestrator can act via the event watcher without waiting for agent completion.
 
 ## Tool Execution: Bash vs Shell-Server
 

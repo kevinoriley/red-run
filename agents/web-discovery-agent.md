@@ -18,7 +18,7 @@ mcpServers:
   - shell-server
   - browser-server
   - rdp-server
-  - state-interim
+  - state
 model: sonnet
 ---
 
@@ -90,7 +90,7 @@ not to recall solutions.
   proxy, stop and report that limitation to the orchestrator.
 - **Session management**: Maintain cookies and session tokens across requests
   within the same test. Read auth context from `get_state_summary()` via the
-  state-interim MCP if the orchestrator provides it.
+  state MCP if the orchestrator provides it.
 - **Evidence capture**: Save interesting HTTP requests/responses to
   `engagement/evidence/` with descriptive filenames (e.g.,
   `web-discovery-tech-stack.txt`, `web-discovery-endpoints.txt`).
@@ -159,7 +159,7 @@ runs for minutes.
 
 ## Engagement Files
 
-- **State**: Call `get_state_summary()` from the state-interim MCP to read
+- **State**: Call `get_state_summary()` from the state MCP to read
   current engagement state.
 - **Interim writes**: Write findings immediately when actionable by a
   different agent type: credentials → `add_credential()`, vulns → `add_vuln()`,

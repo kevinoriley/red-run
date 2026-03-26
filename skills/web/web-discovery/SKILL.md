@@ -64,6 +64,9 @@ attacks, write custom exploit code, or apply techniques from other domains.
 The orchestrator will provide specific guidance or route to a different skill.
 
 You MUST NOT:
+- Perform LFI/RFI exploitation (traversal bypass chains, UNC path coercion,
+  NTLM capture via Responder, reading sensitive files beyond the initial
+  confirmation payload)
 - Perform SQL injection exploitation (UNION queries, data extraction, OS command
   execution)
 - Perform XSS exploitation (cookie theft, DOM manipulation)
@@ -80,15 +83,15 @@ findings. Do not continue past discovery.
 
 ## State Management
 
-Call `get_state_summary()` from the state-interim MCP server to read current
+Call `get_state_summary()` from the state MCP server to read current
 engagement state. Use it to:
 - Skip re-testing targets, parameters, or vulns already confirmed
 - Leverage existing credentials or access for this technique
 - Understand what's been tried and failed (check Blocked section)
 
-### Interim Writes
+### State Writes
 
-Write actionable findings **immediately** via state-interim so the orchestrator
+Write actionable findings **immediately** via state so the orchestrator
 can react in real time (via event watcher) instead of waiting for your full
 return summary. Use these tools as you discover findings:
 
@@ -100,7 +103,7 @@ return summary. Use these tools as you discover findings:
 Write vhost discoveries as `add_vuln(vuln_type="info")` so the orchestrator
 triggers a hosts-file update check. **Do NOT enumerate discovered vhosts** —
 the orchestrator spawns a new agent per vhost.
-**Do NOT send interim writes if you are near your scope boundary and will be returning to the orchestrator imminently.**
+**Do NOT send state writes if you are near your scope boundary and will be returning to the orchestrator imminently.**
 
 Your return summary must include:
 - New targets/hosts discovered (with ports and services)
@@ -159,6 +162,11 @@ files rather than Burp history.
 ## Step 1: Content Discovery
 
 Find hidden endpoints, directories, and files.
+
+**Always background fuzzing.** Run ALL ffuf/feroxbuster/gobuster commands with
+`run_in_background: true` and output to `engagement/evidence/`. Do other work
+(tech fingerprinting, manual checks, parameter testing on known endpoints) while
+scans run. Process results when notified. Never `sleep` waiting for scan output.
 
 **Wordlist priority:** Start with `quickhits.txt` for fast coverage of common
 high-value paths (admin panels, config files, backup files, known endpoints).
@@ -262,7 +270,7 @@ authenticated users.
 - Drupal: `/admin/config`, `/admin/config/system`
 - Joomla: `/administrator/index.php?option=com_config`
 
-**Interim write:** If service credentials are found, write immediately:
+**State write:** If service credentials are found, write immediately:
 `add_credential(username=..., secret=..., credential_type="api_key",
 source="CMS settings page on <target>")`. These often unlock additional
 attack surface (hidden storage buckets, internal services, backup archives).
@@ -312,7 +320,7 @@ probe triggers** (error message, evaluated output, time delay, callback), STOP.
 Do not try more payloads. Do not attempt exploitation. Write the finding
 immediately via `add_vuln()` and return to the orchestrator.
 
-**Interim writes on confirmed injection:**
+**State writes on confirmed injection:**
 - SQLi confirmed → `add_vuln(title="SQLi in <param> on <URL>", host="<host>", vuln_type="sqli", severity="high")`
 - SSTI confirmed → `add_vuln(title="SSTI (<engine>) in <param> on <URL>", host="<host>", vuln_type="ssti", severity="critical")`
 - Command injection → `add_vuln(title="Command injection in <param> on <URL>", host="<host>", vuln_type="rce", severity="critical")`

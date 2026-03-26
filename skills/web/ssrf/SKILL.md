@@ -45,7 +45,7 @@ When an engagement directory exists:
 
 ## State Management
 
-Call `get_state_summary()` from the state-reader MCP server to read current
+Call `get_state_summary()` from the state MCP server to read current
 engagement state. Use it to:
 - Skip re-testing targets, parameters, or vulns already confirmed
 - Leverage existing credentials or access for this technique
@@ -67,6 +67,12 @@ Your return summary must include:
   custom server)
 - If the response is fully reflected, start with basic SSRF. If only status
   codes or timing differences are visible, use blind techniques.
+
+**LFI crossover:** If you arrived from the lfi skill because `file_get_contents()`
+or similar accepts `http://` URLs, the injection point is the same LFI parameter.
+Use it as a standard SSRF vector — no parameter discovery needed. The LFI context
+(absolute path reads, known web root) is additional leverage for targeting localhost
+services.
 
 ## Step 1: Assess
 

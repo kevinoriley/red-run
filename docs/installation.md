@@ -24,11 +24,11 @@ cd red-run
 
 The installer runs five steps:
 
-**1. Native skills** — Installs the orchestrator skill to `~/.claude/skills/red-run-orchestrator/`. This is the only skill installed as a native Claude Code skill. All other skills (67 discovery + technique skills) are served on-demand via the MCP skill-router.
+**1. Native skills** — Installs orchestrator skills to `~/.claude/skills/red-run-ctf/` (agent teams, default) and `~/.claude/skills/red-run-legacy/` (subagent-based). All other skills (67 discovery + technique skills) are served on-demand via the MCP skill-router.
 
-**2. Custom subagents** — Installs 10 domain-specific agent definitions to `~/.claude/agents/`. These are the `.md` files that define each agent's system prompt, available tools, and execution model.
+**2. Teammate templates** — Teammate spawn prompts live in `teammates/` in the repo (not installed globally). The legacy subagent definitions in `agents/` are only installed with `--legacy`.
 
-**3. MCP server dependencies** — Runs `uv sync` for all 5 MCP servers (skill-router, nmap-server, shell-server, state-server, browser-server) to install Python dependencies into isolated `.venv/` directories.
+**3. MCP server dependencies** — Runs `uv sync` for all 6 MCP servers (skill-router, nmap-server, shell-server, state-server, browser-server, rdp-server) to install Python dependencies into isolated `.venv/` directories.
 
 **4. Docker images** — Builds two Docker images:
 
@@ -39,7 +39,7 @@ The installer runs five steps:
 
 **6. Browser setup** — Installs Chromium via Playwright (~150MB) for headless browser automation.
 
-**7. Config verification** — Checks that `.mcp.json` and `.claude/settings.json` are properly configured.
+**7. Config verification** — Checks that `.mcp.json` and `.claude/settings.json` are properly configured. Project settings include `ANTHROPIC_DEFAULT_SONNET_MODEL=claude-sonnet-4-6[1m]` so all sonnet teammates spawn with 1M context by default.
 
 ### Attackbox dependencies
 
@@ -88,14 +88,21 @@ An nftables firewall is available in `operator/engagement-firewall/` for operato
 
 ## Running
 
-Start Claude Code from the red-run repo directory:
+Launch from the red-run repo directory:
 
 ```bash
 cd red-run
-claude --dangerously-skip-permissions
+./run.sh
 ```
 
-All skills delegate to autonomous agents. The orchestrator still presents routing decisions for operator approval before spawning each agent. MCP servers start automatically via `.mcp.json`. Give the orchestrator a target:
+`run.sh` starts shell-server (SSE on `127.0.0.1:8022`), launches Claude Code, and auto-triggers `/red-run-ctf`. Send any message (e.g., a target IP) to activate the orchestrator.
+
+```bash
+./run.sh --lead=legacy  # use /red-run-legacy instead
+./run.sh --yolo         # skip permission prompts
+```
+
+If shell-server has active sessions from a previous run, `run.sh` prompts to keep, clear, or restart them. Give the orchestrator a target:
 
 > "Scan and attack 10.10.10.5"
 
@@ -108,7 +115,7 @@ All skills delegate to autonomous agents. The orchestrator still presents routin
 This removes:
 
 - Native skills from `~/.claude/skills/red-run-*/`
-- Custom subagents from `~/.claude/agents/`
+- Legacy subagents from `~/.claude/agents/` (if installed)
 - ChromaDB index (`tools/skill-router/.chromadb/`)
 - Python venvs (`tools/*/. venv/`)
 - Docker images (`red-run-nmap:latest`, `red-run-shell:latest`)
@@ -128,7 +135,7 @@ Install Docker and ensure the daemon is running. The nmap-server and shell-serve
 ### Broken symlinks
 
 ```
-ERROR: Broken skill: ~/.claude/skills/red-run-orchestrator/SKILL.md -> unknown
+ERROR: Broken skill: ~/.claude/skills/red-run-ctf/SKILL.md -> unknown
 ```
 
 The repo directory was moved or deleted after install. Either move it back or re-run `./install.sh`.

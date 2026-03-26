@@ -221,6 +221,7 @@ Agents will not download these — they expect them pre-staged.
 | Seatbelt | windows-discovery | [GitHub](https://github.com/GhostPack/Seatbelt) (compile with VS) |
 | PrivescCheck | windows-discovery | [GitHub](https://github.com/itm4n/PrivescCheck) |
 | PowerUp | windows-discovery, windows-service-dll-abuse, windows-uac-bypass | Part of [PowerSploit](https://github.com/PowerShellMafia/PowerSploit) |
+| RunasCs.exe | credential context enumeration (run commands as another user) | [GitHub releases](https://github.com/antonioCoco/RunasCs) |
 | Rubeus | kerberos-ticket-forging, kerberos-delegation, pass-the-hash, trust-attacks, ad-persistence | [GitHub](https://github.com/GhostPack/Rubeus) (compile with VS) |
 | mimikatz | ad-persistence, credential-dumping, pass-the-hash, kerberos-ticket-forging, windows-credential-harvesting, windows-token-impersonation | [GitHub releases](https://github.com/gentilkiwi/mimikatz) |
 | SharpDPAPI | windows-credential-harvesting, adcs-persistence | [GitHub](https://github.com/GhostPack/SharpDPAPI) (compile with VS) |

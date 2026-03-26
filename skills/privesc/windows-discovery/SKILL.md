@@ -61,21 +61,21 @@ The orchestrator will provide specific guidance or route to a different skill.
 `manspider`, `smbclient`, or any remote share enumeration tool. Share spidering
 is performed from the attackbox by ad-discovery or network-recon — not from
 inside a low-privilege shell. If `net share` (the only allowed share command)
-reveals a share not already in engagement state, record it as an interim finding
+reveals a share not already in engagement state, record it as an finding
 via `add_vuln()` and note it in your return summary. Do not connect to it, read
 its contents, or spider it — a different agent handles that from the attackbox.
 
 ## State Management
 
-Call `get_state_summary()` from the state-interim MCP server to read current
+Call `get_state_summary()` from the state MCP server to read current
 engagement state. Use it to:
 - Skip re-testing targets, parameters, or vulns already confirmed
 - Leverage existing credentials or access for this technique
 - Understand what's been tried and failed (check Blocked section)
 
-### Interim Writes
+### State Writes
 
-Write actionable findings **immediately** via state-interim so the orchestrator
+Write actionable findings **immediately** via state so the orchestrator
 can react in real time (via event watcher) instead of waiting for your full
 return summary. Use these tools as you discover findings:
 
@@ -269,7 +269,7 @@ wmic process list full
 Get-Process | Select-Object Name, Id, Path | Where-Object {$_.Path -notlike "C:\Windows\System32\*"} | Sort-Object Path
 ```
 
-**STOP — write interim findings NOW.** Before continuing to Step 4, call
+**STOP — write findings NOW.** Before continuing to Step 4, call
 `add_vuln()` for EACH finding above:
 - Unquoted service paths → `add_vuln(title="Unquoted service path: <service>", host="<host>", vuln_type="service-misconfig", severity="medium")`
 - Writable service binaries/config → `add_vuln(title="Modifiable service: <service>", host="<host>", vuln_type="service-misconfig", severity="high")`
@@ -331,7 +331,7 @@ netstat -ano | findstr LISTENING | findstr 127.0.0.1
 
 Look for: databases (3306/5432/1433), web interfaces (8080/8443), management (5985/5986).
 
-**STOP — write interim findings NOW.** Before continuing with SNMP/WiFi/firewall checks:
+**STOP — write findings NOW.** Before continuing with SNMP/WiFi/firewall checks:
 - Additional NIC found via `ipconfig /all` → call `add_pivot()` NOW
 - New hosts from `arp -a` → call `add_pivot()` NOW
 - Root/SYSTEM-owned services on localhost → call `add_vuln()` NOW
@@ -415,7 +415,7 @@ icacls C:\Windows\System32\config\SAM
 
 If `BUILTIN\Users:(I)(RX)` appears → SAM readable by non-admin users.
 
-**STOP — write interim findings NOW.** Before continuing, call
+**STOP — write findings NOW.** Before continuing, call
 `add_credential()` for EACH credential found above (registry, unattend files,
 PowerShell history, config files, WiFi passwords, SNMP strings). One call per
 credential. The orchestrator reacts to these in real time via event watcher.

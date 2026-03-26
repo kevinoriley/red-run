@@ -72,7 +72,7 @@ The orchestrator will provide specific guidance or route to a different skill.
 
 ## State Management
 
-Call `get_state_summary()` from the state-reader MCP server to read current
+Call `get_state_summary()` from the state MCP server to read current
 engagement state. Use it to:
 - Skip re-testing targets, parameters, or vulns already confirmed
 - Leverage existing credentials or access for this technique

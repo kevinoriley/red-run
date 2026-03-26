@@ -67,7 +67,7 @@ When an engagement directory exists:
 
 ## State Management
 
-Call `get_state_summary()` from the state-reader MCP server to read current
+Call `get_state_summary()` from the state MCP server to read current
 engagement state. Use it to:
 - Skip re-testing targets, parameters, or vulns already confirmed
 - Leverage existing credentials or access for this technique
@@ -769,12 +769,39 @@ If signing is required, relay to AD CS (HTTP) or SMB instead.
 - Try alternate coercion methods (DFSCoerce, ShadowCoerce)
 - WebClient-based HTTP coercion may bypass SMB-level blocks
 
-### ntlmrelayx Hangs or No Callback
+### Coercion Succeeds but No Relay Connection
 
-- Verify listener IP is reachable from target network
-- Check firewall allows inbound on port 445 (SMB) or 80/443 (HTTP)
-- Stop local SMB service: `sudo systemctl stop smbd` (requires root — present to user)
-- Stop local HTTP service if relaying HTTP
+Symptoms: coercion tool reports "Exploit Success" or "VULNERABLE" but
+ntlmrelayx log shows zero incoming connections ("waiting for connections"
+and nothing else).
+
+This means the target's callback connection is not reaching you. The
+coercion RPC succeeded (the API call returned OK) but the target cannot
+or will not connect outbound to your listener.
+
+**Common causes (all on the target side — not your attackbox):**
+- Windows Firewall on target blocks outbound SMB to non-DC addresses
+- Network segmentation / firewall between target and attacker
+- HTB/lab environments often restrict outbound SMB
+- Target's SMB client prefers Kerberos and won't fall back to NTLM
+
+**Do NOT debug your own network stack.** If ntlmrelayx is listening
+(confirmed via `ss -tlnp | grep :445`) and coercion reports success,
+the problem is outbound from the target. Running tcpdump, iptables
+checks, nftables dumps, or netcat tests on the attackbox will not help.
+
+**Action:** After 2 coercion methods fail to produce a relay connection:
+1. `add_blocked(technique="ntlm-coercion-relay", reason="coercion succeeds but callback never arrives — outbound SMB likely blocked on target")`
+2. Message the lead with the finding — they may have network context
+3. **STOP and return.** Do not continue trying coercion variants.
+
+**Alternative paths the lead may consider:**
+- WebDAV coercion (HTTP callback on port 80) bypasses SMB firewall rules
+  but requires WebClient service running on target
+- Kerberos relay (krbrelayx) avoids NTLM entirely
+- Shadow Credentials or RBCD via direct LDAP write (if you have write
+  perms, no coercion needed)
+- Crack the Kerberoast hash and use constrained delegation
 
 ### NTLM Relay Rejected on Server 2022+ (MIC Enforcement)
 

@@ -4,13 +4,12 @@ Claude Code skill library for penetration testing and CTF work.
 
 ## Engagement Workflow
 
-**MANDATORY:** When the user mentions targets, attacking, scanning, pentesting,
-or references an existing engagement (resuming, continuing, next steps, status),
-invoke the `red-run-orchestrator` skill via the Skill tool IMMEDIATELY — before
-reading state, running tools, or generating any analysis. The orchestrator skill
-contains all routing logic, approval gates, and state management rules. Never
-manually call state-server MCP tools, run attack commands, or present engagement
-analysis from the main thread without the orchestrator skill loaded.
+The orchestrator is invoked via `/red-run-ctf` slash command only — not by
+natural language triggers. It contains all routing logic, approval gates,
+and state management rules. **If you are an agent teams teammate** (you were
+spawned by a team lead and received a task assignment), **do NOT invoke the
+orchestrator skill.** Load technique skills via
+`mcp__skill-router__get_skill()` instead — never via the Skill tool.
 
 ## Token Budget
 
@@ -30,9 +29,39 @@ being written. Instead, store templates in `operator/templates/` and reference
 them by path. The orchestrator reads and populates templates at runtime — the
 template content is only loaded when actually needed.
 
+## Orchestrator Variants
+
+Multiple orchestrators coexist in the same repo, sharing state.db, MCP servers,
+and technique skills. Each variant uses a different execution model.
+
+| Variant | Invoke | Status | Execution Model |
+|---------|--------|--------|-----------------|
+| `/red-run-ctf` | Slash command only | **Active** (default) | Agent teams (persistent teammates, peer messaging) |
+| `/red-run-legacy` | Slash command only | **Legacy** | Subagents (ephemeral, one skill per invocation) |
+| `/red-run-notouch` | Slash command only | **Planned** | DLP-safe — operator runs commands, reports sanitized output |
+| `/red-run-train` | Slash command only | **Planned** | Training mode — guided walkthrough with explanations |
+
+**`/red-run-ctf`** uses Claude Code agent teams. Requires
+`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in env or `.claude/settings.json`.
+Teammate spawn templates live in `teammates/` — see `teammates/README.md`.
+
+**`/red-run-legacy`** is the original subagent-based orchestrator. Agent
+definitions live in `agents/`. Invoke with `/red-run-legacy` if needed.
+
+Both orchestrators use the same state.db schema, MCP servers, and technique
+skills. An engagement started with one can be resumed with the other.
+
 ## Architecture
 
-The **orchestrator** is a native Claude Code skill that runs in the main conversation thread. It routes skill execution to **custom domain subagents** — each subagent has MCP access and executes one skill per invocation. All other skills (63 discovery + technique skills) are served on-demand via the **MCP skill-router**.
+The default **orchestrator** (`/red-run-ctf`) uses Claude Code agent teams.
+The lead session runs the orchestrator skill, spawns persistent domain
+teammates, assigns tasks, and chains vulnerabilities. Teammates communicate
+via peer-to-peer messaging and write to state.db for durability. All technique
+skills (67 discovery + technique skills) are served on-demand via the **MCP
+skill-router**.
+
+The legacy orchestrator (`/red-run-legacy`) uses ephemeral subagents — each
+handles one skill per invocation and returns. See `agents/` for definitions.
 
 ### Subagent Model
 
@@ -40,20 +69,20 @@ The orchestrator spawns domain-specific subagents for each skill invocation:
 
 | Agent | Domain | MCP Servers | Skills |
 |-------|--------|-------------|--------|
-| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, rdp-server, state-interim | network-recon, smb-enumeration, database-enumeration, remote-access-enumeration, infrastructure-enumeration, smb-exploitation (haiku) |
-| `pivoting-agent` | Pivoting | skill-router, shell-server, rdp-server, state-interim | pivoting-tunneling (sonnet) |
-| `web-discovery-agent` | Web discovery | skill-router, shell-server, browser-server, rdp-server, state-interim | web-discovery |
-| `web-exploit-agent` | Web exploitation | skill-router, shell-server, browser-server, rdp-server, state-interim | All web technique skills |
-| `ad-discovery-agent` | AD discovery | skill-router, shell-server, rdp-server, state-interim | ad-discovery |
-| `ad-exploit-agent` | AD exploitation | skill-router, shell-server, rdp-server, state-interim | All AD technique skills |
-| `password-spray-agent` | Credential spraying | skill-router, shell-server, rdp-server, state-interim | password-spraying (haiku) |
-| `linux-privesc-agent` | Linux privesc | skill-router, shell-server, state-interim | Linux discovery + privesc + container escapes |
-| `windows-privesc-agent` | Windows privesc | skill-router, shell-server, rdp-server, state-interim | Windows discovery + privesc |
-| `evasion-agent` | AV/EDR evasion | skill-router, shell-server, rdp-server, state-interim | av-edr-evasion |
-| `credential-cracking-agent` | Credential cracking | skill-router, state-interim | credential-cracking (haiku, local-only) |
-| `research-agent` | Deep analysis | skill-router, shell-server, state-interim | unknown-vector-analysis (opus) |
+| `network-recon-agent` | Network | skill-router, nmap-server, shell-server, rdp-server, state | network-recon, smb-enumeration, database-enumeration, remote-access-enumeration, infrastructure-enumeration, smb-exploitation (haiku) |
+| `pivoting-agent` | Pivoting | skill-router, shell-server, rdp-server, state | pivoting-tunneling (sonnet) |
+| `web-discovery-agent` | Web discovery | skill-router, shell-server, browser-server, rdp-server, state | web-discovery |
+| `web-exploit-agent` | Web operations | skill-router, shell-server, browser-server, rdp-server, state | All web technique skills |
+| `ad-discovery-agent` | AD discovery | skill-router, shell-server, rdp-server, state | ad-discovery |
+| `ad-exploit-agent` | AD operations | skill-router, shell-server, rdp-server, state | All AD technique skills |
+| `password-spray-agent` | Credential spraying | skill-router, shell-server, rdp-server, state | password-spraying (haiku) |
+| `linux-privesc-agent` | Linux privesc | skill-router, shell-server, state | Linux discovery + privesc + container escapes |
+| `windows-privesc-agent` | Windows privesc | skill-router, shell-server, rdp-server, state | Windows discovery + privesc |
+| `evasion-agent` | AV/EDR bypass | skill-router, shell-server, rdp-server, state | av-edr-evasion |
+| `credential-cracking-agent` | Credential recovery | skill-router, state | credential-cracking (haiku, local-only) |
+| `research-agent` | Deep analysis | skill-router, shell-server, state | unknown-vector-analysis (opus) |
 
-Each invocation: agent loads one skill via `get_skill()`, executes methodology, saves evidence, and returns findings. The orchestrator parses the return summary, records state changes via the state-writer MCP, and makes the next routing decision. All agents use state-interim for mid-run writes of critical discoveries (credentials, vulns, pivots, blocked). The orchestrator deduplicates interim writes against return summaries.
+Each invocation: agent loads one skill via `get_skill()`, executes methodology, saves evidence, and returns findings. The orchestrator parses the return summary and makes the next routing decision. All agents and the orchestrator share the same state MCP server with full read/write access. Deduplication is handled at the database level.
 
 **Inline fallback**: If subagents aren't installed, the orchestrator **DOES NOT** load skills inline via `get_skill()` in the main thread. STOP and have the operator fix the issue. Skills are only loaded inline when explicitly requested by the operator.
 
@@ -66,21 +95,24 @@ Agent source files live in `agents/` (version controlled), installed to `~/.clau
 | skill-router | `tools/skill-router/` | Semantic skill discovery and loading (ChromaDB + embeddings) |
 | nmap-server | `tools/nmap-server/` | Dockerized nmap scanning with input validation |
 | shell-server | `tools/shell-server/` | TCP listener, reverse shell, local interactive process manager, privileged Docker execution |
-| state-reader | `tools/state-server/` | Read-only engagement state queries (retained for fallback) |
-| state-interim | `tools/state-server/` | Read + 5 add-only writes (all agents) |
-| state-writer | `tools/state-server/` | Full engagement state management (orchestrator only) |
+| state | `tools/state-server/` | Full read/write engagement state (all agents + orchestrator) |
 | browser-server | `tools/browser-server/` | Headless browser automation (web agents) |
 | rdp-server | `tools/rdp-server/` | Headless RDP automation via aardwolf (windows-privesc-agent) |
-| state-dashboard | `operator/state-dashboard/` | Read-only web dashboard for state.db (operator use, not MCP) |
+| state-viewer | `operator/state-viewer/` | Read-only web dashboard for state.db (operator use, not MCP) |
 
-The state-reader, state-interim, and state-writer are three instances of the same server running in different modes. All agents use state-interim to write critical discoveries (credentials, vulns, pivots, blocked) mid-run. The orchestrator uses state-writer for full read/write access. See each server's `README.md` for tool details.
+The state server runs as a single instance. In the agent teams orchestrator
+(`/red-run-ctf`), all state writes are centralized through the **state-mgr
+teammate** — the sole writer to state.db. Other teammates and the lead send
+structured messages to state-mgr instead of calling write tools directly.
+State reads remain direct (any teammate can call `get_state_summary()`, etc.).
+See the server's `README.md` for tool details.
 
 ### Skill Types
 - **Orchestrator** (`skills/orchestrator/`): Takes a target, runs recon, routes to discovery skills
 - **Recon** (`skills/network/network-recon/`): Host discovery, port scanning, OS fingerprinting — produces a port/service map
 - **Enumeration** (`skills/network/*-enumeration/`): Per-service deep enumeration (SMB, databases, remote access, infrastructure)
 - **Discovery** (`skills/<category>/*-discovery/`): Identifies vulnerabilities, reports findings generically (orchestrator routes to technique skills via `search_skills()`)
-- **Technique** (`skills/<category>/<technique>/`): Exploits a specific vulnerability class
+- **Technique** (`skills/<category>/<technique>/`): Exercises a specific vulnerability class
 
 ### Inter-Skill Routing
 
@@ -110,20 +142,20 @@ engagement/
     └── logs/         # Subagent JSONL transcripts (captured by SubagentStop hook)
 ```
 
-**Orchestrator responsibility:** Creates engagement directory, initializes state.db, manages state via state-writer MCP, parses subagent returns, chains vulns toward impact.
+**Orchestrator responsibility:** Creates engagement directory, initializes state.db, manages state via state MCP, parses subagent returns, chains vulns toward impact.
 
-**Subagent responsibility:** Read state via `get_state_summary()`, save evidence to `engagement/evidence/`, report all findings in return summary. All agents write critical discoveries mid-run via state-interim (credentials, vulns, pivots, blocked). The orchestrator deduplicates interim writes against return summaries.
+**Subagent responsibility:** Read state via `get_state_summary()`, save evidence to `engagement/evidence/`, report all findings in return summary. All agents write directly to state via the state MCP server. Deduplication is handled at the database level.
 
 ### State Management
 
 Engagement state lives in `engagement/state.db` (SQLite, managed by state-server MCP). Tables: targets, ports, credentials, credential_access, access, vulns, pivot_map, blocked, tunnels, state_events.
 
 **Rules:**
-- `get_state_summary()` produces a compact markdown summary (~200 lines) for subagent consumption
-- Subagents call `get_state_summary()` on activation, report findings in their return summary
-- All agents write critical discoveries mid-run via state-interim; each write emits a `state_events` row
-- Orchestrator polls `poll_events()` for real-time visibility, parses returns, deduplicates interim writes
-- Orchestrator uses state summary + pivot map to chain vulns toward impact
+- `get_state_summary()` produces a compact markdown summary (~200 lines) for subagent/teammate consumption
+- Teammates call `get_state_summary()` on activation; state reads are direct (any teammate, any time)
+- **Agent teams (`/red-run-ctf`):** All state writes are centralized through the `state-mgr` teammate. Teammates and the lead send structured `[action]` messages to state-mgr instead of calling write tools directly. state-mgr applies LLM-level dedup, enforces graph coherence, and confirms writes with IDs. DB-level dedup remains as a safety net.
+- **Legacy (`/red-run-legacy`):** All agents write directly to state; each write emits a `state_events` row. Deduplication is at the DB level.
+- Orchestrator polls `poll_events()` for real-time visibility and uses state summary + pivot map to chain vulns toward impact
 
 ## Documentation Rules
 
@@ -151,7 +183,7 @@ red-run/
   CLAUDE.md               # Development instructions (this file)
   install.sh              # Installs orchestrator, agents, MCP servers
   uninstall.sh            # Removes installed skills, agents, MCP data
-  agents/                 # Custom subagent definitions (installed to ~/.claude/agents/)
+  agents/                 # Custom subagent definitions for /red-run-legacy
     network-recon-agent.md
     web-discovery-agent.md
     web-exploit-agent.md
@@ -163,12 +195,30 @@ red-run/
     evasion-agent.md
     credential-cracking-agent.md
     pivoting-agent.md
+  teammates/              # Spawn prompt templates for /red-run-ctf (agent teams)
+    README.md              # Template format and usage docs
+    state-mgr.md           # Centralized state writer, dedup, graph coherence (sonnet)
+    net-enum.md            # Network recon + service enumeration (sonnet)
+    web-enum.md            # Web app discovery (sonnet)
+    web-ops.md             # Web technique execution (sonnet)
+    ad-enum.md             # AD discovery (sonnet)
+    ad-ops.md              # AD technique execution (sonnet)
+    lin-enum.md            # Linux host discovery (sonnet)
+    lin-ops.md             # Linux privesc techniques (sonnet)
+    win-enum.md            # Windows host discovery (sonnet)
+    win-ops.md             # Windows privesc techniques (sonnet)
+    pivot.md               # Tunneling (sonnet, on-demand)
+    bypass.md              # AV/EDR bypass (sonnet, on-demand)
+    spray.md               # Password spraying (haiku, on-demand)
+    recover.md             # Offline hash recovery (haiku, on-demand)
+    research.md            # Deep analysis (opus, on-demand)
   skills/
     _template/SKILL.md    # Canonical template
-    orchestrator/SKILL.md # Master orchestrator (native skill)
-    web/                  # Web application attacks
+    ctf/SKILL.md          # /red-run-ctf (agent teams, default)
+    legacy/SKILL.md       # /red-run-legacy (subagent-based, manual invoke only)
+    web/                  # Web application techniques
     ad/                   # Active Directory
-    credential/           # Credential attacks (password spraying)
+    credential/           # Credential techniques (password spraying)
     privesc/              # Privilege escalation
     network/              # Recon, protocols, pivoting
     evasion/              # AV/EDR bypass
@@ -195,26 +245,18 @@ red-run/
       pyproject.toml       # Python dependencies (mcp, playwright, markdownify)
     state-server/         # MCP server (SQLite engagement state)
       README.md            # Server documentation
-      server.py           # FastMCP server — runs as state-reader (read) or state-writer (read+write)
+      server.py           # FastMCP server — full read/write engagement state
       schema.py           # SQLite schema creation and migration
       pyproject.toml       # Python dependencies (mcp)
     hooks/                # Claude Code hooks
       save-agent-log.sh   # SubagentStop hook — copies JSONL transcripts to engagement/evidence/logs/
       event-watcher.sh    # Background event poller — spawned by orchestrator to watch state_events
   operator/               # Operator-facing tools (run manually, not MCP)
-    agent-dashboard/      # Live multi-pane agent monitoring
-      README.md            # Tool documentation
-      tail-agent.py       # JSONL transcript parser + curses dashboard
-      dashboard.sh        # Wrapper script
-    state-dashboard/      # Read-only web dashboard for state.db
+    state-viewer/      # Read-only web dashboard for state.db
       README.md            # Tool documentation
       server.py           # Stdlib HTTP server — inline HTML dashboard, SSE live updates
       start.sh            # Wrapper script
       generate-token.sh   # Auth token generator for remote access
-    firewall/             # Engagement network firewall (nftables)
-      README.md            # Tool documentation
-      firewall.sh         # Activate firewall with scope targets
-      teardown.sh         # Remove firewall rules
 ```
 
 ## Skill File Format
@@ -263,16 +305,12 @@ The MCP indexer builds embedding documents from these structured fields. `descri
 
 ## Permission Mode
 
-All skills delegate to autonomous agents with `mode: "bypassPermissions"`. Run
-`claude --dangerously-skip-permissions` for full autonomous operation. The
-orchestrator's approval gates (operator confirms every routing decision before
-agent spawn) provide human-in-the-loop control.
-
-## Engagement Firewall (Optional)
-
-An nftables firewall is available in `operator/engagement-firewall/` for
-operators who want OS-level network isolation restricting outbound traffic to
-Anthropic API + scope targets. See `operator/engagement-firewall/README.md`.
+Agent teams works in standard permission mode. Teammate permission requests
+surface to the operator for approval. The orchestrator's approval gates
+(operator confirms every routing decision before task assignment) provide
+human-in-the-loop control. MCP server tools are pre-allowed in
+`.claude/settings.json` to reduce prompt noise for state/skill-router/
+shell-server/nmap/browser/rdp operations.
 
 ## Installation
 
@@ -287,5 +325,5 @@ Anthropic API + scope targets. See `operator/engagement-firewall/README.md`.
 ./uninstall.sh
 ```
 
-The installer puts the orchestrator in `~/.claude/skills/red-run-orchestrator/`, subagents in `~/.claude/agents/`, and sets up MCP servers (skill-router, nmap-server, shell-server, browser-server, state-server). Requires [uv](https://docs.astral.sh/uv/), Docker for nmap, and Playwright for browser automation (Chromium installed automatically).
+The installer puts orchestrators in `~/.claude/skills/red-run-ctf/` and `~/.claude/skills/red-run-legacy/`, subagents in `~/.claude/agents/`, and sets up MCP servers (skill-router, nmap-server, shell-server, browser-server, state-server). Requires [uv](https://docs.astral.sh/uv/), Docker for nmap, and Playwright for browser automation (Chromium installed automatically).
 

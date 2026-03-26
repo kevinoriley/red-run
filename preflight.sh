@@ -472,7 +472,7 @@ check_target_tools() {
     done
 
     # Windows
-    for name in winpeas.exe mimikatz.exe Rubeus.exe; do
+    for name in winpeas.exe mimikatz.exe Rubeus.exe RunasCs.exe; do
         short="${name%%.*}"
         if p=$(find_cmd "$name"); then
             pass "$short" "$p"

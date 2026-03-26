@@ -39,23 +39,23 @@ The database has 10 tables:
 | `ports` | Per-target open ports (1:many from targets) | port, protocol, service, banner |
 | `credentials` | Username/secret pairs | username, secret, secret_type, domain |
 | `credential_access` | Where each credential has been tested | credential_id, target_id, service, works |
-| `access` | Active footholds and sessions | host, access_type, username, privilege |
+| `access` | Active footholds and sessions | ip, access_type, username, privilege, via_credential_id, via_access_id, via_vuln_id |
 | `vulns` | Confirmed vulnerabilities | title, host, vuln_type, severity, status |
 | `pivot_map` | Directed edges — what leads where | source, destination, method, status |
 | `blocked` | Failed techniques with reasons | technique, reason, host, retry |
-| `state_events` | Event log for interim writes | event_type, table_name, row_id, agent |
+| `state_events` | Event log for state writes | event_type, table_name, row_id, agent |
 
 ### Credential types
 
-The `secret_type` field in `credentials` supports: `password`, `ntlm_hash`, `aes_key`, `kerberos_tgt`, `kerberos_tgs`, `ssh_key`, `token`, `certificate`, `other`.
+The `secret_type` field in `credentials` supports: `password`, `ntlm_hash`, `net_ntlm`, `aes_key`, `kerberos_tgt`, `kerberos_tgs`, `dcc2`, `ssh_key`, `token`, `certificate`, `webapp_hash`, `dpapi`, `other`.
 
 ### Vulnerability lifecycle
 
 Vulns have three statuses:
 
 - **found** — Identified but not yet exploited
-- **active** — Currently being exploited
-- **done** — Fully exploited, access obtained
+- **exploited** — Successfully exploited, access obtained
+- **blocked** — Exploitation attempted but failed or not possible
 
 ### Pivot map
 
@@ -68,43 +68,24 @@ ADCS ESC1 on DC01            →  Domain Admin TGT
 
 The orchestrator reads the pivot map to identify unexploited chains and decide which skill to invoke next.
 
-## Three-mode architecture
+## State server architecture
 
-The state-server runs as three MCP instances from the same codebase, each with different write permissions:
+The state-server runs as a single MCP instance with full read/write access for all agents and the orchestrator:
 
 ```mermaid
 graph LR
-    Orch[Orchestrator] -->|full read/write| SW[(state-writer)]
-    Agents[All Agents] -->|read + 5 adds| SI[(state-interim)]
-    SW --> DB[(state.db)]
-    SI --> DB
+    Orch[Orchestrator] -->|read + write| S[(state)]
+    Agents[All Agents] -->|read + write| S
+    S --> DB[(state.db)]
 ```
 
-| Mode | Instance | Agents | Write Access |
-|------|----------|--------|--------------|
-| `read` | state-reader | (retained for fallback) | None — read only |
-| `interim` | state-interim | All agents | 5 add-only tools |
-| `write` | state-writer | Orchestrator only | All read + write + update tools |
+All agents and the orchestrator share the same state server. Deduplication is handled at the database level (UNIQUE constraints and ON CONFLICT clauses).
 
-### Why interim mode exists
-
-Agents run for 5-15 minutes. Without interim writes, credentials captured at minute 2 aren't visible to concurrent agents or the orchestrator until the agent finishes and the orchestrator parses its return summary. Interim mode solves this by letting all agents write critical discoveries immediately — especially important for technique agents that capture hashes or credentials during exploitation.
-
-The five interim tools are all **add-only** (INSERT, never UPDATE):
-
-| Tool | What it records | Why it's actionable |
-|------|----------------|-------------------|
-| `add_credential` | Passwords, hashes, keys, tokens | Orchestrator can route cracking or spray immediately |
-| `add_vuln` | Confirmed vulnerabilities | Orchestrator can route exploitation |
-| `add_pivot` | What leads where | Orchestrator can plan chains |
-| `add_blocked` | Failed techniques | Prevents other agents from retrying |
-| `add_tunnel` | Established tunnels | Orchestrator can route through new network paths |
-
-Target/port/access management and all UPDATE operations remain orchestrator-only to prevent contention.
+Agents write discoveries directly to state so the orchestrator can act on them immediately via the event watcher — without waiting for the agent to finish. This is especially important for technique agents that capture hashes or credentials during exploitation.
 
 ### Concurrency
 
-SQLite WAL mode + `PRAGMA busy_timeout=5000` handles concurrent readers and interim writers safely. Interim agents only INSERT into separate tables, so write conflicts are prevented by the busy timeout.
+SQLite WAL mode + `PRAGMA busy_timeout=5000` handles concurrent readers and writers safely. The busy timeout prevents write conflicts when multiple agents write simultaneously.
 
 ## How state drives chaining
 
@@ -113,7 +94,7 @@ The orchestrator uses state queries to make routing decisions:
 ```
 get_state_summary()           → Full engagement snapshot (~200 lines)
 get_credentials(untested_only=True) → Creds not yet tested everywhere
-get_vulns(status="found")     → Vulns ready to exploit
+get_vulns(status="found")     → Vulns not yet exploited
 get_pivot_map()               → Chains to follow
 get_blocked()                 → Dead ends to avoid
 get_access(active_only=True)  → Current footholds
@@ -131,11 +112,11 @@ Each step is driven by state queries — the orchestrator checks what's known, w
 
 ## Event polling
 
-Each interim write (add_credential, add_vuln, add_pivot, add_blocked) emits a row in the `state_events` table.
+Each state write (add_credential, add_vuln, add_pivot, add_blocked, etc.) emits a row in the `state_events` table.
 
 ### Event watcher (push notification)
 
-When the orchestrator spawns a discovery agent, it also spawns `event-watcher.sh` as a background process. This script is a Python loop that polls `state_events` for new rows. When it detects a change, it exits — and the process termination acts as a push notification to the orchestrator. The orchestrator sees the background process end, checks the database for interim findings, and can route accordingly (e.g., spray newly discovered credentials against other targets).
+When the orchestrator spawns a discovery agent, it also spawns `event-watcher.sh` as a background process. This script is a Python loop that polls `state_events` for new rows. When it detects a change, it exits — and the process termination acts as a push notification to the orchestrator. The orchestrator sees the background process end, checks the database for new findings, and can route accordingly (e.g., spray newly discovered credentials against other targets).
 
 Without this, the orchestrator would have to continuously poll the database itself between agent turns, wasting tokens on repeated `poll_events()` calls that usually return nothing.
 
@@ -148,7 +129,7 @@ The watcher polls every 5 seconds, debounces for 5 seconds after detecting event
 
 ### Direct polling
 
-The orchestrator can also query events directly via the state-writer MCP:
+The orchestrator can also query events directly via the state MCP:
 
 ```
 poll_events(since_id=0)  → Returns new events + cursor for next call
@@ -187,7 +168,7 @@ FROM pivot_map ORDER BY id;
 SELECT technique, host, reason, retry
 FROM blocked ORDER BY id;
 
--- Recent interim events
+-- Recent state events
 SELECT id, event_type, table_name, summary, created_at
 FROM state_events ORDER BY id DESC LIMIT 20;
 ```

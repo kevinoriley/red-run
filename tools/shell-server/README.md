@@ -35,12 +35,22 @@ ligolo-ng) and for daemons needing raw sockets (Responder, mitm6).
 
 ## Usage
 
-The server runs as an MCP server, started automatically by Claude Code via
-`.mcp.json`. To test manually:
+The server runs as a persistent SSE service on `127.0.0.1:8022`. All teammates
+share the same instance — sessions created by one teammate are visible to all.
+
+The server starts automatically via a `SessionStart` hook in
+`.claude/settings.json`. The start script is idempotent — if the server is
+already running, it exits silently.
+
+To start manually (e.g., for debugging):
 
 ```bash
-uv run --directory tools/shell-server python server.py
+bash tools/shell-server/start.sh
 ```
+
+Override port: `SHELL_SSE_PORT=9022 bash tools/shell-server/start.sh`
+
+Claude Code connects via the SSE URL in `.mcp.json` (`http://127.0.0.1:8022/sse`).
 
 ### Reverse shell workflow
 
@@ -64,11 +74,11 @@ Works with any interactive CLI tool: `evil-winrm`, `psexec.py`, `ssh`,
 
 | Tool | Parameters | Description |
 |------|-----------|-------------|
-| `start_listener` | `port` (required), `host` (default `0.0.0.0`), `timeout` (default 300s), `label` (optional) | Start TCP listener, wait for reverse shell |
+| `start_listener` | `port` (required), `host` (default `0.0.0.0`), `timeout` (default 300s), `label` (optional) | Start TCP listener, wait for reverse shell. Auto-detects Windows/Linux from shell prompt. |
 | `start_process` | `command` (required), `label` (optional), `timeout` (default 30s), `privileged` (default false) | Spawn a local interactive process in a persistent PTY |
 | `send_command` | `session_id` (required), `command` (required), `timeout` (default 10s), `expect` (optional regex) | Send command and return output |
 | `read_output` | `session_id` (required), `timeout` (default 2s) | Read buffered output without sending a command |
-| `stabilize_shell` | `session_id` (required), `method` (default `auto`) | Upgrade raw shell to PTY (python3/python2/script) |
+| `stabilize_shell` | `session_id` (required), `method` (default `auto`) | Upgrade raw shell to PTY (python3/python2/script). Skips on Windows (not applicable). |
 | `list_sessions` | (none) | List all listeners and sessions with status |
 | `close_session` | `session_id` (required), `save_transcript` (default true) | Close session, optionally save transcript |
 
@@ -105,10 +115,14 @@ start_process(command="msfconsole -q")
 - `close_session()` runs `docker kill` on the named container before killing the
   process — ensures the container is cleaned up even if SIGTERM to the docker CLI
   doesn't propagate
+- **Orphan cleanup:** On startup, the server finds and kills any running
+  `red-run-*` containers left over from previous MCP sessions (crash, restart,
+  etc.). `list_sessions()` also detects orphans at runtime and warns about them
 
 **Tools in the Docker image:**
 - evil-winrm (Ruby gem)
-- impacket (psexec.py, wmiexec.py, smbexec.py, smbclient.py, mssqlclient.py, etc.)
+- impacket (psexec.py, wmiexec.py, smbexec.py, smbclient.py, mssqlclient.py, dpapi.py, etc.)
+- dpapick3 (DPAPI/CAPI/EFS decryption — handles key containers that impacket dpapi.py can't parse)
 - chisel (TCP/UDP tunnel for pivoting)
 - ligolo-ng proxy (TUN-based pivot proxy)
 - socat (port forwarding)

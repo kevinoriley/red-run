@@ -62,7 +62,7 @@ Call `get_state_summary()` to read current engagement state. Use it to:
 - Leverage existing credentials (e.g., SNMP community strings already found)
 - Check Blocked section for previous failures
 
-**Interim writes** — write critical discoveries immediately via state-interim:
+**State writes** — write critical discoveries immediately:
 - SNMP community string → `add_credential(username="", secret="<community>", secret_type="other", source="SNMP on <host>")`
 - SNMP network interfaces revealing subnets → `add_pivot(source="SNMP on <host>", destination="<subnet>", method="SNMP interface enumeration")`
 - LDAP signing not required → `add_vuln(title="LDAP signing not required on <host>", host="<host>", vuln_type="ldap-signing", severity="medium")`

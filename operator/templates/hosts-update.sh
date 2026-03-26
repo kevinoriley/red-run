@@ -5,8 +5,10 @@ set -euo pipefail
 
 TARGET_IP="FILL_IN"
 
+# Fill in entries as: "IP  hostname1 hostname2"
+# Example: "10.10.10.5  DC01.corp.local corp.local"
 entries=(
-    "$TARGET_IP  FILL_IN_HOSTNAME"
+    "FILL_IN_ENTRIES"
 )
 
 for entry in "${entries[@]}"; do

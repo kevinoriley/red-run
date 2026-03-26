@@ -50,7 +50,7 @@ anonymous access, and known CVE identification. NOT brute force.
 Call `get_state_summary()` on activation. Skip already-enumerated services, use
 known credentials where relevant, check Blocked for previous failures.
 
-**Interim writes** — write critical discoveries immediately via state-interim:
+**State writes** — write critical discoveries immediately:
 - FTP anonymous access → `add_vuln(title="FTP anonymous access on <host>", host="<host>", vuln_type="anonymous-access", severity="medium")`
 - Credentials in FTP files → `add_credential(username=..., secret=..., source="FTP file on <host>")`
 - SSH default creds → `add_credential(username=..., secret=..., source="SSH default creds on <host>")`
@@ -132,7 +132,7 @@ NLA disabled = brute force viable without valid domain creds.
 nmap -p3389 --script rdp-vuln-ms12-020 TARGET_IP
 ```
 Affects Windows 7, Server 2008/2008R2. Pre-auth RCE. If confirmed, write
-interim vuln and return to orchestrator immediately.
+vuln and return to orchestrator immediately.
 
 ## Step 4: VNC (Ports 5900-5910)
 
@@ -141,7 +141,7 @@ nmap -sV -p5900-5910 --script vnc-info,vnc-brute TARGET_IP
 ```
 
 **No-auth check** — if `vnc-info` reports security type 1 (None): full desktop
-access without credentials. Write interim vuln, confirm with `vncviewer TARGET_IP::5900`.
+access without credentials. Write vuln, confirm with `vncviewer TARGET_IP::5900`.
 
 **CVE-2006-2369** — RealVNC 4.1.1 and earlier: auth bypass by requesting
 security type None even when server requires authentication.

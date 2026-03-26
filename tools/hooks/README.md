@@ -30,11 +30,38 @@ are filtered by agent type naming.
 
 **Dependencies:** `jq` for JSON parsing.
 
+### save-teammate-log.sh
+
+TeammateIdle hook that copies teammate JSONL transcripts to
+`engagement/evidence/logs/` and checks for AUP/content filter errors.
+
+**Trigger:** Runs automatically when any agent teams teammate goes idle.
+
+**Behavior:**
+
+1. Reads hook JSON from stdin (`transcript_path`, `session_id`, `teammate_name`)
+2. Checks that transcript file and engagement directory exist — exits silently
+   if not
+3. Copies transcript with filename `{timestamp}-teammate-{name}-{session}.jsonl`
+4. **AUP detection:** Scans the last 200 lines of the transcript for content
+   filter patterns (content_policy, "I cannot assist", flagged request, etc.)
+5. If AUP detected, writes a sentinel file to
+   `engagement/evidence/aup-{teammate}.flag` with timestamp, session ID, and
+   the matching transcript lines
+6. Always exits 0 to never block the teammate
+
+**AUP sentinel files:** The orchestrator should check for
+`engagement/evidence/aup-*.flag` files when a teammate goes silent. If found,
+the teammate's context is poisoned — dismiss and respawn with a clean context
+if needed.
+
+**Dependencies:** `jq` for JSON parsing.
+
 ### event-watcher.sh
 
-Background poller for the `state_events` table in engagement state. Spawned
-by the orchestrator with `run_in_background: true` to get real-time
-notifications when agents write interim findings.
+Background poller for the `state_events` table in engagement state. Legacy
+script for the subagent-based orchestrator (`/red-run-legacy`). The agent
+teams orchestrator (`/red-run-ctf`) uses teammate messages instead.
 
 **Usage:**
 
@@ -48,10 +75,10 @@ bash tools/hooks/event-watcher.sh <cursor> <db_path>
 **Behavior:**
 
 1. Polls `state_events` every 5 seconds for rows with `id > cursor`
-2. When events are detected, waits 5 seconds (debounce) to let the agent
+2. When events are detected, waits 60 seconds (debounce) to let the agent
    finish its batch of writes
 3. Prints all new events as JSON array and exits 0
-4. Times out after 10 minutes with `{"timeout": true, "cursor": N}` to
+4. Times out after 30 minutes with `{"timeout": true, "cursor": N}` to
    prevent zombie watchers
 
 **Dependencies:** `python3` with `sqlite3` stdlib module (no sqlite3 CLI
@@ -67,13 +94,26 @@ The installer sets this up automatically. Example configuration:
   "hooks": {
     "SubagentStop": [
       {
-        "type": "command",
-        "command": "bash /path/to/red-run/tools/hooks/save-agent-log.sh"
+        "matcher": "...",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /path/to/red-run/tools/hooks/save-agent-log.sh"
+          }
+        ]
+      }
+    ],
+    "TeammateIdle": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /path/to/red-run/tools/hooks/save-teammate-log.sh"
+          }
+        ]
       }
     ]
   }
 }
 ```
-
-The event watcher is not a hook — it's a regular background script spawned
-by the orchestrator via Bash `run_in_background`.

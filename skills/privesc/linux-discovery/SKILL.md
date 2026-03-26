@@ -60,15 +60,15 @@ The orchestrator will provide specific guidance or route to a different skill.
 
 ## State Management
 
-Call `get_state_summary()` from the state-interim MCP server to read current
+Call `get_state_summary()` from the state MCP server to read current
 engagement state. Use it to:
 - Skip re-testing targets, parameters, or vulns already confirmed
 - Leverage existing credentials or access for this technique
 - Understand what's been tried and failed (check Blocked section)
 
-### Interim Writes
+### State Writes
 
-Write actionable findings **immediately** via state-interim so the orchestrator
+Write actionable findings **immediately** via state so the orchestrator
 can react in real time (via event watcher) instead of waiting for your full
 return summary. Use these tools as you discover findings:
 
@@ -481,14 +481,14 @@ cat ~/.docker/config.json 2>/dev/null
 ssh-add -l 2>/dev/null
 ```
 
-**STOP — write interim findings NOW.** Before continuing to Step 8, check
+**STOP — write findings NOW.** Before continuing to Step 8, check
 every result above. Any cleartext credentials found in history files, config
 files, database connection strings, or cloud credential files — call
 `add_credential()` NOW, one call per credential. Any password hashes extracted
 from databases — call `add_credential(secret_type="other")` NOW. Any confirmed
 privesc-relevant vulnerability (writable root-owned scripts, exploitable
 services) — call `add_vuln()` NOW. Do not batch these at the end of
-enumeration. The orchestrator's event watcher reacts to interim writes in real
+enumeration. The orchestrator's event watcher reacts to state writes in real
 time — a credential written now can trigger parallel cracking or spray while
 you continue enumerating.
 
@@ -529,7 +529,7 @@ ls -la /var/run/docker.sock 2>/dev/null
 Writable Docker socket → report for container escape / file path abuse.
 Internal services on loopback → investigate for exploitation.
 
-**STOP — write interim findings NOW.** Before continuing to Step 9:
+**STOP — write findings NOW.** Before continuing to Step 9:
 - Additional NIC found via `ip addr` → call `add_pivot()` NOW
 - New hosts from `ip neigh`/ARP table → call `add_pivot()` NOW
 - Exploitable internal-only services on loopback → call `add_vuln()` NOW

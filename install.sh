@@ -50,6 +50,17 @@ run_uv_sync() {
     uv sync --directory "$uv_dir"
 }
 
+# Check if Docker image needs rebuild by comparing Dockerfile hash
+docker_needs_rebuild() {
+    local image=$1 dockerfile=$2
+    [[ "$REBUILD_DOCKER" == true ]] && return 0
+    ! docker image inspect "$image" &>/dev/null && return 0
+    local current_hash stored_hash
+    current_hash=$(sha256sum "$dockerfile" | cut -d' ' -f1)
+    stored_hash=$(docker inspect --format='{{index .Config.Labels "red-run.dockerfile-hash"}}' "$image" 2>/dev/null || echo "")
+    [[ "$current_hash" != "$stored_hash" ]]
+}
+
 SKILLS_SRC="${REPO_DIR}/skills"
 SKILLS_DST="${HOME}/.claude/skills"
 AGENTS_SRC="${REPO_DIR}/agents"
@@ -64,7 +75,8 @@ MCP_RDP_SERVER="${REPO_DIR}/tools/rdp-server"
 
 # Only the orchestrator is installed as a native Claude Code skill.
 # Everything else is served on-demand via the MCP skill-router.
-NATIVE_SKILLS=("orchestrator")
+NATIVE_SKILLS=("ctf")
+INSTALL_LEGACY=false
 
 MODE="symlink"
 REBUILD_DOCKER=false
@@ -72,11 +84,25 @@ for arg in "$@"; do
     case "$arg" in
         --copy) MODE="copy" ;;
         --rebuild) REBUILD_DOCKER=true ;;
+        --legacy) INSTALL_LEGACY=true ;;
     esac
 done
 
+if [[ "$INSTALL_LEGACY" == "false" ]]; then
+    echo -n "Install legacy subagent orchestrator? (N/y) "
+    read -r legacy_answer
+    if [[ "$legacy_answer" =~ ^[Yy] ]]; then
+        INSTALL_LEGACY=true
+    fi
+fi
+
+if [[ "$INSTALL_LEGACY" == "true" ]]; then
+    NATIVE_SKILLS+=("legacy")
+fi
+
 mkdir -p "${SKILLS_DST}" "${AGENTS_DST}"
 
+echo ""
 echo "This may take 5 minutes or more, depending on your connection speed."
 echo ""
 
@@ -129,34 +155,39 @@ for skill_name in "${NATIVE_SKILLS[@]}"; do
     fi
 done
 
-# --- Step 3: Install custom subagents ---
-echo ""
-echo "Installing custom subagents..."
+# --- Step 3: Install custom subagents (legacy only) ---
 agent_count=0
-for agent_file in "${AGENTS_SRC}"/*.md; do
-    [[ -f "$agent_file" ]] || continue
-    agent_basename="$(basename "$agent_file")"
-    dest_file="${AGENTS_DST}/${agent_basename}"
+if [[ "$INSTALL_LEGACY" == "true" ]]; then
+    echo ""
+    echo "Installing custom subagents..."
+    for agent_file in "${AGENTS_SRC}"/*.md; do
+        [[ -f "$agent_file" ]] || continue
+        agent_basename="$(basename "$agent_file")"
+        dest_file="${AGENTS_DST}/${agent_basename}"
 
-    rm -f "$dest_file"
-    if [[ "$MODE" == "symlink" ]]; then
-        ln -s "$agent_file" "$dest_file"
-    else
-        cp "$agent_file" "$dest_file"
-    fi
+        rm -f "$dest_file"
+        if [[ "$MODE" == "symlink" ]]; then
+            ln -s "$agent_file" "$dest_file"
+        else
+            cp "$agent_file" "$dest_file"
+        fi
 
-    echo "  ${agent_basename} -> ${agent_file}"
-    agent_count=$((agent_count + 1))
-done
+        echo "  ${agent_basename} -> ${agent_file}"
+        agent_count=$((agent_count + 1))
+    done
 
-# Validate agent installs
-for agent_file in "${AGENTS_DST}"/*.md; do
-    [[ -f "$agent_file" ]] || continue
-    if [[ ! -r "$agent_file" ]]; then
-        echo "ERROR: Broken agent: ${agent_file}" >&2
-        exit 1
-    fi
-done
+    # Validate agent installs
+    for agent_file in "${AGENTS_DST}"/*.md; do
+        [[ -f "$agent_file" ]] || continue
+        if [[ ! -r "$agent_file" ]]; then
+            echo "ERROR: Broken agent: ${agent_file}" >&2
+            exit 1
+        fi
+    done
+else
+    # Clean up any previously installed agents
+    rm -f "${AGENTS_DST}"/*.md 2>/dev/null
+fi
 
 # --- Step 4: Set up MCP servers ---
 echo ""
@@ -179,11 +210,12 @@ run_uv_sync "nmap-server" "${MCP_NMAP_SERVER}"
 
 # Build Docker image for nmap
 if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
-    if [[ "$REBUILD_DOCKER" == true ]] || ! docker image inspect red-run-nmap:latest &>/dev/null; then
+    if docker_needs_rebuild red-run-nmap:latest "${MCP_NMAP_SERVER}/Dockerfile"; then
+        hash=$(sha256sum "${MCP_NMAP_SERVER}/Dockerfile" | cut -d' ' -f1)
         run_with_spin "nmap-server" "Building Docker image..." \
-            docker build -t red-run-nmap:latest "${MCP_NMAP_SERVER}" --quiet
+            docker build -t red-run-nmap:latest --label "red-run.dockerfile-hash=${hash}" "${MCP_NMAP_SERVER}" --quiet
     else
-        echo "  [nmap-server] Docker image: already exists (use --rebuild to force)"
+        echo "  [nmap-server] Docker image: up to date"
     fi
 else
     echo ""
@@ -197,11 +229,12 @@ run_uv_sync "shell-server" "${MCP_SHELL_SERVER}"
 
 # Build Docker image for shell-server (privileged mode)
 if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
-    if [[ "$REBUILD_DOCKER" == true ]] || ! docker image inspect red-run-shell:latest &>/dev/null; then
+    if docker_needs_rebuild red-run-shell:latest "${MCP_SHELL_SERVER}/Dockerfile"; then
+        hash=$(sha256sum "${MCP_SHELL_SERVER}/Dockerfile" | cut -d' ' -f1)
         run_with_spin "shell-server" "Building Docker image..." \
-            docker build -t red-run-shell:latest "${MCP_SHELL_SERVER}" --quiet
+            docker build -t red-run-shell:latest --label "red-run.dockerfile-hash=${hash}" "${MCP_SHELL_SERVER}" --quiet
     else
-        echo "  [shell-server] Docker image: already exists (use --rebuild to force)"
+        echo "  [shell-server] Docker image: up to date"
     fi
 else
     echo ""
@@ -242,14 +275,34 @@ fi
 # --- Summary ---
 echo ""
 echo "Installed ${native_count} native skill(s) to ${SKILLS_DST}/ (${MODE} mode)"
-echo "Installed ${agent_count} custom subagent(s) to ${AGENTS_DST}/"
+if [[ "$INSTALL_LEGACY" == "true" ]]; then
+    echo "Installed ${agent_count} custom subagent(s) to ${AGENTS_DST}/"
+fi
 echo "63 technique/discovery skills served via MCP skill-router"
 echo "nmap MCP server ready (Dockerized nmap)"
-echo "shell MCP server ready (TCP listener + reverse shell + privileged Docker)"
+echo "shell MCP server ready (SSE on 127.0.0.1:8022 — shared sessions)"
 echo "state MCP server ready (SQLite engagement state)"
 echo "browser MCP server ready (headless Chromium)"
 echo "rdp MCP server ready (headless RDP via aardwolf)"
 if [[ "$config_warnings" -eq 0 ]]; then
     echo ""
-    echo "Done! Start Claude Code from this repo directory to activate."
+    echo "Starting shell-server (SSE on 127.0.0.1:8022)..."
+    bash "${REPO_DIR}/tools/shell-server/start.sh"
+    if ss -tln 2>/dev/null | grep -q ":8022 "; then
+        echo "  shell-server: listening"
+    else
+        echo "  WARNING: shell-server failed to start — run manually:"
+        echo "    bash tools/shell-server/start.sh"
+    fi
+    echo ""
+    echo "Done! Launch with:"
+    echo ""
+    echo "  ./run.sh                # starts shell-server + Claude Code, loads /red-run-ctf"
+    echo "  ./run.sh --lead=legacy  # loads /red-run-legacy instead"
+    echo "  ./run.sh --yolo         # skip permission prompts"
+    echo ""
+    echo "  Send any message (e.g. a target IP) to activate the orchestrator."
+    echo ""
+    echo "  Tip: tmux recommended — agent teams spawn multiple long-running"
+    echo "  teammates that benefit from persistent terminal sessions."
 fi

@@ -19,7 +19,7 @@ DB_DIR = Path(__file__).resolve().parent.parent / ".chromadb"
 
 # Same exclusion rules as indexer.py
 SKIP_DIRS = {"_template"}
-NATIVE_SKILLS = {"orchestrator"}
+NATIVE_SKILLS = {"orchestrator", "ctf", "legacy"}
 
 
 def _get_indexable_skill_names() -> set[str]:

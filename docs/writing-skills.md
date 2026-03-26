@@ -69,7 +69,7 @@ When an engagement directory exists:
 - Save evidence to `engagement/evidence/` with descriptive filenames.
 ```
 
-Skills save evidence files. State writes go through state-interim MCP for critical discoveries — the orchestrator handles full state management.
+Skills save evidence files. State writes go through the state MCP server. Deduplication is at the database level.
 
 #### 3. Scope Boundary
 
@@ -80,13 +80,15 @@ Defines what the skill covers and when to stop. When the skill reaches its scope
 ```markdown
 ## State Management
 
-Call `get_state_summary()` from the state-reader MCP server to read
+Call `get_state_summary()` from the state MCP server to read
 current engagement state.
 ```
 
 Skills read state to avoid re-testing confirmed vulnerabilities, leverage existing credentials, and check what's been tried.
 
-> **State access:** All agents use `state-interim` (read + 5 add-only writes). Skills should include interim write guidance for critical discoveries (credentials, vulns, pivots, blocked items).
+> **State access:** Teammates read state directly via `get_state_summary()`. All writes go through the **state-mgr teammate** via structured `[action]` messages — teammates never call state write tools directly.
+
+> **Technique-vuln linkage:** If a skill produces credentials through an active technique (roasting, dumping, injection, coercion), the teammate must create a vuln record for the technique before reporting the credential with `via_vuln_id`. State-mgr enforces this gate.
 
 #### 5. Tool Discovery
 
@@ -186,7 +188,7 @@ Skills reference other skills using **bold names** in their escalation sections:
 
 The orchestrator uses these bold references to pick the next skill and agent.
 
-> **Agents never self-route:** Skills must STOP and return when they hit a routing instruction. The agent must not load or execute another skill — the orchestrator decides what runs next.
+> **Teammates never self-route:** Skills must STOP and return when they hit a routing instruction. The teammate must not load or execute another skill — the lead decides what runs next.
 
 ### Discovery Skill Maintenance
 

@@ -20,7 +20,7 @@ SKILLS_DIR = REPO_ROOT / "skills"
 
 # Skills excluded from indexing (same rules as indexer.py)
 SKIP_DIRS = {"_template"}
-NATIVE_SKILLS = {"orchestrator"}
+NATIVE_SKILLS = {"orchestrator", "ctf", "legacy"}
 
 # Sections required for all indexed skills (except retrospective)
 REQUIRED_SECTIONS = {

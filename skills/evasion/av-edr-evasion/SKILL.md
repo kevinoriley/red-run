@@ -67,7 +67,7 @@ documented below.
 
 ## State Management
 
-Call `get_state_summary()` from the state-reader MCP server to read current
+Call `get_state_summary()` from the state MCP server to read current
 engagement state. Use it to:
 - Understand what was blocked and on which target
 - Check existing access methods for payload delivery

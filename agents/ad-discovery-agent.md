@@ -16,7 +16,7 @@ mcpServers:
   - skill-router
   - shell-server
   - rdp-server
-  - state-interim
+  - state
 model: sonnet
 ---
 
@@ -75,7 +75,7 @@ signatures).
    - bloodyAD: `-k`
 
 Read credentials and domain context from `get_state_summary()` via the
-state-interim MCP. If the orchestrator provides credentials in the Task prompt,
+state MCP. If the orchestrator provides credentials in the Task prompt,
 use those. Always check the engagement state (via `get_state_summary()`) for
 existing ccache files or TGTs before requesting new ones.
 
@@ -173,7 +173,7 @@ and exits, it goes through Bash — even if it runs for minutes.
 
 ## Engagement Files
 
-- **State**: Call `get_state_summary()` from the state-interim MCP to read
+- **State**: Call `get_state_summary()` from the state MCP to read
   current engagement state.
 - **Interim writes**: Write findings immediately when actionable by a
   different agent type: credentials → `add_credential()`, vulns → `add_vuln()`,

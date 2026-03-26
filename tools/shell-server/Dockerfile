@@ -17,8 +17,8 @@ RUN gem install evil-winrm --no-document
 # Responder — LLMNR/NBT-NS/mDNS poisoner
 RUN git clone --depth 1 https://github.com/lgandx/Responder.git /opt/Responder
 
-# Python pentest tools (impacket, mitm6)
-RUN pip install --no-cache-dir impacket==${IMPACKET_VERSION} mitm6 aioquic
+# Python pentest tools (impacket, mitm6, dpapick3)
+RUN pip install --no-cache-dir impacket==${IMPACKET_VERSION} mitm6 aioquic dpapick3
 
 # Chisel — TCP/UDP tunnel over HTTP (pivoting)
 RUN curl -fsSL "https://github.com/jpillora/chisel/releases/download/v${CHISEL_VERSION}/chisel_${CHISEL_VERSION}_linux_amd64.gz" \

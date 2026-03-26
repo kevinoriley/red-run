@@ -8,17 +8,17 @@ red-run has two layers: a **platform layer** that provides capabilities, and a *
 
 The platform is the set of reusable components that any engagement can use:
 
-- **[Agents](agents.md)** — 10 domain-specific subagents (web, AD, privesc, network, evasion, cracking)
-- **[Skills](skills-reference.md)** — 67 technique-specific methodology files loaded on demand
+- **[Teammates](teammates.md)** — persistent domain teammates (enum/ops pairs) spawned by the orchestrator
+- **[Skills](skills-reference.md)** — 67+ technique-specific methodology files loaded on demand
 - **[MCP servers](mcp-servers.md)** — nmap scanning, shell management, browser automation, skill routing, state tracking
 - **[Engagement state](engagement-state.md)** — SQLite database tracking targets, credentials, access, vulns, and pivot paths
-- **[Dashboard](dashboard-and-monitoring.md)** — Real-time multi-agent monitoring
+- **[Dashboard](dashboard-and-monitoring.md)** — Real-time engagement monitoring with access chain graph
 
-These components don't change based on engagement type. A CTF lab and a client engagement use the same agents, skills, and servers.
+These components don't change based on engagement type. A CTF lab and a client engagement use the same teammates, skills, and servers.
 
 ### Strategy layer (swappable)
 
-The **orchestrator** is the strategy layer. It reads engagement state, decides which skill to invoke next, spawns the right agent, and records findings. The current orchestrator (`skills/orchestrator/SKILL.md`) is a **CTF/lab orchestrator** — it chains aggressively, auto-routes to exploits, and treats everything in scope as fair game.
+The **orchestrator** is the strategy layer. It reads engagement state, decides which skill to invoke next, spawns the right agent, and records findings. The default orchestrator (`/red-run-ctf`) is a **CTF/lab orchestrator** — it chains aggressively, routes to technique skills, and treats everything in scope as fair game.
 
 A different orchestrator could use the same platform with different decision logic:
 
@@ -36,82 +36,77 @@ The orchestrator contract is simple: read state, pick a skill, spawn an agent, r
 
 ## Prompt Architecture
 
-red-run controls agent behavior through layered prompts, not code. Each layer adds specificity:
+red-run controls behavior through layered prompts, not code. Each layer adds specificity:
 
 | Layer | File | Loaded When | What It Provides |
 |-------|------|-------------|-----------------|
 | **Project** | `CLAUDE.md` | Every conversation | Architecture rules, conventions, skill routing mandate |
-| **Agent** | `agents/<name>.md` | Agent spawns | Role definition, MCP server access, tool usage rules, scope constraints, return format |
-| **Skill** | `skills/<cat>/<name>/SKILL.md` | `get_skill()` call | Technique methodology, payloads, troubleshooting, inter-skill routing |
-| **Dynamic** | Orchestrator's task prompt | Each agent invocation | Target info, state summary, previous findings, engagement-specific context |
+| **Teammate** | `teammates/<name>.md` | Teammate spawns | Role definition, scope constraints, hard stops, state-mgr messaging protocol |
+| **Skill** | `skills/<cat>/<name>/SKILL.md` | `get_skill()` call | Technique methodology, payloads, troubleshooting |
+| **Dynamic** | Lead's task assignment | Each task | Target info, credential/access IDs, engagement-specific context |
 
-The project layer sets universal rules (always load skills via `get_skill()`, never write state directly). The agent layer constrains to a domain (web-exploit-agent only does web techniques, uses state-interim for critical mid-run writes). The skill layer provides technique depth (exact payloads, variant detection, troubleshooting). The dynamic prompt carries live engagement state (what's been found, what to focus on, what's failed) plus operator-controlled runtime context such as the selected Burp listener for web work.
+The project layer sets universal rules. The teammate layer constrains to a domain (web-enum only discovers, web-ops only executes techniques). The skill layer provides technique depth. The dynamic prompt carries live context from the lead.
 
-Understanding this stack is essential for extending red-run — whether writing new orchestrators, agents, or skills.
+## Teammate → MCP Access
 
-## Agent → MCP Access
+All teammates inherit MCP servers from the lead session. In agent teams, MCP servers are shared — a shell session created by one teammate is visible to all others (shell-server runs as a shared SSE service).
 
-Each agent has access to specific MCP servers. All agents use **state-interim** (read + 5 add-only writes) so they can record critical discoveries mid-run.
+| Teammate | Domain | MCP Servers Used |
+|----------|--------|------------------|
+| state-mgr | State management | state (sole writer) |
+| net-enum | Network recon | skill-router, nmap-server, shell-server, state |
+| web-enum | Web discovery | skill-router, shell-server, browser-server, state |
+| web-ops | Web techniques | skill-router, shell-server, browser-server, state |
+| ad-enum | AD discovery | skill-router, shell-server, state |
+| ad-ops | AD techniques | skill-router, shell-server, state |
+| lin-enum / lin-ops | Linux host | skill-router, shell-server, state |
+| win-enum / win-ops | Windows host | skill-router, shell-server, rdp-server, state |
+| pivot, bypass, spray, recover, research | On-demand specialists | varies |
 
-| Agent | MCP Servers |
-|-------|-------------|
-| orchestrator | skill-router, state-reader, state-writer |
-| network-recon | skill-router, nmap-server, shell-server, state-interim |
-| web-discovery | skill-router, shell-server, browser-server, state-interim |
-| web-exploit | skill-router, shell-server, browser-server, state-interim |
-| ad-discovery | skill-router, shell-server, state-interim |
-| ad-exploit | skill-router, shell-server, state-interim |
-| linux-privesc | skill-router, shell-server, state-interim |
-| windows-privesc | skill-router, shell-server, state-interim |
-| password-spray | skill-router, shell-server, state-interim |
-| evasion | skill-router, shell-server, state-interim |
-| credential-cracking | skill-router, state-interim |
+All state writes are centralized through **state-mgr** — the sole writer to state.db. Other teammates message state-mgr with structured `[action]` messages instead of calling write tools directly. State reads are direct (any teammate, any time).
 
-See [Agents](agents.md) for the full agent model and routing table.
+## Task Lifecycle
 
-## Skill Invocation Lifecycle
+What happens when the lead assigns a task to a teammate:
 
-What happens inside a single agent invocation:
-
-<p align="center">
-  <img src="../lifecycle.svg" width="700" alt="Skill invocation lifecycle: Orchestrator → Agent execution → Orchestrator post-skill, with loop">
-</p>
-
-1. **Orchestrator picks** a skill and the correct agent from the routing table
-2. **Agent loads** the skill via `get_skill()` from the skill-router MCP
-3. **Agent reads state** via `get_state_summary()` to understand current engagement context
-4. **Agent executes** the skill methodology step by step, saving evidence along the way
-5. **Agent returns** a structured summary of findings (vulns, creds, access, pivots, blocked items)
-6. **Hook captures** the full JSONL transcript to `engagement/evidence/logs/`
-7. **Orchestrator records** state changes and decides what to invoke next
+1. **Lead assigns** a skill and target to a specific teammate via messaging
+2. **Teammate loads** the skill via `get_skill()` from the skill-router MCP
+3. **Teammate reads state** via `get_state_summary()` for current context
+4. **Teammate executes** the skill methodology, messaging state-mgr with findings as they occur
+5. **Teammate messages lead** with a structured summary on completion
+6. **Lead runs post-task checkpoint** — audits state, updates vuln statuses, routes next actions
+7. **Hard stops fire** when applicable (new access → Execution Achieved, new creds → credential enum, etc.)
 
 ## Engagement Directory
 
 ```
 engagement/
+├── config.yaml       # Operator preferences (scan type, proxy, spray, cracking)
 ├── scope.md          # Target scope, credentials, rules of engagement
 ├── state.db          # SQLite engagement state (managed via state-server MCP)
-├── dump-state.sh     # Export state.db as markdown (from operator/templates/)
+├── dump-state.sh     # Export state.db as markdown
+├── web-proxy.json    # Machine-readable web proxy config
+├── web-proxy.sh      # Shell env vars for web proxy
 └── evidence/         # Saved output, responses, dumps
-    └── logs/         # Subagent JSONL transcripts
+    └── logs/         # Teammate JSONL transcripts
 ```
 
-The orchestrator creates this directory and maintains `scope.md` and all state writes. Agents only write to `evidence/` — raw tool output, screenshots, dumps. The `SubagentStop` hook automatically copies agent transcripts to `evidence/logs/`.
+The lead creates this directory during engagement setup. State-mgr is the sole writer to state.db. Teammates write evidence files to `evidence/`. The `TeammateIdle` hook captures teammate transcripts to `evidence/logs/`.
 
 See [Engagement State](engagement-state.md) for the database schema and [Running an Engagement](running-an-engagement.md) for the full workflow.
 
 ## Data Flow
 
-State flows through the system in one direction:
+State flows through the system via state-mgr:
 
-1. **Agents discover** findings (vulns, credentials, pivot paths) during skill execution
-2. **All agents** write critical discoveries mid-run via state-interim (5 add-only tools)
-3. **All agents** report findings in their return summary
-4. **Orchestrator parses** returns, deduplicates interim writes, records remaining state changes via state-writer
-5. **Orchestrator reads** updated state summary to make the next routing decision
-6. **Next agent** reads state via `get_state_summary()` on activation — sees everything discovered so far
+1. **Teammates discover** findings during skill execution
+2. **Teammates message state-mgr** with structured `[action]` messages (not direct DB writes)
+3. **State-mgr applies** LLM-level dedup, validates provenance links, writes to state.db
+4. **State-mgr notifies lead** of new findings (`[new-vuln]`, `[new-cred]`, `[new-access]`)
+5. **Lead runs decision logic** — routes findings to the right teammate
+6. **Any teammate** can read state directly via `get_state_summary()` at any time
 
-This ensures the orchestrator is the single source of truth for engagement state, while discovery agents can share urgent findings (like new credentials) with concurrent agents without waiting for their run to complete.
+Centralizing writes through state-mgr provides dedup judgment that DB-level constraints can't (e.g., "LFI file read" vs "LFI via absolute path" are the same vuln with different wording). It also enforces the technique-vuln linkage rule: credentials from active techniques must have a corresponding vuln record.
 
 ## Privilege Boundaries
 
@@ -129,7 +124,7 @@ The tools that require elevated privileges are isolated behind MCP servers and D
 
 The pattern is consistent: if something needs elevated privilege, either it runs inside a container that has the specific capability, or the orchestrator stops and asks the operator to do it. Claude never runs `sudo` itself.
 
-This also means red-run works without adding Claude Code to sudoers or `NOPASSWD` entries for privilege escalation on the *host*. The attack surface is the target, not your machine. Note that `--dangerously-skip-permissions` (yolo mode) is still **required** for subagent execution — see [Installation](installation.md).
+This also means red-run works without adding Claude Code to sudoers or `NOPASSWD` entries for privilege escalation on the *host*. The attack surface is the target, not your machine.
 
 You can enforce this at the Claude Code level by adding `Bash(sudo *)` to the deny list in `~/.claude/settings.json`. This makes Claude Code refuse any Bash command starting with `sudo`, regardless of what an agent or skill tries to do:
 

@@ -17,7 +17,7 @@ mcpServers:
   - skill-router
   - shell-server
   - rdp-server
-  - state-interim
+  - state
 model: sonnet
 ---
 
@@ -34,7 +34,7 @@ what to do. You have one task per invocation.
 2. Call `get_skill("pivoting-tunneling")` from the MCP skill-router to load the
    pivoting skill. This is the **only** skill-router call you make — do not call `search_skills()` or `list_skills()`.
 3. Follow the loaded skill's methodology to establish and verify the tunnel.
-4. Record the tunnel via state-interim MCP and return a clear summary.
+4. Record the tunnel via state MCP and return a clear summary.
 5. Return to the orchestrator. Do NOT scan or enumerate the internal network.
 
 ## Target Knowledge Ethics
@@ -145,7 +145,7 @@ for any command that touches the network).
 
 ## Engagement Files
 
-- **State**: Call `get_state_summary()` from the state-interim MCP to read
+- **State**: Call `get_state_summary()` from the state MCP to read
   current engagement state. Check for existing tunnels, access records, and
   credentials for the pivot host.
 - **Interim writes**: Record the tunnel immediately after verification:
@@ -210,10 +210,10 @@ The orchestrator reads this summary and makes the next routing decision.
 MCP tool names use **hyphens**, not underscores. Getting this wrong causes
 "tool not found" errors:
 
-- **Correct**: `mcp__state-interim__get_state_summary`, `mcp__shell-server__start_listener`
-- **Wrong**: `mcp__state_interim__get_state_summary`, `mcp__shell_server__start_listener`
+- **Correct**: `mcp__state__get_state_summary`, `mcp__shell-server__start_listener`
+- **Wrong**: `mcp__state___get_state_summary` (extra underscore), `mcp__shell_server__start_listener`
 
-The server name portion uses hyphens (`state-interim`, `shell-server`,
+The server name portion uses hyphens (`state`, `shell-server`,
 `skill-router`). The tool name portion uses underscores (`get_state_summary`,
 `start_listener`).
 
