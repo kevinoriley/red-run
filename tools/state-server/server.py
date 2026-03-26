@@ -1382,6 +1382,8 @@ def create_server() -> FastMCP:
     def update_access(
         id: int,
         active: bool | None = None,
+        username: str = "",
+        access_type: str = "",
         privilege: str = "",
         notes: str = "",
         via_credential_id: int | None = None,
@@ -1399,6 +1401,8 @@ def create_server() -> FastMCP:
         Args:
             id: Access record ID.
             active: Set to false to mark access as revoked.
+            username: Fix username post-creation.
+            access_type: Fix access type post-creation (shell, rdp, ssh, smb, etc.).
             privilege: Updated privilege level.
             notes: Additional notes.
             via_credential_id: Fix credential provenance post-creation.
@@ -1413,6 +1417,12 @@ def create_server() -> FastMCP:
             if active is not None:
                 updates.append("active = ?")
                 params.append(1 if active else 0)
+            if username:
+                updates.append("username = ?")
+                params.append(username)
+            if access_type:
+                updates.append("access_type = ?")
+                params.append(access_type)
             if privilege:
                 updates.append("privilege = ?")
                 params.append(privilege)

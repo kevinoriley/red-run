@@ -221,6 +221,15 @@ class TestAccessCrud:
         match = [a for a in all_access if a["id"] == access["access_id"]]
         assert match[0]["via_vuln_id"] == vuln["vuln_id"]
 
+    def test_update_access_username(self, srv):
+        call(srv, "add_target", ip="10.10.10.50")
+        data = call_json(srv, "add_access", ip="10.10.10.50", privilege="user")
+        # Username was blank — patch it
+        call(srv, "update_access", id=data["access_id"], username="jboss")
+        all_access = json.loads(call(srv, "get_access"))
+        match = [a for a in all_access if a["id"] == data["access_id"]]
+        assert match[0]["username"] == "jboss"
+
     def test_revoke_access(self, srv):
         call(srv, "add_target", ip="10.10.10.11")
         data = call_json(srv, "add_access", ip="10.10.10.11", username="user1")
