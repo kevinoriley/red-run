@@ -4,79 +4,6 @@ All notable changes to red-run will be documented in this file. Format follows [
 
 ## Unreleased
 
-### Added
-
-- **Shell-server SSE transport** — migrated from stdio to SSE
-  (`127.0.0.1:8022`) for shared sessions across all teammates. Sessions
-  created by one teammate are visible to all others.
-- **`run.sh` launcher** — starts shell-server, launches Claude Code,
-  auto-triggers orchestrator skill. Flags: `--yolo` (skip permissions),
-  `--lead=ctf|legacy` (orchestrator selection). Prompts to keep/clear/restart
-  stale sessions on startup.
-- **SessionStart hook** — auto-starts shell-server as fallback when `run.sh`
-  isn't used.
-- **Windows platform auto-detection** in shell-server — detects OS from prompt
-  probe, uses `&` separator for Windows cmd.exe (fixes marker parsing for
-  echoed commands), skips PTY stabilization on Windows.
-- **Reverse shell payloads** in `start_listener` response — one per platform
-  with auto-resolved callback IP. Windows payload includes AMSI bypass and
-  `Start-Process` detach (survives parent exit).
-- **Shell-server HTTP endpoints** — `GET /status` and `POST /clear` for
-  session management outside MCP protocol.
-- **HARD STOP — VULN CONFIRMED** on all 5 enum templates — stops, writes to
-  state, messages lead, does not exercise.
-- **HARD STOP — SHELL** on web-enum — scope enforcement for accidental shell
-  access.
-- **Execution Achieved hard stop** — highest priority, triggers immediate host
-  enum + AD enum on any new access. Does not wait for current tasks.
-- **Technique-vuln linkage** — credentials from active techniques require a
-  vuln record. State-mgr rejects `[add-cred]` without `via_vuln_id` when
-  source implies a technique. Orchestrator post-task checkpoint audits.
-- **Per-user credential context enumeration** — new credential triggers a
-  dedicated `net-enum-<username>` teammate to enumerate what that identity can
-  access across all paths (SMB, WinRM, SSH, RDP, MSSQL, web apps, RunasCs).
-- **EFS decryption methodology** in credential-dumping skill — decision tree:
-  DefaultPassword check → schtasks bypass → RDP fallback → manual DPAPI.
-- **dpapick3** in shell-server Docker image for CAPI/EFS key container
-  decryption.
-- **Shell-server connectivity check** in all 7 teammate templates — message
-  lead and stop if MCP unavailable.
-- **RunasCs.exe** added to preflight check and dependencies.
-- **All MCP servers** added to permission allow list in settings.json.
-- **1M context for sonnet teammates** — `ANTHROPIC_DEFAULT_SONNET_MODEL` set
-  to `claude-sonnet-4-6[1m]` in project settings so all sonnet teammates
-  spawn with extended context by default.
-- **Source-code-review skill** — security-focused static analysis for source
-  obtained during engagements (git dumps, LFI, shares). Research teammate
-  uses Explore subagents for bulk parsing, opus for security judgment.
-- **Killboard** — scorecard for tracking CTF results at `docs/killboard.md`.
-- **Auto-rebuild Docker images** — install.sh compares Dockerfile SHA-256
-  hash against image label, rebuilds automatically when Dockerfile changes.
-- **`via_vuln_id` on access table** (schema v18) — access records can now
-  link back to the vulnerability that produced them (e.g., RCE vuln → shell,
-  privesc vuln → root). Chain BFS follows vuln→access edges, rendering full
-  provenance graphs. `add_access` and `update_access` accept `via_vuln_id`.
-
-### Changed
-
-- **`state-dashboard` renamed to `state-viewer`** — folder, scripts, docs,
-  and CI references all updated. Consistent naming: state-viewer (dashboard),
-  state-server (MCP), state-mgr (teammate).
-
-- **Exploited vulns render as action nodes** in dashboard graph — single node
-  instead of vuln + vuln-action pair. Direct edges to credentials from
-  exploited vulns (no redundant synthetic action nodes).
-- **Operator approval required for ALL tasks** — discovery tasks no longer
-  auto-dispatch. Every teammate spawn and task assignment goes through
-  `AskUserQuestion`.
-- **Standard permission mode** — `--dangerously-skip-permissions` no longer
-  required. Teammate permission requests surface to operator. References
-  removed from README, CLAUDE.md, and docs.
-- **Win-enum web interaction banned** — no curl, no browser, report URLs to
-  lead.
-- **AD enum trigger broadened** — any domain user on any domain-joined host
-  triggers AD enumeration, not just DCs.
-
 ## [2.0.0] — 2026-03-23
 
 Architectural shift from ephemeral subagents to Claude Code agent teams. New
@@ -169,6 +96,56 @@ sanitization pass to reduce AUP filter sensitivity.
 - **Multi-orchestrator architecture** — orchestrator variants coexist in the
   same repo sharing state.db, MCP servers, and technique skills. Planned:
   `/red-run-notouch` (DLP-safe), `/red-run-train` (training mode).
+- **Shell-server SSE transport** — migrated from stdio to SSE
+  (`127.0.0.1:8022`) for shared sessions across all teammates. Sessions
+  created by one teammate are visible to all others.
+- **`run.sh` launcher** — starts shell-server, launches Claude Code,
+  auto-triggers orchestrator skill. Flags: `--yolo` (skip permissions),
+  `--lead=ctf|legacy` (orchestrator selection). Prompts to keep/clear/restart
+  stale sessions on startup.
+- **SessionStart hook** — auto-starts shell-server as fallback when `run.sh`
+  isn't used.
+- **Windows platform auto-detection** in shell-server — detects OS from prompt
+  probe, uses `&` separator for Windows cmd.exe (fixes marker parsing for
+  echoed commands), skips PTY stabilization on Windows.
+- **Reverse shell payloads** in `start_listener` response — one per platform
+  with auto-resolved callback IP. Windows payload includes AMSI bypass and
+  `Start-Process` detach (survives parent exit).
+- **Shell-server HTTP endpoints** — `GET /status` and `POST /clear` for
+  session management outside MCP protocol.
+- **HARD STOP — VULN CONFIRMED** on all 5 enum templates — stops, writes to
+  state, messages lead, does not exercise.
+- **HARD STOP — SHELL** on web-enum — scope enforcement for accidental shell
+  access.
+- **Execution Achieved hard stop** — highest priority, triggers immediate host
+  enum + AD enum on any new access. Does not wait for current tasks.
+- **Technique-vuln linkage** — credentials from active techniques require a
+  vuln record. State-mgr rejects `[add-cred]` without `via_vuln_id` when
+  source implies a technique. Orchestrator post-task checkpoint audits.
+- **Per-user credential context enumeration** — new credential triggers a
+  dedicated `net-enum-<username>` teammate to enumerate what that identity can
+  access across all paths (SMB, WinRM, SSH, RDP, MSSQL, web apps, RunasCs).
+- **EFS decryption methodology** in credential-dumping skill — decision tree:
+  DefaultPassword check → schtasks bypass → RDP fallback → manual DPAPI.
+- **dpapick3** in shell-server Docker image for CAPI/EFS key container
+  decryption.
+- **Shell-server connectivity check** in all 7 teammate templates — message
+  lead and stop if MCP unavailable.
+- **RunasCs.exe** added to preflight check and dependencies.
+- **All MCP servers** added to permission allow list in settings.json.
+- **1M context for sonnet teammates** — `ANTHROPIC_DEFAULT_SONNET_MODEL` set
+  to `claude-sonnet-4-6[1m]` in project settings so all sonnet teammates
+  spawn with extended context by default.
+- **Source-code-review skill** — security-focused static analysis for source
+  obtained during engagements (git dumps, LFI, shares). Research teammate
+  uses Explore subagents for bulk parsing, opus for security judgment.
+- **Killboard** — scorecard for tracking CTF results at `docs/killboard.md`.
+- **Auto-rebuild Docker images** — install.sh compares Dockerfile SHA-256
+  hash against image label, rebuilds automatically when Dockerfile changes.
+- **`via_vuln_id` on access table** (schema v18) — access records can now
+  link back to the vulnerability that produced them (e.g., RCE vuln → shell,
+  privesc vuln → root). Chain BFS follows vuln→access edges, rendering full
+  provenance graphs. `add_access` and `update_access` accept `via_vuln_id`.
 
 ### Changed
 
@@ -192,6 +169,22 @@ sanitization pass to reduce AUP filter sensitivity.
 - **Dashboard docs rewritten** for agent teams as primary visibility mechanism.
 - **README restructured** — orchestrators table, removed skills table (lives
   in docs), removed agentsee references.
+- **`state-dashboard` renamed to `state-viewer`** — folder, scripts, docs,
+  and CI references all updated. Consistent naming: state-viewer (dashboard),
+  state-server (MCP), state-mgr (teammate).
+- **Exploited vulns render as action nodes** in dashboard graph — single node
+  instead of vuln + vuln-action pair. Direct edges to credentials from
+  exploited vulns (no redundant synthetic action nodes).
+- **Operator approval required for ALL tasks** — discovery tasks no longer
+  auto-dispatch. Every teammate spawn and task assignment goes through
+  `AskUserQuestion`.
+- **Standard permission mode** — `--dangerously-skip-permissions` no longer
+  required. Teammate permission requests surface to operator. References
+  removed from README, CLAUDE.md, and docs.
+- **Win-enum web interaction banned** — no curl, no browser, report URLs to
+  lead.
+- **AD enum trigger broadened** — any domain user on any domain-joined host
+  triggers AD enumeration, not just DCs.
 
 ### Fixed
 
