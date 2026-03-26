@@ -5,7 +5,7 @@
 # machine) and requires the token to access any page or API endpoint.
 #
 # Usage:
-#   bash operator/state-dashboard/generate-token.sh
+#   bash operator/state-viewer/generate-token.sh
 #   # Token is written to ~/.config/red-run/viewer-token
 #   # Copy the printed token and paste it into the browser login page.
 

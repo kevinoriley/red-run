@@ -436,7 +436,7 @@ After initialization, remind the operator to start the state dashboard:
 ```
 Tip: For real-time engagement visualization, start the state dashboard
 in a separate terminal:
-  bash operator/state-dashboard/start.sh
+  bash operator/state-viewer/start.sh
 Then open http://127.0.0.1:8099 to see the access chain graph, targets,
 credentials, and assessment progress update live as teammates work.
 ```

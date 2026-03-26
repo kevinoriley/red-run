@@ -226,7 +226,7 @@ When tools fail on hostname resolution, the orchestrator follows the same hostna
 **State dashboard** — real-time web dashboard showing the access chain graph, targets, credentials, and assessment progress. Start in a separate terminal:
 
 ```bash
-bash operator/state-dashboard/start.sh
+bash operator/state-viewer/start.sh
 ```
 
 Teammates communicate findings directly via peer-to-peer messaging and write to state.db for durability. No event watcher needed — teammate messages are the notification channel.

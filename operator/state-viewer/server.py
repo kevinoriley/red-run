@@ -9,10 +9,10 @@ Authentication:
     and requires the token to access any endpoint.  Without a token file,
     it binds to 127.0.0.1 only (no auth needed).
 
-    Generate a token:  bash operator/state-dashboard/generate-token.sh
+    Generate a token:  bash operator/state-viewer/generate-token.sh
 
 Usage:
-    python3 operator/state-dashboard/server.py [--port 8099] [--db engagement/state.db]
+    python3 operator/state-viewer/server.py [--port 8099] [--db engagement/state.db]
 """
 
 from __future__ import annotations
@@ -1345,7 +1345,7 @@ def main():
 
     ThreadingHTTPServer.allow_reuse_address = True
     server = ThreadingHTTPServer((bind_addr, args.port), Handler)
-    print(f"state-dashboard: http://{bind_addr}:{args.port}")
+    print(f"state-viewer: http://{bind_addr}:{args.port}")
     if bind_addr == "0.0.0.0":
         for ip in _get_local_ips():
             print(f"  remote:     http://{ip}:{args.port}")

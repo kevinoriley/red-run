@@ -98,7 +98,7 @@ Agent source files live in `agents/` (version controlled), installed to `~/.clau
 | state | `tools/state-server/` | Full read/write engagement state (all agents + orchestrator) |
 | browser-server | `tools/browser-server/` | Headless browser automation (web agents) |
 | rdp-server | `tools/rdp-server/` | Headless RDP automation via aardwolf (windows-privesc-agent) |
-| state-dashboard | `operator/state-dashboard/` | Read-only web dashboard for state.db (operator use, not MCP) |
+| state-viewer | `operator/state-viewer/` | Read-only web dashboard for state.db (operator use, not MCP) |
 
 The state server runs as a single instance. In the agent teams orchestrator
 (`/red-run-ctf`), all state writes are centralized through the **state-mgr
@@ -252,7 +252,7 @@ red-run/
       save-agent-log.sh   # SubagentStop hook — copies JSONL transcripts to engagement/evidence/logs/
       event-watcher.sh    # Background event poller — spawned by orchestrator to watch state_events
   operator/               # Operator-facing tools (run manually, not MCP)
-    state-dashboard/      # Read-only web dashboard for state.db
+    state-viewer/      # Read-only web dashboard for state.db
       README.md            # Tool documentation
       server.py           # Stdlib HTTP server — inline HTML dashboard, SSE live updates
       start.sh            # Wrapper script

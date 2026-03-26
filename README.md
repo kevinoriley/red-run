@@ -91,7 +91,7 @@ Agent teams works in standard permission mode — teammate permission requests s
 Browser-based read-only dashboard for `engagement/state.db` with an access chain graph and live SSE updates:
 
 ```bash
-bash operator/state-dashboard/start.sh
+bash operator/state-viewer/start.sh
 ```
 
 Open `http://127.0.0.1:8099` to see targets, credentials, access, vulns, pivots, tunnels, blocked techniques, and an event timeline — all updating in real-time as teammates work. The access chain graph supports fullscreen mode for detailed review.
@@ -99,10 +99,10 @@ Open `http://127.0.0.1:8099` to see targets, credentials, access, vulns, pivots,
 To access from a host machine (when red-run is in a VM), generate an auth token — the server will bind to `0.0.0.0` and require the token to access any page:
 
 ```bash
-bash operator/state-dashboard/generate-token.sh
+bash operator/state-viewer/generate-token.sh
 ```
 
-See `operator/state-dashboard/README.md` for details.
+See `operator/state-viewer/README.md` for details.
 
 ## Running
 
