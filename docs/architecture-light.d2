@@ -3,76 +3,76 @@ direction: down
 classes: {
   lead: {
     style: {
-      fill: "#553c9a"
-      stroke: "#e9d8fd"
-      font-color: "#e9d8fd"
+      fill: "#e9d8fd"
+      stroke: "#553c9a"
+      font-color: "#553c9a"
       border-radius: 8
       bold: true
     }
   }
   enum: {
     style: {
-      fill: "#2b6cb0"
-      stroke: "#bee3f8"
-      font-color: "#bee3f8"
+      fill: "#bee3f8"
+      stroke: "#2b6cb0"
+      font-color: "#1a365d"
       border-radius: 5
     }
   }
   ops: {
     style: {
-      fill: "#9b2c2c"
-      stroke: "#fed7d7"
-      font-color: "#fed7d7"
+      fill: "#fed7d7"
+      stroke: "#9b2c2c"
+      font-color: "#742a2a"
       border-radius: 5
     }
   }
   ondemand: {
     style: {
-      fill: "#4a5568"
-      stroke: "#e2e8f0"
-      font-color: "#e2e8f0"
+      fill: "#e2e8f0"
+      stroke: "#4a5568"
+      font-color: "#2d3748"
       border-radius: 5
       stroke-dash: 3
     }
   }
   infra: {
     style: {
-      fill: "#744210"
-      stroke: "#fefcbf"
-      font-color: "#fefcbf"
+      fill: "#fefcbf"
+      stroke: "#744210"
+      font-color: "#744210"
       border-radius: 5
     }
   }
   mcp: {
     style: {
-      fill: "#2f855a"
-      stroke: "#c6f6d5"
-      font-color: "#c6f6d5"
+      fill: "#c6f6d5"
+      stroke: "#2f855a"
+      font-color: "#22543d"
       border-radius: 5
     }
   }
   container: {
     style: {
-      fill: "#1a202c"
-      stroke: "#4a5568"
-      font-color: "#a0aec0"
+      fill: "#f7fafc"
+      stroke: "#a0aec0"
+      font-color: "#2d3748"
       border-radius: 8
     }
   }
   skills-box: {
     style: {
-      fill: "#1a202c"
+      fill: "#ebf4ff"
       stroke: "#3182ce"
-      font-color: "#bee3f8"
+      font-color: "#2a4365"
       border-radius: 8
       stroke-dash: 3
     }
   }
   skill: {
     style: {
-      fill: "#2a4365"
-      stroke: "#bee3f8"
-      font-color: "#bee3f8"
+      fill: "#bee3f8"
+      stroke: "#3182ce"
+      font-color: "#2a4365"
       border-radius: 5
     }
   }
@@ -82,9 +82,9 @@ classes: {
 
 operator: Operator {
   style: {
-    fill: "#553c9a"
-    stroke: "#e9d8fd"
-    font-color: "#e9d8fd"
+    fill: "#e9d8fd"
+    stroke: "#553c9a"
+    font-color: "#553c9a"
     border-radius: 10
     bold: true
   }
@@ -96,10 +96,10 @@ state-mgr: state-mgr {class: infra}
 state-db: state.db {class: infra; shape: cylinder}
 state-viewer: state-viewer {class: infra}
 
-operator -> lead: "targets · approval" {style.stroke: "#e9d8fd"}
-lead -> state-mgr: "messages" {style.stroke: "#fefcbf"; style.stroke-dash: 3}
-state-mgr -> state-db: "writes" {style.stroke: "#fefcbf"}
-state-db -> state-viewer: "SSE" {style.stroke: "#fefcbf"; style.stroke-dash: 3}
+operator -> lead: "targets · approval" {style.stroke: "#553c9a"; style.font-color: "#553c9a"}
+lead -> state-mgr: "messages" {style.stroke: "#744210"; style.stroke-dash: 3; style.font-color: "#744210"}
+state-mgr -> state-db: "writes" {style.stroke: "#744210"; style.font-color: "#744210"}
+state-db -> state-viewer: "SSE" {style.stroke: "#744210"; style.stroke-dash: 3; style.font-color: "#744210"}
 
 # ===== ROW 2: TEAMMATES =====
 
@@ -109,7 +109,7 @@ teammates: Teammates {
   enum: Enumeration {
     style.fill: transparent
     style.stroke: transparent
-    style.font-color: "#bee3f8"
+    style.font-color: "#1a365d"
     grid-columns: 5
     grid-gap: 6
 
@@ -123,7 +123,7 @@ teammates: Teammates {
   ops: Operations {
     style.fill: transparent
     style.stroke: transparent
-    style.font-color: "#fed7d7"
+    style.font-color: "#742a2a"
     grid-columns: 4
     grid-gap: 6
 
@@ -136,7 +136,7 @@ teammates: Teammates {
   ondemand: On-demand {
     style.fill: transparent
     style.stroke: transparent
-    style.font-color: "#e2e8f0"
+    style.font-color: "#2d3748"
     grid-columns: 5
     grid-gap: 6
 
@@ -148,8 +148,10 @@ teammates: Teammates {
   }
 }
 
-lead -> teammates: "spawn · assign" {style.stroke: "#e9d8fd"; style.stroke-dash: 3}
-operator -> teammates: "direct control" {style.stroke: "#e9d8fd"; style.stroke-dash: 3}
+lead -> teammates: "spawn · assign" {style.stroke: "#553c9a"; style.stroke-dash: 3; style.font-color: "#553c9a"}
+operator -> teammates: "direct control" {style.stroke: "#553c9a"; style.stroke-dash: 3; style.font-color: "#553c9a"}
+teammates -> lead: "findings" {style.stroke: "#553c9a"; style.stroke-dash: 3; style.font-color: "#553c9a"}
+teammates -> state-mgr: "[action] writes" {style.stroke: "#744210"; style.stroke-dash: 3; style.font-color: "#744210"}
 
 # ===== ROW 3: MCP SERVERS =====
 
@@ -165,9 +167,7 @@ mcp: MCP Servers {
   skill-router {class: mcp}
 }
 
-teammates -> lead: "findings" {style.stroke: "#e9d8fd"; style.stroke-dash: 3}
-teammates -> state-mgr: "[action] writes" {style.stroke: "#fefcbf"; style.stroke-dash: 3}
-teammates -> mcp: "tool calls" {style.stroke: "#c6f6d5"; style.stroke-dash: 3}
+teammates -> mcp: "tool calls" {style.stroke: "#2f855a"; style.stroke-dash: 3; style.font-color: "#22543d"}
 
 # ===== ROW 4: SKILLS =====
 
@@ -185,4 +185,4 @@ skills: Skills {
   research {class: skill}
 }
 
-mcp -> skills: "skill-router loads" {style.stroke: "#c6f6d5"; style.stroke-dash: 3}
+mcp -> skills: "skill-router loads" {style.stroke: "#2f855a"; style.stroke-dash: 3; style.font-color: "#22543d"}

@@ -75,7 +75,7 @@ What happens when the lead assigns a task to a teammate:
 4. **Teammate executes** the skill methodology, messaging state-mgr with findings as they occur
 5. **Teammate messages lead** with a structured summary on completion
 6. **Lead runs post-task checkpoint** — audits state, updates vuln statuses, routes next actions
-7. **Hard stops fire** when applicable (new access → Execution Achieved, new creds → credential enum, etc.)
+7. **Hard stops fire** when applicable (new access → execution achieved, new creds → credential enum, etc.)
 
 ## Engagement Directory
 
@@ -120,8 +120,6 @@ The tools that require elevated privileges are isolated behind MCP servers and D
 | Responder, mitm6, tcpdump | shell-server's `privileged=True` runs commands in the `red-run-shell` Docker container with `NET_RAW`/`NET_ADMIN` capabilities | These daemons need raw sockets for poisoning/sniffing, but the privilege stays inside the container |
 | `/etc/hosts` changes | Orchestrator hits a **hard stop** — presents the hostnames and asks the operator to add them manually | DNS resolution changes affect the entire system, not just the engagement |
 | Clock skew correction | Orchestrator hits a **hard stop** — shows the required `ntpdate` or `faketime` command for the operator to run | System clock changes affect every process on the machine |
-| Outbound network access | Optional engagement firewall (`operator/engagement-firewall/`) blocks all outbound except Anthropic API + scope targets via nftables | Internet access from the attackbox could leak engagement data or trigger non-scope traffic |
-
 The pattern is consistent: if something needs elevated privilege, either it runs inside a container that has the specific capability, or the orchestrator stops and asks the operator to do it. Claude never runs `sudo` itself.
 
 This also means red-run works without adding Claude Code to sudoers or `NOPASSWD` entries for privilege escalation on the *host*. The attack surface is the target, not your machine.
@@ -139,21 +137,3 @@ You can enforce this at the Claude Code level by adding `Bash(sudo *)` to the de
 ```
 
 This comes from the [Trail of Bits Claude Code hardening guide](https://blog.trailofbits.com/2025/07/10/securing-claude-code/), which has other useful deny rules for destructive commands (`rm -rf`, `git push --force`, `dd`, etc.). See [Installation](installation.md) for the recommended setup.
-
-## Network Isolation (Optional)
-
-An optional nftables firewall is available in `operator/engagement-firewall/` for operators who want OS-level network isolation. When activated, it restricts outbound traffic:
-
-| Allowed | Why |
-|---------|-----|
-| Loopback (`lo`) | MCP servers, local listeners, inter-process communication |
-| Established/related | Return traffic for accepted connections |
-| DNS (system resolver) | Name resolution for scope targets |
-| Anthropic API (`160.79.104.0/23`, `2607:6bc0::/48`) | Claude Code functionality |
-| Scope targets (operator-defined) | Engagement targets only |
-
-Everything else is dropped. This prevents agents from reaching the internet — no tool downloads, no data exfiltration, no out-of-scope traffic.
-
-The firewall is a static nftables ruleset. The operator edits the scope array and runs with sudo. Targets can be added live without restarting. See `operator/engagement-firewall/README.md` for setup.
-
-Anthropic API IPs are published at the [Anthropic IP addresses page](https://docs.anthropic.com/en/api/ip-addresses) and are stable ("will not change without notice").

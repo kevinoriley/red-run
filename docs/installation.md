@@ -82,10 +82,6 @@ red-run is [designed so Claude never needs sudo](architecture.md#privilege-bound
 
 The `Bash(sudo *)` rule makes Claude Code refuse any Bash command starting with `sudo`. The other rules block common destructive commands. See the [Trail of Bits Claude Code hardening guide](https://blog.trailofbits.com/2025/07/10/securing-claude-code/) for the full recommended configuration.
 
-## Engagement firewall (optional)
-
-An nftables firewall is available in `operator/engagement-firewall/` for operators who want OS-level network isolation. It restricts outbound traffic to Anthropic API endpoints and in-scope targets. See `operator/engagement-firewall/README.md` for setup and live target additions.
-
 ## Running
 
 Launch from the red-run repo directory:
