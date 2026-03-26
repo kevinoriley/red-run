@@ -9,7 +9,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-SCHEMA_VERSION = 17
+SCHEMA_VERSION = 18
 
 SCHEMA_SQL = """\
 PRAGMA journal_mode=WAL;
@@ -97,6 +97,7 @@ CREATE TABLE IF NOT EXISTS access (
     session_ref   TEXT NOT NULL DEFAULT '',
     via_credential_id INTEGER REFERENCES credentials(id) ON DELETE SET NULL,
     via_access_id INTEGER REFERENCES access(id) ON DELETE SET NULL,
+    via_vuln_id   INTEGER REFERENCES vulns(id) ON DELETE SET NULL,
     technique_id  TEXT NOT NULL DEFAULT '',
     in_graph     INTEGER NOT NULL DEFAULT 1,
     chain_order   INTEGER NOT NULL DEFAULT 0,
@@ -383,6 +384,17 @@ def _migrate_v3_to_v4(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_v17_to_v18(conn: sqlite3.Connection) -> None:
+    """Migrate schema from v17 to v18: add via_vuln_id to access."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(access)").fetchall()]
+    if "via_vuln_id" not in cols:
+        conn.execute(
+            "ALTER TABLE access ADD COLUMN via_vuln_id INTEGER "
+            "REFERENCES vulns(id) ON DELETE SET NULL"
+        )
+    conn.commit()
+
+
 def _migrate_v16_to_v17(conn: sqlite3.Connection) -> None:
     """Migrate schema from v16 to v17: add via_credential_id to vulns."""
     cols = [r[1] for r in conn.execute("PRAGMA table_info(vulns)").fetchall()]
@@ -563,6 +575,8 @@ def init_db(db_path: str | Path) -> sqlite3.Connection:
             _migrate_v15_to_v16(conn)
         if current_version <= 16:
             _migrate_v16_to_v17(conn)
+        if current_version <= 17:
+            _migrate_v17_to_v18(conn)
 
     conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     conn.commit()

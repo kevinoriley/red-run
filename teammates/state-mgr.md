@@ -34,10 +34,10 @@ Pure state management.
 [update-cred] id=<N> cracked=true secret=<plaintext> via_vuln_id=<M>
 
 [add-access] ip=<ip> method=<method> user=<user> level=<user|admin|root|system>
-  via_credential_id=<N> via_access_id=<M>
+  via_credential_id=<N> via_access_id=<M> via_vuln_id=<V>
 
 [update-access] id=<N> status=<active|lost> notes="<details>"
-  via_credential_id=<M> via_access_id=<M> technique_id=<T> in_graph=<0|1>
+  via_credential_id=<M> via_access_id=<M> via_vuln_id=<V> technique_id=<T> in_graph=<0|1>
 
 [add-port] ip=<ip> port=<N> proto=<tcp|udp> service=<svc> version="<ver>"
 
@@ -237,8 +237,8 @@ update_target(ip, hostname, os, role, notes)
 add_port(ip, port, protocol, service, banner)
 add_credential(username, secret, secret_type, domain, source, via_access_id, via_vuln_id, discovered_by)
 update_credential(id, cracked, secret, notes, via_vuln_id, in_graph)
-add_access(ip, access_type, username, privilege, method, via_credential_id, via_access_id, discovered_by)
-update_access(id, active, privilege, notes, via_credential_id, via_access_id, technique_id, in_graph)
+add_access(ip, access_type, username, privilege, method, via_credential_id, via_access_id, via_vuln_id, discovered_by)
+update_access(id, active, privilege, notes, via_credential_id, via_access_id, via_vuln_id, technique_id, in_graph)
 add_vuln(title, ip, vuln_type, severity, details, status, via_access_id, via_credential_id, discovered_by)
 update_vuln(id, status, severity, details, in_graph, via_access_id, via_credential_id, technique_id)
 add_pivot(source, destination, method, status, discovered_by)

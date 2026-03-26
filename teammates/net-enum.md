@@ -70,7 +70,7 @@ All state writes go through state-mgr. Send structured messages:
 [add-port] ip=<ip> port=<N> proto=tcp service=<svc>
 [add-vuln] ip=<ip> title="<title>" vuln_type=<type> severity=<sev> via_access_id=<N> details="<details>"
 [add-cred] username=<user> secret=<secret> secret_type=<type> source="<source>" via_access_id=<N>
-[add-access] ip=<ip> method=<method> user=<user> level=<level> via_credential_id=<N>
+[add-access] ip=<ip> method=<method> user=<user> level=<level> via_credential_id=<N> via_vuln_id=<V>
 [add-blocked] ip=<ip> technique="<name>" reason="<why>" retry=<no|later|with_context>
 [add-pivot] from_ip=<ip> to_subnet=<cidr> pivot_type="<type>"
 [add-target] ip=<ip> hostname=<host> os="<os>"

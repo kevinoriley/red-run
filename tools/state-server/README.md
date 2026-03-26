@@ -113,8 +113,8 @@ writer, contention is minimal.
 | `add_credential` | `username`, `secret`, `secret_type`, `domain`, `source` | Record a credential (deduplicates on username+type+secret) |
 | `update_credential` | `id` (required), `cracked`, `secret`, `notes`, `via_vuln_id`, `in_graph` | Update credential (e.g., mark hash as cracked, hide superseded hash from graph) |
 | `test_credential` | `credential_id`, `ip`, `service`, `works` (all required) | Record whether a credential works against a target/service |
-| `add_access` | `ip` (required), `access_type`, `username`, `privilege`, `method`, `via_credential_id` | Record a new foothold on a target (chain provenance via credential) |
-| `update_access` | `id` (required), `active`, `privilege`, `notes` | Update access record (e.g., revoke). Restores pruned sibling vulns on revocation |
+| `add_access` | `ip` (required), `access_type`, `username`, `privilege`, `method`, `via_credential_id`, `via_access_id`, `via_vuln_id` | Record a new foothold on a target (chain provenance via credential, access, or vuln) |
+| `update_access` | `id` (required), `active`, `privilege`, `notes`, `via_credential_id`, `via_access_id`, `via_vuln_id` | Update access record (e.g., revoke, fix provenance). Restores pruned sibling vulns on revocation |
 | `add_vuln` | `title` (required), `ip` (required), `vuln_type`, `severity`, `details`, `via_access_id`, `via_credential_id` | Record a vulnerability (deduplicates on target+title) |
 | `update_vuln` | `id` (required), `status`, `severity`, `details`, `in_graph` | Update vulnerability status (found/exploited/blocked). Auto-prunes sibling found vulns on exploit, restores on block |
 | `add_pivot` | `source`, `destination` (required), `method`, `status` | Record a pivot path |
@@ -141,7 +141,7 @@ The database has 10 tables:
 | `tunnels` | Active tunnels — type, pivot host, target subnet, endpoints, proxychains requirement |
 | `state_events` | Event log for all writes — enables real-time polling |
 
-Schema versioning uses `PRAGMA user_version` for future migrations. Current version: 17.
+Schema versioning uses `PRAGMA user_version` for future migrations. Current version: 18.
 
 ## Data
 

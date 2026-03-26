@@ -287,7 +287,7 @@ When a teammate messages that a task is complete:
    mid-task findings, but the lead ensures completeness here):
    - [add-target] / [add-port] for new hosts/ports
    - [add-cred] with via_access_id, via_vuln_id for provenance
-   - [add-access] with via_credential_id, via_access_id for chain links
+   - [add-access] with via_credential_id, via_access_id, via_vuln_id for chain links
    - [add-vuln] with via_access_id for confirmed vulns
    - [add-pivot] for new paths
    - [add-blocked] for failed techniques (see retry policy)

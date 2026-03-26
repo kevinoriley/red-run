@@ -596,7 +596,8 @@ def create_server() -> FastMCP:
                 r["id"]: dict(r)
                 for r in conn.execute(
                     "SELECT a.id, a.username, a.access_type, a.privilege, "
-                    "a.method, a.via_credential_id, a.via_access_id, a.active, "
+                    "a.method, a.via_credential_id, a.via_access_id, "
+                    "a.via_vuln_id, a.active, "
                     "t.ip FROM access a JOIN targets t ON a.target_id = t.id"
                 ).fetchall()
             }
@@ -634,6 +635,31 @@ def create_server() -> FastMCP:
                     if a.get("via_credential_id") == cid:
                         add_access(a["id"], depth + 1, "credential", cid)
 
+            visited_vulns: set[int] = set()
+            vulns_by_id = {v["id"]: v for v in vulns}
+
+            def add_vuln(vid: int, depth: int, via_type: str = "", via_id: int = 0):
+                nonlocal step_num
+                if vid in visited_vulns:
+                    return
+                visited_vulns.add(vid)
+                v = vulns_by_id[vid]
+                step_num += 1
+                steps.append({
+                    "step": step_num, "type": "vuln", "id": vid,
+                    "label": f"{v['title']} [{v['severity']}]",
+                    "depth": depth, "status": v["status"],
+                    **({"via": {"type": via_type, "id": via_id}} if via_type else {}),
+                })
+                # Follow: access gained by exploiting this vuln
+                for a in accesses.values():
+                    if a.get("via_vuln_id") == vid:
+                        add_access(a["id"], depth + 1, "vuln", vid)
+                # Follow: credentials captured via this vuln
+                for c in creds.values():
+                    if c.get("via_vuln_id") == vid:
+                        add_cred(c["id"], depth + 1, "vuln", vid)
+
             def add_access(aid: int, depth: int, via_type: str = "", via_id: int = 0):
                 nonlocal step_num
                 if aid in visited_access:
@@ -658,24 +684,31 @@ def create_server() -> FastMCP:
                         add_access(a2["id"], depth + 1, "access", aid)
                 # Follow: vulns found via this access
                 for v in vulns:
-                    if v.get("via_access_id") == aid:
-                        step_num += 1
-                        steps.append({
-                            "step": step_num, "type": "vuln", "id": v["id"],
-                            "label": f"{v['title']} [{v['severity']}]",
-                            "depth": depth + 1, "status": v["status"],
-                            "via": {"type": "access", "id": aid},
-                        })
+                    if v.get("via_access_id") == aid and v["id"] not in visited_vulns:
+                        add_vuln(v["id"], depth + 1, "access", aid)
 
-            # Root credentials: no via_access_id (provided/initial)
+            # Root credentials: no via_access_id and no via_vuln_id (provided/initial)
             for cid, c in creds.items():
-                if not c.get("via_access_id"):
+                if not c.get("via_access_id") and not c.get("via_vuln_id"):
                     add_cred(cid, 0)
 
-            # Root accesses: no via_credential_id and no via_access_id
+            # Root accesses: no via_credential_id, no via_access_id, no via_vuln_id
             for aid, a in accesses.items():
-                if not a.get("via_credential_id") and not a.get("via_access_id"):
+                if (not a.get("via_credential_id") and not a.get("via_access_id")
+                        and not a.get("via_vuln_id")):
                     add_access(aid, 0)
+
+            # Root vulns: no via_access_id (unauthenticated/recon-discovered)
+            # that have downstream links (access or creds via_vuln_id)
+            for vid, v in vulns_by_id.items():
+                if vid not in visited_vulns and not v.get("via_access_id"):
+                    # Only add as root if it has downstream links
+                    has_downstream = (
+                        any(a.get("via_vuln_id") == vid for a in accesses.values())
+                        or any(c.get("via_vuln_id") == vid for c in creds.values())
+                    )
+                    if has_downstream:
+                        add_vuln(vid, 0)
 
             # Orphans: records not reached by BFS
             orphan_creds = [
@@ -686,10 +719,14 @@ def create_server() -> FastMCP:
                 {"type": "access", "id": aid, "label": f"{a['username']}@{a['ip']}"}
                 for aid, a in accesses.items() if aid not in visited_access
             ]
+            orphan_vulns = [
+                {"type": "vuln", "id": vid, "label": f"{v['title']} [{v['severity']}]"}
+                for vid, v in vulns_by_id.items() if vid not in visited_vulns
+            ]
 
             return json.dumps({
                 "chain": steps,
-                "orphans": orphan_creds + orphan_access,
+                "orphans": orphan_creds + orphan_access + orphan_vulns,
             }, indent=2)
 
     @mcp.tool()
@@ -1184,6 +1221,7 @@ def create_server() -> FastMCP:
         session_ref: str = "",
         via_credential_id: int | None = None,
         via_access_id: int | None = None,
+        via_vuln_id: int | None = None,
         technique_id: str = "",
         chain_order: int = 0,
         discovered_by: str = "",
@@ -1204,6 +1242,8 @@ def create_server() -> FastMCP:
                               (for chain provenance). None = no credential used.
             via_access_id: Access ID this was escalated from (for privesc
                           chains on the same host). None = initial access.
+            via_vuln_id: Vuln ID that was exploited to gain this access
+                        (for chain provenance). None = no specific vuln.
             technique_id: ATT&CK technique ID (e.g., "T1021.006" for WinRM).
                          Empty = fill in later during reporting.
             chain_order: Flow graph level (0 = auto-order from provenance).
@@ -1224,9 +1264,9 @@ def create_server() -> FastMCP:
             cursor = conn.execute(
                 "INSERT INTO access "
                 "(target_id, access_type, username, privilege, method, "
-                "session_ref, via_credential_id, via_access_id, technique_id, "
-                "chain_order, discovered_by, notes) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "session_ref, via_credential_id, via_access_id, via_vuln_id, "
+                "technique_id, chain_order, discovered_by, notes) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     target_id,
                     access_type,
@@ -1236,6 +1276,7 @@ def create_server() -> FastMCP:
                     session_ref,
                     via_credential_id,
                     via_access_id,
+                    via_vuln_id,
                     technique_id,
                     chain_order,
                     discovered_by,
@@ -1267,6 +1308,7 @@ def create_server() -> FastMCP:
         notes: str = "",
         via_credential_id: int | None = None,
         via_access_id: int | None = None,
+        via_vuln_id: int | None = None,
         technique_id: str = "",
         in_graph: int | None = None,
     ) -> str:
@@ -1283,6 +1325,7 @@ def create_server() -> FastMCP:
             notes: Additional notes.
             via_credential_id: Fix credential provenance post-creation.
             via_access_id: Fix access chain provenance post-creation.
+            via_vuln_id: Fix vuln provenance post-creation.
             technique_id: Set ATT&CK technique ID.
             in_graph: Override graph visibility (1=show, 0=hide).
         """
@@ -1304,6 +1347,9 @@ def create_server() -> FastMCP:
             if via_access_id is not None:
                 updates.append("via_access_id = ?")
                 params.append(via_access_id)
+            if via_vuln_id is not None:
+                updates.append("via_vuln_id = ?")
+                params.append(via_vuln_id)
             if technique_id:
                 updates.append("technique_id = ?")
                 params.append(technique_id)
