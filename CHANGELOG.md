@@ -2,6 +2,26 @@
 
 All notable changes to red-run will be documented in this file. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.0.2] — 2026-03-27
+
+### Fixed
+
+- Teammates spawned as ephemeral subagents instead of persistent agent teams
+  members — orchestrator now calls `TeamCreate` at engagement start and passes
+  `team_name="red-run"` on every `Agent` spawn
+- Sonnet 1M context override removed from project settings due to rate limit
+  issues — teammates now spawn as Sonnet 200k by default (opt-in to 1M via
+  `ANTHROPIC_DEFAULT_SONNET_MODEL` in `.claude/settings.json` env block)
+
+### Changed
+
+- Orchestrator uses `TaskCreate`/`TaskUpdate` for task coordination alongside
+  `SendMessage`
+- Teammate shutdown uses `shutdown_request` protocol; engagement close calls
+  `TeamDelete`
+- Documented teammate idle state as normal behavior (not an error)
+- Added versioning policy and mandatory changelog rule to CLAUDE.md
+
 ## [2.0.1] — 2026-03-26
 
 ### Fixed

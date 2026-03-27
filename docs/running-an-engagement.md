@@ -13,7 +13,7 @@ Trigger the orchestrator with a target:
 ```
 /red-run-ctf 10.10.10.5
 /red-run-ctf 192.168.1.0/24
-/red-run-ctf school.flight.htb
+/red-run-ctf 10.10.10.5
 ```
 
 Use the `/red-run-ctf` slash command followed by your target(s). Natural language triggers have been removed to reduce AUP filter sensitivity.

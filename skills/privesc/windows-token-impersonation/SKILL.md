@@ -78,7 +78,7 @@ privilege (proceed to Step 1).
 
 ### Method 1: PowerShell Remoting to localhost (most common)
 
-WinRM must be enabled (default on Server editions, common in HTB/OSCP labs).
+WinRM must be enabled (default on Server editions, common in lab environments).
 This runs commands as the target user on the same host.
 
 ```powershell

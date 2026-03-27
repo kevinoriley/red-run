@@ -43,7 +43,10 @@ and technique skills. Each variant uses a different execution model.
 
 **`/red-run-ctf`** uses Claude Code agent teams. Requires
 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in env or `.claude/settings.json`.
-Teammate spawn templates live in `teammates/` — see `teammates/README.md`.
+The orchestrator calls `TeamCreate(team_name="red-run")` at engagement start,
+then spawns teammates via `Agent` with `team_name="red-run"`. Most teammates
+spawn as Sonnet 200k by default. Teammate spawn templates live in
+`teammates/` — see `teammates/README.md`.
 
 **`/red-run-legacy`** is the original subagent-based orchestrator. Agent
 definitions live in `agents/`. Invoke with `/red-run-legacy` if needed.
@@ -54,11 +57,12 @@ skills. An engagement started with one can be resumed with the other.
 ## Architecture
 
 The default **orchestrator** (`/red-run-ctf`) uses Claude Code agent teams.
-The lead session runs the orchestrator skill, spawns persistent domain
-teammates, assigns tasks, and chains vulnerabilities. Teammates communicate
-via peer-to-peer messaging and write to state.db for durability. All technique
-skills (67 discovery + technique skills) are served on-demand via the **MCP
-skill-router**.
+The lead session runs the orchestrator skill, creates a team via `TeamCreate`,
+spawns persistent domain teammates via `Agent` with `team_name`, assigns tasks
+via `TaskCreate`/`TaskUpdate`, and chains vulnerabilities. Teammates communicate
+via peer-to-peer messaging (`SendMessage`) and write to state.db for durability.
+All technique skills (67 discovery + technique skills) are served on-demand via
+the **MCP skill-router**.
 
 The legacy orchestrator (`/red-run-legacy`) uses ephemeral subagents — each
 handles one skill per invocation and returns. See `agents/` for definitions.
@@ -174,6 +178,26 @@ when making changes.
 
 **When modifying a tool server:** If you change tools, parameters, behavior, or
 dependencies in a `tools/*/` server, update its `README.md` in the same commit.
+
+**Changelog is mandatory.** Every release branch must update `CHANGELOG.md`
+before merging. Add entries under the new version heading following
+[Keep a Changelog](https://keepachangelog.com/) format.
+
+## Versioning
+
+red-run has no compiled releases — it's installed via `install.sh` which
+symlinks (or copies) skills, agents, and MCP servers into `~/.claude/`. Git
+tags mark release points.
+
+**Semver:** `MAJOR.MINOR.PATCH`
+- **MAJOR** — breaking changes (schema migrations, renamed slash commands,
+  removed features, changed teammate/agent APIs that require re-install)
+- **MINOR** — new features (new skills, new MCP tools, new teammate templates,
+  dashboard features) that are backwards-compatible
+- **PATCH** — bug fixes, doc updates, prompt improvements, config changes
+
+**Release branches:** `patch/X.Y.Z-<description>` for patch releases,
+`release/X.Y.0-<description>` for minor/major. Tag on merge to main.
 
 ## Directory Layout
 

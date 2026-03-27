@@ -6,10 +6,12 @@ or agent definitions — they're prompt templates.
 
 ## How they work
 
-1. Orchestrator decides to spawn a teammate (e.g., web vuln found → need web-ops)
-2. Orchestrator reads `teammates/web-ops.md` via the Read tool
-3. Orchestrator creates a teammate using the template content as the spawn prompt
-4. Teammate inherits the lead's MCP servers, permissions, and CLAUDE.md
+1. Orchestrator calls `TeamCreate(team_name="red-run")` once per session
+2. Orchestrator decides to spawn a teammate (e.g., web vuln found → need web-ops)
+3. Orchestrator reads `teammates/web-ops.md` via the Read tool
+4. Orchestrator spawns via `Agent(prompt=<template>, name="web-ops", team_name="red-run")`
+5. Teammate inherits the lead's MCP servers, permissions, and CLAUDE.md
+6. Teammate goes idle after activation — wakes on `SendMessage` from lead or peers
 
 ## Teammate types
 
@@ -52,6 +54,8 @@ or agent definitions — they're prompt templates.
 
 - No YAML frontmatter — teammates inherit config from the lead
 - Model is specified by the orchestrator in the spawn instruction, not in the template
+- Sonnet teammates spawn as Sonnet 200k by default; for 1M context, set
+  `ANTHROPIC_DEFAULT_SONNET_MODEL=claude-sonnet-4-6[1m]` in `.claude/settings.json` env
 - Enum teammates discover and report — they don't exercise findings
 - Ops teammates exercise assigned vulns — they don't discover new ones
 - On-demand teammates handle one task and get dismissed

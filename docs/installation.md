@@ -8,9 +8,9 @@ red-run requires the following installed:
 
 | Requirement | Purpose | Install |
 |-------------|---------|---------|
-| [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | CLI host for skills, agents, and MCP servers | `npm install -g @anthropic-ai/claude-code` |
-| [uv](https://docs.astral.sh/uv/) | Python package manager for MCP servers | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
-| [Docker](https://docs.docker.com/engine/install/) | Containerized nmap and pentest toolbox | See Docker docs |
+| [Claude Code](https://docs.anthropic.com/en/docs/claude-code/getting-started) | CLI host for skills, agents, and MCP servers | See [Claude Code install docs](https://docs.anthropic.com/en/docs/claude-code/getting-started) |
+| [uv](https://docs.astral.sh/uv/) | Python package manager for MCP servers | See [uv install docs](https://docs.astral.sh/uv/getting-started/installation/) |
+| [Docker](https://docs.docker.com/engine/install/) | Containerized nmap and pentest toolbox | See [Docker install docs](https://docs.docker.com/engine/install/) |
 
 ## Install
 
@@ -39,7 +39,7 @@ The installer runs five steps:
 
 **6. Browser setup** — Installs Chromium via Playwright (~150MB) for headless browser automation.
 
-**7. Config verification** — Checks that `.mcp.json` and `.claude/settings.json` are properly configured. Project settings include `ANTHROPIC_DEFAULT_SONNET_MODEL=claude-sonnet-4-6[1m]` so all sonnet teammates spawn with 1M context by default.
+**7. Config verification** — Checks that `.mcp.json` and `.claude/settings.json` are properly configured.
 
 ### Attackbox dependencies
 
@@ -142,7 +142,7 @@ The repo directory was moved or deleted after install. Either move it back or re
 ERROR: uv is required but not found.
 ```
 
-Install uv: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+See [uv install docs](https://docs.astral.sh/uv/getting-started/installation/).
 
 ### Embedding model download fails
 

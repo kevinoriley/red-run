@@ -373,7 +373,7 @@ all formats (`.nmap`, `.gnmap`, `.xml`).
 
 If the scan returns **0 hosts up** (nmap's host discovery probes got no
 response), retry with `-Pn` added to the **same scan options**. Many targets
-(especially HTB/CTF, cloud instances, and firewalled hosts) block ICMP and
+(especially CTF/lab, cloud instances, and firewalled hosts) block ICMP and
 TCP discovery probes but have open ports.
 
 **Rules:**

@@ -535,7 +535,7 @@ nxc ldap DC01.DOMAIN.LOCAL -u 'user' -p 'Password123' --users
 | LDAP (netexec) | 4625 (logon failure) | Yes |
 
 For OPSEC-sensitive engagements where detection matters, use kerbrute for
-Kerberos pre-auth spraying instead of netexec SMB/LDAP. For CTF/HTB or
+Kerberos pre-auth spraying instead of netexec SMB/LDAP. For CTF/lab or
 engagements where OPSEC is not a concern, netexec is simpler and preferred.
 
 ### kerbrute (Kerberos Pre-Auth)

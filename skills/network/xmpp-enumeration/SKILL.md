@@ -141,7 +141,7 @@ echo | openssl s_client -connect <IP>:5223 2>/dev/null | openssl x509 -noout -su
 ```
 
 The certificate CN or SAN fields often reveal the XMPP domain (e.g.,
-`jab.htb`, `chat.corp.local`).
+`chat.corp.local`, `xmpp.target.local`).
 
 ### 1c. Raw XMPP Stream Probe
 
@@ -798,7 +798,7 @@ Do not test the web admin interface from this skill.
 
 ### Stream error: host-unknown
 - Wrong domain in stream header — use the domain from TLS certificate or nmap
-- Try variations: `jab.htb`, `jabber.jab.htb`, `chat.jab.htb`
+- Try variations: `chat.corp.local`, `jabber.corp.local`, `xmpp.corp.local`
 - Check DNS/hosts file for the correct hostname mapping
 
 ### Python socket timeout
