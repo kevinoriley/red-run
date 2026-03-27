@@ -54,6 +54,8 @@ or agent definitions — they're prompt templates.
 
 - No YAML frontmatter — teammates inherit config from the lead
 - Model is specified by the orchestrator in the spawn instruction, not in the template
+- Sonnet teammates spawn as Sonnet 200k by default; for 1M context, set
+  `ANTHROPIC_DEFAULT_SONNET_MODEL=claude-sonnet-4-6[1m]` in `.claude/settings.json` env
 - Enum teammates discover and report — they don't exercise findings
 - Ops teammates exercise assigned vulns — they don't discover new ones
 - On-demand teammates handle one task and get dismissed

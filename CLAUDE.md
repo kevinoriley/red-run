@@ -44,8 +44,9 @@ and technique skills. Each variant uses a different execution model.
 **`/red-run-ctf`** uses Claude Code agent teams. Requires
 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in env or `.claude/settings.json`.
 The orchestrator calls `TeamCreate(team_name="red-run")` at engagement start,
-then spawns teammates via `Agent` with `team_name="red-run"`. Teammate spawn
-templates live in `teammates/` — see `teammates/README.md`.
+then spawns teammates via `Agent` with `team_name="red-run"`. Most teammates
+spawn as Sonnet 200k by default. Teammate spawn templates live in
+`teammates/` — see `teammates/README.md`.
 
 **`/red-run-legacy`** is the original subagent-based orchestrator. Agent
 definitions live in `agents/`. Invoke with `/red-run-legacy` if needed.

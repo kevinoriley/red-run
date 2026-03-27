@@ -148,6 +148,11 @@ Read spawn templates from `teammates/` at runtime via the Read tool.
 | `teammates/recover.md` | recover | Offline recovery | haiku | credential-cracking |
 | `teammates/research.md` | research | Deep analysis | opus | unknown-vector-analysis |
 
+Sonnet teammates spawn as **Sonnet 200k** by default. For longer engagements
+where teammates accumulate significant context, add to `.claude/settings.json`:
+`"ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-6[1m]"` (in the `env` block).
+This may hit rate limits more frequently.
+
 ### Spawning a Teammate
 
 Spawn teammates using the Agent tool with `team_name` and `name` parameters.
