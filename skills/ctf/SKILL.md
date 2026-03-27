@@ -131,24 +131,22 @@ Read spawn templates from `teammates/` at runtime via the Read tool.
 
 ### Spawning a Teammate
 
-**DO NOT use the Agent tool to spawn teammates.** The Agent tool creates
-subagents that lack MCP server access. Instead, create agent teams teammates
-by telling Claude Code to spawn a teammate in natural language. Agent teams
-teammates inherit all MCP servers from the lead session.
+Spawn agent teams teammates using the Agent tool with `name` parameter.
+Agent teams teammates inherit all MCP servers from the lead session.
 
 ```
 1. Read teammates/<domain>.md via Read tool
-2. Tell Claude Code: "Spawn a teammate named '<name>' with this prompt:
-   <paste template content>. Use <model>."
-   This creates an agent teams teammate (separate Claude Code session
-   with its own tmux pane and full MCP access).
+2. Agent(prompt=<template content + task context>, name="<name>", model="<model>")
+   Do NOT print/paste the template content to the operator — pass it
+   directly as the Agent prompt. The template is the teammate's system
+   context, not operator-facing output.
 3. Track: {name, domain, status: active|idle, spawned_at}
 ```
 
 **Before spawning, print the task assignment** so the operator sees it:
 `[spawning <name>] <skill> on <target>`
 
-When spawning, include engagement context:
+When spawning, include engagement context in the Agent prompt:
 - For persistent teammates: current state summary excerpt relevant to their domain
 - For on-demand: specific task context (hash file, AV detection details, etc.)
 
@@ -423,7 +421,7 @@ be alive before any other teammate starts work.
 
 ```
 1. Read teammates/state-mgr.md via Read tool
-2. Spawn teammate named 'state-mgr' with template content. Use sonnet.
+2. Agent(prompt=<template content>, name="state-mgr", model="sonnet")
 3. Confirm state-mgr is responsive (it will call get_state_summary() on activation)
 ```
 
