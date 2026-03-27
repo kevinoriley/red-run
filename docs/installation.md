@@ -55,12 +55,12 @@ Preflight verifies that required tools are in `$PATH` and reports missing ones w
 
 ```bash
 ./install.sh          # Default: symlinks (edits in repo reflect immediately)
-./install.sh --copy   # Copies (for standalone machines without persistent repo)
+./install.sh --copy   # Copies (snapshots skills and agents into ~/.claude/)
 ```
 
-Symlink mode is recommended for development — changes to skills and agents in the repo take effect immediately without re-running the installer. Copy mode is for machines where the repo won't stay in place.
+Symlink mode is recommended — changes to skills and agents in the repo take effect immediately without re-running the installer. Copy mode snapshots the files, so you need to re-run the installer to pick up changes.
 
-> **Repo must stay in place:** Regardless of install mode, the repo directory must remain accessible. The skill-router MCP server reads skill files from `skills/` at runtime, and all MCP servers are launched from the `tools/` directory via `.mcp.json`.
+Both modes require the repo directory to stay in place. MCP servers run from `tools/` and the skill-router reads skill files from `skills/` at runtime.
 
 ### Hardening with permission denies
 
@@ -81,10 +81,6 @@ red-run is [designed so Claude never needs sudo](architecture.md#privilege-bound
 ```
 
 The `Bash(sudo *)` rule makes Claude Code refuse any Bash command starting with `sudo`. The other rules block common destructive commands. See the [Trail of Bits Claude Code hardening guide](https://blog.trailofbits.com/2025/07/10/securing-claude-code/) for the full recommended configuration.
-
-## Engagement firewall (optional)
-
-An nftables firewall is available in `operator/engagement-firewall/` for operators who want OS-level network isolation. It restricts outbound traffic to Anthropic API endpoints and in-scope targets. See `operator/engagement-firewall/README.md` for setup and live target additions.
 
 ## Running
 

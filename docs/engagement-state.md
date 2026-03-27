@@ -2,7 +2,7 @@
 
 red-run tracks all engagement data in a SQLite database at `engagement/state.db`. This database persists across context compactions, so targets, credentials, vulnerabilities, and access records survive long multi-hour engagements where conversation history is trimmed.
 
-The orchestrator is the sole owner of engagement state. It creates the database, writes all records, and uses the state to make routing decisions — which skill to run next, which credentials to spray, which vulnerabilities to chain.
+State writes are centralized through the **state-mgr** teammate — the sole writer to state.db. Other teammates and the lead send structured messages to state-mgr instead of writing directly. State reads are direct (any teammate, any time). The lead uses state queries to make routing decisions — which skill to assign next, which credentials to test, which vulnerabilities to chain.
 
 ## Engagement directory
 
@@ -12,7 +12,7 @@ engagement/
 ├── state.db          # SQLite engagement state
 ├── dump-state.sh     # Export state.db as markdown (from operator/templates/)
 └── evidence/         # Saved output, responses, dumps
-    └── logs/         # Subagent JSONL transcripts
+    └── logs/         # Teammate JSONL transcripts
 ```
 
 The orchestrator creates this directory at the start of an engagement. Skills degrade gracefully when it doesn't exist — they just skip logging.
@@ -70,22 +70,19 @@ The orchestrator reads the pivot map to identify unexploited chains and decide w
 
 ## State server architecture
 
-The state-server runs as a single MCP instance with full read/write access for all agents and the orchestrator:
+The state-server runs as a single MCP instance. In the agent teams model, all state writes are centralized through state-mgr:
 
-```mermaid
-graph LR
-    Orch[Orchestrator] -->|read + write| S[(state)]
-    Agents[All Agents] -->|read + write| S
-    S --> DB[(state.db)]
+```
+Lead ──messages──► state-mgr ──writes──► state.db
+Teammates ──messages──► state-mgr ──writes──► state.db
+Any teammate ──reads──► state.db (direct, any time)
 ```
 
-All agents and the orchestrator share the same state server. Deduplication is handled at the database level (UNIQUE constraints and ON CONFLICT clauses).
-
-Agents write discoveries directly to state so the orchestrator can act on them immediately via the event watcher — without waiting for the agent to finish. This is especially important for technique agents that capture hashes or credentials during exploitation.
+State-mgr provides LLM-level deduplication that database constraints can't (e.g., "LFI file read" vs "LFI via absolute path" are the same vuln). It also enforces provenance linking — credentials from active techniques must have a corresponding vuln record. DB-level dedup (UNIQUE constraints) remains as a safety net.
 
 ### Concurrency
 
-SQLite WAL mode + `PRAGMA busy_timeout=5000` handles concurrent readers and writers safely. The busy timeout prevents write conflicts when multiple agents write simultaneously.
+SQLite WAL mode + `PRAGMA busy_timeout=30000` handles concurrent readers and writers safely. The 30-second timeout accommodates agent teams where multiple teammates may read simultaneously while state-mgr writes.
 
 ## How state drives chaining
 
@@ -102,11 +99,11 @@ get_access(active_only=True)  → Current footholds
 
 **Chaining example:**
 
-1. `web-discovery` finds SQLi on `10.10.10.5:/search` → writes `add_vuln`
-2. Orchestrator sees the vuln, spawns `web-exploit` with `sql-injection-union` skill
-3. `web-exploit` dumps DB creds → reports in return summary
-4. Orchestrator writes creds to state, spawns `password-spray` to test against all targets
-5. Creds work on `10.10.10.1:winrm` → orchestrator records access, spawns `windows-privesc`
+1. `web-enum` finds SQLi on `10.10.10.5:/search` → messages state-mgr with `[add-vuln]`
+2. Lead sees the vuln, assigns `sql-injection-union` skill to `web-ops`
+3. `web-ops` dumps DB creds → messages state-mgr with `[add-cred]`
+4. Lead assigns credential testing to `net-enum`, spawns `spray` teammate
+5. Creds work on `10.10.10.1:winrm` → state-mgr records access, lead spawns `win-enum`
 
 Each step is driven by state queries — the orchestrator checks what's known, what's untested, and what chains are available.
 
@@ -114,28 +111,19 @@ Each step is driven by state queries — the orchestrator checks what's known, w
 
 Each state write (add_credential, add_vuln, add_pivot, add_blocked, etc.) emits a row in the `state_events` table.
 
-### Event watcher (push notification)
+### Teammate messaging as notification channel
 
-When the orchestrator spawns a discovery agent, it also spawns `event-watcher.sh` as a background process. This script is a Python loop that polls `state_events` for new rows. When it detects a change, it exits — and the process termination acts as a push notification to the orchestrator. The orchestrator sees the background process end, checks the database for new findings, and can route accordingly (e.g., spray newly discovered credentials against other targets).
-
-Without this, the orchestrator would have to continuously poll the database itself between agent turns, wasting tokens on repeated `poll_events()` calls that usually return nothing.
-
-```bash
-# Orchestrator spawns this in the background alongside each discovery agent
-bash tools/hooks/event-watcher.sh <cursor> engagement/state.db
-```
-
-The watcher polls every 5 seconds, debounces for 5 seconds after detecting events (to let the agent finish its batch), and has a 10-minute timeout to prevent zombie processes.
+In the agent teams model, teammate messages replace the v1 event watcher. When a teammate discovers something actionable mid-task, it messages the lead immediately. The lead checks state and acts — this is the primary notification mechanism. Teammates also write to state.db (via state-mgr) for durability, but the message is what triggers the lead to look.
 
 ### Direct polling
 
-The orchestrator can also query events directly via the state MCP:
+The lead can also query events directly via the state MCP:
 
 ```
 poll_events(since_id=0)  → Returns new events + cursor for next call
 ```
 
-This is useful for checking what happened after a watcher fires, or when the orchestrator needs to inspect events at specific checkpoints.
+This is useful for checking what happened between tasks, or when the lead needs to inspect events at specific checkpoints.
 
 ## Manual queries
 
@@ -173,7 +161,7 @@ SELECT id, event_type, table_name, summary, created_at
 FROM state_events ORDER BY id DESC LIMIT 20;
 ```
 
-> **WAL mode:** The database uses WAL mode, so you can query it while the engagement is running without blocking agents. Use `.mode column` and `.headers on` in sqlite3 for readable output.
+> **WAL mode:** The database uses WAL mode, so you can query it while the engagement is running without blocking teammates. Use `.mode column` and `.headers on` in sqlite3 for readable output.
 
 ## Schema versioning
 

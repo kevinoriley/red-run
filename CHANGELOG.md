@@ -2,7 +2,26 @@
 
 All notable changes to red-run will be documented in this file. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
-## Unreleased
+## [2.0.1] — 2026-03-26
+
+### Fixed
+
+- `update_access` now supports `username` and `access_type` fields post-creation
+  (previously stuck blank if missing on initial `add_access` call)
+
+### Changed
+
+- Architecture diagram redesigned as layered component view (dark + light themes)
+- Workflow diagram updated for v2 agent teams (teammate names, state-mgr, execution
+  achieved phase)
+- All docs pages updated from v1 subagent terminology to v2 agent teams (teammate,
+  lead, state-mgr messaging)
+- `agents.md` rewritten as teammates reference (enum/ops split, teammate map, state
+  access pattern)
+- Removed engagement firewall references from architecture and installation docs
+- Deduplicated links in README
+- Routing docs rewritten: hardcoded agent table → dynamic `search_skills()` flow
+- Clarified symlink vs copy mode in installation docs
 
 ## [2.0.0] — 2026-03-23
 
