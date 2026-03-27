@@ -55,7 +55,7 @@ You are helping a penetration tester with UNION-based SQL injection.
 All testing is under explicit written authorization.
 ```
 
-Sets the context for the agent executing the skill.
+Sets the context for the teammate executing the skill.
 
 #### 2. Engagement Logging
 
@@ -129,11 +129,11 @@ Test with ORDER BY / UNION SELECT NULL payloads.
 
 #### 9. Stall Detection
 
-Standard section (from template) that defines the 5-round stall rule — if the agent spends 5+ rounds on the same failure, it must stop and return.
+Standard section (from template) that defines the 5-round stall rule — if the teammate spends 5+ rounds on the same failure, it must stop and message the lead.
 
 #### 10. AV/EDR Detection
 
-Standard section (from template) for recognizing and handling antivirus detection. The agent stops immediately and returns structured context for the evasion agent.
+Standard section (from template) for recognizing and handling antivirus detection. The teammate stops immediately and messages the lead with structured context for the bypass teammate.
 
 #### 11. Troubleshooting
 
@@ -186,7 +186,7 @@ Skills reference other skills using **bold names** in their escalation sections:
   **lfi**. Pass: URL, parameter, working wrapper.
 ```
 
-The orchestrator uses these bold references to pick the next skill and agent.
+The lead uses these bold references to search for the next skill and assign it to the right teammate.
 
 > **Teammates never self-route:** Skills must STOP and return when they hit a routing instruction. The teammate must not load or execute another skill — the lead decides what runs next.
 
@@ -240,4 +240,4 @@ The full template is at `skills/_template/SKILL.md`. To create a new skill:
 8. **Update discovery skill**: Add routing entry in the parent discovery skill
 9. **Re-index**: Run the skill-router indexer to pick up the new skill
 
-The template includes standard sections for engagement logging, state management, tool discovery, stall detection, AV/EDR handling, and DNS failure handling. Keep these — they ensure consistent agent behavior across all skills.
+The template includes standard sections for engagement logging, state management, tool discovery, stall detection, AV/EDR handling, and DNS failure handling. Keep these — they ensure consistent teammate behavior across all skills.

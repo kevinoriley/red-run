@@ -72,7 +72,7 @@ After scope setup, the orchestrator runs reconnaissance.
 
 ### Scan Type Selection
 
-If `config.yaml` has a `scan_type` value, the orchestrator uses it directly — no hard stop. The operator still approves the agent spawn, so they can override at that point. If `scan_type` is omitted (operator chose "ask each time"), the orchestrator pauses to ask.
+If `config.yaml` has a `scan_type` value, the orchestrator uses it directly — no hard stop. The operator still approves the task assignment, so they can override at that point. If `scan_type` is omitted (operator chose "ask each time"), the orchestrator pauses to ask.
 
 Options: **Quick** (top 1000), **Full** (all 65535), **Custom** (operator-specified flags), or **Import XML** (existing nmap output).
 
@@ -90,7 +90,7 @@ This pattern repeats when web discovery finds virtual hosts that need resolution
 
 ### Web Discovery
 
-If HTTP/HTTPS ports are found, the orchestrator resolves the web proxy decision before spawning any web agent. If `config.yaml` has a `web_proxy` section, the orchestrator writes the persistence files (`web-proxy.json`, `web-proxy.sh`, `scope.md` `## Web Proxy` section) automatically — no hard stop. If `web_proxy` is omitted from config, the orchestrator pauses to ask the operator.
+If HTTP/HTTPS ports are found, the orchestrator resolves the web proxy decision before assigning any web teammate. If `config.yaml` has a `web_proxy` section, the orchestrator writes the persistence files (`web-proxy.json`, `web-proxy.sh`, `scope.md` `## Web Proxy` section) automatically — no hard stop. If `web_proxy` is omitted from config, the orchestrator pauses to ask the operator.
 
 If Burp proxying is enabled, `web-proxy.json` records the listener URL for browser-server defaults, and `web-proxy.sh` exports env vars for CLI tools. All subsequent web agents source `web-proxy.sh` and route attackbox HTTP(S) traffic through the configured proxy.
 
@@ -123,9 +123,9 @@ Here's how it works under the hood:
 
 2. **Searching** — When the orchestrator calls `search_skills("AJP connector on port 8009")`, the skill-router converts that query into a vector using the same model and finds the closest matches by cosine similarity. The `ajp-ghostcat` skill's frontmatter mentions "AJP", "port 8009", "CVE-2020-1938", and "Ghostcat" — its vector is close to the query vector, so it ranks high. Results below 0.4 similarity are filtered out automatically.
 
-3. **Loading** — The orchestrator reviews the search results (each includes the skill's description and OPSEC rating), picks the best match, and tells the agent to load it via `get_skill("ajp-ghostcat")`. The agent gets the full `SKILL.md` content — methodology, payloads, troubleshooting — injected into its context.
+3. **Loading** — The orchestrator reviews the search results (each includes the skill's description and OPSEC rating), picks the best match, and tells the teammate to load it via `get_skill("ajp-ghostcat")`. The teammate gets the full `SKILL.md` content — methodology, payloads, troubleshooting — injected into its context.
 
-The "augmented generation" part is that Claude doesn't rely on its training data to know how to exploit AJP Ghostcat. Instead, the skill's methodology is retrieved from the local library and injected into the prompt, giving the agent precise, tested instructions rather than general knowledge.
+The "augmented generation" part is that Claude doesn't rely on its training data to know how to exploit AJP Ghostcat. Instead, the skill's methodology is retrieved from the local library and injected into the prompt, giving the teammate precise, tested instructions rather than general knowledge.
 
 ### Routing
 
@@ -247,13 +247,13 @@ When objectives are met (or all paths exhausted), the orchestrator:
 
 ### Retrospective
 
-The `retrospective` skill is how red-run gets better for *you* over time. After an engagement, it reads through everything that happened — the activity log, engagement state, findings, and the raw JSONL transcripts from every agent — and produces a structured analysis of what worked, what didn't, and what to fix.
+The `retrospective` skill is how red-run gets better for *you* over time. After an engagement, it reads through everything that happened — the activity log, engagement state, findings, and the raw JSONL transcripts from every teammate — and produces a structured analysis of what worked, what didn't, and what to fix.
 
 It evaluates five things:
 
 1. **Skill routing** — Did the orchestrator pick the right skills? Were any skills skipped that should have been used? Was anything executed inline (without loading a skill) that a skill already covers? This produces a routing ledger showing every decision and whether it was correct.
 
-2. **Knowledge gaps** — For each skill that was used, did it have the right payloads? Did the target hit edge cases the skill didn't cover? Were tool commands correct or did the agent have to improvise? Each gap becomes a specific edit to make.
+2. **Knowledge gaps** — For each skill that was used, did it have the right payloads? Did the target hit edge cases the skill didn't cover? Were tool commands correct or did the teammate have to improvise? Each gap becomes a specific edit to make.
 
 3. **Missing skills** — Were techniques used manually that should be skills? It cross-references against the full skill inventory via `search_skills()` to distinguish actual coverage gaps from routing gaps (skill exists but wasn't used).
 

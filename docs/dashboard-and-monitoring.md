@@ -33,15 +33,13 @@ The terminal-based agent dashboard (JSONL transcript viewer for legacy subagent 
 
 ## Transcript Capture
 
-Every agent's full JSONL transcript is automatically saved to `engagement/evidence/logs/` when the agent finishes. This is the accountability layer — the dashboard shows you what agents are doing in real time, and transcripts give you a permanent record of every tool call, command, and decision each agent made.
+Every teammate's full JSONL transcript is automatically saved to `engagement/evidence/logs/` when the teammate finishes. This is the accountability layer — tmux panes show you what teammates are doing in real time, and transcripts give you a permanent record of every tool call, command, and decision each teammate made.
 
-A `SubagentStop` hook (`tools/hooks/save-agent-log.sh`) handles this automatically:
+A `TeammateIdle` hook (`tools/hooks/save-agent-log.sh`) handles this automatically:
 
-1. Claude Code fires the `SubagentStop` event when any agent finishes
-2. The hook reads `agent_transcript_path` and `agent_type` from the event JSON
-3. Copies the transcript to `engagement/evidence/logs/{timestamp}-{agent-type}.jsonl`
-
-Only red-run agents are captured (network-recon, web-discovery, web-exploit, ad-discovery, ad-exploit, password-spray, linux-privesc, windows-privesc, evasion, credential-cracking). Built-in subagents (Explore, Plan, general-purpose) are ignored.
+1. Claude Code fires the `TeammateIdle` event when a teammate finishes its current task
+2. The hook reads the transcript path and teammate name from the event JSON
+3. Copies the transcript to `engagement/evidence/logs/{timestamp}-{teammate-name}.jsonl`
 
 No engagement directory = hook exits silently. The retrospective skill parses these logs for post-engagement analysis.
 
@@ -49,12 +47,12 @@ No engagement directory = hook exits silently. The retrospective skill parses th
 
 ### Hook Setup
 
-The `SubagentStop` hook is configured in `.claude/settings.json`:
+The `TeammateIdle` hook is configured in `.claude/settings.json`:
 
 ```json
 {
   "hooks": {
-    "SubagentStop": [
+    "TeammateIdle": [
       {
         "matcher": "",
         "hooks": [

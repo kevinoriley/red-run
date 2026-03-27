@@ -10,7 +10,7 @@ The **orchestrator** (`skills/orchestrator/SKILL.md`) takes a target, runs recon
 
 ### Discovery Skills
 
-**Discovery skills** enumerate attack surface and identify vulnerabilities. Their decision trees recommend technique skills, but the agent returns these recommendations to the orchestrator — it never invokes the next skill itself. There are 4 discovery skills:
+**Discovery skills** enumerate attack surface and identify vulnerabilities. Their decision trees recommend technique skills, but the teammate returns these recommendations to the lead — it never invokes the next skill itself. There are 4 discovery skills:
 
 - `web-discovery` — web application enumeration and vulnerability identification
 - `ad-discovery` — Active Directory enumeration and attack surface mapping
@@ -146,14 +146,14 @@ Skills reference each other using **bold skill names** in their escalation secti
 
 > Route to **kerberos-roasting**. Pass: domain, DC IP, user list.
 
-The orchestrator looks up `kerberos-roasting` in the routing table, spawns the `ad-exploit-agent`, and passes the context.
+The lead searches for `kerberos-roasting` via `search_skills()`, resolves it to the AD category, and assigns it to the `ad-ops` teammate with context.
 
 **Key routing rules:**
 
-- The orchestrator makes every routing decision — agents never load other skills
-- Context (injection point, target technology, working payloads) is passed in the task prompt
-- Discovery skills recommend technique skills; technique skills recommend the next step — all routing goes through the orchestrator
-- Skills that achieve RCE route to host discovery for privilege escalation
+- The lead makes every routing decision — teammates never load other skills
+- Context (injection point, target technology, working payloads, credential/access IDs) is passed in each task assignment
+- Enumeration teammates recommend technique skills; operations teammates recommend the next step — all routing goes through the lead
+- Skills that achieve RCE trigger the execution achieved hard stop for host discovery
 
 ## Planned Skills
 

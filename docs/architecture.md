@@ -18,7 +18,7 @@ These components don't change based on engagement type. A CTF lab and a client e
 
 ### Strategy layer (swappable)
 
-The **orchestrator** is the strategy layer. It reads engagement state, decides which skill to invoke next, spawns the right agent, and records findings. The default orchestrator (`/red-run-ctf`) is a **CTF/lab orchestrator** — it chains aggressively, routes to technique skills, and treats everything in scope as fair game.
+The **orchestrator** is the strategy layer. It reads engagement state, decides which skill to invoke next, assigns it to the right teammate, and records findings. The default orchestrator (`/red-run-ctf`) is a **CTF/lab orchestrator** — it chains aggressively, routes to technique skills, and treats everything in scope as fair game.
 
 A different orchestrator could use the same platform with different decision logic:
 
@@ -26,7 +26,7 @@ A different orchestrator could use the same platform with different decision log
 - **Red team orchestrator** — stealth-focused, avoids detection signatures, operates within rules of engagement windows
 - **Training orchestrator** — explains each decision, pauses for student input, provides hints
 
-The orchestrator contract is simple: read state, pick a skill, spawn an agent, record findings. Everything else is implementation choice.
+The orchestrator contract is simple: read state, pick a skill, assign it to a teammate, record findings. Everything else is implementation choice.
 
 ## Architecture Overview
 
