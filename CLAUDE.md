@@ -179,6 +179,26 @@ when making changes.
 **When modifying a tool server:** If you change tools, parameters, behavior, or
 dependencies in a `tools/*/` server, update its `README.md` in the same commit.
 
+**Changelog is mandatory.** Every release branch must update `CHANGELOG.md`
+before merging. Add entries under the new version heading following
+[Keep a Changelog](https://keepachangelog.com/) format.
+
+## Versioning
+
+red-run has no compiled releases — it's installed via `install.sh` which
+symlinks (or copies) skills, agents, and MCP servers into `~/.claude/`. Git
+tags mark release points.
+
+**Semver:** `MAJOR.MINOR.PATCH`
+- **MAJOR** — breaking changes (schema migrations, renamed slash commands,
+  removed features, changed teammate/agent APIs that require re-install)
+- **MINOR** — new features (new skills, new MCP tools, new teammate templates,
+  dashboard features) that are backwards-compatible
+- **PATCH** — bug fixes, doc updates, prompt improvements, config changes
+
+**Release branches:** `patch/X.Y.Z-<description>` for patch releases,
+`release/X.Y.0-<description>` for minor/major. Tag on merge to main.
+
 ## Directory Layout
 
 ```
