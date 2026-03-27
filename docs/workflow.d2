@@ -25,7 +25,7 @@ classes: {
       bold: true
     }
   }
-  agent: {
+  teammate: {
     style: {
       fill: "#2d3748"
       stroke: "#e2e8f0"
@@ -68,7 +68,7 @@ setup: "Scope & Setup" {
 
   start: "attack TARGET" {class: action}
   scope: Gather scope + creds {class: action}
-  init: Init engagement dir + state.db {class: action}
+  init: "Init engagement dir + state.db\nSpawn state-mgr" {class: action}
   start -> scope -> init
 }
 
@@ -77,19 +77,21 @@ recon: Reconnaissance {
   class: phase
 
   scan-stop: "HARD STOP\nScan type?" {class: hardstop}
-  nr: network-recon-agent {class: agent}
-  record: Record hosts + ports + services {class: action}
+  nr: net-enum {class: teammate}
+  record: "Message state-mgr:\nhosts + ports + services" {class: action}
   host-check: "Hostnames\nresolve?" {class: decision}
   host-stop: "HARD STOP\nhosts-update.sh" {class: hardstop}
   web-check: "HTTP/HTTPS\nports?" {class: decision}
-  wd: web-discovery-agent {class: agent}
+  wd: web-enum {class: teammate}
   vhost-check: "Vhosts\nresolve?" {class: decision}
+  no-http: "No HTTP →\ncontinue to\nattack surface" {class: action}
 
   scan-stop -> nr -> record -> host-check
   host-check -> host-stop: no
   host-stop -> host-check: operator fixes
   host-check -> web-check: yes
   web-check -> wd: yes
+  web-check -> no-http: no
   wd -> vhost-check
   vhost-check -> host-stop: no
 }
@@ -101,18 +103,18 @@ surface: "Categorize attack surface\nPresent chain analysis\nOperator picks path
 exploit: "Discovery & Exploitation" {
   class: phase
 
-  pick: Pick skill + agent {class: action}
-  spawn: Spawn agent with context {class: action}
-  run: "Load skill → execute\n→ save evidence\n→ return findings" {class: agent}
-  pick -> spawn -> run
+  pick: "search_skills()\nResolve teammate" {class: action}
+  assign: "Assign task to teammate\nwith skill + context" {class: action}
+  run: "Teammate loads skill\n→ executes methodology\n→ messages state-mgr\n→ messages lead" {class: teammate}
+  pick -> assign -> run
 }
 
-# ── Phase 5: Post-Skill Checkpoint ──
-post: "Post-Skill Checkpoint" {
+# ── Phase 5: Post-Task Checkpoint ──
+post: "Post-Task Checkpoint" {
   class: phase
 
-  parse: Parse return summary {class: action}
-  record-state: "Record to state:\ncreds, vulns, access, pivots" {class: action}
+  parse: Read teammate summary {class: action}
+  record-state: "Message state-mgr:\ncreds, vulns, access, pivots" {class: action}
   user-check: "New\nusernames?" {class: decision}
   parse -> record-state -> user-check
 }
@@ -123,11 +125,29 @@ spray: "Credential Spray Gate" {
 
   spray-stop: "HARD STOP\nShow usernames\n+ lockout policy" {class: hardstop}
   spray-check: "Spray\nintensity?" {class: decision}
-  spray-agent: password-spray-agent {class: agent}
-  record-creds: Record valid creds {class: action}
+  spray-tm: spray {class: teammate}
+  record-creds: "Message state-mgr:\nvalid creds" {class: action}
   spray-stop -> spray-check
-  spray-check -> spray-agent: light / medium / heavy
-  spray-agent -> record-creds
+  spray-check -> spray-tm: light / medium / heavy
+  spray-tm -> record-creds
+}
+
+# ── Execution Achieved ──
+exec-achieved: "Execution Achieved" {
+  class: phase
+
+  shell: "Shell upgrade\nstart_listener or\nstart_process" {class: action}
+  spawn-enum: "Spawn host enum teammate" {class: action}
+  os: "OS?" {class: decision}
+  lin: lin-enum {class: teammate}
+  win: win-enum {class: teammate}
+  ad-check: "Domain\naccount?" {class: decision}
+  ad: ad-enum {class: teammate}
+
+  shell -> spawn-enum -> os
+  os -> lin: Linux
+  os -> win: Windows
+  ad-check -> ad: yes
 }
 
 # ── Phase 7: Chaining ──
@@ -138,10 +158,11 @@ chain: Chaining {
   d1: "Unexploited\nvulns?" {class: decision}
   d2: "Shell without\nroot?" {class: decision}
   d3: "Untested\ncreds?" {class: decision}
-  test-creds: Test creds against all services {class: action}
+  test-creds: "Spawn per-user enum teammate\nTest all access paths" {class: action}
   d4: "Uncracked\nhashes?" {class: decision}
-  crack: credential-cracking {class: agent}
+  crack: recover {class: teammate}
   d5: "Pivot\npaths?" {class: decision}
+  pivot-tm: pivot {class: teammate}
   d6: "Objectives\nmet?" {class: decision}
 
   analyze -> d1
@@ -152,30 +173,21 @@ chain: Chaining {
   d4 -> crack: yes
   crack -> analyze
   d4 -> d5: no
+  d5 -> pivot-tm: yes
+  pivot-tm -> analyze: "tunnel established\n→ recon internal"
   d5 -> d6: no
-}
-
-# ── Phase 8: Host Discovery ──
-host-disc: "Shell → Host Discovery" {
-  class: phase
-
-  os: "OS?" {class: decision}
-  lin: "linux-privesc-agent\n→ linux-discovery" {class: agent}
-  win: "windows-privesc-agent\n→ windows-discovery" {class: agent}
-  ad: "ad-discovery-agent\n→ ad-discovery" {class: agent}
-  os -> lin: Linux
-  os -> win: Windows
-  os -> ad: Windows DC
 }
 
 # ── Recovery ──
 recovery: "Recovery Paths" {
   class: phase
 
-  av: "evasion-agent\n→ av-edr-evasion" {class: recovery}
+  av: bypass {class: recovery}
   clock: "HARD STOP\nclock-sync.sh" {class: hardstop}
-  blocked: "add_blocked\nnext vector" {class: action}
+  research-tm: research {class: recovery}
+  blocked: "Message state-mgr:\nadd_blocked\nnext vector" {class: action}
   av -> blocked: no bypass
+  research-tm -> blocked: no vector
 }
 
 # ── Post-Exploitation ──
@@ -190,7 +202,7 @@ retro: "retrospective\n→ skill improvements" {class: recovery}
 setup -> recon
 
 # Recon exits
-recon.web-check -> surface: no HTTP
+recon.no-http -> surface
 recon.vhost-check -> surface: yes
 
 surface -> exploit
@@ -204,21 +216,23 @@ spray.record-creds -> chain.analyze
 
 # Chaining loops
 chain.d1 -> exploit.pick: yes {style.stroke-dash: 3}
-chain.d2 -> host-disc.os: yes
+chain.d2 -> exec-achieved.shell: yes
 chain.test-creds -> exploit.pick {style.stroke-dash: 3}
-chain.d5 -> exploit.pick: yes {style.stroke-dash: 3}
 
-# Host discovery back to post
-host-disc.lin -> post.parse {style.stroke-dash: 3}
-host-disc.win -> post.parse {style.stroke-dash: 3}
-host-disc.ad -> post.parse {style.stroke-dash: 3}
+# Execution achieved flows
+exec-achieved.os -> ad-check: Windows
+exec-achieved.lin -> post.parse {style.stroke-dash: 3}
+exec-achieved.win -> post.parse {style.stroke-dash: 3}
+exec-achieved.ad -> post.parse {style.stroke-dash: 3}
+exec-achieved.ad-check -> post.parse: no {style.stroke-dash: 3}
 
 # Recovery
 exploit.run -> recovery.av: AV blocked {style.stroke-dash: 3}
 exploit.run -> recovery.clock: clock skew {style.stroke-dash: 3}
-recovery.av -> exploit.spawn: bypass {style.stroke-dash: 3}
+exploit.run -> recovery.research-tm: unknown vector {style.stroke-dash: 3}
+recovery.av -> exploit.assign: bypass {style.stroke-dash: 3}
 recovery.blocked -> chain.analyze {style.stroke-dash: 3}
-recovery.clock -> exploit.spawn: synced {style.stroke-dash: 3}
+recovery.clock -> exploit.assign: synced {style.stroke-dash: 3}
 
 # End
 chain.d6 -> post-exploit: yes

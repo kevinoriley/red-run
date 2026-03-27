@@ -127,26 +127,29 @@ Here's how it works under the hood:
 
 The "augmented generation" part is that Claude doesn't rely on its training data to know how to exploit AJP Ghostcat. Instead, the skill's methodology is retrieved from the local library and injected into the prompt, giving the agent precise, tested instructions rather than general knowledge.
 
-### Hardcoded vs dynamic routing
+### Routing
 
-Most routing is hardcoded. Discovery skills have decision trees that cover common scenarios, and the orchestrator has a routing table that maps ~60 skill names to their agents. RAG is the fallback for everything else:
+All routing is dynamic via `search_skills()`. The orchestrator walks the engagement state, identifies actionable findings, and searches the skill library to find the matching technique skill. It then resolves the right teammate from the skill's category (web skills → web-ops, AD skills → ad-ops, etc.).
 
-- **Hardcoded**: "Web discovery found SQL injection" → route to `sql-injection-union` via `web-exploit-agent`
-- **Dynamic (RAG)**: "Nmap found AJP on port 8009" → `search_skills("AJP connector")` → finds `ajp-ghostcat` → route via `web-exploit-agent`
+```
+1. State shows unexploited vuln: "AJP connector on port 8009"
+2. search_skills("AJP connector") → finds ajp-ghostcat
+3. Skill category is web → assign to web-ops teammate
+4. Pass: skill name, target, injection point, credentials, access context
+```
 
 The orchestrator validates search results before loading — a high similarity score doesn't guarantee relevance. The embedding model can confuse adjacent techniques (SSRF vs CSRF, IDOR vs ACL-abuse), so the orchestrator reads each result's description to confirm it matches the situation. If nothing fits, it proceeds with general methodology and notes the coverage gap.
 
 ### Context passing
 
-When the orchestrator spawns an agent, it passes engagement context in the task prompt:
+When the lead assigns a task to a teammate, it passes engagement context:
 
+- Skill name to load via `get_skill()`
 - Injection point details (URL, parameter, method)
 - Target technology (framework, database, OS version)
 - Working payloads from previous skills
-- Burp proxy listener (`http://IP:PORT`) when the operator enabled capture
-- Credentials and access levels
-
-See [Agents](agents.md) for the full agent model and routing table.
+- Web proxy configuration when the operator enabled capture
+- Credential and access IDs for provenance tracking
 
 ## Hard Stops
 

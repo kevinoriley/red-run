@@ -6,9 +6,9 @@ Security assessment toolkit for Claude Code.
   <img src="docs/dashboard.jpg" width="700" alt="State dashboard showing access chain graph and engagement progress">
 </p>
 
-red-run combines skills, MCP servers, and [Claude Code agent teams](https://code.claude.com/docs/en/agent-teams) with routing logic that guides Claude and the operator through the phases of a security assessment — recon, initial access, lateral movement, privilege escalation, and post-access. It tracks engagement state in a SQLite database that persists across context compactions, routes to skills via semantic search (RAG), and delegates execution to persistent domain teammates that accumulate context across tasks.
+red-run combines skills, MCP servers, and Claude Code agent teams with routing logic that guides Claude and the operator through the phases of a security assessment — recon, initial access, lateral movement, privilege escalation, and post-access. It tracks engagement state in a SQLite database that persists across context compactions, routes to skills via semantic search (RAG), and delegates execution to persistent domain teammates that accumulate context across tasks.
 
-The orchestrator (team lead) presents the assessment surface, chain analysis, and available paths — you choose what to test next. Teammates work in their own tmux panes where you can watch them, press Escape to interrupt, and type directly to redirect (requires the experimental [Claude Code agent teams](https://code.claude.com/docs/en/agent-teams) feature — see [Agent Teams](#agent-teams) below). See the [Architecture docs](https://blacklanternsecurity.github.io/red-run/architecture/) for data flow.
+The orchestrator (team lead) presents the assessment surface, chain analysis, and available paths — you choose what to test next. Teammates work in their own tmux panes where you can watch them, press Escape to interrupt, and type directly to redirect. See [Agent Teams](#agent-teams) below for setup.
 
 ## Orchestrators
 
@@ -61,7 +61,7 @@ Then launch with:
 
 The shell-server runs as a persistent SSE service (`127.0.0.1:8022`) shared across all teammates — sessions created by one teammate are visible to all others. `run.sh` starts it automatically and is idempotent (safe to re-run). A `SessionStart` hook also attempts auto-start as a fallback.
 
-See [dependencies](docs/dependencies.md) for the full list of required tools and [Installation docs](https://blacklanternsecurity.github.io/red-run/installation/) for troubleshooting.
+See [dependencies](docs/dependencies.md) for the full list of required tools.
 
 ## Agent Teams
 
@@ -119,7 +119,7 @@ Send any message (e.g., a target IP) to activate the orchestrator. The orchestra
 **By using red-run you accept full responsibility for its actions.** This tool runs fully autonomous AI agents that execute offensive security techniques — port scanning, vulnerability exploitation, credential attacks, privilege escalation, and lateral movement — against targets you specify.
 
 - **Authorization required.** Do not use against systems without explicit written permission. Unauthorized access to computer systems is illegal under the CFAA (18 U.S.C. § 1030) and equivalent laws in other jurisdictions.
-- **CTF and lab use only.** The current version of the orchestrator is a CTF solver — it runs fully autonomous agents with no OPSEC considerations. Skills are baseline templates built by AI and have not been thoroughly reviewed by human eyes. Expect gaps, false positives, and techniques that need validation before use on real infrastructure. See the [architecture plans](https://blacklanternsecurity.github.io/red-run/architecture/) for the production engagement roadmap.
+- **CTF and lab use only.** The current version of the orchestrator is a CTF solver — it runs fully autonomous agents with no OPSEC considerations. Skills are baseline templates built by AI and have not been thoroughly reviewed by human eyes. Expect gaps, false positives, and techniques that need validation before use on real infrastructure. See the [architecture docs](docs/architecture.md) for the production engagement roadmap.
 - **No OPSEC guarantees.** Agents run with no stealth considerations. Assume all activity is logged and detectable. Do not rely on red-run for covert operations.
 - **Content policy warnings.** red-run's autonomous agents generate and execute offensive security commands. This may trigger Anthropic content policy warnings on your account. We are not responsible for the standing of your Anthropic account — use at your own risk.
 - **No warranty.** red-run is provided as-is. The authors are not liable for any damage, data loss, legal consequences, or other harm resulting from its use.
