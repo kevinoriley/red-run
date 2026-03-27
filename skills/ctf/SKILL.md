@@ -232,7 +232,7 @@ RIGHT:  "Discovery found: basic PHP content blocked by content inspection.
 
 Example task context:
 ```
-"Exercise LFI on school.flight.htb ?view= parameter.
+"Exercise LFI on portal.target.local ?view= parameter.
  access_id: 1 (svc_apache SMB session)"
 ```
 
