@@ -163,6 +163,34 @@ smbclient //TARGET_IP/SHARENAME -N -c 'recurse ON; prompt OFF; ls'
 smbclient //TARGET_IP/SHARENAME -N -c 'recurse ON; prompt OFF; mget *'
 ```
 
+### Write Access Verification
+
+**For every readable share**, test write access with an actual file upload.
+Share-level ACLs (what nxc `--shares` reports) can differ from NTFS filesystem
+ACLs. The only reliable way to determine write access is to attempt a write.
+
+```bash
+# Test write — lcd avoids smbclient path resolution issues
+smbclient //TARGET_IP/SHARENAME -N -c 'lcd /tmp; put /etc/hostname .write-test'
+# Clean up on success
+smbclient //TARGET_IP/SHARENAME -N -c 'del .write-test'
+```
+
+If the smbclient write fails but nxc `--shares` reported WRITE for this share,
+retry with a second tool before concluding read-only. Different SMB clients use
+different dialect negotiation and session handling — one tool failing does not
+mean writes are blocked:
+
+```bash
+# Fallback write test with impacket
+impacket-smbclient -no-pass TARGET_IP
+# At prompt: use SHARENAME, then: put /etc/hostname .write-test
+# Clean up: del .write-test
+```
+
+Mark the share as WRITE only after a successful file upload. Mark as READ only
+after two tools fail to write.
+
 **Per-share results table (mandatory in return summary).** Every share must
 have a row. No share may be listed as "not tested".
 
@@ -171,14 +199,17 @@ have a row. No share may be listed as "not tested".
 |-------|--------|--------|----------------|
 | ADMIN$ | DENIED | smbclient -N | NT_STATUS_ACCESS_DENIED |
 | C$ | DENIED | smbclient -N | NT_STATUS_ACCESS_DENIED |
-| Development | READ | smbclient -N | Automation/ directory found |
+| Development | READ | smbclient -N, write failed (2 tools) | Automation/ directory found |
+| Shared | WRITE | smbclient -N | Empty, write confirmed via put |
 | IPC$ | LIMITED | smbclient -N | IPC only, no file listing |
-| NETLOGON | READ | smbclient -N | Empty or standard scripts |
-| SYSVOL | READ | smbclient -N | Policies, scripts |
+| NETLOGON | READ | smbclient -N, write failed (2 tools) | Empty or standard scripts |
+| SYSVOL | READ | smbclient -N, write failed (2 tools) | Policies, scripts |
 ```
 
 **Rules:**
 - "Access" must be one of: `READ`, `WRITE`, `DENIED`, `LIMITED`, `ERROR`
+- WRITE requires a successful file upload — never infer from share ACL metadata alone
+- READ requires write failure from at least two tools (smbclient + one fallback)
 - "Method" must show the actual command used
 - Never report a share as DENIED unless you received `NT_STATUS_ACCESS_DENIED`
   (or similar error) from testing THAT SPECIFIC share
@@ -221,15 +252,30 @@ manspider TARGET_IP -e 'password' -f xml conf config ini txt ps1 bat vbs
 
 ## Step 7: Authenticated Re-enumeration
 
-If the orchestrator passes credentials, repeat Steps 1, 4, and 6 with creds:
+If the orchestrator passes credentials, repeat Steps 1, 4 (including write
+verification), and 6 with creds.
+
+**Shell-special characters in passwords** (`!`, `@`, `$`, `*`, backticks):
+store the password in a file and reference it to avoid shell expansion issues.
 
 ```bash
-netexec smb TARGET_IP -u 'USERNAME' -p 'PASSWORD' -d DOMAIN --shares
+# Store password safely (do this first if password contains special chars)
+echo -n 'PASSWORD' > /tmp/claude-1000/pass.txt
+
+# Share listing
+netexec smb TARGET_IP -u 'USERNAME' -p "$(cat /tmp/claude-1000/pass.txt)" -d DOMAIN --shares
+
+# Per-share read + write testing (lcd before put — see Step 4)
 smbclient //TARGET_IP/SHARENAME -U 'DOMAIN/USERNAME%PASSWORD' -c 'ls' 2>&1
+smbclient //TARGET_IP/SHARENAME -U 'DOMAIN/USERNAME%PASSWORD' -c 'lcd /tmp; put /etc/hostname .write-test; del .write-test'
+
+# Content search
 manspider TARGET_IP -u 'USERNAME' -p 'PASSWORD' -d DOMAIN -c password secret
 ```
 
-Update the per-share access table with authenticated results.
+Update the per-share access table with authenticated results. Follow the same
+write verification rules as Step 4 — test every readable share for write
+access, retry with a second tool on discrepancies.
 
 ## Step 8: Escalate or Pivot
 
