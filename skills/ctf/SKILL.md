@@ -426,7 +426,11 @@ notify the operator and block shell-dependent tasks until resolved.
 
 ### Engagement Configuration
 
-**You MUST call `AskUserQuestion` here — all 4 questions in one call:**
+**If `engagement/config.yaml` already exists** (operator ran `operator/setup.sh`
+beforehand), **skip the wizard entirely**. Read the config, print configured
+values, and continue to Initialize Engagement.
+
+**If no config.yaml exists**, call `AskUserQuestion` with all 5 questions:
 
 ```
 Q1 — Scan type: Quick (recommended) | Full | Ask each time
@@ -436,7 +440,7 @@ Q4 — Recovery method: Local (recommended) | Export | Skip | Ask each time
 Q5 — Shell backend: shell-server (recommended) | Sliver (if RED_RUN_SLIVER_AVAILABLE=1) | Custom
 ```
 
-Write `engagement/config.yaml` from `operator/templates/config.yaml`.
+Write `engagement/config.yaml` from operator answers.
 Omit keys where operator chose "Ask each time/when needed".
 If web proxy enabled, generate persistence files immediately.
 

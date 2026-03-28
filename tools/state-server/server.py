@@ -51,6 +51,7 @@ _VALID_ENUMS: dict[str, tuple[str, ...]] = {
         "db",
         "token",
         "vpn",
+        "c2",
         "other",
     ),
     "privilege": (

@@ -72,6 +72,7 @@ MCP_SHELL_SERVER="${REPO_DIR}/tools/shell-server"
 MCP_STATE_SERVER="${REPO_DIR}/tools/state-server"
 MCP_BROWSER_SERVER="${REPO_DIR}/tools/browser-server"
 MCP_RDP_SERVER="${REPO_DIR}/tools/rdp-server"
+MCP_SLIVER_SERVER="${REPO_DIR}/tools/sliver-server"
 
 # Only the orchestrator is installed as a native Claude Code skill.
 # Everything else is served on-demand via the MCP skill-router.
@@ -254,6 +255,13 @@ uv run --directory "${MCP_BROWSER_SERVER}" playwright install chromium
 
 # rdp-server (headless RDP automation via aardwolf — pure Python, no system deps)
 run_uv_sync "rdp-server" "${MCP_RDP_SERVER}"
+
+# sliver-server (Sliver C2 gRPC wrapper — optional, only if sliver-py can install)
+if run_uv_sync "sliver-server" "${MCP_SLIVER_SERVER}" 2>/dev/null; then
+    echo "  sliver-server MCP dependencies installed"
+else
+    echo "  sliver-server MCP skipped (sliver-py requires grpcio — install Sliver for C2 support)"
+fi
 
 # --- Step 5: Verify project config ---
 config_warnings=0

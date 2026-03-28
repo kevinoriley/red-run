@@ -102,6 +102,7 @@ Agent source files live in `agents/` (version controlled), installed to `~/.clau
 | state | `tools/state-server/` | Full read/write engagement state (all agents + orchestrator) |
 | browser-server | `tools/browser-server/` | Headless browser automation (web agents) |
 | rdp-server | `tools/rdp-server/` | Headless RDP automation via aardwolf (windows-privesc-agent) |
+| sliver-server | `tools/sliver-server/` | Sliver C2 gRPC wrapper — implants, sessions, pivots (optional) |
 | state-viewer | `operator/state-viewer/` | Read-only web dashboard for state.db (operator use, not MCP) |
 
 The state server runs as a single instance. In the agent teams orchestrator
@@ -226,6 +227,7 @@ red-run/
     state-mgr.md           # Centralized state writer, dedup, graph coherence (sonnet)
     shell-mgr.md           # Shell lifecycle manager base template (sonnet)
     shell-mgr-shell-server.md  # Shell-server backend appendix for shell-mgr
+    shell-mgr-sliver.md        # Sliver C2 backend appendix for shell-mgr
     net-enum.md            # Network recon + service enumeration (sonnet)
     web-enum.md            # Web app discovery (sonnet)
     web-ops.md             # Web technique execution (sonnet)
@@ -267,6 +269,11 @@ red-run/
       server.py           # FastMCP server — start_listener, send_command, stabilize_shell, etc.
       Dockerfile           # Python + Responder + impacket + mitm6 image (built by install.sh)
       pyproject.toml       # Python dependencies (mcp)
+    sliver-server/        # MCP server (Sliver C2 gRPC wrapper, optional)
+      README.md            # Server documentation
+      server.py           # FastMCP server — implants, sessions, pivots
+      start.sh            # Idempotent SSE startup
+      pyproject.toml       # Python dependencies (mcp, sliver-py, grpcio)
     browser-server/       # MCP server (headless Chromium)
       README.md            # Server documentation
       server.py           # FastMCP server — browser_open, browser_fill, browser_click, etc.
@@ -280,6 +287,7 @@ red-run/
       save-agent-log.sh   # SubagentStop hook — copies JSONL transcripts to engagement/evidence/logs/
       event-watcher.sh    # Background event poller — spawned by orchestrator to watch state_events
   operator/               # Operator-facing tools (run manually, not MCP)
+    setup.sh             # Pre-engagement config wizard (scan, proxy, spray, cracking, C2)
     state-viewer/      # Read-only web dashboard for state.db
       README.md            # Tool documentation
       server.py           # Stdlib HTTP server — inline HTML dashboard, SSE live updates
