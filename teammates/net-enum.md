@@ -96,32 +96,21 @@ Scan types (match lead's instruction exactly):
 All shell lifecycle operations go through the shell-mgr teammate. You do NOT
 call shell-server tools directly for setup — message shell-mgr instead.
 
-For reverse shells:
+If a skill achieves RCE, pass the delivery to shell-mgr:
 ```
-Message shell-mgr: [setup-listener] port=<N> label="<label>"
-Wait for [listener-ready] with payloads → deliver payload through vuln →
-Message shell-mgr: [payload-delivered] listener_id=<id> →
-Wait for [session-live] from shell-mgr with session_id and MCP instructions →
-Use the MCP tool specified in handoff to send commands
+Message shell-mgr: [establish-shell] ip=<target> platform=<linux|windows>
+  delivery="<RCE command with {CALLBACK} placeholder>" label="<label>"
+Wait for [session-live] from shell-mgr → use MCP tool from handoff
 ```
 
-For interactive tools (evil-winrm, ssh, psexec.py):
+For credential-based access:
 ```
 Message shell-mgr: [setup-process] command="<cmd>" label="<label>"
-  privileged=<bool> startup_delay=<N>
-Wait for [session-live] from shell-mgr with session_id and MCP instructions
+  privileged=<bool>
+Wait for [session-live] from shell-mgr
 ```
 
-For shell upgrade (raw shell → PTY):
-```
-Message shell-mgr: [upgrade-shell] session_id=<id>
-Wait for [session-upgraded]
-```
-
-When done with a session:
-```
-Message shell-mgr: [close-session] session_id=<id> save_transcript=true
-```
+When done: `Message shell-mgr: [close-session] session_id=<id> save_transcript=true`
 
 If shell-mgr is not responding, message the lead.
 

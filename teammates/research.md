@@ -67,32 +67,21 @@ call shell-server tools directly for setup — message shell-mgr instead.
 Lead provides access method. If shell is unstable or limited, report immediately.
 Deep analysis requires interactive shell to examine artifacts.
 
-For reverse shells (exploitation producing new shells):
+For exploitation producing new shells:
 ```
-Message shell-mgr: [setup-listener] port=<N> label="<label>"
-Wait for [listener-ready] with payloads → execute exploit →
-Message shell-mgr: [payload-delivered] listener_id=<id> →
-Wait for [session-live] from shell-mgr with session_id and MCP instructions →
-Use the MCP tool specified in handoff to send commands
+Message shell-mgr: [establish-shell] ip=<target> platform=<linux|windows>
+  delivery="<command with {CALLBACK} placeholder>" label="<label>"
+Wait for [session-live] from shell-mgr → use MCP tool from handoff
 ```
 
-For interactive tools (ssh):
+For credential-based access:
 ```
 Message shell-mgr: [setup-process] command="<cmd>" label="<label>"
-  privileged=<bool> startup_delay=<N>
-Wait for [session-live] from shell-mgr with session_id and MCP instructions
+  privileged=<bool>
+Wait for [session-live] from shell-mgr
 ```
 
-For shell upgrade (raw shell → PTY):
-```
-Message shell-mgr: [upgrade-shell] session_id=<id>
-Wait for [session-upgraded]
-```
-
-When done with a session:
-```
-Message shell-mgr: [close-session] session_id=<id> save_transcript=true
-```
+When done: `Message shell-mgr: [close-session] session_id=<id> save_transcript=true`
 
 If shell-mgr is not responding, message the lead.
 
