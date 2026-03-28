@@ -96,20 +96,19 @@ Use curl/Bash for: raw HTTP with precise headers, injection tests.
 
 ## Shell Access via shell-mgr
 
-All shell lifecycle operations go through the shell-mgr teammate. You do NOT
-call shell-server tools directly for setup — message shell-mgr instead.
+**You do NOT call `start_listener` or `start_process` directly** — shell-mgr
+is the sole owner of listeners and session setup.
 
-When technique achieves RCE → **shell upgrade is the immediate priority**.
-Pass the delivery command to shell-mgr — it handles listener, payload, and catch:
+When technique achieves RCE → **get a shell immediately**:
 ```
-Message shell-mgr: [establish-shell] ip=<target> platform=<linux|windows>
-  delivery="<your RCE command with {CALLBACK} placeholder>" label="<label>"
-Wait for [session-live] from shell-mgr with session_id and MCP instructions →
-Use the MCP tool specified in handoff to send commands
+1. Message shell-mgr: [setup-listener] ip=<target> platform=<linux|windows> label="<label>"
+2. shell-mgr replies [listener-ready] with: payloads, check MCP call, what to look for
+3. Deliver payload through your vuln (URL-encode/escape for your injection context)
+4. Check the listener directly using the MCP call shell-mgr gave you
+5. No connection? Adjust payload and retry. ~5 attempts max, then reassess.
+6. Connection confirmed? Message shell-mgr: [session-caught] listener_id=<id>
+7. shell-mgr finalizes → [session-live] with session_id and MCP instructions
 ```
-
-`{CALLBACK}` is where the reverse shell payload goes. URL-encode or escape
-as needed for your injection context. shell-mgr substitutes the actual payload.
 
 For credential-based access (evil-winrm, ssh, psexec.py):
 ```

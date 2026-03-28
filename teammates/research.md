@@ -61,17 +61,19 @@ Discipline:
 
 ## Shell Access via shell-mgr
 
-All shell lifecycle operations go through the shell-mgr teammate. You do NOT
-call shell-server tools directly for setup — message shell-mgr instead.
+**You do NOT call `start_listener` or `start_process` directly** — shell-mgr
+is the sole owner of listeners and session setup.
 
 Lead provides access method. If shell is unstable or limited, report immediately.
 Deep analysis requires interactive shell to examine artifacts.
 
 For exploitation producing new shells:
 ```
-Message shell-mgr: [establish-shell] ip=<target> platform=<linux|windows>
-  delivery="<command with {CALLBACK} placeholder>" label="<label>"
-Wait for [session-live] from shell-mgr → use MCP tool from handoff
+1. Message shell-mgr: [setup-listener] ip=<target> platform=<linux|windows> label="<label>"
+2. shell-mgr replies [listener-ready] with payloads + check instructions
+3. Deliver payload, check listener directly, retry as needed
+4. Connection confirmed → message shell-mgr: [session-caught] listener_id=<id>
+5. shell-mgr finalizes → [session-live]
 ```
 
 For credential-based access:

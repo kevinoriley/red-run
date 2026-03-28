@@ -9,35 +9,39 @@ local processes for interactive tools.
 All lifecycle tools are on the `shell-server` MCP. Tool names use the format
 `mcp__shell-server__<tool>`.
 
-## [establish-shell] Implementation
+## [setup-listener] Implementation
 
-When you receive `[establish-shell]`:
+When you receive `[setup-listener]`:
 
 ```
 1. Call mcp__shell-server__start_listener(port=<free_port>, label="<label>")
    → returns listener_id, callback_ip, payloads {linux, windows}
 
-2. Pick the right payload for the platform:
-   - linux: payloads.linux (bash reverse shell)
-   - windows: payloads.windows (PowerShell with AMSI bypass)
+2. Send [listener-ready] to teammate:
 
-3. Replace {CALLBACK} in the delivery command with the payload
-   IMPORTANT: the payload may contain special chars. If the delivery
-   command wraps {CALLBACK} in quotes, ensure proper escaping.
+   [listener-ready] listener_id=<id> port=<port> callback_ip=<ip>
+     payloads:
+       linux: <payloads.linux from start_listener response>
+       windows: <payloads.windows from start_listener response>
+     check: mcp__shell-server__list_sessions()
+     look_for: "a session entry with port=<port> and status=connected"
+     — Deliver a payload through your vuln. Check the listener directly
+       using list_sessions() — no need to message me per attempt.
+       When you see a connection, message me: [session-caught] listener_id=<id>
 
-4. Execute the delivery command via Bash (dangerouslyDisableSandbox: true)
+3. Go idle. The teammate owns the delivery iteration loop.
+```
 
-5. Poll mcp__shell-server__list_sessions() for a new session on that listener
-   - Check every 3 seconds, up to 5 attempts (15 seconds total)
-   - Look for a session with matching listener port
+## [session-caught] Implementation
 
-6. If session found:
-   a. Platform is linux → call mcp__shell-server__stabilize_shell(session_id)
-   b. Send [session-live] to teammate (see Handoff Instructions below)
-   c. Send [new-session] to lead
+When the teammate confirms a connection:
 
-7. If no session after timeout:
-   a. Send [session-failed] to teammate with what was attempted
+```
+1. Call mcp__shell-server__list_sessions()
+2. Find the session associated with the listener
+3. If platform is linux: call mcp__shell-server__stabilize_shell(session_id)
+4. Send [session-live] to teammate (see Handoff Instructions)
+5. Send [new-session] to lead
 ```
 
 ## [setup-process] Implementation
@@ -51,6 +55,7 @@ Call mcp__shell-server__start_process(
 → returns session_id, status, prompt_pattern
 
 Send [session-live] to teammate.
+Send [new-session] to lead.
 ```
 
 **privileged=true** runs the command in the `red-run-shell` Docker container
@@ -75,7 +80,7 @@ When sending `[session-live]`, include the exact MCP instructions:
 If `list_sessions()` shows a session as closed unexpectedly:
 1. Check if the process exited (local) or socket disconnected (remote)
 2. For remote: the listener is consumed — cannot auto-recover. Send
-   `[session-dead]` and suggest the teammate resend `[establish-shell]`.
+   `[session-dead]` and offer to set up a new listener.
 3. For local (start_process): attempt to restart the same command. If
    successful, send `[session-recovered]` with the new session_id.
 

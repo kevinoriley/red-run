@@ -681,7 +681,7 @@ the reporting teammate's current task to complete. Do NOT wait for other
 decision logic items. Act on this THE MOMENT it arrives.
 
 1. SHELL IS ALREADY LIVE — the teammate that found the RCE messaged
-   shell-mgr directly via [establish-shell]. By the time you see
+   shell-mgr directly via [setup-listener]. By the time you see
    [new-access] from state-mgr or [new-session] from shell-mgr, the
    session exists. You do NOT manage shell setup — shell-mgr does.
    For credential-based access where no teammate is in the loop yet,
