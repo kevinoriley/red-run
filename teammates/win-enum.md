@@ -74,23 +74,34 @@ All state writes go through state-mgr. Send structured messages:
 ```
 Batch multiple writes in one message when possible.
 
-## Shell Access Awareness
+## Shell Access via shell-mgr
+
+All shell lifecycle operations go through the shell-mgr teammate. You do NOT
+call shell-server tools directly for setup — message shell-mgr instead.
 
 The lead provides your access method in the task:
-- **Interactive reverse shell**: commands via Bash or shell-server `send_command()`
-- **Evil-WinRM / PSExec / WMI**: commands via `start_process` + `send_command()`
+- **Interactive reverse shell**: commands via the MCP tool specified in shell-mgr's handoff
+- **Evil-WinRM / PSExec / WMI**: commands via session set up by shell-mgr
 - **SSH/RDP**: commands via appropriate session tool
 - **Limited shell**: report that you need stable interactive shell
 
-## Shell-Server MCP
+**Do NOT interact with web services, URLs, or HTTP endpoints** from a Windows
+shell — no curl, no browser, no downloading/decoding web content. If you find
+a URL, report it to the lead.
 
-If shell-server tools are unavailable or return connection errors, message the
-lead: "shell-server MCP not connected — need operator intervention" and STOP.
+For interactive tools (evil-winrm, ssh, psexec.py):
+```
+Message shell-mgr: [setup-process] command="<cmd>" label="<label>"
+  privileged=<bool> startup_delay=<N>
+Wait for [session-live] from shell-mgr with session_id and MCP instructions
+```
 
-For enumeration tools that need interactive sessions:
+When done with a session:
 ```
-start_process(command, privileged, startup_delay) → send_command() → read results
+Message shell-mgr: [close-session] session_id=<id> save_transcript=true
 ```
+
+If shell-mgr is not responding, message the lead.
 
 ## Tool Execution
 
@@ -106,30 +117,8 @@ cannot read background Bash results. Blocking your turn means the lead
 CANNOT message you to redirect, provide context, or abort. Stay idle between
 background jobs so you can receive messages.
 
-**`start_process` via shell-server MCP** for interactive sessions:
-- Docker tools (evil-winrm, Impacket interactive shells): `privileged=True`
-- Host tools (ssh, msfconsole): `privileged=False`
-
-Port checks before connecting:
-```
-evil-winrm: 5985/5986 | psexec/smbexec: 445 | wmiexec: 135 | SSH: 22
-```
-
-**Evil-WinRM for file transfer** (preferred on Windows when 5985/5986 open):
-```
-start_process(command="evil-winrm -i TARGET -u user -p pass", privileged=True, startup_delay=30)
-send_command(session_id, "upload /path/to/tool.exe C:\\Windows\\Temp\\tool.exe")
-send_command(session_id, "download C:\\Users\\admin\\Desktop\\loot.zip /local/path/")
-```
-
-**startup_delay=30** is critical for evil-winrm — it takes 20-30s to negotiate
-authentication. Without it, the prompt probe fires before connection and the
-session is marked degraded. Also use startup_delay=30 for psexec.py and
-wmiexec.py over slow links.
-
 **Do NOT write custom scripts to interact with remote services.** No Ruby WinRM
-scripts, no Python WMI scripts, no raw socket code. Use the tools available via
-shell-server MCP (`start_process`, `send_command`) and installed CLI tools
+scripts, no Python WMI scripts, no raw socket code. Use installed CLI tools
 (evil-winrm, psexec.py, wmiexec.py, smbexec.py). If a tool fails, report the
 failure — do not reinvent it.
 

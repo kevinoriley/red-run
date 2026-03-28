@@ -67,5 +67,13 @@ else
     bash tools/shell-server/start.sh
 fi
 
+# Detect Sliver availability (orchestrator config wizard uses this)
+if command -v sliver-server &>/dev/null || command -v sliver &>/dev/null; then
+    export RED_RUN_SLIVER_AVAILABLE=1
+    echo "[sliver] Detected — available as shell backend"
+else
+    echo "[sliver] Not installed — shell-server only"
+fi
+
 exec claude "${claude_args[@]}" \
     --append-system-prompt "On activation, immediately invoke the skill: ${skill}"

@@ -118,6 +118,7 @@ Read spawn templates from `teammates/` at runtime via the Read tool.
 | Template | Name | Domain | Model | Role |
 |----------|------|--------|-------|------|
 | `teammates/state-mgr.md` | state-mgr | State management | sonnet | Sole writer to state.db. All teammates message state-mgr for writes. Handles dedup, graph coherence, provenance linking. |
+| `teammates/shell-mgr.md` | shell-mgr | Shell lifecycle | sonnet | Sole manager of shell sessions. Teammates message shell-mgr for listener setup, process spawn, shell upgrade. Hands off session details for direct MCP interaction. |
 
 **Enumeration teammates** (one per target surface — spawn multiple from same template):
 
@@ -394,7 +395,7 @@ Do NOT re-initialize scope or re-run init_engagement(). State.db is source of tr
 Previous teammates are gone (new session) — create a fresh team and spawn as needed:
 ```
 TeamCreate(team_name="red-run", description="red-run")
-# Then spawn state-mgr, followed by teammates for recommended actions
+# Then spawn state-mgr + shell-mgr, followed by teammates for recommended actions
 ```
 
 ## Step 1: Scope & Engagement Setup
@@ -437,6 +438,7 @@ Q1 — Scan type: Quick (recommended) | Full | Ask each time
 Q2 — Web proxy: Burp 127.0.0.1:8080 (recommended) | Custom IP:PORT | No proxy | Ask when needed
 Q3 — Spray intensity: Light ~30 (recommended) | Medium ~10k | Heavy ~100k | Skip | Ask each time
 Q4 — Recovery method: Local (recommended) | Export | Skip | Ask each time
+Q5 — Shell backend: shell-server (recommended) | Sliver (if RED_RUN_SLIVER_AVAILABLE=1) | Custom
 ```
 
 Write `engagement/config.yaml` from `operator/templates/config.yaml`.
@@ -456,24 +458,34 @@ Write `engagement/scope.md`. Call `init_engagement(name="...")`.
 Copy dump-state script (use Bash `cp`, do NOT read the file):
 `cp operator/templates/dump-state.sh engagement/dump-state.sh && chmod +x engagement/dump-state.sh`
 
-### Create Team and Spawn state-mgr
+### Create Team and Spawn Infrastructure Teammates
 
-**Immediately after init_engagement**, create the team and spawn state-mgr.
-The team must exist before any teammate can be spawned, and state-mgr must be
-alive before any other teammate starts work.
+**Immediately after init_engagement**, create the team and spawn the two
+infrastructure teammates. The team must exist before any teammate can be
+spawned. state-mgr must be alive before any writes, and shell-mgr must be
+alive before any shell operations.
 
 ```
 1. TeamCreate(team_name="red-run", description="red-run")
-2. Read teammates/state-mgr.md via Read tool
-3. Agent(prompt=<template content>, name="state-mgr", model="sonnet", team_name="red-run")
-4. state-mgr activates, calls get_state_summary(), then goes idle — this is normal.
-   It wakes on incoming messages from teammates.
+2. Spawn state-mgr:
+   a. Read teammates/state-mgr.md via Read tool
+   b. Agent(prompt=<template content>, name="state-mgr", model="sonnet", team_name="red-run")
+3. Spawn shell-mgr:
+   a. Read config.yaml → shell.backend (default: "shell-server" if absent)
+   b. Read teammates/shell-mgr.md (base) + teammates/shell-mgr-<backend>.md (appendix)
+   c. Agent(prompt=<base + appendix>, name="shell-mgr", model="sonnet", team_name="red-run")
+4. Both go idle after activation — this is normal. They wake on messages.
 ```
 
 All subsequent state writes from the lead and teammates go through state-mgr
-via structured messages. The lead still calls `init_engagement()` and
-`close_engagement()` directly (one-time setup, not a write pattern). The lead
-still calls all state read tools directly.
+via structured messages. All shell lifecycle operations (listeners, processes,
+upgrades) go through shell-mgr via structured messages. Teammates call
+`send_command`/`read_output` directly on the MCP after shell-mgr hands off
+session details.
+
+The lead still calls `init_engagement()` and `close_engagement()` directly
+(one-time setup, not a write pattern). The lead still calls all state read
+tools directly.
 
 After initialization, remind the operator to start the state dashboard:
 ```
@@ -668,9 +680,13 @@ This is the most important state change in an engagement. Do NOT wait for
 the reporting teammate's current task to complete. Do NOT wait for other
 decision logic items. Act on this THE MOMENT it arrives.
 
-1. SHELL UPGRADE (if not already interactive):
-   - start_listener → reverse shell callback → stabilize_shell
-   - OR: start_process(evil-winrm/psexec/ssh) for credential-based access
+1. SHELL SETUP (message shell-mgr):
+   - Reverse shell: message shell-mgr [setup-listener] port=<N> label="<host>"
+     Wait for [listener-ready], deliver payload through vuln, wait for [session-live]
+   - Credential-based: message shell-mgr [setup-process] command="evil-winrm ..."
+     label="<host>" privileged=true startup_delay=30
+     Wait for [session-live] with session_id and MCP instructions
+   - Shell upgrade: message shell-mgr [upgrade-shell] session_id=<id>
    Do NOT enumerate through curl, web APIs, or command injection one-liners.
    A proper shell is faster, richer, and cheaper on tokens.
 

@@ -100,16 +100,42 @@ Clock skew: KRB_AP_ERR_SKEW — requires sudo ntpdate <DC_IP>
 Assessment: retry-later (skill works after clock sync)
 ```
 
-## Shell-Server MCP
+## Shell Access via shell-mgr
 
-If shell-server tools are unavailable or return connection errors, message the
-lead: "shell-server MCP not connected — need operator intervention" and STOP.
+All shell lifecycle operations go through the shell-mgr teammate. You do NOT
+call shell-server tools directly for setup — message shell-mgr instead.
 
-For code execution (GPO abuse, SCCM, etc.):
+For reverse shells (GPO abuse, SCCM, coercion callbacks):
 ```
-start_listener(port) → trigger callback → list_sessions() → stabilize_shell() →
-send_command() → close_session(save_transcript=true)
+Message shell-mgr: [setup-listener] port=<N> label="<label>"
+Wait for [listener-ready] with payloads → deliver payload through vuln →
+Wait for [session-live] from shell-mgr with session_id and MCP instructions →
+Use the MCP tool specified in handoff to send commands
 ```
+
+For interactive tools (evil-winrm, ssh, psexec.py):
+```
+Message shell-mgr: [setup-process] command="<cmd>" label="<label>"
+  privileged=<bool> startup_delay=<N>
+Wait for [session-live] from shell-mgr with session_id and MCP instructions
+```
+
+For shell upgrade (raw shell → PTY):
+```
+Message shell-mgr: [upgrade-shell] session_id=<id>
+Wait for [session-upgraded]
+```
+
+When done with a session:
+```
+Message shell-mgr: [close-session] session_id=<id> save_transcript=true
+```
+
+If shell-mgr is not responding, message the lead.
+
+**Before starting Responder/ntlmrelayx:** check target port is free with
+`ss -tlnp | grep :<port>`. Stale Docker containers from previous sessions
+silently hold ports — message shell-mgr `[close-session]` or `docker stop`.
 
 ## Tool Execution
 
@@ -124,25 +150,6 @@ background jobs so you can receive messages.
 
 **Bash is the default** (nxc, certipy, bloodyAD, ldapsearch, all Impacket
 one-shot scripts) — `dangerouslyDisableSandbox: true` for network commands.
-
-**`start_process`** only for:
-- Docker tools (evil-winrm, Impacket interactive shells): `privileged=True`
-- Daemons (Responder, ntlmrelayx, mitm6): `privileged=True` — monitor via
-  log files, NOT send_command (daemons don't read stdin)
-- Host tools (ssh): `privileged=False`
-
-**Before starting Responder/ntlmrelayx:** check target port is free with
-`ss -tlnp | grep :<port>`. Stale Docker containers from previous sessions
-silently hold ports. Stop them first via `close_session()` or `docker stop`.
-
-Port checks before connecting:
-```
-evil-winrm: 5985/5986 | psexec/smbexec: 445 | wmiexec: 135 | SSH: 22
-```
-
-**Use startup_delay=30** for evil-winrm, psexec.py, wmiexec.py — they take
-20-30s to negotiate authentication. Without it, the prompt probe fires before
-connection and the session is marked degraded.
 
 ## Scope Boundaries
 
@@ -214,7 +221,7 @@ Lead routes to evasion teammate.
 - `date '+%Y-%m-%d %H:%M:%S'` for timestamps.
 - **Never download/clone/install tools.**
 - **Never modify /etc/hosts.** If a hostname doesn't resolve, **stop all work that depends on that hostname**, message the lead with the hostname and IP, and wait. Do NOT work around DNS failures. The lead handles hosts file updates via the operator and will tell you when to resume.
-- **Never write custom scripts** to interact with remote services (no Ruby WinRM, no Python WMI, no raw socket code). Use installed CLI tools and shell-server MCP. If a tool fails, report — don't reinvent.
+- **Never write custom scripts** to interact with remote services (no Ruby WinRM, no Python WMI, no raw socket code). Use installed CLI tools and shell-mgr. If a tool fails, report — don't reinvent.
 - `curl --connect-timeout 5 --max-time 15`.
 - MCP names: hyphens for servers (`state`), underscores for tools (`add_credential`).
 

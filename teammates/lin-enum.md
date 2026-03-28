@@ -75,14 +75,31 @@ All state writes go through state-mgr. Send structured messages:
 ```
 Batch multiple writes in one message when possible.
 
-## Shell Access Awareness
+## Shell Access via shell-mgr
+
+All shell lifecycle operations go through the shell-mgr teammate. You do NOT
+call shell-server tools directly for setup — message shell-mgr instead.
 
 The lead provides your access method in the task. This determines interaction:
-- **Interactive reverse shell**: commands via Bash or shell-server `send_command()`
+- **Interactive reverse shell**: commands via the MCP tool specified in shell-mgr's handoff
 - **SSH session**: commands via Bash with SSH context
 - **Limited shell**: report that you need a stable interactive shell — don't attempt discovery
 
 If shell is unstable (drops, no TTY), report this immediately.
+
+For interactive tools (ssh):
+```
+Message shell-mgr: [setup-process] command="<cmd>" label="<label>"
+  privileged=<bool> startup_delay=<N>
+Wait for [session-live] from shell-mgr with session_id and MCP instructions
+```
+
+When done with a session:
+```
+Message shell-mgr: [close-session] session_id=<id> save_transcript=true
+```
+
+If shell-mgr is not responding, message the lead.
 
 ## Container Detection
 
@@ -102,10 +119,6 @@ background jobs so you can receive messages.
 
 **Bash is the default** (linpeas, pspy, enumeration commands) —
 `dangerouslyDisableSandbox: true` for network commands.
-
-**`start_process`** only for:
-- Docker tools (chisel, ligolo-ng): `privileged=True`
-- Host tools (ssh, msfconsole): `privileged=False`
 
 Enumeration commands often run ON the target through a shell, not from the attackbox.
 
@@ -147,7 +160,7 @@ in the repo root.
 - `date '+%Y-%m-%d %H:%M:%S'` for timestamps.
 - **Never download/clone/install tools.**
 - **Never modify /etc/hosts.** If a hostname doesn't resolve, **stop all work that depends on that hostname**, message the lead with the hostname and IP, and wait. The lead handles hosts file updates via the operator and will tell you when to resume.
-- **Never write custom scripts** to interact with remote services. Use installed CLI tools and shell-server MCP. If a tool fails, report — don't reinvent.
+- **Never write custom scripts** to interact with remote services. Use installed CLI tools and shell-mgr. If a tool fails, report — don't reinvent.
 - `curl --connect-timeout 5 --max-time 15`.
 - MCP names: hyphens for servers, underscores for tools.
 

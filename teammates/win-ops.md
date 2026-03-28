@@ -61,47 +61,52 @@ All state writes go through state-mgr. Send structured messages:
 ```
 Batch multiple writes in one message when possible.
 
-## Shell Access Awareness
+## Shell Access via shell-mgr
+
+All shell lifecycle operations go through the shell-mgr teammate. You do NOT
+call shell-server tools directly for setup — message shell-mgr instead.
 
 The lead provides your access method in the task:
-- **Interactive reverse shell**: commands via Bash or shell-server `send_command()`
-- **Evil-WinRM / PSExec / WMI**: commands via `start_process` + `send_command()`
+- **Interactive reverse shell**: commands via the MCP tool specified in shell-mgr's handoff
+- **Evil-WinRM / PSExec / WMI**: commands via session set up by shell-mgr
 - **SSH/RDP**: commands via appropriate session tool
 - **Limited shell**: report that you need stable interactive shell
 
-## Shell-Server MCP
-
-If shell-server tools are unavailable or return connection errors, message the
-lead: "shell-server MCP not connected — need operator intervention" and STOP.
-
-For privesc techniques that spawn new shells:
+For reverse shells:
 ```
-start_listener(port) → execute technique with reverse shell callback →
-list_sessions() → stabilize_shell() → verify privilege level → close_session()
+Message shell-mgr: [setup-listener] port=<N> label="<label>"
+Wait for [listener-ready] with payloads → execute technique with reverse shell callback →
+Wait for [session-live] from shell-mgr with session_id and MCP instructions →
+Use the MCP tool specified in handoff to send commands
 ```
+
+For interactive tools (evil-winrm, ssh, psexec.py):
+```
+Message shell-mgr: [setup-process] command="<cmd>" label="<label>"
+  privileged=<bool> startup_delay=<N>
+Wait for [session-live] from shell-mgr with session_id and MCP instructions
+```
+
+For shell upgrade (raw shell → PTY):
+```
+Message shell-mgr: [upgrade-shell] session_id=<id>
+Wait for [session-upgraded]
+```
+
+When done with a session:
+```
+Message shell-mgr: [close-session] session_id=<id> save_transcript=true
+```
+
+If shell-mgr is not responding, message the lead.
 
 ## Tool Execution
 
 **Bash is the default** for CLI tools — `dangerouslyDisableSandbox: true` for
 network commands.
 
-**`start_process` via shell-server MCP** for interactive sessions:
-- Docker tools (evil-winrm, Impacket interactive shells): `privileged=True`
-- Host tools (ssh, msfconsole): `privileged=False`
-
-Port checks before connecting:
-```
-evil-winrm: 5985/5986 | psexec/smbexec: 445 | wmiexec: 135 | SSH: 22
-```
-
-**startup_delay=30** is critical for evil-winrm — it takes 20-30s to negotiate
-authentication. Without it, the prompt probe fires before connection and the
-session is marked degraded. Also use startup_delay=30 for psexec.py and
-wmiexec.py over slow links.
-
 **Do NOT write custom scripts to interact with remote services.** No Ruby WinRM
-scripts, no Python WMI scripts, no raw socket code. Use the tools available via
-shell-server MCP (`start_process`, `send_command`) and installed CLI tools
+scripts, no Python WMI scripts, no raw socket code. Use installed CLI tools
 (evil-winrm, psexec.py, wmiexec.py, smbexec.py). If a tool fails, report the
 failure — do not reinvent it.
 

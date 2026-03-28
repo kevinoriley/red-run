@@ -91,16 +91,38 @@ Scan types (match lead's instruction exactly):
   custom → translate lead's description to nmap flags
 ```
 
-## Shell-Server MCP
+## Shell Access via shell-mgr
 
-If shell-server tools are unavailable or return connection errors, message the
-lead: "shell-server MCP not connected — need operator intervention" and STOP.
+All shell lifecycle operations go through the shell-mgr teammate. You do NOT
+call shell-server tools directly for setup — message shell-mgr instead.
 
-For reverse shells when a skill achieves RCE:
+For reverse shells:
 ```
-start_listener(port) → trigger callback → list_sessions() → stabilize_shell() →
-send_command() → close_session(save_transcript=true)
+Message shell-mgr: [setup-listener] port=<N> label="<label>"
+Wait for [listener-ready] with payloads → deliver payload through vuln →
+Wait for [session-live] from shell-mgr with session_id and MCP instructions →
+Use the MCP tool specified in handoff to send commands
 ```
+
+For interactive tools (evil-winrm, ssh, psexec.py):
+```
+Message shell-mgr: [setup-process] command="<cmd>" label="<label>"
+  privileged=<bool> startup_delay=<N>
+Wait for [session-live] from shell-mgr with session_id and MCP instructions
+```
+
+For shell upgrade (raw shell → PTY):
+```
+Message shell-mgr: [upgrade-shell] session_id=<id>
+Wait for [session-upgraded]
+```
+
+When done with a session:
+```
+Message shell-mgr: [close-session] session_id=<id> save_transcript=true
+```
+
+If shell-mgr is not responding, message the lead.
 
 Prefer reverse shells over inline command execution.
 
@@ -108,11 +130,6 @@ Prefer reverse shells over inline command execution.
 
 **Bash is the default** for CLI tools (nxc, manspider, enum4linux-ng, smbclient,
 rpcclient, snmpwalk, etc.) — use `dangerouslyDisableSandbox: true` for network commands.
-
-**`start_process`** only for persistent interactive sessions or Docker-only tools:
-- Docker pentest tools (evil-winrm, chisel, ligolo-ng): `privileged=True`
-- Privileged daemons (Responder, ntlmrelayx, mitm6): `privileged=True`
-- Host tools (ssh, msfconsole): `privileged=False`
 
 Don't run `which` for Docker-only tools — they're only in the container.
 

@@ -59,29 +59,46 @@ Discipline:
 - **Save retrieved PoCs** to `engagement/evidence/research/` with source URL in comment
 - Document all source URLs in summary
 
-## Shell Access Awareness
+## Shell Access via shell-mgr
+
+All shell lifecycle operations go through the shell-mgr teammate. You do NOT
+call shell-server tools directly for setup — message shell-mgr instead.
 
 Lead provides access method. If shell is unstable or limited, report immediately.
 Deep analysis requires interactive shell to examine artifacts.
 
-## Shell-Server MCP
-
-If shell-server tools are unavailable or return connection errors, message the
-lead: "shell-server MCP not connected — need operator intervention" and STOP.
-
-For exploitation producing new shells:
+For reverse shells (exploitation producing new shells):
 ```
-start_listener(port) → execute exploit → list_sessions() →
-stabilize_shell() → verify privilege → close_session()
+Message shell-mgr: [setup-listener] port=<N> label="<label>"
+Wait for [listener-ready] with payloads → execute exploit →
+Wait for [session-live] from shell-mgr with session_id and MCP instructions →
+Use the MCP tool specified in handoff to send commands
 ```
+
+For interactive tools (ssh):
+```
+Message shell-mgr: [setup-process] command="<cmd>" label="<label>"
+  privileged=<bool> startup_delay=<N>
+Wait for [session-live] from shell-mgr with session_id and MCP instructions
+```
+
+For shell upgrade (raw shell → PTY):
+```
+Message shell-mgr: [upgrade-shell] session_id=<id>
+Wait for [session-upgraded]
+```
+
+When done with a session:
+```
+Message shell-mgr: [close-session] session_id=<id> save_transcript=true
+```
+
+If shell-mgr is not responding, message the lead.
 
 ## Tool Execution
 
 **Bash is the default** (strace, ltrace, strings, objdump, analysis tools,
 PoC scripts) — `dangerouslyDisableSandbox: true` for network commands.
-
-**`start_process`** only for Docker tools (`privileged=True`) or host interactive
-tools (ssh, msfconsole).
 
 WebSearch/WebFetch run from attackbox — they don't touch the target.
 

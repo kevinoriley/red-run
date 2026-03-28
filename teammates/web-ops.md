@@ -94,16 +94,38 @@ Typical workflow:
 
 Use curl/Bash for: raw HTTP with precise headers, injection tests.
 
-## Shell-Server MCP
+## Shell Access via shell-mgr
 
-If shell-server tools are unavailable or return connection errors, message the
-lead: "shell-server MCP not connected — need operator intervention" and STOP.
+All shell lifecycle operations go through the shell-mgr teammate. You do NOT
+call shell-server tools directly for setup — message shell-mgr instead.
 
 When technique achieves RCE → **shell upgrade is the immediate priority**:
 ```
-start_listener(port) → send callback through vuln → list_sessions() →
-stabilize_shell() → verify with whoami → close_session(save_transcript=true)
+Message shell-mgr: [setup-listener] port=<N> label="<label>"
+Wait for [listener-ready] with payloads → deliver payload through vuln →
+Wait for [session-live] from shell-mgr with session_id and MCP instructions →
+Use the MCP tool specified in handoff to send commands
 ```
+
+For interactive tools (evil-winrm, ssh, psexec.py):
+```
+Message shell-mgr: [setup-process] command="<cmd>" label="<label>"
+  privileged=<bool> startup_delay=<N>
+Wait for [session-live] from shell-mgr with session_id and MCP instructions
+```
+
+For shell upgrade (raw shell → PTY):
+```
+Message shell-mgr: [upgrade-shell] session_id=<id>
+Wait for [session-upgraded]
+```
+
+When done with a session:
+```
+Message shell-mgr: [close-session] session_id=<id> save_transcript=true
+```
+
+If shell-mgr is not responding, message the lead.
 
 Do NOT enumerate the host through curl, web APIs, or command injection
 one-liners. A proper shell is faster and richer — the lead will route host
@@ -127,11 +149,6 @@ tool** on the output file to process results. Do NOT use TaskOutput — it
 cannot read background Bash results. Blocking your turn means the lead
 CANNOT message you to redirect, provide context, or abort. Stay idle between
 background jobs so you can receive messages.
-
-**`start_process`** only for:
-- Docker tools (evil-winrm, chisel, Impacket shells): `privileged=True`
-- Daemons (Responder, ntlmrelayx): `privileged=True`
-- Host interactive (ssh, msfconsole): `privileged=False`
 
 ## Scope Boundaries
 
@@ -161,16 +178,15 @@ from previous sessions silently hold ports — Responder starts but captures
 nothing. Always run this first:
 ```bash
 ss -tlnp | grep :445
-# If something is listening, find and stop it:
-docker ps --filter name=red-run --format '{{.Names}}'
-# close_session() or docker stop <name> to free the port
+# If something is listening, message shell-mgr: [close-session] or docker stop
 ```
 
 When port 445 is free:
 ```
-start_process(command="/opt/Responder/Responder.py -I tun0 -v", label="responder", privileged=True, timeout=30)
+Message shell-mgr: [setup-process] command="/opt/Responder/Responder.py -I tun0 -v"
+  label="responder" privileged=true
+Wait for [session-live] → monitor via Bash, not send_command
 ```
-Monitor via Bash, not send_command:
 ```bash
 docker exec <container> grep -i 'NTLMv2' /opt/Responder/logs/Responder-Session.log
 ```
@@ -235,9 +251,9 @@ The lead routes to evasion teammate for bypass.
 - `date '+%Y-%m-%d %H:%M:%S'` for timestamps. Never placeholders.
 - **Never download/clone/install tools.** Missing tool → stop, report.
 - **Never modify /etc/hosts.** No sudo, no tee, no direct edits. If a hostname doesn't resolve, **stop all work that depends on that hostname**, message the lead with the hostname and IP, and wait. Do NOT work around it with curl-by-IP, Host headers, or any other DNS bypass. The lead handles hosts file updates via the operator and will tell you when to resume.
-- **Never write custom scripts** to interact with remote services. Use installed CLI tools and shell-server/browser-server MCP. If a tool fails, report — don't reinvent.
+- **Never write custom scripts** to interact with remote services. Use installed CLI tools, browser-server MCP, and shell-mgr. If a tool fails, report — don't reinvent.
 - `curl --connect-timeout 5 --max-time 15` always.
-- MCP names use hyphens: `mcp__shell-server__start_listener`, `mcp__state__add_vuln`
+- MCP names use hyphens: `mcp__state__add_vuln`, `mcp__browser-server__browser_open`
 
 ## Target Knowledge Ethics
 

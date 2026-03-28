@@ -106,10 +106,12 @@ Agent source files live in `agents/` (version controlled), installed to `~/.clau
 
 The state server runs as a single instance. In the agent teams orchestrator
 (`/red-run-ctf`), all state writes are centralized through the **state-mgr
-teammate** — the sole writer to state.db. Other teammates and the lead send
-structured messages to state-mgr instead of calling write tools directly.
-State reads remain direct (any teammate can call `get_state_summary()`, etc.).
-See the server's `README.md` for tool details.
+teammate** — the sole writer to state.db. All shell lifecycle operations
+(listeners, processes, upgrades) are centralized through the **shell-mgr
+teammate** — teammates message shell-mgr for setup, then interact with the
+MCP directly after session handoff. shell-mgr's backend is configurable:
+`shell-server` (default), `sliver`, or `custom` (operator-provided C2).
+See each server's `README.md` for tool details.
 
 ### Skill Types
 - **Orchestrator** (`skills/orchestrator/`): Takes a target, runs recon, routes to discovery skills
@@ -222,6 +224,8 @@ red-run/
   teammates/              # Spawn prompt templates for /red-run-ctf (agent teams)
     README.md              # Template format and usage docs
     state-mgr.md           # Centralized state writer, dedup, graph coherence (sonnet)
+    shell-mgr.md           # Shell lifecycle manager base template (sonnet)
+    shell-mgr-shell-server.md  # Shell-server backend appendix for shell-mgr
     net-enum.md            # Network recon + service enumeration (sonnet)
     web-enum.md            # Web app discovery (sonnet)
     web-ops.md             # Web technique execution (sonnet)
