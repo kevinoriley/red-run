@@ -67,12 +67,14 @@ else
     bash tools/shell-server/start.sh
 fi
 
-# Detect Sliver availability (orchestrator config wizard uses this)
+# Detect C2 frameworks (orchestrator config wizard uses these)
 if command -v sliver-server &>/dev/null || command -v sliver &>/dev/null; then
     export RED_RUN_SLIVER_AVAILABLE=1
-    echo "[sliver] Detected — available as shell backend"
-else
-    echo "[sliver] Not installed — shell-server only"
+    echo "[c2] Sliver detected"
+fi
+# Add future C2 detection here (e.g., Mythic, Havoc)
+if [[ -z "${RED_RUN_SLIVER_AVAILABLE:-}" ]]; then
+    echo "[c2] No C2 framework detected — shell-server only"
 fi
 
 exec claude "${claude_args[@]}" \
