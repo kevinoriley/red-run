@@ -171,6 +171,29 @@ if [[ "$shell_backend" == "custom" ]]; then
     [[ -n "$custom_ref" ]] && echo "  custom_ref: \"${custom_ref}\"" >> "$CONFIG"
 fi
 
+# --- Patch .mcp.json for C2 backends ---
+MCP_JSON=".mcp.json"
+if [[ "$shell_backend" == "sliver" && -f "$MCP_JSON" ]]; then
+    if ! grep -q '"sliver-server"' "$MCP_JSON"; then
+        echo ""
+        echo "Adding sliver-server to .mcp.json..."
+        # Insert sliver-server SSE entry after shell-server
+        python3 -c "
+import json, sys
+with open('$MCP_JSON') as f:
+    cfg = json.load(f)
+cfg['mcpServers']['sliver-server'] = {'type': 'sse', 'url': 'http://127.0.0.1:8023/sse'}
+with open('$MCP_JSON', 'w') as f:
+    json.dump(cfg, f, indent=2)
+    f.write('\n')
+print('  sliver-server added to .mcp.json')
+" 2>&1
+        echo "  Note: restart Claude Code session for MCP changes to take effect."
+    else
+        echo "  sliver-server already in .mcp.json"
+    fi
+fi
+
 echo ""
 echo "Config written to $CONFIG"
 echo "Run ./run.sh to start the engagement."
