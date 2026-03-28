@@ -25,8 +25,11 @@ Send to teammate:
     payloads={linux: "<payload>", windows: "<payload>"}
 ```
 
-When the listener accepts a connection, it creates a session automatically.
-Call `list_sessions()` to check for the new session, then send `[session-live]`.
+When the teammate messages `[payload-delivered] listener_id=<id>`:
+1. Call `list_sessions()` — check if the listener spawned a session
+2. If session exists: call `stabilize_shell()` (Linux), then send `[session-live]`
+3. If no session yet: wait a few seconds, poll again (up to 3 attempts)
+4. If still no session: send `[session-dead]` — payload may have failed
 
 ### start_process(command, label, timeout, privileged, startup_delay)
 

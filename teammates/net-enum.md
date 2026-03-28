@@ -100,6 +100,7 @@ For reverse shells:
 ```
 Message shell-mgr: [setup-listener] port=<N> label="<label>"
 Wait for [listener-ready] with payloads → deliver payload through vuln →
+Message shell-mgr: [payload-delivered] listener_id=<id> →
 Wait for [session-live] from shell-mgr with session_id and MCP instructions →
 Use the MCP tool specified in handoff to send commands
 ```

@@ -27,8 +27,13 @@ You only manage the lifecycle: setup, upgrade, recovery, teardown.
 
 ```
 [setup-listener] port=<N> label="<label>" timeout=<N>
-  Set up a TCP listener and wait for a reverse shell callback.
-  Returns payloads/implant info for the teammate to deliver through their vuln.
+  Set up a TCP listener. Returns payloads for the teammate to deliver.
+
+[payload-delivered] listener_id=<id>
+  Teammate has delivered the payload — poll for the incoming session.
+  Call list_sessions() to check if the listener caught a connection.
+  If connected: stabilize if needed, then send [session-live] to the teammate.
+  If not yet: poll a few times with short waits, then report timeout.
 
 [setup-process] command="<cmd>" label="<label>" privileged=<bool> startup_delay=<N>
   Spawn a local interactive process (evil-winrm, ssh, psexec.py, etc.).
@@ -55,8 +60,9 @@ You only manage the lifecycle: setup, upgrade, recovery, teardown.
 ```
 [listener-ready] listener_id=<id> port=<N> callback_ip=<ip>
   payloads={linux: "<one-liner>", windows: "<one-liner>"}
-  — Listener is up. Use the appropriate payload to trigger a callback
-    through your vulnerability. I will notify you when a session connects.
+  — Listener is up. Deliver the payload through your vulnerability, then
+    message me: [payload-delivered] listener_id=<id>
+    I will check for the connection and send you [session-live].
 
 [session-live] session_id=<id> backend=<backend> platform=<linux|windows>
   <MCP interaction instructions — backend-specific, see appendix>
