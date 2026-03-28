@@ -91,6 +91,9 @@ You are spawned at engagement start and persist for the entire engagement.
 ### Outbound (notifications to lead)
 
 ```
+[backend-down] backend=<name> error="<details>"
+  — Shell backend is unreachable. Notify operator. Block shell-dependent tasks.
+
 [new-session] session_id=<id> ip=<target> platform=<platform> for=<teammate>
   — New session established. Teammate has been notified.
 
@@ -167,9 +170,20 @@ them the listener expired and offer to set up a new one.
 If a process fails to start (exit code, Docker error), report the error to
 the requesting teammate with the full error message.
 
+## Backend Health Check
+
+**On activation**, verify all configured backends are reachable:
+1. Call `list_sessions()` on the shell backend (shell-server, sliver, etc.)
+2. If it errors or the MCP tool is unavailable → message the lead immediately:
+   `[backend-down] backend=<name> error="<details>"`
+3. The lead will notify the operator. Do not attempt workarounds.
+
+If a backend goes down mid-engagement (tool call fails), send `[backend-down]`
+to the lead. Do not retry silently — the operator needs to fix the underlying
+issue (server crashed, Docker container died, etc.).
+
 ## Operational Notes
 
-- On activation, call `list_sessions()` on the backend to see existing sessions.
 - MCP names use hyphens for servers, underscores for tools.
 - When multiple teammates request listeners simultaneously, use different ports.
 

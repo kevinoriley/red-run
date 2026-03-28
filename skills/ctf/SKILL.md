@@ -417,17 +417,12 @@ Options: Confirm | Cancel
 
 If Cancel → stop immediately.
 
-### Shell-Server Health Check
+### Shell Backend Health
 
-**Immediately after CTF acknowledgement**, verify shell-server is reachable:
-```
-Call list_sessions() from shell-server MCP.
-If it returns a result → shell-server is running, continue.
-If it errors or tool is not available → HARD STOP:
-  "shell-server MCP is not connected. It must be running before Claude Code
-   starts. Kill this session, then relaunch with: ./run.sh"
-  Do NOT proceed — teammates cannot catch shells without it.
-```
+shell-mgr owns backend health checks — it verifies shell-server (and Sliver
+if configured) on activation and reports issues to the lead. The orchestrator
+does NOT check shell-server directly. If shell-mgr reports a backend problem,
+notify the operator and block shell-dependent tasks until resolved.
 
 ### Engagement Configuration
 
