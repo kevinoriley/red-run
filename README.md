@@ -37,7 +37,7 @@ See also: [Skills Inventory](docs/skills-inventory.md) for the full skill invent
 
 ## Installation
 
-**Prerequisites:** Linux VM with pentesting tools, [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [uv](https://docs.astral.sh/uv/), [Docker](https://docs.docker.com/engine/install/)
+**Prerequisites:** Linux VM with pentesting tools, [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [uv](https://docs.astral.sh/uv/), [Docker](https://docs.docker.com/engine/install/). Optional: [Sliver](https://github.com/BishopFox/sliver) for C2 integration.
 
 ```bash
 ./install.sh          # Symlink-based (edits reflect immediately)
@@ -53,11 +53,22 @@ After installing, run the preflight check to verify attackbox dependencies (nmap
 bash preflight.sh
 ```
 
-Then launch with:
+Then launch:
 
 ```bash
-./run.sh              # ensures shell-server is up, then starts Claude Code
+./run.sh              # shell-server only (default)
 ```
+
+### C2 integration (optional)
+
+red-run works out of the box with shell-server (raw TCP reverse shells + interactive processes). For C2 support, run the config wizard before launching:
+
+```bash
+bash operator/config.sh   # select C2 backend, generate operator configs
+./run.sh                   # starts C2 daemon + MCP automatically
+```
+
+`config.sh` writes `engagement/config.yaml` and patches `.mcp.json` with the C2 MCP server entry. The orchestrator skips its built-in config wizard when `config.yaml` exists. Currently supported: Sliver. Custom C2 integration via operator-provided MCP servers is also supported.
 
 The shell-server runs as a persistent SSE service (`127.0.0.1:8022`) shared across all teammates — sessions created by one teammate are visible to all others. `run.sh` starts it automatically and is idempotent (safe to re-run). A `SessionStart` hook also attempts auto-start as a fallback.
 
