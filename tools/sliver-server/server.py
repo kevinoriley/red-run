@@ -34,7 +34,7 @@ def _find_config() -> Path | None:
 def _not_configured_msg() -> str:
     return (
         "ERROR: Sliver not configured for this engagement.\n"
-        "Run: operator/setup.sh and select Sliver as the shell backend,\n"
+        "Run: operator/config.sh and select Sliver as the shell backend,\n"
         "or manually create engagement/sliver.cfg:\n"
         "  sliver-server operator --name red-run --lhost 127.0.0.1 "
         "--permissions all --save engagement/sliver.cfg"

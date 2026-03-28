@@ -10,7 +10,7 @@ operations for red-run teammates.
 - **Sliver server** installed and running as daemon (`sliver-server daemon`)
 - **Operator config** at `engagement/sliver.cfg` (generated via
   `sliver-server operator --name red-run --lhost 127.0.0.1 --save engagement/sliver.cfg`
-  or via `operator/setup.sh`)
+  or via `operator/config.sh`)
 
 ## Transport
 
@@ -55,7 +55,7 @@ SSE on `127.0.0.1:8023` (configurable via `SLIVER_SSE_PORT`).
 ## Graceful Degradation
 
 If no operator config exists, all tools return an error message directing the
-operator to run `operator/setup.sh`. The server starts and binds its SSE port
+operator to run `operator/config.sh`. The server starts and binds its SSE port
 regardless — it just can't connect to Sliver without credentials.
 
 ## HTTP Endpoints

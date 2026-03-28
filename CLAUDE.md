@@ -287,7 +287,7 @@ red-run/
       save-agent-log.sh   # SubagentStop hook — copies JSONL transcripts to engagement/evidence/logs/
       event-watcher.sh    # Background event poller — spawned by orchestrator to watch state_events
   operator/               # Operator-facing tools (run manually, not MCP)
-    setup.sh             # Pre-engagement config wizard (scan, proxy, spray, cracking, C2)
+    config.sh             # Pre-engagement config wizard (scan, proxy, spray, cracking, C2)
     state-viewer/      # Read-only web dashboard for state.db
       README.md            # Tool documentation
       server.py           # Stdlib HTTP server — inline HTML dashboard, SSE live updates
