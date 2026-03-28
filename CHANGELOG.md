@@ -2,6 +2,15 @@
 
 All notable changes to red-run will be documented in this file. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.0.3] — 2026-03-27
+
+### Changed
+
+- SMB enumeration skill now requires write access verification via actual file
+  upload (two-tool confirmation before marking READ-only)
+- Added shell-special character handling for passwords in authenticated
+  SMB re-enumeration
+
 ## [2.0.2] — 2026-03-27
 
 ### Fixed
