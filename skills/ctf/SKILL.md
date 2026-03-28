@@ -680,15 +680,13 @@ This is the most important state change in an engagement. Do NOT wait for
 the reporting teammate's current task to complete. Do NOT wait for other
 decision logic items. Act on this THE MOMENT it arrives.
 
-1. SHELL SETUP (message shell-mgr):
-   - Reverse shell: message shell-mgr [setup-listener] port=<N> label="<host>"
-     Wait for [listener-ready], deliver payload through vuln, wait for [session-live]
-   - Credential-based: message shell-mgr [setup-process] command="evil-winrm ..."
-     label="<host>" privileged=true startup_delay=30
-     Wait for [session-live] with session_id and MCP instructions
-   - Shell upgrade: message shell-mgr [upgrade-shell] session_id=<id>
-   Do NOT enumerate through curl, web APIs, or command injection one-liners.
-   A proper shell is faster, richer, and cheaper on tokens.
+1. SHELL IS ALREADY LIVE — the teammate that found the RCE messaged
+   shell-mgr directly via [establish-shell]. By the time you see
+   [new-access] from state-mgr or [new-session] from shell-mgr, the
+   session exists. You do NOT manage shell setup — shell-mgr does.
+   For credential-based access where no teammate is in the loop yet,
+   message shell-mgr: [setup-process] command="evil-winrm ..." and
+   include the session_id in the enum teammate's task assignment.
 
 2. SPAWN HOST ENUM (parallel with everything else):
    Windows → win-enum-<host> from teammates/win-enum.md
