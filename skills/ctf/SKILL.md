@@ -243,10 +243,9 @@ operator override for report presentation — teammates don't need to set it.
 ### Dismissing Teammates
 
 ```
-if teammate domain is exhausted (no more tasks in that area):
-    SendMessage(to="<name>", message={type: "shutdown_request"})
-    teammate approves → process exits
-if engagement complete:
+NEVER shut down teammates without explicit operator approval.
+AskUserQuestion: "Engagement objectives met. Shut down all teammates?"
+Only after operator confirms:
     for each active teammate:
         SendMessage(to="<name>", message={type: "shutdown_request"})
     after all teammates shut down:
@@ -815,6 +814,12 @@ When significant access gained (shell, DA, database):
 2. Message state-mgr with any remaining state updates
 3. Check objectives against scope.md
 4. Continue chaining or wrap up
+
+**DO NOT shut down teammates after flag capture or objective completion.**
+Provenance links, findings, and state may need updates after the final flag.
+Use `AskUserQuestion` to confirm with the operator before dismissing ANY
+teammate or calling `close_engagement`. The operator decides when the
+engagement is truly done.
 
 ## Step 6: Multi-Target Engagements
 
