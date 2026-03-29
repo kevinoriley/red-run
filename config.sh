@@ -144,10 +144,19 @@ case "${q5:-1}" in
                         rc=$(mktemp)
                         out=$(mktemp)
                         echo "generate --mtls 127.0.0.1:4444 --os ${target_os} --arch amd64 --skip-symbols --save ${out}" > "$rc"
-                        if timeout 600 sliver console --rc "$rc" &>/dev/null; then
-                            echo "done ($(du -h "$out" | cut -f1))"
+                        timeout 600 sliver console --rc "$rc" &>/dev/null &
+                        build_pid=$!
+                        seconds=0
+                        while kill -0 "$build_pid" 2>/dev/null; do
+                            sleep 1
+                            seconds=$((seconds + 1))
+                            printf "\r  Building ${target_os}/amd64... %ds " "$seconds"
+                        done
+                        wait "$build_pid" 2>/dev/null
+                        if [[ -f "$out" && -s "$out" ]]; then
+                            printf "\r  Building ${target_os}/amd64... done (%ds, %s)\n" "$seconds" "$(du -h "$out" | cut -f1)"
                         else
-                            echo "failed (non-critical, will compile on first use)"
+                            printf "\r  Building ${target_os}/amd64... failed (%ds, non-critical)\n" "$seconds"
                         fi
                         rm -f "$rc" "$out"
                     done
