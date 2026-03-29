@@ -499,8 +499,11 @@ credentials, and assessment progress update live as teammates work.
 ### Network Recon
 
 ```
-if config.scan_type exists: use it
-elif config.scan_type omitted: AskUserQuestion — Quick | Full | Import | Custom
+if config.scan_type exists:
+  present routing table with pre-selected scan type for approval
+  (do NOT re-ask scan type — config already has it)
+elif config.scan_type omitted:
+  AskUserQuestion — Quick | Full | Import | Custom
 
 spawn/message recon teammate:
   "Load skill 'network-recon'. Target: <IP/range>. Scan type: <type>."
