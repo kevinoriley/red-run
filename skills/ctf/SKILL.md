@@ -231,10 +231,23 @@ RIGHT:  "Discovery found: basic PHP content blocked by content inspection.
   Teammate includes `via_access_id=N` in state-mgr messages for access, vulns,
   and credentials. This links findings to the session that produced them.
 
+**Active sessions — include in EVERY task assignment where shell access exists:**
+Before assigning, ask shell-mgr for active sessions on the target host (or
+check `list_sessions()` on all configured backends). Include ALL relevant
+sessions with their backend and MCP instructions so the teammate can use them
+immediately. If no sessions exist, instruct the teammate to work with shell-mgr
+to establish access.
+
+The teammate should NOT have to discover sessions on their own.
+
 Example task context:
 ```
-"Exercise LFI on portal.target.local ?view= parameter.
- access_id: 1 (svc_apache SMB session)"
+"Enumerate privesc vectors on 10.10.10.5 as dev_ryan.
+ access_id: 3
+ Sessions:
+   shell-server 7711087a (PTY) — send_command(session_id='7711087a', ...)
+   c2 b5d36dfa (mTLS, alive) — execute(session_id='b5d36dfa', ...) + upload/download
+ Use C2 for file transfers, shell-server for interactive commands."
 ```
 
 The flow graph orders by timestamp automatically. `chain_order` is an
