@@ -100,6 +100,11 @@ case "${q5:-1}" in
             shell_backend="sliver"
             default_cfg="engagement/sliver.cfg"
             echo ""
+            # Unpack Sliver assets (Go toolchain, implant templates) on first run
+            if [[ ! -d "${HOME}/.sliver" ]] || [[ ! -d "${HOME}/.sliver/go" ]]; then
+                echo "  Unpacking Sliver assets (first run, may take a moment)..."
+                sliver-server unpack --force 2>/dev/null
+            fi
             echo "  Sliver operator config setup:"
             if [[ -f "$default_cfg" ]]; then
                 echo "  Found existing config: $default_cfg"

@@ -511,24 +511,24 @@ def create_server() -> FastMCP:
     # ── HTTP custom routes ──────────────────────────────────────────
 
     from starlette.requests import Request
-    from starlette.responses import JSONResponse
+    from starlette.responses import Response
 
     @mcp.custom_route("/status", methods=["GET"])
-    async def status(request: Request) -> JSONResponse:
+    async def status(request: Request) -> Response:
         """Health check endpoint for run.sh."""
-        if _find_config() is None:
-            return JSONResponse({"status": "not_configured", "sessions": 0})
-        client = await _get_client()
-        if client is None:
-            return JSONResponse({"status": "disconnected", "sessions": 0})
         try:
-            sessions = await client.sessions()
-            return JSONResponse({
-                "status": "connected",
-                "sessions": len(sessions),
-            })
+            if _find_config() is None:
+                body = json.dumps({"status": "not_configured", "sessions": 0})
+            else:
+                client = await _get_client()
+                if client is None:
+                    body = json.dumps({"status": "disconnected", "sessions": 0})
+                else:
+                    sessions = await client.sessions()
+                    body = json.dumps({"status": "connected", "sessions": len(sessions)})
         except Exception:
-            return JSONResponse({"status": "error", "sessions": 0})
+            body = json.dumps({"status": "error", "sessions": 0})
+        return Response(content=body, media_type="application/json")
 
     return mcp
 
