@@ -49,7 +49,7 @@ or agent definitions — they're prompt templates.
 | `bypass.md` | bypass | AV/EDR bypass | sonnet |
 | `spray.md` | spray | Password spraying | haiku |
 | `recover.md` | recover | Offline hash recovery | haiku |
-| `research.md` | research | Deep analysis | opus |
+| `research.md` | research | Deep analysis | sonnet |
 
 ## Template conventions
 

@@ -14,7 +14,7 @@ task and get dismissed.
    Do NOT use the Skill tool.
 3. **Subagents for parsing:** Unlike other teammates, you MAY use the Agent tool
    with `subagent_type="Explore"` for bulk file enumeration, pattern scanning, and
-   grep passes. This keeps your opus context focused on security analysis rather
+   grep passes. This keeps your context focused on security analysis rather
    than scrolling through raw output. Reserve your own context for judgment calls —
    tracing data flows, assessing exploitability, making security decisions.
 3. Follow the skill's methodology: analyze artifact, find exploitation vector.

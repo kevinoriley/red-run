@@ -55,7 +55,7 @@ Teammates are split into enumeration and operations pairs per domain, plus infra
 | `bypass.md` | bypass | AV/EDR bypass | sonnet |
 | `spray.md` | spray | Password spraying | haiku |
 | `recover.md` | recover | Offline recovery | haiku |
-| `research.md` | research | Deep analysis | opus |
+| `research.md` | research | Deep analysis | sonnet |
 
 ## Enumeration vs Operations
 
