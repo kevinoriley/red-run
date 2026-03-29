@@ -683,16 +683,16 @@ function renderFlowGraph() {
     const techniqueLabel = v.technique_id ? `[${v.technique_id}] ` : '';
     let vulnNode;
     if (v.status === 'exercised') {
-      // Exploited vuln becomes an ACTION node — the vuln is the technique
+      // Exercised vuln becomes an ACTION node — the vuln is the technique
       vulnNode = {
         id: `vuln:${v.id}`, type: 'action',
         label: `${techniqueLabel}${trunc(v.title, 35)}`,
         sublabel: v.vuln_type || '',
         hostLabel: v.ip || '',
-        detail: `Exploited: ${v.title}\n${v.severity}${v.vuln_type ? '\ntype: ' + v.vuln_type : ''}${v.details ? '\n' + v.details : ''}`,
+        detail: `Exercised: ${v.title}\n${v.severity}${v.vuln_type ? '\ntype: ' + v.vuln_type : ''}${v.details ? '\n' + v.details : ''}`,
         borderColor: '#58a6ff',
         headerColor: '#1f6feb',
-        headerText: 'EXPLOITED',
+        headerText: 'EXERCISED',
         chain_order: v.chain_order || 0,
       };
     } else {
@@ -738,14 +738,16 @@ function renderFlowGraph() {
   }
 
   // --- Intermediate vuln detection ---
-  // When an exercised vuln shares via_access_id with a downstream node (access or
-  // credential), the exercised vuln (now an action node) is the technique that
-  // produced the result. Route through: access → vuln(action) → downstream.
+  // When an exercised vuln shares via_access_id or via_credential_id with a
+  // downstream node, the exercised vuln (now an action node) is the technique
+  // that produced the result. Route through: source → vuln(action) → downstream.
   const exercisedVulnByAccess = {};  // access_id → vuln node id (action-styled)
+  const exercisedVulnByCred = {};    // credential_id → vuln node id (action-styled)
   for (const v of state.vulns) {
     if (v.in_graph === 0 || v.severity === 'info') continue;
-    if (v.status === 'exercised' && v.via_access_id && nodeById[`vuln:${v.id}`]) {
-      exercisedVulnByAccess[v.via_access_id] = `vuln:${v.id}`;
+    if (v.status === 'exercised' && nodeById[`vuln:${v.id}`]) {
+      if (v.via_access_id) exercisedVulnByAccess[v.via_access_id] = `vuln:${v.id}`;
+      if (v.via_credential_id) exercisedVulnByCred[v.via_credential_id] = `vuln:${v.id}`;
     }
   }
 
@@ -790,7 +792,7 @@ function renderFlowGraph() {
       if (credEdgeSeen.has(edgeKey)) continue;
       credEdgeSeen.add(edgeKey);
       if (ivuln && nodeById[ivuln]) {
-        // Exploited vuln is already an action node — direct edge to credential
+        // Exercised vuln is already an action node — direct edge to credential
         edges.push({ from: sourceId, to: credDst, color: '#58a6ff' });
       } else {
         // No intermediate vuln — insert synthetic action between access and credential
@@ -808,7 +810,7 @@ function renderFlowGraph() {
       credEdgeSeen.add(edgeKey);
       const srcVuln = state.vulns.find(v => v.id === c.via_vuln_id);
       if (srcVuln && srcVuln.status === 'exercised') {
-        // Exploited vuln is already an action node — direct edge to credential
+        // Exercised vuln is already an action node — direct edge to credential
         edges.push({ from: vulnSrc, to: credDst, color: '#58a6ff' });
       } else {
         // Found vuln (asset) still needs a synthetic action between vuln and credential

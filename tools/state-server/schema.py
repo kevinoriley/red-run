@@ -9,7 +9,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-SCHEMA_VERSION = 20
+SCHEMA_VERSION = 21
 
 SCHEMA_SQL = """\
 PRAGMA journal_mode=WAL;
@@ -122,6 +122,7 @@ CREATE TABLE IF NOT EXISTS vulns (
     evidence_path TEXT NOT NULL DEFAULT '',
     via_access_id    INTEGER REFERENCES access(id) ON DELETE SET NULL,
     via_credential_id INTEGER REFERENCES credentials(id) ON DELETE SET NULL,
+    via_vuln_id      INTEGER REFERENCES vulns(id) ON DELETE SET NULL,
     technique_id  TEXT NOT NULL DEFAULT '',
     in_graph     INTEGER NOT NULL DEFAULT 1,
     chain_order   INTEGER NOT NULL DEFAULT 0,
@@ -385,6 +386,17 @@ def _migrate_v3_to_v4(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_v20_to_v21(conn: sqlite3.Connection) -> None:
+    """Migrate schema from v20 to v21: add via_vuln_id to vulns table."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(vulns)").fetchall()]
+    if "via_vuln_id" not in cols:
+        conn.execute(
+            "ALTER TABLE vulns ADD COLUMN via_vuln_id INTEGER "
+            "REFERENCES vulns(id) ON DELETE SET NULL"
+        )
+    conn.commit()
+
+
 def _migrate_v19_to_v20(conn: sqlite3.Connection) -> None:
     """Migrate schema from v19 to v20: rename 'exploited' status to 'exercised'.
 
@@ -643,6 +655,8 @@ def init_db(db_path: str | Path) -> sqlite3.Connection:
             _migrate_v18_to_v19(conn)
         if current_version <= 19:
             _migrate_v19_to_v20(conn)
+        if current_version <= 20:
+            _migrate_v20_to_v21(conn)
 
     conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     conn.commit()

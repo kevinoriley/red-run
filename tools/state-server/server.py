@@ -1480,6 +1480,7 @@ def create_server() -> FastMCP:
         evidence_path: str = "",
         via_access_id: int | None = None,
         via_credential_id: int | None = None,
+        via_vuln_id: int | None = None,
         technique_id: str = "",
         chain_order: int = 0,
         discovered_by: str = "",
@@ -1503,6 +1504,8 @@ def create_server() -> FastMCP:
             via_credential_id: Credential ID that led to finding this vuln
                               (e.g., password reuse discovered by spraying a
                               cracked credential). None = not credential-sourced.
+            via_vuln_id: Parent vuln ID for vuln-to-vuln provenance (e.g.,
+                        "NTLM coercion found via LFI"). None = not vuln-sourced.
             technique_id: ATT&CK technique ID (e.g., "T1190" for exploit
                          public-facing app). Empty = unknown.
             discovered_by: Skill that found this vulnerability.
@@ -1555,8 +1558,8 @@ def create_server() -> FastMCP:
                 "INSERT INTO vulns "
                 "(target_id, title, vuln_type, status, severity, "
                 "details, evidence_path, via_access_id, via_credential_id, "
-                "technique_id, chain_order, discovered_by) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "via_vuln_id, technique_id, chain_order, discovered_by) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     target_id,
                     title,
@@ -1567,6 +1570,7 @@ def create_server() -> FastMCP:
                     evidence_path,
                     via_access_id,
                     via_credential_id,
+                    via_vuln_id,
                     technique_id,
                     chain_order,
                     discovered_by,
@@ -1679,6 +1683,7 @@ def create_server() -> FastMCP:
         in_graph: int | None = None,
         via_access_id: int | None = None,
         via_credential_id: int | None = None,
+        via_vuln_id: int | None = None,
         technique_id: str = "",
     ) -> str:
         """Update vulnerability (e.g., change status, fix provenance, toggle graph).
@@ -1697,6 +1702,7 @@ def create_server() -> FastMCP:
                      managed automatically by the prune/restore logic.
             via_access_id: Fix access provenance post-creation.
             via_credential_id: Fix credential provenance post-creation.
+            via_vuln_id: Set parent vuln for vuln-to-vuln provenance.
             technique_id: Set ATT&CK technique ID.
         """
         if status:
@@ -1728,6 +1734,9 @@ def create_server() -> FastMCP:
             if via_credential_id is not None:
                 updates.append("via_credential_id = ?")
                 params.append(via_credential_id)
+            if via_vuln_id is not None:
+                updates.append("via_vuln_id = ?")
+                params.append(via_vuln_id)
             if technique_id:
                 updates.append("technique_id = ?")
                 params.append(technique_id)
