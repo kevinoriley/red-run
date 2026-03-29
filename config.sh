@@ -131,37 +131,75 @@ case "${q5:-1}" in
                     shell_backend="shell-server"
                 fi
             fi
-            # Pre-compile implants for common targets (first build is slow)
+            # Pre-compile implant cache
             if [[ "$shell_backend" == "sliver" ]] && command -v sliver &>/dev/null; then
-                pre_warm=""
-                # Check for compiled binaries in Sliver's build cache
-                find "${HOME}/.sliver/slivers/linux/amd64" -path '*/bin/*' -type f 2>/dev/null | grep -q . || pre_warm="linux"
-                find "${HOME}/.sliver/slivers/windows/amd64" -path '*/bin/*' -type f 2>/dev/null | grep -q . || pre_warm="${pre_warm:+$pre_warm }windows"
-                if [[ -n "$pre_warm" ]]; then
+                echo ""
+                echo "  Pre-compile implant cache?"
+                echo "  Skipping means waiting 1-3 minutes per OS/arch on first use during an engagement."
+                echo "  1) Yes — select architectures to pre-compile"
+                echo "  2) No  — compile on demand"
+                read -rp "  Choice [1]: " pre_choice
+                if [[ "${pre_choice:-1}" == "1" ]]; then
+                    # Show available targets with cache status
                     echo ""
-                    echo "  Pre-compiling implant cache for: ${pre_warm}"
-                    echo "  (first build per OS takes 1-3 minutes, subsequent builds are fast)"
-                    for target_os in $pre_warm; do
-                        echo -n "  Building ${target_os}/amd64... "
-                        rc=$(mktemp)
-                        out=$(mktemp)
-                        echo "generate --mtls 127.0.0.1:4444 --os ${target_os} --arch amd64 --skip-symbols --save ${out}" > "$rc"
-                        timeout 600 sliver console --rc "$rc" &>/dev/null &
-                        build_pid=$!
-                        seconds=0
-                        while kill -0 "$build_pid" 2>/dev/null; do
-                            sleep 1
-                            seconds=$((seconds + 1))
-                            printf "\r  Building ${target_os}/amd64... %ds " "$seconds"
-                        done
-                        wait "$build_pid" 2>/dev/null
-                        if [[ -f "$out" && -s "$out" ]]; then
-                            printf "\r  Building ${target_os}/amd64... done (%ds, %s)\n" "$seconds" "$(du -h "$out" | cut -f1)"
+                    echo "  Select targets to pre-compile (comma-separated, e.g., 1,2):"
+                    has_cache() { find "${HOME}/.sliver/slivers/$1/$2" -path '*/bin/*' -type f 2>/dev/null | grep -q .; }
+                    targets=("linux/amd64" "windows/amd64" "linux/arm64" "windows/arm64")
+                    labels=("Linux x86_64 (servers, containers)" "Windows x86_64 (most Windows targets)" "Linux ARM64 (cloud, IoT)" "Windows ARM64 (Surface, ARM VMs)")
+                    for i in "${!targets[@]}"; do
+                        IFS='/' read -r t_os t_arch <<< "${targets[$i]}"
+                        if has_cache "$t_os" "$t_arch"; then
+                            echo "    $((i+1))) ${targets[$i]} — ${labels[$i]} [cached]"
                         else
-                            printf "\r  Building ${target_os}/amd64... failed (%ds, non-critical)\n" "$seconds"
+                            echo "    $((i+1))) ${targets[$i]} — ${labels[$i]}"
                         fi
-                        rm -f "$rc" "$out"
                     done
+                    read -rp "  Targets [1,2]: " target_sel
+                    target_sel="${target_sel:-1,2}"
+
+                    # Parse selection
+                    build_list=()
+                    IFS=',' read -ra selections <<< "$target_sel"
+                    for sel in "${selections[@]}"; do
+                        sel="${sel// /}"
+                        idx=$((sel - 1))
+                        if [[ $idx -ge 0 && $idx -lt ${#targets[@]} ]]; then
+                            IFS='/' read -r t_os t_arch <<< "${targets[$idx]}"
+                            if ! has_cache "$t_os" "$t_arch"; then
+                                build_list+=("${targets[$idx]}")
+                            else
+                                echo "  ${targets[$idx]} already cached, skipping"
+                            fi
+                        fi
+                    done
+
+                    if [[ ${#build_list[@]} -gt 0 ]]; then
+                        echo ""
+                        echo "  Building ${#build_list[@]} target(s)..."
+                        for target in "${build_list[@]}"; do
+                            IFS='/' read -r t_os t_arch <<< "$target"
+                            rc=$(mktemp)
+                            out=$(mktemp)
+                            echo "generate --mtls 127.0.0.1:4444 --os ${t_os} --arch ${t_arch} --skip-symbols --save ${out}" > "$rc"
+                            timeout 600 sliver console --rc "$rc" &>/dev/null &
+                            build_pid=$!
+                            seconds=0
+                            while kill -0 "$build_pid" 2>/dev/null; do
+                                sleep 1
+                                seconds=$((seconds + 1))
+                                printf "\r  Building ${target}... %ds " "$seconds"
+                            done
+                            wait "$build_pid" 2>/dev/null
+                            if [[ -f "$out" && -s "$out" ]]; then
+                                printf "\r  Building ${target}... done (%ds, %s)\n" "$seconds" "$(du -h "$out" | cut -f1)"
+                            else
+                                printf "\r  Building ${target}... failed (%ds, non-critical)\n" "$seconds"
+                            fi
+                            rm -f "$rc" "$out"
+                        done
+                    else
+                        echo "  All selected targets already cached."
+                    fi
                 fi
             fi
         fi
