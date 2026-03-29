@@ -1,0 +1,1538 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Offensive security toolkit for Claude Code">
+      
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>DLP Proxy Architecture Plan - red-run</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="red" data-md-color-accent="red">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#dlp-proxy-architecture-plan" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="red-run" class="md-header__button md-logo" aria-label="red-run" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            red-run
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              DLP Proxy Architecture Plan
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/blacklanternsecurity/red-run" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="red-run" class="md-nav__button md-logo" aria-label="red-run" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    red-run
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/blacklanternsecurity/red-run" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../running-an-engagement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running an Engagement
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../engagement-state/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engagement State
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp-servers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Servers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../skills-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboard-and-monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard & Monitoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../writing-skills/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing Skills
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#solution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Solution
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#orchestrator-variant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Orchestrator Variant
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-1-operator-as-dlp-handsoff-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 1: Operator-as-DLP (handsoff mode)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 1: Operator-as-DLP (handsoff mode)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#components-to-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Components to build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-phase-1-does-not-solve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Phase 1 does NOT solve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#estimated-effort" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Estimated effort
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-2-mcp-dlp-proxy-automated-tokenization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2: MCP DLP Proxy (automated tokenization)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 2: MCP DLP Proxy (automated tokenization)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#components-to-build_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Components to build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-phase-2-does-not-solve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Phase 2 does NOT solve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#native-tool-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Native tool handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#estimated-effort_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Estimated effort
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-3-local-model-enhancement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 3: Local Model Enhancement
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 3: Local Model Enhancement">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-it-adds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it adds
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#use-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use cases
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#architecture_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#screenshot-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Screenshot handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#estimated-effort_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Estimated effort
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#token-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token Design
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Token Design">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#token-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token format
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#semantic-preservation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Semantic preservation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#credential-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Credential metadata
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#integration-with-red-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration with red-run
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Integration with red-run">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#installsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        install.sh
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#engagement-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Engagement workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#evidence-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evidence files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#state-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State database
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reporting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reporting
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#risk-assessment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Risk Assessment
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="dlp-proxy-architecture-plan">DLP Proxy Architecture Plan</h1>
+<p>A tokenization layer that prevents client-identifying data from reaching
+Anthropic's servers during penetration testing engagements.</p>
+<h2 id="problem">Problem</h2>
+<p>Every Claude Code API call sends the full conversation context to Anthropic.
+Target IPs, hostnames, discovered credentials, vulnerability details tied to
+identifiable targets — all of it lands in API logs. For a pentest firm, "here's
+how to break into MegaCorp" sitting on a third-party's servers is a liability.</p>
+<h2 id="solution">Solution</h2>
+<p>Replace sensitive values with tokens before they reach Claude. Claude sees
+<code>TOKEN_HOST_001</code> instead of <code>10.0.5.100</code>, makes routing decisions based on
+tokens, and real values only exist locally. Commands get detokenized before
+execution, results get tokenized before Claude sees them.</p>
+<h2 id="orchestrator-variant">Orchestrator Variant</h2>
+<p><code>/red-run-handsoff</code> — the third orchestrator variant alongside <code>/red-run-ctf</code>
+(agent teams) and <code>/red-run-legacy</code> (subagents). Each phase below builds on
+the previous.</p>
+<hr />
+<h2 id="phase-1-operator-as-dlp-handsoff-mode">Phase 1: Operator-as-DLP (handsoff mode)</h2>
+<p><strong>Target: this weekend. No new infrastructure — just a new orchestrator skill
+and a tokenizer script.</strong></p>
+<h3 id="how-it-works">How it works</h3>
+<div class="highlight"><pre><span></span><code>Operator provides scope (real IPs, hostnames, creds)
+    ↓
+Tokenizer script registers them in token.db, returns tokens
+    ↓
+Operator starts Claude with tokenized scope: &quot;attack TOKEN_HOST_001&quot;
+    ↓
+Orchestrator proposes actions using tokens
+    ↓
+Operator reads proposal, detokenizes mentally or via script
+    ↓
+Operator executes command in a separate tmux pane
+    ↓
+Operator pipes output through tokenizer: nmap 10.0.5.100 | tokenize
+    ↓
+Operator pastes tokenized result back to Claude
+    ↓
+Orchestrator updates state, proposes next action
+</code></pre></div>
+<p>Claude never executes anything. Pure advisory mode.</p>
+<h3 id="components-to-build">Components to build</h3>
+<p><strong>1. Token database (<code>tools/dlp/token.db</code>)</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">tokens</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">token</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span><span class="w">       </span><span class="c1">-- TOKEN_HOST_001</span>
+<span class="w">    </span><span class="n">real_value</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">      </span><span class="c1">-- 10.0.5.100</span>
+<span class="w">    </span><span class="n">token_type</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">      </span><span class="c1">-- host | credential | domain | url | username | pii</span>
+<span class="w">    </span><span class="n">context</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">                  </span><span class="c1">-- &quot;primary target&quot;, &quot;DC&quot;, &quot;discovered via SMB enum&quot;</span>
+<span class="w">    </span><span class="n">created_at</span><span class="w"> </span><span class="k">TIMESTAMP</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="k">CURRENT_TIMESTAMP</span>
+<span class="p">);</span>
+
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">patterns</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">    </span><span class="n">pattern</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">         </span><span class="c1">-- regex pattern to match in output</span>
+<span class="w">    </span><span class="n">token</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">           </span><span class="c1">-- token to replace with</span>
+<span class="w">    </span><span class="k">FOREIGN</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="p">(</span><span class="n">token</span><span class="p">)</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">tokens</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
+<span class="p">);</span>
+</code></pre></div>
+<p>The <code>patterns</code> table auto-generates regexes for each token. For a host
+<code>10.0.5.100</code>, patterns include:
+- <code>10\.0\.5\.100</code> (literal IP)
+- <code>10\.0\.5\.100:\d+</code> (IP:port)
+- <code>10-0-5-100</code> (dash-separated variant, shows up in some tools)</p>
+<p>For a domain <code>megacorp.local</code>, patterns include:
+- <code>megacorp\.local</code>
+- <code>\.megacorp\.local</code> (subdomains)
+- <code>DC=megacorp,DC=local</code> (LDAP DN)
+- <code>MEGACORP\\</code> (NetBIOS prefix)
+- <code>@megacorp\.local</code> (UPN suffix)</p>
+<p><strong>2. Tokenizer CLI (<code>tools/dlp/tokenize.py</code>)</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Register scope items</span>
+python3<span class="w"> </span>tokenize.py<span class="w"> </span>register<span class="w"> </span>--type<span class="w"> </span>host<span class="w"> </span>--value<span class="w"> </span><span class="s2">&quot;10.0.5.100&quot;</span><span class="w"> </span>--context<span class="w"> </span><span class="s2">&quot;primary target&quot;</span>
+python3<span class="w"> </span>tokenize.py<span class="w"> </span>register<span class="w"> </span>--type<span class="w"> </span>domain<span class="w"> </span>--value<span class="w"> </span><span class="s2">&quot;megacorp.local&quot;</span><span class="w"> </span>--context<span class="w"> </span><span class="s2">&quot;AD domain&quot;</span>
+python3<span class="w"> </span>tokenize.py<span class="w"> </span>register<span class="w"> </span>--type<span class="w"> </span>credential<span class="w"> </span>--value<span class="w"> </span><span class="s2">&quot;admin:P@ssw0rd&quot;</span><span class="w"> </span>--context<span class="w"> </span><span class="s2">&quot;provided by client&quot;</span>
+
+<span class="c1"># Tokenize text (pipe mode)</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Connected to 10.0.5.100 on port 445&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>tokenize.py<span class="w"> </span>filter
+<span class="c1"># → &quot;Connected to TOKEN_HOST_001 on port 445&quot;</span>
+
+<span class="c1"># Detokenize (for operator execution)</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;nmap TOKEN_HOST_001&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>tokenize.py<span class="w"> </span>defilter
+<span class="c1"># → &quot;nmap 10.0.5.100&quot;</span>
+
+<span class="c1"># Auto-register new discoveries from tool output</span>
+<span class="c1"># (detects IPs, hostnames, emails not yet in db, prompts operator to confirm)</span>
+python3<span class="w"> </span>tokenize.py<span class="w"> </span>discover<span class="w"> </span>&lt;<span class="w"> </span>nmap_output.txt
+
+<span class="c1"># Dump token map</span>
+python3<span class="w"> </span>tokenize.py<span class="w"> </span>dump
+</code></pre></div>
+<p><strong>3. Orchestrator skill (<code>skills/handsoff/SKILL.md</code>)</strong></p>
+<p>New orchestrator variant: <code>/red-run-handsoff</code></p>
+<p>Key differences from <code>/red-run-ctf</code>:
+- Does NOT spawn teammates or subagents
+- Does NOT execute any tools against targets
+- Proposes actions with tokenized values
+- Expects operator to report results back
+- Maintains state.db with tokenized values
+- All state queries and writes use tokens</p>
+<p>The skill instructs Claude to:
+- Present proposed commands clearly with token values
+- Wait for operator to report results
+- Parse tokenized results and update state
+- Make routing decisions and propose next actions
+- Never attempt to execute commands itself</p>
+<p><strong>4. tmux workflow</strong></p>
+<div class="highlight"><pre><span></span><code>┌─────────────────────────┬──────────────────────────┐
+│                         │                          │
+│  Claude (lead)          │  Operator execution      │
+│  Proposes tokenized     │  Runs real commands      │
+│  actions, updates state │  Pipes through tokenizer │
+│                         │                          │
+│  &quot;Run nmap quick scan   │  $ nmap -sV -sC 10.0.5  │
+│   against TOKEN_HOST_001│  .100 | python3 tokenize │
+│   with -sV -sC&quot;        │  .py filter &gt; /tmp/out   │
+│                         │                          │
+│  Operator pastes:       │  $ cat /tmp/out          │
+│  &quot;Results: 22/tcp open  │  (copy to Claude pane)   │
+│   ssh, 445/tcp open     │                          │
+│   TOKEN_HOST_001...&quot;    │                          │
+│                         │                          │
+└─────────────────────────┴──────────────────────────┘
+</code></pre></div>
+<h3 id="what-phase-1-does-not-solve">What Phase 1 does NOT solve</h3>
+<ul>
+<li>Automated execution (operator is the bottleneck)</li>
+<li>New sensitive values discovered mid-engagement that aren't in the token db
+  (operator must manually register them via <code>tokenize.py discover</code>)</li>
+<li>Screenshots or binary data</li>
+<li>Values Claude infers from context (CVEs are public, service versions
+  narrow down the target)</li>
+</ul>
+<h3 id="estimated-effort">Estimated effort</h3>
+<ul>
+<li>Token database + CLI: ~2 hours</li>
+<li>Orchestrator skill variant: ~4 hours (adapt from red-run-ctf, strip all
+  execution, add advisory-mode prompting)</li>
+<li>Testing against a CTF box: ~2 hours</li>
+<li>Total: a weekend</li>
+</ul>
+<hr />
+<h2 id="phase-2-mcp-dlp-proxy-automated-tokenization">Phase 2: MCP DLP Proxy (automated tokenization)</h2>
+<p><strong>Target: after Phase 1 proves the concept and token db design is validated.</strong></p>
+<h3 id="how-it-works_1">How it works</h3>
+<div class="highlight"><pre><span></span><code>Claude Code → dlp-proxy MCP → [detokenize input] → real MCP server
+                             ← [tokenize output]  ←
+
+Claude Code → dlp-proxy:safe_bash → [detokenize] → execute → [tokenize] → return
+</code></pre></div>
+<p>A single MCP server sits between Claude Code and all backend servers. Claude
+only connects to the dlp-proxy. Real MCP servers run locally but aren't
+exposed to Claude.</p>
+<h3 id="architecture">Architecture</h3>
+<div class="highlight"><pre><span></span><code>.mcp.json (what Claude sees):
+    dlp-proxy:
+        command: &quot;uv run --directory tools/dlp python proxy.py&quot;
+        # Exposes ALL tools from all backend servers, plus safe_bash
+
+dlp-proxy internally connects to (NOT in .mcp.json):
+    skill-router   → pass-through (no sensitive data)
+    nmap-server    → tokenize scan results
+    shell-server   → detokenize commands, tokenize output
+    browser-server → detokenize URLs, tokenize page content
+    rdp-server     → detokenize hosts, tokenize text output
+    state          → pass-through (already tokenized)
+</code></pre></div>
+<h3 id="components-to-build_1">Components to build</h3>
+<p><strong>1. MCP-to-MCP proxy (<code>tools/dlp/proxy.py</code>)</strong></p>
+<p>Generic proxy that:
+- On startup: connects to all backend MCP servers, discovers tools
+- Exposes same tools to Claude (same names, same schemas)
+- On tool call: detokenize input → call backend → tokenize output → return
+- Also exposes <code>safe_bash(command, description)</code> tool</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Pseudo-architecture</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">DLPProxy</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">token_db</span><span class="p">,</span> <span class="n">backends</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tokenizer</span> <span class="o">=</span> <span class="n">Tokenizer</span><span class="p">(</span><span class="n">token_db</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backends</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># name → MCP client connection</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_tool_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tool_name</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
+        <span class="c1"># Determine backend from tool name prefix</span>
+        <span class="n">backend</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">tool_name</span><span class="p">)</span>
+
+        <span class="c1"># Detokenize all string values in params</span>
+        <span class="n">clean_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tokenizer</span><span class="o">.</span><span class="n">detokenize_dict</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+
+        <span class="c1"># Call real backend</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">backend</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">tool_name</span><span class="p">,</span> <span class="n">clean_params</span><span class="p">)</span>
+
+        <span class="c1"># Tokenize result</span>
+        <span class="n">safe_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tokenizer</span><span class="o">.</span><span class="n">tokenize_text</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">safe_result</span>
+</code></pre></div>
+<p><strong>2. Safe Bash tool</strong></p>
+<p>Replaces Claude's native Bash tool. Exposed via dlp-proxy MCP.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">safe_bash</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute a shell command with DLP tokenization.&quot;&quot;&quot;</span>
+    <span class="n">real_command</span> <span class="o">=</span> <span class="n">tokenizer</span><span class="o">.</span><span class="n">detokenize_text</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">real_command</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span> <span class="o">+</span> <span class="n">result</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">tokenizer</span><span class="o">.</span><span class="n">tokenize_text</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+</code></pre></div>
+<p>Native Bash disabled via Claude Code permissions:
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;permissions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;deny&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;Bash&quot;</span><span class="p">]</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></p>
+<p><strong>3. Auto-discovery of new sensitive values</strong></p>
+<p>When tokenizing tool output, the proxy also scans for potential new
+sensitive values not yet in the token db:</p>
+<ul>
+<li>IP addresses not in token db → auto-register with type "host"</li>
+<li>Hostnames matching known domain patterns → auto-register</li>
+<li>Email addresses → auto-register with type "pii"</li>
+<li>Strings matching credential patterns (<code>password=</code>, <code>secret:</code>) → flag</li>
+</ul>
+<p>Auto-registered tokens get logged so operator can review. False positives
+(public IPs, generic hostnames) are a nuisance but not a security risk —
+over-tokenizing is better than under-tokenizing.</p>
+<p><strong>4. Credential handling</strong></p>
+<p>Credentials discovered mid-engagement:
+- <code>add_credential(username="admin", secret="P@ssw0rd")</code> arrives at proxy
+- Proxy auto-registers both username and secret as tokens
+- State.db stores <code>TOKEN_USER_002</code> and <code>TOKEN_CRED_002</code>
+- Claude sees: "Found credential TOKEN_USER_002:TOKEN_CRED_002"
+- When Claude tells a teammate to authenticate, the proxy detokenizes</p>
+<p>Special case: Claude discovers a password that's just a random string
+(no <code>password=</code> prefix). The proxy's regex won't catch it. The state-server
+tool call DOES catch it because the proxy knows <code>add_credential</code>'s <code>secret</code>
+parameter is always sensitive — tokenize by parameter name, not by content.</p>
+<p><strong>5. Tool-specific tokenization rules</strong></p>
+<table>
+<thead>
+<tr>
+<th>MCP Server</th>
+<th>Input detokenization</th>
+<th>Output tokenization</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>skill-router</td>
+<td>none needed</td>
+<td>none needed (static skill content)</td>
+</tr>
+<tr>
+<td>nmap-server</td>
+<td><code>target</code> param</td>
+<td>full result (IPs, hostnames, banners)</td>
+</tr>
+<tr>
+<td>shell-server</td>
+<td><code>command</code> param in start_process/send_command</td>
+<td>all output (command results from target)</td>
+</tr>
+<tr>
+<td>browser-server</td>
+<td><code>url</code> param</td>
+<td>page content, cookies, JS results</td>
+</tr>
+<tr>
+<td>rdp-server</td>
+<td><code>host</code> param</td>
+<td>text output only (screenshots are binary — Phase 3)</td>
+</tr>
+<tr>
+<td>state</td>
+<td>pass-through (already tokenized)</td>
+<td>pass-through</td>
+</tr>
+<tr>
+<td>safe_bash</td>
+<td>full command</td>
+<td>full output</td>
+</tr>
+</tbody>
+</table>
+<h3 id="what-phase-2-does-not-solve">What Phase 2 does NOT solve</h3>
+<ul>
+<li>Screenshots (binary image data with rendered hostnames)</li>
+<li>Values embedded in complex formats (base64-encoded configs, serialized
+  objects, encrypted data that gets decrypted on-target)</li>
+<li>Semantic inference (Claude knows TOKEN_HOST_001 runs Exchange 2016 CU23
+  with CVE-2021-26855 — anyone can narrow that down)</li>
+<li>File content read via Claude's native Read tool (need to disable and
+  route through proxy, or accept the risk for local files)</li>
+</ul>
+<h3 id="native-tool-handling">Native tool handling</h3>
+<p>Claude's built-in tools (Read, Write, Edit, Glob, Grep) operate on local
+files. These files may contain sensitive data (nmap XML output, evidence
+files). Options:</p>
+<ul>
+<li><strong>Accept the risk</strong>: local files are working artifacts. The file PATHS
+  don't contain sensitive data (engagement/evidence/nmap-scan.xml is fine).
+  The file CONTENTS might, but Claude needs to read them to make decisions.
+  This is a deliberate trade-off — the proxy catches 90% via MCP tools,
+  local files are the remaining 10%.</li>
+<li><strong>Disable native file tools</strong>: route all reads through a <code>safe_read</code> MCP
+  tool that tokenizes content. Heavy-handed, breaks many workflows.</li>
+<li><strong>PostToolUse hook</strong>: tokenize Read tool output before Claude processes it.
+  If hooks can modify tool results (unclear), this is the cleanest option.</li>
+</ul>
+<p>Recommend: accept the risk for Phase 2. Most sensitive data flows through
+MCP tools (nmap results, shell output, browser content). Files on disk are
+secondary.</p>
+<h3 id="estimated-effort_1">Estimated effort</h3>
+<ul>
+<li>MCP-to-MCP proxy framework: ~1 week</li>
+<li>Tool-specific tokenization rules: ~3 days</li>
+<li>Safe Bash implementation: ~2 days</li>
+<li>Auto-discovery of new sensitive values: ~3 days</li>
+<li>Integration testing: ~1 week</li>
+<li>Total: ~3-4 weeks</li>
+</ul>
+<hr />
+<h2 id="phase-3-local-model-enhancement">Phase 3: Local Model Enhancement</h2>
+<p><strong>Target: after Phase 2 is stable and gaps are identified from real engagements.</strong></p>
+<h3 id="what-it-adds">What it adds</h3>
+<p>A local model (llama 3.1 8B, phi-3, or similar) reviews tool output for
+sensitive data that regex missed:</p>
+<div class="highlight"><pre><span></span><code>Tool output → regex tokenizer (fast, catches 90%) → local model review
+(catches remaining edge cases) → Claude
+</code></pre></div>
+<h3 id="use-cases">Use cases</h3>
+<ul>
+<li>IP address embedded in a Java stack trace</li>
+<li>Hostname in a base64-decoded config file</li>
+<li>Client name in an HTTP response body</li>
+<li>Internal URL in a JavaScript source map</li>
+<li>Screenshot OCR for hostnames in title bars and admin panels</li>
+</ul>
+<h3 id="architecture_1">Architecture</h3>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">tokenize_with_model</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">token_db</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="c1"># Phase 2 regex tokenization first</span>
+    <span class="n">partially_tokenized</span> <span class="o">=</span> <span class="n">regex_tokenize</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">token_db</span><span class="p">)</span>
+
+    <span class="c1"># Check if any real values might remain</span>
+    <span class="k">if</span> <span class="n">likely_contains_sensitive</span><span class="p">(</span><span class="n">partially_tokenized</span><span class="p">):</span>
+        <span class="c1"># Local model reviews</span>
+        <span class="n">prompt</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;Review this text for any remaining sensitive data</span>
+<span class="s2">        (IPs, hostnames, domains, credentials, PII) that should be</span>
+<span class="s2">        replaced with tokens. Known tokens: </span><span class="si">{</span><span class="n">token_db</span><span class="o">.</span><span class="n">dump_map</span><span class="p">()</span><span class="si">}</span>
+<span class="s2">        Text: </span><span class="si">{</span><span class="n">partially_tokenized</span><span class="si">}</span><span class="s2">&quot;&quot;&quot;</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="n">local_model</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">prompt</span><span class="p">)</span>
+        <span class="c1"># Parse model&#39;s suggestions, register new tokens, re-tokenize</span>
+</code></pre></div>
+<h3 id="performance">Performance</h3>
+<ul>
+<li>Local 8B model inference: ~100-500ms per tool call</li>
+<li>Acceptable for most tools (nmap takes minutes, the model adds &lt;1s)</li>
+<li>For high-frequency tools (send_command in rapid succession), skip
+  model review and rely on regex only</li>
+</ul>
+<h3 id="screenshot-handling">Screenshot handling</h3>
+<ul>
+<li>Render screenshot → OCR (tesseract) → tokenize text → flag if
+  sensitive values found</li>
+<li>Can't modify the image itself — just flag it and optionally block
+  it from being sent to Claude</li>
+<li>Or: generate a text description of the screenshot via local
+  vision model, tokenize that, send text instead of image</li>
+</ul>
+<h3 id="estimated-effort_2">Estimated effort</h3>
+<ul>
+<li>Local model integration: ~1 week</li>
+<li>Training/prompt engineering for reliable detection: ~2 weeks</li>
+<li>Screenshot OCR pipeline: ~1 week</li>
+<li>Performance tuning: ~1 week</li>
+<li>Total: ~5-6 weeks</li>
+</ul>
+<hr />
+<h2 id="token-design">Token Design</h2>
+<h3 id="token-format">Token format</h3>
+<div class="highlight"><pre><span></span><code>TOKEN_&lt;TYPE&gt;_&lt;SEQ&gt;
+
+Types:
+  HOST   — IP addresses, hostnames
+  DOMAIN — AD domains, DNS domains
+  USER   — usernames, account names
+  CRED   — passwords, hashes, keys, tickets
+  URL    — full URLs
+  EMAIL  — email addresses
+  PII    — names, phone numbers, other PII
+  NET    — subnets, CIDR ranges
+  ORG    — organization names, client identifiers
+
+Examples:
+  TOKEN_HOST_001    → 10.0.5.100
+  TOKEN_HOST_002    → dc01.megacorp.local
+  TOKEN_DOMAIN_001  → megacorp.local
+  TOKEN_USER_001    → admin
+  TOKEN_CRED_001    → P@ssw0rd123!
+  TOKEN_NET_001     → 10.0.5.0/24
+  TOKEN_ORG_001     → MegaCorp Industries
+</code></pre></div>
+<h3 id="semantic-preservation">Semantic preservation</h3>
+<p>Some tokenization must preserve semantic meaning for Claude to route correctly:</p>
+<table>
+<thead>
+<tr>
+<th>Real value</th>
+<th>Bad token</th>
+<th>Good token</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dc01.megacorp.local</code></td>
+<td><code>TOKEN_HOST_002</code></td>
+<td><code>dc01.TOKEN_DOMAIN_001</code></td>
+<td>Claude needs to know it's a DC</td>
+</tr>
+<tr>
+<td><code>10.0.5.0/24</code></td>
+<td><code>TOKEN_HOST_003</code></td>
+<td><code>TOKEN_NET_001</code></td>
+<td>Claude needs to know it's a subnet for pivoting</td>
+</tr>
+<tr>
+<td><code>svc_sql@megacorp.local</code></td>
+<td><code>TOKEN_USER_001</code></td>
+<td><code>svc_sql@TOKEN_DOMAIN_001</code></td>
+<td>Service account name hints at SQL service</td>
+</tr>
+<tr>
+<td><code>MEGACORP\admin</code></td>
+<td><code>TOKEN_USER_002</code></td>
+<td><code>TOKEN_DOMAIN_001\admin</code></td>
+<td>Domain prefix needed for auth commands</td>
+</tr>
+</tbody>
+</table>
+<p>Rule: tokenize the identifying component (domain, org, IP) but preserve
+the functional component (role prefix, service name, subnet mask).</p>
+<h3 id="credential-metadata">Credential metadata</h3>
+<p>Claude doesn't need the actual password to make routing decisions. The token
+db stores metadata that the proxy can include in state summaries:</p>
+<div class="highlight"><pre><span></span><code>TOKEN_CRED_001:
+    type: password
+    valid: true
+    access_level: domain_admin
+    works_on: [SMB, WinRM, LDAP]
+    source: kerberoasting
+</code></pre></div>
+<p>Claude sees: "TOKEN_USER_001 has TOKEN_CRED_001 (domain_admin, valid on
+SMB/WinRM/LDAP, from kerberoasting)" — enough to make routing decisions
+without the actual password.</p>
+<hr />
+<h2 id="integration-with-red-run">Integration with red-run</h2>
+<h3 id="installsh">install.sh</h3>
+<p>Phase 1: install tokenizer CLI to <code>tools/dlp/</code>
+Phase 2: install dlp-proxy MCP server, add to <code>.mcp.json</code> template</p>
+<h3 id="engagement-workflow">Engagement workflow</h3>
+<p>Phase 1:
+<div class="highlight"><pre><span></span><code>1. Operator registers scope: python3 tools/dlp/tokenize.py register ...
+2. Operator starts claude with tokenized scope
+3. Orchestrator runs in advisory mode
+4. Operator executes + reports back
+</code></pre></div></p>
+<p>Phase 2:
+<div class="highlight"><pre><span></span><code>1. Operator registers scope via dlp-proxy setup tool
+2. Claude starts with dlp-proxy as sole MCP connection
+3. Orchestrator runs normally (agent teams or subagents)
+4. All tool I/O transparently tokenized by proxy
+5. Operator monitors via tmux panes (sees tokenized output in Claude,
+   real output in evidence files on disk)
+</code></pre></div></p>
+<h3 id="evidence-files">Evidence files</h3>
+<p>Evidence written to <code>engagement/evidence/</code> contains REAL data (it's written
+by tool execution, not by Claude). This is correct — evidence is for the
+operator, not for Claude. If Claude reads evidence files via the Read tool
+(Phase 2 gap), those reads contain real data. Acceptable trade-off.</p>
+<h3 id="state-database">State database</h3>
+<p>State.db stores tokenized values in Phase 1 and Phase 2. The operator can
+run <code>dump-state.sh</code> to see tokenized state, then pipe through the
+detokenizer for the real report:</p>
+<div class="highlight"><pre><span></span><code>bash<span class="w"> </span>engagement/dump-state.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>tools/dlp/tokenize.py<span class="w"> </span>defilter
+</code></pre></div>
+<h3 id="reporting">Reporting</h3>
+<p>The orchestrator generates reports with tokenized values. Operator
+detokenizes the final report for client delivery:</p>
+<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>tools/dlp/tokenize.py<span class="w"> </span>defilter<span class="w"> </span>&lt;<span class="w"> </span>engagement/report.md<span class="w"> </span>&gt;<span class="w"> </span>report-real.md
+</code></pre></div>
+<hr />
+<h2 id="risk-assessment">Risk Assessment</h2>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Phase 1</th>
+<th>Phase 2</th>
+<th>Phase 3</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Known scope items (IPs, domains) leak</td>
+<td>None (operator filters)</td>
+<td>None (regex catches)</td>
+<td>None</td>
+</tr>
+<tr>
+<td>New discoveries leak (found mid-engagement)</td>
+<td>Medium (operator must register)</td>
+<td>Low (auto-discovery)</td>
+<td>Very low</td>
+</tr>
+<tr>
+<td>Credentials leak</td>
+<td>None (operator filters)</td>
+<td>Low (parameter-aware tokenization)</td>
+<td>Very low</td>
+</tr>
+<tr>
+<td>Values in complex formats (base64, etc.)</td>
+<td>Medium</td>
+<td>Medium</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>Screenshots contain sensitive data</td>
+<td>N/A (no screenshots)</td>
+<td>Medium (binary bypass)</td>
+<td>Low (OCR)</td>
+</tr>
+<tr>
+<td>Semantic inference from context</td>
+<td>Accepted</td>
+<td>Accepted</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>Native file Read contains real data</td>
+<td>N/A</td>
+<td>Medium</td>
+<td>Medium</td>
+</tr>
+</tbody>
+</table>
+<p>The "accepted" risk of semantic inference is inherent to the approach.
+If Claude knows TOKEN_HOST_001 runs Exchange 2016 CU23 vulnerable to
+ProxyShell, that narrows the target significantly. But it doesn't directly
+identify the client — the token prevents the IP/hostname correlation.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "content.code.copy", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

