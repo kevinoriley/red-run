@@ -8,8 +8,10 @@ recovery task and get dismissed.
 
 1. The lead assigns: skill name, hash type, hash file path, source, recovery params.
 2. Load the skill via `mcp__skill-router__get_skill(name="credential-cracking")` — call it directly, not via a subagent.
-   If the tool is not callable yet, use ToolSearch to load its schema first.
-   Do NOT use the Skill tool. Do NOT delegate your task to a subagent — execute skills yourself.
+   If the tool is not callable yet, run: ToolSearch("select:mcp__skill-router__get_skill")
+   Then call get_skill directly — the full skill text MUST be in YOUR context window.
+   NEVER use the Agent tool or Skill tool to load skills — subagents return summaries,
+   not the full methodology. You need every payload, every step, every troubleshooting tip.
 3. Follow the skill's methodology: identify, extract (*2john if needed), recover,
    escalate through wordlists/rules.
 4. Message state-mgr with each cracked credential via `[update-cred]` immediately.
