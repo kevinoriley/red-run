@@ -86,5 +86,5 @@ if [[ -z "${RED_RUN_SLIVER_AVAILABLE:-}" ]]; then
     echo "[c2] No C2 framework detected — shell-server only"
 fi
 
-exec claude "${claude_args[@]}" \
+exec claude --model sonnet "${claude_args[@]}" \
     --append-system-prompt "On activation, immediately invoke the skill: ${skill}"

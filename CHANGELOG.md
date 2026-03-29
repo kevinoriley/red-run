@@ -2,6 +2,68 @@
 
 All notable changes to red-run will be documented in this file. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.1.0] — 2026-03-29
+
+### Added
+
+- **shell-mgr teammate** — centralized shell lifecycle owner. Teammates
+  establish shells via shell-server, hand off to shell-mgr for stabilization,
+  C2 upgrade, and recovery. Other teammates connect to shells directly.
+- **sliver-server MCP** (`tools/sliver-server/`) — wraps Sliver C2 gRPC API
+  for listener management, implant generation, session ops, file transfer,
+  and pivot listeners
+- **config.sh** — pre-engagement config wizard (scan type, proxy, spray,
+  cracking, C2 backend). Orchestrator skips wizard if config.yaml exists.
+- **PowerShell shell detection** — shell-server detects PS sessions and uses
+  `Write-Output` + `;` instead of `echo` + `&` for command wrapping
+- **Flag badge rendering** — flags render as inline green rows inside parent
+  access cards instead of dead-end chain nodes
+- **Credential source on cards** — source field visible on credential card
+  sublabel in the access chain graph
+- **Versioned software PoC lookup** — orchestrator spawns research alongside
+  ops when discovery finds specific software versions
+- **Hard stop checklist** — mandatory pre-check on every teammate message
+  before routing decisions (source code, creds, hostnames, shells, versions)
+- **via_vuln_id on vulns** — vuln-to-vuln provenance (schema v21)
+- **Agent teams integration** — `TeamCreate` at engagement start, `team_name`
+  on all teammate spawns, `TaskCreate`/`TaskUpdate` for coordination
+
+### Changed
+
+- **Lead runs as Sonnet** — `run.sh` launches with `--model sonnet` to reduce
+  token cost. Research teammate model is operator's choice (sonnet or opus).
+- **Terminology**: `exploited` → `exercised` across state DB, dashboard,
+  templates, and docs (schema migration v19→v20)
+- **Terminology**: `exploitable` → `actionable`, `exploitation` → `exercise`
+  in teammate templates and docs
+- **state-mgr auto-exercises vulns** when any write includes `via_vuln_id`,
+  traces provenance recursively. Refuses orphaned writes with missing links.
+- **Teammates establish shells directly** via shell-server, then hand off to
+  shell-mgr (reversed from earlier design where shell-mgr established)
+- **Skill loading enforced** — teammates must call `get_skill()` directly,
+  never via subagent. Explicit `ToolSearch` syntax in all templates.
+- **Research teammate prohibited from target interaction** — analyzes local
+  files only, lead ensures sources are downloaded first
+- **Task assignments include active sessions** — lead lists all shell-server
+  and C2 sessions with MCP instructions
+- **Teammate shutdown requires operator approval** — no auto-shutdown after
+  flag capture
+- Password reuse tracked as vuln with provenance to original credential
+
+### Fixed
+
+- Teammate spawns using `TeamCreate` + `team_name` (were ephemeral subagents)
+- Sonnet 1M override removed (rate limits), teammates spawn as Sonnet 200k
+- Listener handoff deadlock eliminated by shell establishment redesign
+- shell-server `send_command` on PowerShell iex shells (PS-native wrapper)
+- Exercised vulns render as blue action nodes (stale `EXPLOITED` label fixed)
+- Exercised vuln routing extended to `via_credential_id` (not just access)
+- sliver-server `execute` args splitting (now JSON array + `shell_cmd`)
+- sliver-server `generate_implant` uses CLI subprocess (protobuf mismatch)
+- `sliver console --rc` hangs fixed with `exit` command
+- Config wizard re-asking scan type and proxy when config.yaml has values
+- Debug logging in shell-server listener thread for connection diagnosis
+
 ## [2.0.3] — 2026-03-27
 
 ### Changed

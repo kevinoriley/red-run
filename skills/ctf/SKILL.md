@@ -147,7 +147,13 @@ Read spawn templates from `teammates/` at runtime via the Read tool.
 | `teammates/bypass.md` | bypass | AV/EDR bypass | sonnet | av-edr-evasion |
 | `teammates/spray.md` | spray | Password spraying | haiku | password-spraying |
 | `teammates/recover.md` | recover | Offline recovery | haiku | credential-cracking |
-| `teammates/research.md` | research | Deep analysis | sonnet | unknown-vector-analysis |
+| `teammates/research.md` | research | Deep analysis | **ask operator** | unknown-vector-analysis |
+
+**Research model choice:** When spawning a research teammate, ask the operator:
+`AskUserQuestion: "Research task: <description>. Model?"` with options
+`Sonnet (recommended)` / `Opus (complex analysis)`. Default to Sonnet for PoC
+lookups and known-pattern analysis. Offer Opus for source code review, unknown
+vectors, and multi-file architectural analysis.
 
 Sonnet teammates spawn as **Sonnet 200k** by default. For longer engagements
 where teammates accumulate significant context, add to `.claude/settings.json`:
