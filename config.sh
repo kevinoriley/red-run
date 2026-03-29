@@ -118,12 +118,39 @@ case "${q5:-1}" in
                 if sliver-server operator --name red-run --lhost 127.0.0.1 --permissions all --save "$default_cfg" 2>/dev/null; then
                     sliver_config="$default_cfg"
                     echo "  Config saved to $default_cfg"
+                    # Import config into sliver client
+                    if command -v sliver &>/dev/null; then
+                        sliver import "$default_cfg" 2>/dev/null
+                    fi
                 else
                     echo "  Failed to generate config. Is sliver-server running?"
                     echo "  Start it with: sliver-server daemon &"
                     echo "  Then re-run this setup."
                     echo "  Falling back to shell-server."
                     shell_backend="shell-server"
+                fi
+            fi
+            # Pre-compile implants for common targets (first build is slow)
+            if [[ "$shell_backend" == "sliver" ]] && command -v sliver &>/dev/null; then
+                pre_warm=""
+                [[ ! -d "${HOME}/.sliver/slivers/linux/amd64" ]] && pre_warm="linux"
+                [[ ! -d "${HOME}/.sliver/slivers/windows/amd64" ]] && pre_warm="${pre_warm:+$pre_warm }windows"
+                if [[ -n "$pre_warm" ]]; then
+                    echo ""
+                    echo "  Pre-compiling implant cache for: ${pre_warm}"
+                    echo "  (first build per OS takes 1-3 minutes, subsequent builds are fast)"
+                    for target_os in $pre_warm; do
+                        echo -n "  Building ${target_os}/amd64... "
+                        rc=$(mktemp)
+                        out=$(mktemp)
+                        echo "generate --mtls 127.0.0.1:4444 --os ${target_os} --arch amd64 --skip-symbols --save ${out}" > "$rc"
+                        if timeout 600 sliver console --rc "$rc" &>/dev/null; then
+                            echo "done ($(du -h "$out" | cut -f1))"
+                        else
+                            echo "failed (non-critical, will compile on first use)"
+                        fi
+                        rm -f "$rc" "$out"
+                    done
                 fi
             fi
         fi
