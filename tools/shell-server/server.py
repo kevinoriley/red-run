@@ -298,6 +298,7 @@ class Session:
     pty: bool = False
     prompt_pattern: str = ""
     platform: str = ""  # "windows" | "linux" | "" (auto-detected or caller-set)
+    shell_type: str = ""  # "cmd" | "powershell" | "sh" | "" (auto-detected)
     status: str = "connected"  # "connected" | "stabilized" | "closed"
     connected_at: datetime = field(
         default_factory=lambda: datetime.now(tz=timezone.utc)
@@ -371,13 +372,20 @@ def _detect_prompt(session: Session) -> str:
     time.sleep(1.0)
     output = session.recv(timeout=3.0)
 
-    # Auto-detect platform from probe output if not already set
+    # Auto-detect platform and shell type from probe output
     if not session.platform:
         out_lower = output.lower()
         if any(sig in out_lower for sig in ["c:\\", "ps ", "windows", ">echo "]):
             session.platform = "windows"
         elif any(sig in out_lower for sig in ["$", "/home/", "/root/", "/bin/"]):
             session.platform = "linux"
+    if not session.shell_type:
+        if "PS " in output:
+            session.shell_type = "powershell"
+        elif session.platform == "windows":
+            session.shell_type = "cmd"
+        elif session.platform == "linux":
+            session.shell_type = "sh"
 
     # Look for the line after the probe marker — that's the prompt
     lines = output.split("\n")
@@ -832,9 +840,15 @@ def create_server() -> FastMCP:
                 output = _read_until_prompt(session, timeout, expect)
             else:
                 # Raw shell — use markers to delimit output
-                # Windows cmd.exe uses & as separator; Unix uses ;
-                sep = "&" if session.platform == "windows" else ";"
-                wrapped = f"echo {MARKER_START}{sep} {command}{sep} echo {MARKER_END}\n"
+                if session.shell_type == "powershell":
+                    # PowerShell: ; is statement separator, Write-Output for markers
+                    wrapped = f"Write-Output '{MARKER_START}'; {command}; Write-Output '{MARKER_END}'\n"
+                elif session.shell_type == "cmd" or session.platform == "windows":
+                    # cmd.exe: & is statement separator
+                    wrapped = f"echo {MARKER_START}& {command}& echo {MARKER_END}\n"
+                else:
+                    # Unix: ; is statement separator
+                    wrapped = f"echo {MARKER_START}; {command}; echo {MARKER_END}\n"
                 session.send(wrapped)
                 output = _read_until_marker(session, timeout, expect)
 
@@ -1101,6 +1115,7 @@ def create_server() -> FastMCP:
                 "status": session.status,
                 "pty": session.pty,
                 "platform": session.platform or "unknown",
+                "shell_type": session.shell_type or "unknown",
                 "connected_at": session.connected_at.isoformat(),
                 "transcript_lines": len(session.transcript),
             }
