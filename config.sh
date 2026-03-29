@@ -134,8 +134,9 @@ case "${q5:-1}" in
             # Pre-compile implants for common targets (first build is slow)
             if [[ "$shell_backend" == "sliver" ]] && command -v sliver &>/dev/null; then
                 pre_warm=""
-                [[ ! -d "${HOME}/.sliver/slivers/linux/amd64" ]] && pre_warm="linux"
-                [[ ! -d "${HOME}/.sliver/slivers/windows/amd64" ]] && pre_warm="${pre_warm:+$pre_warm }windows"
+                # Check for compiled binaries in Sliver's build cache
+                find "${HOME}/.sliver/slivers/linux/amd64" -path '*/bin/*' -type f 2>/dev/null | grep -q . || pre_warm="linux"
+                find "${HOME}/.sliver/slivers/windows/amd64" -path '*/bin/*' -type f 2>/dev/null | grep -q . || pre_warm="${pre_warm:+$pre_warm }windows"
                 if [[ -n "$pre_warm" ]]; then
                     echo ""
                     echo "  Pre-compiling implant cache for: ${pre_warm}"
