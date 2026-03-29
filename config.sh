@@ -3,7 +3,7 @@
 # Writes engagement/config.yaml so the orchestrator skips its built-in wizard.
 # Run before ./run.sh to pre-configure scan type, proxy, spray, cracking, and C2.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")"
 
 CONFIG="engagement/config.yaml"
 TEMPLATE="operator/templates/config.yaml"
