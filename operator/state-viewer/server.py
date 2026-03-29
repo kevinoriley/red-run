@@ -304,7 +304,7 @@ tr:hover td { background: var(--bg2); }
 .sev-info { background: var(--gray); color: #000; }
 .status-active { color: var(--green); }
 .status-revoked, .status-down, .status-closed { color: var(--dim); text-decoration: line-through; }
-.status-exploited { color: var(--green); }
+.status-exercised { color: var(--green); }
 .status-identified { color: var(--yellow); }
 .status-blocked { color: var(--red); }
 .filter-bar { margin: 12px 0; }
@@ -435,7 +435,7 @@ function renderLight() {
 function renderCards() {
   const c = document.getElementById('summary-cards');
   const actionableVulns = state.vulns.filter(v => v.status === 'found');
-  const exploitedVulns = state.vulns.filter(v => v.status === 'exploited');
+  const exercisedVulns = state.vulns.filter(v => v.status === 'exercised');
   const sevCounts = {};
   actionableVulns.forEach(v => { sevCounts[v.severity] = (sevCounts[v.severity]||0) + 1; });
   const sevStr = ['critical','high','medium','low','info']
@@ -445,7 +445,7 @@ function renderCards() {
     card(state.credentials.length, 'Credentials'),
     card(state.access.filter(a=>a.active).length, 'Active Access'),
     card(actionableVulns.length, 'Actionable', sevStr),
-    card(exploitedVulns.length, 'Exploited'),
+    card(exercisedVulns.length, 'Exercised'),
     card(state.pivot_map.length, 'Pivots'),
     card(state.tunnels.filter(t=>t.status==='active').length, 'Tunnels'),
     card(state.blocked.length, 'Blocked'),
@@ -502,7 +502,7 @@ function renderTables() {
     if (ss) {
       const col = ss.col;
       const orderedCols = { severity: {critical:0,high:1,medium:2,low:3,info:4},
-        status: {exploited:0,found:1,blocked:2}, retry: {with_context:0,later:1,no:2} };
+        status: {exercised:0,found:1,blocked:2}, retry: {with_context:0,later:1,no:2} };
       rows = [...rows].sort((a,b) => {
         let va = getCellValue(a, col, def), vb = getCellValue(b, col, def);
         const ord = orderedCols[col];
@@ -682,7 +682,7 @@ function renderFlowGraph() {
     if (v.severity === 'info') continue;
     const techniqueLabel = v.technique_id ? `[${v.technique_id}] ` : '';
     let vulnNode;
-    if (v.status === 'exploited') {
+    if (v.status === 'exercised') {
       // Exploited vuln becomes an ACTION node — the vuln is the technique
       vulnNode = {
         id: `vuln:${v.id}`, type: 'action',
@@ -738,14 +738,14 @@ function renderFlowGraph() {
   }
 
   // --- Intermediate vuln detection ---
-  // When an exploited vuln shares via_access_id with a downstream node (access or
-  // credential), the exploited vuln (now an action node) is the technique that
+  // When an exercised vuln shares via_access_id with a downstream node (access or
+  // credential), the exercised vuln (now an action node) is the technique that
   // produced the result. Route through: access → vuln(action) → downstream.
-  const exploitedVulnByAccess = {};  // access_id → vuln node id (action-styled)
+  const exercisedVulnByAccess = {};  // access_id → vuln node id (action-styled)
   for (const v of state.vulns) {
     if (v.in_graph === 0 || v.severity === 'info') continue;
-    if (v.status === 'exploited' && v.via_access_id && nodeById[`vuln:${v.id}`]) {
-      exploitedVulnByAccess[v.via_access_id] = `vuln:${v.id}`;
+    if (v.status === 'exercised' && v.via_access_id && nodeById[`vuln:${v.id}`]) {
+      exercisedVulnByAccess[v.via_access_id] = `vuln:${v.id}`;
     }
   }
 
@@ -757,8 +757,8 @@ function renderFlowGraph() {
       edges.push({ from: credNode, to: `access:${a.id}`, color: '#3fb950' });
     }
     if (a.via_access_id && nodeById[`access:${a.via_access_id}`]) {
-      // Route through intermediate exploited vuln if one exists on the parent access
-      const ivuln = exploitedVulnByAccess[a.via_access_id];
+      // Route through intermediate exercised vuln if one exists on the parent access
+      const ivuln = exercisedVulnByAccess[a.via_access_id];
       if (ivuln && nodeById[ivuln]) {
         edges.push({ from: ivuln, to: `access:${a.id}`, color: '#3fb950' });
       } else {
@@ -783,8 +783,8 @@ function renderFlowGraph() {
       else if (/runas|config|enum/.test(src)) actionLabel = 'Credential Discovery';
       else if (/dump|extract|secret/.test(src)) actionLabel = 'Credential Extraction';
       else if (/lfi|unc|file/.test(src)) actionLabel = 'File Coercion';
-      // Route through intermediate exploited vuln if one exists on the parent access
-      const ivuln = exploitedVulnByAccess[c.via_access_id];
+      // Route through intermediate exercised vuln if one exists on the parent access
+      const ivuln = exercisedVulnByAccess[c.via_access_id];
       const sourceId = (ivuln && nodeById[ivuln]) ? ivuln : `access:${c.via_access_id}`;
       const edgeKey = `${sourceId}->${credDst}`;
       if (credEdgeSeen.has(edgeKey)) continue;
@@ -800,14 +800,14 @@ function renderFlowGraph() {
           srcNode.chain_order, dstNode.chain_order);
       }
     }
-    // vuln → credential — exploited vulns are already action-styled, direct edge
+    // vuln → credential — exercised vulns are already action-styled, direct edge
     const vulnSrc = c.via_vuln_id && nodeById[`vuln:${c.via_vuln_id}`] ? `vuln:${c.via_vuln_id}` : null;
     if (vulnSrc) {
       const edgeKey = `${vulnSrc}->${credDst}`;
       if (credEdgeSeen.has(edgeKey)) continue;
       credEdgeSeen.add(edgeKey);
       const srcVuln = state.vulns.find(v => v.id === c.via_vuln_id);
-      if (srcVuln && srcVuln.status === 'exploited') {
+      if (srcVuln && srcVuln.status === 'exercised') {
         // Exploited vuln is already an action node — direct edge to credential
         edges.push({ from: vulnSrc, to: credDst, color: '#58a6ff' });
       } else {
@@ -827,7 +827,7 @@ function renderFlowGraph() {
     }
   }
 
-  // access/credential → vuln (found/exploited vuln) — direct edge (vuln IS the finding)
+  // access/credential → vuln (found/exercised vuln) — direct edge (vuln IS the finding)
   for (const v of state.vulns) {
     if (v.in_graph === 0) continue;
     if (v.severity === 'info') continue;
@@ -885,7 +885,7 @@ function renderFlowGraph() {
   }
   const colKeys = Object.keys(colMap).map(Number).sort((a, b) => a - b);
 
-  // Sort within each column: exploited vulns first, then actions, then access, then creds
+  // Sort within each column: exercised vulns first, then actions, then access, then creds
   const typeSortOrder = { 'vuln': 0, 'action': 1, 'access': 2, 'asset': 3 };
   function nodeSort(a, b) {
     const aType = a.id.startsWith('vuln:') ? 'vuln' : a.id.startsWith('action:') ? 'action'
