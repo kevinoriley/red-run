@@ -655,11 +655,13 @@ function renderFlowGraph() {
     const label = primary.domain ? `${primary.domain}\\${primary.username}` : primary.username;
     const types = [...new Set(creds.map(c => c.secret_type + (c.cracked ? '✓' : '')))].join(', ');
     const sources = creds.map(c => `${c.secret_type}: ${c.source}`).join('\n');
+    // Show the primary source on the card — truncate for display
+    const primarySource = (primary.source || '').substring(0, 50);
     const canonicalId = `cred:${primary.id}`;
     const node = {
       id: canonicalId, type: 'asset',
       label: label,
-      sublabel: types,
+      sublabel: `${types}${primarySource ? ' — ' + primarySource : ''}`,
       hostLabel: '',
       detail: `${label}\n${sources}`,
       borderColor: '#8b949e',
