@@ -147,7 +147,7 @@ Read spawn templates from `teammates/` at runtime via the Read tool.
 | `teammates/bypass.md` | bypass | AV/EDR bypass | sonnet | av-edr-evasion |
 | `teammates/spray.md` | spray | Password spraying | haiku | password-spraying |
 | `teammates/recover.md` | recover | Offline recovery | haiku | credential-cracking |
-| `teammates/research.md` | research | Deep analysis | opus | unknown-vector-analysis |
+| `teammates/research.md` | research | Deep analysis | sonnet | unknown-vector-analysis |
 
 Sonnet teammates spawn as **Sonnet 200k** by default. For longer engagements
 where teammates accumulate significant context, add to `.claude/settings.json`:
@@ -741,7 +741,7 @@ Act the moment it's reported, don't wait for other decision logic items.
    are expensive — don't waste them on git clone or file transfers.
 2. SPAWN research teammate with `source-code-review` skill
    Pass: LOCAL source path on attackbox, framework hints, context
-   Research teammate uses Explore subagents for parsing, opus for judgment
+   Research teammate uses Explore subagents for parsing, sonnet for judgment
 3. Run in PARALLEL with any technique execution already in progress
    Source review informs all other paths — don't serialize behind it
 4. When findings arrive: route confirmed vulns to technique teammates,
