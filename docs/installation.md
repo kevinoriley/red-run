@@ -107,7 +107,7 @@ cd red-run
 
 ```bash
 cd red-run
-bash operator/config.sh   # config wizard — picks C2 backend, patches .mcp.json
+bash config.sh             # config wizard — picks C2 backend, patches .mcp.json
 ./run.sh                   # starts C2 daemon + MCP, launches Claude Code
 ```
 

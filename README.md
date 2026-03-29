@@ -64,7 +64,7 @@ Then launch:
 red-run works out of the box with shell-server (raw TCP reverse shells + interactive processes). For C2 support, run the config wizard before launching:
 
 ```bash
-bash operator/config.sh   # select C2 backend, generate operator configs
+bash config.sh             # select C2 backend, generate operator configs
 ./run.sh                   # starts C2 daemon + MCP automatically
 ```
 

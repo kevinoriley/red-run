@@ -425,7 +425,7 @@ notify the operator and block shell-dependent tasks until resolved.
 
 ### Engagement Configuration
 
-**If `engagement/config.yaml` already exists** (operator ran `operator/config.sh`
+**If `engagement/config.yaml` already exists** (operator ran `config.sh`
 beforehand), **skip the wizard entirely**. Read the config, print configured
 values, and continue to Initialize Engagement.
 

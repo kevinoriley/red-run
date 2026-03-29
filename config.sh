@@ -3,7 +3,7 @@
 # Writes engagement/config.yaml so the orchestrator skips its built-in wizard.
 # Run before ./run.sh to pre-configure scan type, proxy, spray, cracking, and C2.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")"
 
 CONFIG="engagement/config.yaml"
 TEMPLATE="operator/templates/config.yaml"
@@ -21,8 +21,8 @@ echo "=== red-run engagement setup ==="
 echo ""
 
 # --- Q1: Scan type ---
-echo "Q1 — Network scan type"
-echo "  1) quick  (top 1000 ports, recommended)"
+echo "Q1 — Default network scan type"
+echo "  1) quick  (top 1000 ports)"
 echo "  2) full   (all 65535 ports)"
 read -rp "  Choice [1]: " q1
 case "${q1:-1}" in
@@ -47,7 +47,7 @@ esac
 # --- Q3: Spray tier ---
 echo ""
 echo "Q3 — Password spray default tier"
-echo "  1) light   (~30 passwords, recommended)"
+echo "  1) light   (~30 passwords)"
 echo "  2) medium  (~10k passwords)"
 echo "  3) heavy   (~100k passwords)"
 echo "  4) skip    (no spraying)"
@@ -62,7 +62,7 @@ esac
 # --- Q4: Hash recovery ---
 echo ""
 echo "Q4 — Hash recovery method"
-echo "  1) local    (hashcat/john on this machine, recommended)"
+echo "  1) local    (hashcat/john on this machine)"
 echo "  2) export   (save hashes for external rig)"
 echo "  3) skip     (no recovery)"
 read -rp "  Choice [1]: " q4
@@ -75,7 +75,7 @@ esac
 # --- Q5: Shell backend ---
 echo ""
 echo "Q5 — Shell backend"
-echo "  1) shell-server  (raw TCP/PTY, always available, recommended)"
+echo "  1) shell-server  (raw TCP/PTY, always available)"
 if command -v sliver-server &>/dev/null || command -v sliver &>/dev/null; then
     echo "  2) sliver        (Sliver C2 — detected)"
     has_sliver=1
@@ -110,7 +110,7 @@ case "${q5:-1}" in
             fi
             if [[ -z "$sliver_config" ]]; then
                 echo "  Generating operator config..."
-                if sliver-server operator --name red-run --lhost 127.0.0.1 --save "$default_cfg" 2>/dev/null; then
+                if sliver-server operator --name red-run --lhost 127.0.0.1 --permissions all --save "$default_cfg" 2>/dev/null; then
                     sliver_config="$default_cfg"
                     echo "  Config saved to $default_cfg"
                 else
