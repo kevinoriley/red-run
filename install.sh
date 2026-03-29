@@ -294,13 +294,22 @@ echo "browser MCP server ready (headless Chromium)"
 echo "rdp MCP server ready (headless RDP via aardwolf)"
 if [[ "$config_warnings" -eq 0 ]]; then
     echo ""
-    echo "Starting shell-server (SSE on 127.0.0.1:8022)..."
+    # Restart any running SSE MCP servers to pick up new code
+    echo "Restarting SSE MCP servers..."
+    pkill -f "tools/shell-server/.*server.py" 2>/dev/null && echo "  shell-server: stopped" || true
+    pkill -f "tools/sliver-server/.*server.py" 2>/dev/null && echo "  sliver-server: stopped" || true
+    sleep 1
     bash "${REPO_DIR}/tools/shell-server/start.sh"
     if ss -tln 2>/dev/null | grep -q ":8022 "; then
         echo "  shell-server: listening"
     else
         echo "  WARNING: shell-server failed to start — run manually:"
         echo "    bash tools/shell-server/start.sh"
+    fi
+    # Restart sliver-server if it was running
+    if ss -tln 2>/dev/null | grep -q ":${SLIVER_SSE_PORT:-8023} " || [[ -f "${REPO_DIR}/engagement/sliver.cfg" ]]; then
+        bash "${REPO_DIR}/tools/sliver-server/start.sh" 2>/dev/null \
+            && echo "  sliver-server: listening" || true
     fi
     echo ""
     echo "Done! Next steps:"
