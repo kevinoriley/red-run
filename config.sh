@@ -186,7 +186,7 @@ case "${q5:-1}" in
                             IFS='/' read -r t_os t_arch <<< "$target"
                             rc=$(mktemp)
                             out=$(mktemp)
-                            echo "generate --mtls 127.0.0.1:4444 --os ${t_os} --arch ${t_arch} --skip-symbols --save ${out}" > "$rc"
+                            printf "generate --mtls 127.0.0.1:4444 --os %s --arch %s --skip-symbols --save %s\nexit\n" "$t_os" "$t_arch" "$out" > "$rc"
                             timeout 600 sliver console --rc "$rc" &>/dev/null &
                             build_pid=$!
                             seconds=0

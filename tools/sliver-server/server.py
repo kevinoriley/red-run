@@ -250,7 +250,7 @@ def create_server() -> FastMCP:
             if name:
                 cmd += f" --name {name}"
 
-            rc_file.write_text(cmd + "\n")
+            rc_file.write_text(cmd + "\nexit\n")
 
             result = subprocess.run(
                 [sliver_bin, "console", "--rc", str(rc_file)],
