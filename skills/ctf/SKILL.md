@@ -620,7 +620,22 @@ whoami /priv, net user). Assign to the appropriate teammate.
 
 ### Decision Logic
 
-Walk ALL items, collect every actionable finding, present to operator:
+**HARD STOP CHECKLIST — scan FIRST on every teammate message, before routing:**
+```
+□ Source code found? (backup archive, .git dump, LFI source reads, share with code)
+  → trigger Source Code Discovered hard stop immediately
+□ New credentials? (passwords, hashes, keys, tokens)
+  → trigger Usernames Found / Hashes Found hard stops
+□ New hostnames? (vhosts, domains from certs/configs/DNS)
+  → trigger Hosts File Update if unresolvable
+□ Shell access gained? (new-access, shell-established)
+  → trigger Execution Achieved hard stop
+□ Versioned software identified? (specific version, not just product name)
+  → spawn research for PoC lookup alongside ops
+```
+This is a mandatory pre-check. Do NOT skip to routing until all boxes are clear.
+
+Then walk ALL items, collect every actionable finding, present to operator:
 
 ```
 1. Unexercised vulns → assign technique skill to ops teammate
