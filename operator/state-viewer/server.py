@@ -704,7 +704,7 @@ function renderFlowGraph() {
         hostLabel: v.ip || '',
         detail: `${v.title}\n${v.severity} | ${v.status}${v.vuln_type ? '\ntype: ' + v.vuln_type : ''}${v.details ? '\n' + v.details : ''}`,
         borderColor: sevColors[v.severity] || '#8b949e',
-        headerColor: '#d29922',
+        headerColor: sevColors[v.severity] || '#d29922',
         headerText: v.severity.toUpperCase(),
         chain_order: v.chain_order || 0,
       };
