@@ -184,6 +184,10 @@ issue (server crashed, Docker container died, etc.).
 
 ## Operational Notes
 
+- **Minimize open listeners.** Only keep listeners open that are actively
+  waiting for a callback. Close or reuse listeners once a session connects.
+  Do not leave idle listeners running — they consume ports and create
+  unnecessary attack surface on the attackbox.
 - MCP names use hyphens for servers, underscores for tools.
 - When multiple teammates request listeners simultaneously, use different ports.
 
