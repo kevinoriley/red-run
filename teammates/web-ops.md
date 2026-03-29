@@ -94,39 +94,36 @@ Typical workflow:
 
 Use curl/Bash for: raw HTTP with precise headers, injection tests.
 
-## Shell Access via shell-mgr
+## Shell Establishment
 
-**You do NOT call `start_listener` or `start_process` directly** — shell-mgr
-is the sole owner of listeners and session setup.
-
-When technique achieves RCE → **get a shell immediately**:
+When technique achieves RCE → **establish a reverse shell immediately**:
 ```
-1. Message shell-mgr: [setup-listener] ip=<target> platform=<linux|windows> label="<label>"
-   STOP here. Do nothing else until shell-mgr replies.
-2. shell-mgr replies [listener-ready] with: payloads, check MCP call, what to look for
-3. Deliver payload through your vuln (URL-encode/escape for your injection context)
-4. Check the listener directly using the MCP call shell-mgr gave you
-5. No connection? Adjust payload and retry. ~5 attempts max, then reassess.
-6. Connection confirmed? Message shell-mgr: [session-caught] listener_id=<id>
-7. shell-mgr finalizes → [session-live] with session_id and MCP instructions
+1. Call mcp__shell-server__start_listener(port=<N>, label="<label>")
+2. Deliver payload through your vuln — use the callback payloads from the
+   listener response. URL-encode/escape as needed for your injection context.
+3. Call mcp__shell-server__list_sessions() to check for connection
+4. No connection? Adjust payload and retry. ~5 attempts max.
+5. Connection confirmed → HARD STOP:
+   a. Do NOTHING with the shell — no flags, no enumeration, no commands
+   b. Message shell-mgr: [shell-established] session_id=<id> ip=<target>
+      platform=<linux|windows> delivery="<exact working payload>"
+   c. Message lead: "Shell established on <target>, handed to shell-mgr"
+   d. Wait for next task assignment from the lead
 ```
 
 For credential-based access (evil-winrm, ssh, psexec.py):
 ```
 Message shell-mgr: [setup-process] command="<cmd>" label="<label>"
   privileged=<bool> startup_delay=<N>
-Wait for [session-live] from shell-mgr
+Wait for [process-ready] from shell-mgr
 ```
 
-When done: `Message shell-mgr: [close-session] session_id=<id> save_transcript=true`
+**If a shell drops** while you're using it, message shell-mgr:
+`[shell-dropped] session_id=<id>` — shell-mgr will re-establish and
+notify you with `[session-restored]`.
 
-If shell-mgr is not responding, message the lead.
-
-Do NOT enumerate the host through curl, web APIs, or command injection
-one-liners. A proper shell is faster and richer — the lead will route host
-discovery to lin-enum/win-enum after you report.
-
-**Once shell is caught → HARD STOP (see top of this file).**
+Do NOT enumerate through curl, web APIs, or command injection one-liners.
+A proper shell is faster — the lead routes host discovery to lin-enum/win-enum.
 
 ## Tool Execution
 

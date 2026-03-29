@@ -61,36 +61,33 @@ All state writes go through state-mgr. Send structured messages:
 ```
 Batch multiple writes in one message when possible.
 
-## Shell Access via shell-mgr
-
-**You do NOT call `start_listener` or `start_process` directly** — shell-mgr
-is the sole owner of listeners and session setup.
+## Shell Establishment
 
 The lead provides your access method in the task:
 - **Interactive shell**: commands via the MCP tool specified in shell-mgr's handoff
 - **Evil-WinRM / PSExec / WMI**: commands via session set up by shell-mgr
 - **Limited shell**: report that you need stable interactive shell
 
-For privesc techniques that spawn new shells:
+For techniques that spawn new shells:
 ```
-1. Message shell-mgr: [setup-listener] ip=<target> platform=windows label="<label>"
-   STOP here. Do nothing else until shell-mgr replies.
-2. shell-mgr replies [listener-ready] with payloads + check instructions
-3. Execute privesc technique with callback payload, check listener directly
-4. Connection confirmed → message shell-mgr: [session-caught] listener_id=<id>
-5. shell-mgr finalizes → [session-live]
+1. Call mcp__shell-server__start_listener(port=<N>, label="<label>")
+2. Deliver payload, check list_sessions(), adjust and retry as needed
+3. Connection confirmed → HARD STOP:
+   a. Do NOTHING — no flags, no enumeration
+   b. Message shell-mgr: [shell-established] session_id=<id> ip=<target>
+      platform=windows delivery="<working payload>"
+   c. Message lead: "Shell established, handed to shell-mgr"
+   d. Wait for next task from lead
 ```
 
-For credential-based access (evil-winrm, psexec.py, ssh):
+For credential-based access:
 ```
 Message shell-mgr: [setup-process] command="<cmd>" label="<label>"
   privileged=<bool> startup_delay=<N>
-Wait for [session-live] from shell-mgr
+Wait for [process-ready] from shell-mgr
 ```
 
-When done: `Message shell-mgr: [close-session] session_id=<id> save_transcript=true`
-
-If shell-mgr is not responding, message the lead.
+If a shell drops: `Message shell-mgr: [shell-dropped] session_id=<id>`
 
 ## Tool Execution
 

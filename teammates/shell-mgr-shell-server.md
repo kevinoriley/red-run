@@ -6,86 +6,58 @@ local processes for interactive tools.
 
 ## Backend Tools
 
-All lifecycle tools are on the `shell-server` MCP. Tool names use the format
-`mcp__shell-server__<tool>`.
+All tools are on the `shell-server` MCP: `mcp__shell-server__<tool>`.
 
-## [setup-listener] Implementation
+## [shell-established] Implementation
 
-When you receive `[setup-listener]`:
-
-```
-1. Call mcp__shell-server__start_listener(port=<free_port>, label="<label>")
-   → returns listener_id, callback_ip, payloads {linux, windows}
-
-2. Send [listener-ready] to teammate:
-
-   [listener-ready] listener_id=<id> port=<port> callback_ip=<ip>
-     payloads:
-       linux: <payloads.linux from start_listener response>
-       windows: <payloads.windows from start_listener response>
-     check: mcp__shell-server__list_sessions()
-     look_for: "a session entry with port=<port> and status=connected"
-     — Deliver a payload through your vuln. Check the listener directly
-       using list_sessions() — no need to message me per attempt.
-       When you see a connection, message me: [session-caught] listener_id=<id>
-
-3. Go idle. The teammate owns the delivery iteration loop.
-```
-
-## [session-caught] Implementation
-
-When the teammate confirms a connection:
+When a teammate hands you an established shell:
 
 ```
-1. Call mcp__shell-server__list_sessions()
-2. Find the session associated with the listener
-3. If platform is linux: call mcp__shell-server__stabilize_shell(session_id)
-4. Send [session-live] to teammate (see Handoff Instructions)
-5. Send [new-session] to lead
+1. Verify session exists: call list_sessions(), confirm session_id is active
+2. Stabilize (Linux only): call stabilize_shell(session_id)
+3. Save delivery payload in your internal map for recovery
+4. Send [session-ready] to teammate and lead
 ```
 
 ## [setup-process] Implementation
 
-For credential-based access (no delivery needed):
+For credential-based access:
 
 ```
 Call mcp__shell-server__start_process(
   command="<cmd>", label="<label>",
   privileged=<bool>, startup_delay=<N>)
-→ returns session_id, status, prompt_pattern
 
-Send [session-live] to teammate.
-Send [new-session] to lead.
+Send [process-ready] to teammate. Send [session-ready] to lead.
 ```
 
-**privileged=true** runs the command in the `red-run-shell` Docker container
-(required for: evil-winrm, impacket tools, chisel, ligolo-ng, Responder, mitm6).
+**privileged=true** → Docker container (evil-winrm, impacket, chisel, etc.)
+**startup_delay=30** for evil-winrm (slow auth), 2 (default) for most tools.
 
-**startup_delay** — seconds to wait before probing the shell. Set to 30 for
-evil-winrm (slow auth negotiation), 2 (default) for most tools.
+## [shell-dropped] Recovery
+
+When re-establishing a dropped shell:
+
+```
+1. Call mcp__shell-server__start_listener(port=<new_port>, label="<label>")
+2. Build callback from saved delivery payload + new listener's payloads
+3. Execute delivery via Bash (dangerouslyDisableSandbox: true)
+4. Poll list_sessions() for new session (3s intervals, 5 attempts)
+5. If connected: stabilize_shell(), send [session-restored]
+6. If failed: retry with different port, up to 3 total attempts
+7. If all fail: send [session-dead]
+```
 
 ## Handoff Instructions
 
-When sending `[session-live]`, include the exact MCP instructions:
-
+In [session-ready] messages, include:
 ```
-[session-live] session_id=<id> backend=shell-server platform=<linux|windows>
+[session-ready] session_id=<id> backend=shell-server platform=<linux|windows>
   Use mcp__shell-server__send_command(session_id="<id>", command="...") for interaction.
   Use mcp__shell-server__read_output(session_id="<id>") for buffered output.
-  Close when done: message shell-mgr [close-session] session_id=<id> save_transcript=true
 ```
-
-## Session Recovery
-
-If `list_sessions()` shows a session as closed unexpectedly:
-1. Check if the process exited (local) or socket disconnected (remote)
-2. For remote: the listener is consumed — cannot auto-recover. Send
-   `[session-dead]` and offer to set up a new listener.
-3. For local (start_process): attempt to restart the same command. If
-   successful, send `[session-recovered]` with the new session_id.
 
 ## Callback IP Resolution
 
-shell-server auto-resolves the callback IP from: config.yaml `callback_ip` >
-`callback_interface` > tun0 > wg0 > first non-loopback. The resolved IP is
-included in `start_listener` response.
+shell-server auto-resolves callback IP from: config.yaml `callback_ip` >
+`callback_interface` > tun0 > wg0 > first non-loopback.

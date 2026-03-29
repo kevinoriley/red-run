@@ -91,31 +91,28 @@ Scan types (match lead's instruction exactly):
   custom → translate lead's description to nmap flags
 ```
 
-## Shell Access via shell-mgr
-
-**You do NOT call `start_listener` or `start_process` directly** — shell-mgr
-is the sole owner of listeners and session setup.
+## Shell Establishment
 
 If a skill achieves RCE:
 ```
-1. Message shell-mgr: [setup-listener] ip=<target> platform=<linux|windows> label="<label>"
-   STOP here. Do nothing else until shell-mgr replies.
-2. shell-mgr replies [listener-ready] with payloads + check instructions
-3. Deliver payload, check listener directly, retry as needed
-4. Connection confirmed → message shell-mgr: [session-caught] listener_id=<id>
-5. shell-mgr finalizes → [session-live]
+1. Call mcp__shell-server__start_listener(port=<N>, label="<label>")
+2. Deliver payload, check list_sessions(), adjust and retry as needed
+3. Connection confirmed → HARD STOP:
+   a. Do NOTHING — no flags, no enumeration
+   b. Message shell-mgr: [shell-established] session_id=<id> ip=<target>
+      platform=<platform> delivery="<working payload>"
+   c. Message lead: "Shell established, handed to shell-mgr"
+   d. Wait for next task from lead
 ```
 
 For credential-based access:
 ```
 Message shell-mgr: [setup-process] command="<cmd>" label="<label>"
   privileged=<bool>
-Wait for [session-live] from shell-mgr
+Wait for [process-ready] from shell-mgr
 ```
 
-When done: `Message shell-mgr: [close-session] session_id=<id> save_transcript=true`
-
-If shell-mgr is not responding, message the lead.
+If a shell drops: `Message shell-mgr: [shell-dropped] session_id=<id>`
 
 Prefer reverse shells over inline command execution.
 

@@ -630,6 +630,15 @@ Walk ALL items, collect every actionable finding, present to operator:
      After gate passes → route to {domain}-ops via search_skills()
    Routing: web vulns → web-ops, AD vulns → ad-ops, privesc → lin-ops/win-ops
 
+   VERSIONED SOFTWARE PoC LOOKUP (before routing to ops):
+     When discovery identifies software + specific version (not just "nginx"
+     but "Tomcat 9.0.31", "GitLab 16.0.1", etc.), spawn research teammate
+     to search for public PoCs, CVEs, and known exploit patterns BEFORE
+     assigning the technique to ops. Pass the results as context — payload
+     format, encoding gotchas, working injection syntax. This prevents ops
+     from spending 20+ attempts rediscovering what a public PoC already knows.
+     Run in parallel with technique skill assignment if the vuln class is clear.
+
 2. Shell access without root/SYSTEM → Execution Achieved hard stop (see below)
 
 3. Unchained access → can existing access reach new targets?
@@ -684,13 +693,15 @@ This is the most important state change in an engagement. Do NOT wait for
 the reporting teammate's current task to complete. Do NOT wait for other
 decision logic items. Act on this THE MOMENT it arrives.
 
-1. SHELL IS ALREADY LIVE — the teammate that found the RCE messaged
-   shell-mgr directly via [setup-listener]. By the time you see
-   [new-access] from state-mgr or [new-session] from shell-mgr, the
-   session exists. You do NOT manage shell setup — shell-mgr does.
+1. SHELL LIFECYCLE — the teammate that found the RCE established a
+   reverse shell via shell-server and handed it to shell-mgr via
+   [shell-established]. shell-mgr stabilizes (or upgrades to C2 if
+   configured) and sends [session-ready] with the session_id and MCP
+   instructions. Wait for [session-ready] from shell-mgr before
+   spawning enum teammates — include the session_id in their task.
    For credential-based access where no teammate is in the loop yet,
    message shell-mgr: [setup-process] command="evil-winrm ..." and
-   include the session_id in the enum teammate's task assignment.
+   wait for [process-ready].
 
 2. SPAWN HOST ENUM (parallel with everything else):
    Windows → win-enum-<host> from teammates/win-enum.md

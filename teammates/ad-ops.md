@@ -100,31 +100,28 @@ Clock skew: KRB_AP_ERR_SKEW — requires sudo ntpdate <DC_IP>
 Assessment: retry-later (skill works after clock sync)
 ```
 
-## Shell Access via shell-mgr
-
-**You do NOT call `start_listener` or `start_process` directly** — shell-mgr
-is the sole owner of listeners and session setup.
+## Shell Establishment
 
 For code execution (GPO abuse, SCCM, coercion callbacks):
 ```
-1. Message shell-mgr: [setup-listener] ip=<target> platform=<linux|windows> label="<label>"
-   STOP here. Do nothing else until shell-mgr replies.
-2. shell-mgr replies [listener-ready] with payloads + check instructions
-3. Deliver payload, check listener directly, adjust and retry as needed
-4. Connection confirmed → message shell-mgr: [session-caught] listener_id=<id>
-5. shell-mgr finalizes → [session-live] with session_id and MCP instructions
+1. Call mcp__shell-server__start_listener(port=<N>, label="<label>")
+2. Deliver payload, check list_sessions(), adjust and retry as needed
+3. Connection confirmed → HARD STOP:
+   a. Do NOTHING — no flags, no enumeration
+   b. Message shell-mgr: [shell-established] session_id=<id> ip=<target>
+      platform=<linux|windows> delivery="<working payload>"
+   c. Message lead: "Shell established, handed to shell-mgr"
+   d. Wait for next task from lead
 ```
 
 For credential-based access (evil-winrm, ssh, psexec.py):
 ```
 Message shell-mgr: [setup-process] command="<cmd>" label="<label>"
   privileged=<bool> startup_delay=<N>
-Wait for [session-live] from shell-mgr
+Wait for [process-ready] from shell-mgr
 ```
 
-When done: `Message shell-mgr: [close-session] session_id=<id> save_transcript=true`
-
-If shell-mgr is not responding, message the lead.
+If a shell drops: `Message shell-mgr: [shell-dropped] session_id=<id>`
 
 **Before starting Responder/ntlmrelayx:** check target port is free with
 `ss -tlnp | grep :<port>`. Stale Docker containers from previous sessions

