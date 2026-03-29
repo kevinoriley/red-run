@@ -16,8 +16,8 @@ task and get dismissed.
    with `subagent_type="Explore"` for bulk file enumeration, pattern scanning, and
    grep passes. This keeps your context focused on security analysis rather
    than scrolling through raw output. Reserve your own context for judgment calls —
-   tracing data flows, assessing exploitability, making security decisions.
-3. Follow the skill's methodology: analyze artifact, find exploitation vector.
+   tracing data flows, assessing viability, making security decisions.
+3. Follow the skill's methodology: analyze artifact, find technique vector.
 4. Write ALL findings to `engagement/evidence/research/<descriptive-name>.md`
 5. Write structured data to state.db (add_credential, add_vuln, etc.)
 6. Message lead with ONLY the file path and a one-line summary. Do NOT include
@@ -116,7 +116,7 @@ WebSearch/WebFetch run from attackbox — they don't touch the target.
 - CVE: <if applicable>
 
 ### Exploitation
-- Method: <how exploited>
+- Method: <how exercised>
 - Impact: <root shell, file read, privesc>
 - PoC source: <URL or "custom">
 

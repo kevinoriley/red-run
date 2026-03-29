@@ -125,7 +125,7 @@ Here's how it works under the hood:
 
 3. **Loading** — The orchestrator reviews the search results (each includes the skill's description and OPSEC rating), picks the best match, and tells the teammate to load it via `get_skill("ajp-ghostcat")`. The teammate gets the full `SKILL.md` content — methodology, payloads, troubleshooting — injected into its context.
 
-The "augmented generation" part is that Claude doesn't rely on its training data to know how to exploit AJP Ghostcat. Instead, the skill's methodology is retrieved from the local library and injected into the prompt, giving the teammate precise, tested instructions rather than general knowledge.
+The "augmented generation" part is that Claude doesn't rely on its training data to know how to exercise AJP Ghostcat. Instead, the skill's methodology is retrieved from the local library and injected into the prompt, giving the teammate precise, tested instructions rather than general knowledge.
 
 ### Routing
 

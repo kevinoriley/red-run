@@ -68,7 +68,7 @@ All state writes go through state-mgr. Send structured messages:
 [add-cred] username=<user> secret=<secret> secret_type=<type> source="<source>" via_access_id=<N> via_vuln_id=<M>
 [add-access] ip=<ip> method=<method> user=<user> level=<level> via_credential_id=<N> via_access_id=<M> via_vuln_id=<V>
 [add-blocked] ip=<ip> technique="<name>" reason="<why>" retry=<no|later|with_context>
-[update-vuln] id=<N> status=exploited details="<details>"
+[update-vuln] id=<N> status=exercised details="<details>"
 ```
 Batch multiple writes in one message when possible.
 

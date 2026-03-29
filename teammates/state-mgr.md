@@ -125,16 +125,16 @@ This is your primary value — LLM-level judgment that DB string matching cannot
 For every `[add-vuln]`:
 1. Call `get_vulns(target=<ip>)` — load all existing vulns for that target.
 2. Compare incoming title + type + details against each existing vuln.
-3. **Exploit outcome of existing vuln** (same endpoint, same technique, but
+3. **Exercise outcome of existing vuln** (same endpoint, same technique, but
    now reporting it was exercised successfully — e.g., "LFI UNC coercion →
    NTLMv2 capture" when "LFI in view parameter" already exists):
-   → `update_vuln(id=<existing>, status="exploited")`, merge details.
+   → `update_vuln(id=<existing>, status="exercised")`, merge details.
    This triggers automatic graph pruning — sibling `found` vulns from the
    same access are hidden from the flow graph. The dashboard renders the
-   exploited vuln as an action node (the vuln IS the technique). The
+   exercised vuln as an action node (the vuln IS the technique). The
    credential or access gained is the evidence — it gets its own
    `add_credential(via_vuln_id=N)` or `add_access()` record, not a new vuln. Respond `[vuln-merged]` to teammate with the existing ID
-   and pruning count. Do NOT create a new vuln row for the exploitation step.
+   and pruning count. Do NOT create a new vuln row for the exercise step.
 4. **Same finding, different wording** (e.g., "LFI file read" vs "LFI via
    absolute path", "LDAP signing not enforced" vs "LDAP signing disabled"):
    → `update_vuln()` on existing record, merge details if incoming has more info.
@@ -148,7 +148,7 @@ For every `[add-vuln]`:
 
 **Key signal:** If the teammate includes `via_vuln_id=<N>` in an `[add-cred]`
 or the incoming vuln references the same technique as an existing finding,
-that's an exploitation update, not a new finding.
+that's an exercise update, not a new finding.
 
 ### Credential Dedup
 
@@ -201,24 +201,24 @@ For every `[add-access]`:
 You own provenance links. For every write:
 - Ensure `via_access_id`, `via_credential_id`, `via_vuln_id` are set when
   provided by the teammate.
-- When a vuln is exploited (`[update-vuln] status=exploited`), update it.
+- When a vuln is exercised (`[update-vuln] status=exercised`), update it.
 - When access is gained via a credential, link the chain.
 - When provenance links are missing and should exist, flag to lead:
   `[chain-gap] access id=5 has no via_credential_id — which cred was used?`
 
 ## Graph Pruning
 
-The state server automatically manages the flow graph when vulns are exploited
+The state server automatically manages the flow graph when vulns are exercised
 or paths are abandoned. You do not need to manage `in_graph` manually.
 
-- **On exploitation**: When you call `update_vuln(status="exploited")`, the
+- **On exercise**: When you call `update_vuln(status="exercised")`, the
   server sets `in_graph=0` on sibling `found` vulns from the same
   `via_access_id` + target. These were alternative findings — they clutter
   the graph once a path moves forward. The response includes
   `siblings_pruned` count when this happens.
 
 - **On abandonment**: When you call `update_vuln(status="blocked")` on a
-  previously exploited vuln, or `update_access(active=false)` to revoke
+  previously exercised vuln, or `update_access(active=false)` to revoke
   access, the server restores pruned siblings (`in_graph=1`) so alternative
   paths reappear. Response includes `siblings_restored` count.
 
@@ -228,7 +228,7 @@ or paths are abandoned. You do not need to manage `in_graph` manually.
 
 Include pruning info in your confirmations:
 ```
-[vuln-updated] id=N status=exploited (3 siblings pruned from graph)
+[vuln-updated] id=N status=exercised (3 siblings pruned from graph)
 [vuln-updated] id=N status=blocked (2 siblings restored to graph)
 ```
 
@@ -261,7 +261,7 @@ update_tunnel(id, status, notes)
 - `add_credential(secret_type=)` — valid: `password`, `ntlm_hash`, `net_ntlm`,
   `aes_key`, `kerberos_tgt`, `kerberos_tgs`, `dcc2`, `ssh_key`, `token`,
   `certificate`, `webapp_hash`, `dpapi`, `other`
-- `add_vuln(status=)` — valid: `found`, `exploited`, `blocked`
+- `add_vuln(status=)` — valid: `found`, `exercised`, `blocked`
 - `add_vuln(severity=)` — valid: `info`, `low`, `medium`, `high`, `critical`
 - `add_blocked(retry=)` — valid: `no`, `later`, `with_context`
 - `add_blocked(ip=)` — must match an existing target if provided
