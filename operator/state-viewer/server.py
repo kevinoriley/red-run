@@ -880,6 +880,15 @@ function renderFlowGraph() {
     }
   }
 
+  // Attach flag badges to access nodes (adds height for flag rows)
+  const FLAG_ROW_H = 16;
+  for (const n of nodes) {
+    const m = n.id.match(/^access:(\d+)$/);
+    if (!m) continue;
+    const flags = flagsByAccess[parseInt(m[1])];
+    if (flags) n.flags = flags;
+  }
+
   // --- Layout: left-to-right, parallel nodes stack vertically ---
   const NODE_W = 200;
   const NODE_H = 56;
@@ -943,13 +952,18 @@ function renderFlowGraph() {
   let x = PAD;
   for (const ck of colKeys) {
     const colNodes = colMap[ck];
-    const colH = colNodes.length * NODE_H + (colNodes.length - 1) * V_GAP;
+    let colH = 0;
+    for (const n of colNodes) {
+      n.h = NODE_H + (n.flags ? n.flags.length * FLAG_ROW_H : 0);
+      colH += n.h;
+    }
+    colH += (colNodes.length - 1) * V_GAP;
     if (colH > totalH) totalH = colH;
     let y = PAD;
     for (const n of colNodes) {
       n.x = x;
       n.y = y;
-      y += NODE_H + V_GAP;
+      y += n.h + V_GAP;
     }
     x += NODE_W + H_GAP;
   }
@@ -959,8 +973,10 @@ function renderFlowGraph() {
   // Center each column vertically
   for (const ck of colKeys) {
     const colNodes = colMap[ck];
-    const colH = colNodes.length * NODE_H + (colNodes.length - 1) * V_GAP;
-    const offset = (totalH - colH) / 2 - PAD;
+    let ch = 0;
+    for (const n of colNodes) ch += (n.h || NODE_H);
+    ch += (colNodes.length - 1) * V_GAP;
+    const offset = (totalH - ch) / 2 - PAD;
     for (const n of colNodes) n.y += offset;
   }
 
@@ -974,8 +990,9 @@ function renderFlowGraph() {
     if (!src || !dst) continue;
 
     // Node center points
-    const scx = src.x + NODE_W / 2, scy = src.y + NODE_H / 2;
-    const dcx = dst.x + NODE_W / 2, dcy = dst.y + NODE_H / 2;
+    const sh = src.h || NODE_H, dh = dst.h || NODE_H;
+    const scx = src.x + NODE_W / 2, scy = src.y + sh / 2;
+    const dcx = dst.x + NODE_W / 2, dcy = dst.y + dh / 2;
 
     // Pick attachment points based on relative position
     let sx, sy, dx, dy, arrowPts;
@@ -985,12 +1002,12 @@ function renderFlowGraph() {
     if (sameCol) {
       // Vertical: connect bottom→top or top→bottom
       if (scy < dcy) {
-        sx = scx; sy = src.y + NODE_H;  // bottom of src
+        sx = scx; sy = src.y + sh;  // bottom of src
         dx = dcx; dy = dst.y;            // top of dst
         arrowPts = `${dx},${dy} ${dx-as/2},${dy-as} ${dx+as/2},${dy-as}`;
       } else {
         sx = scx; sy = src.y;            // top of src
-        dx = dcx; dy = dst.y + NODE_H;  // bottom of dst
+        dx = dcx; dy = dst.y + dh;  // bottom of dst
         arrowPts = `${dx},${dy} ${dx-as/2},${dy+as} ${dx+as/2},${dy+as}`;
       }
       const my = sy + (dy - sy) * 0.5;
@@ -1023,7 +1040,8 @@ function renderFlowGraph() {
     svgHtml += `<g class="flow-node">`;
     // Background rect
     const bgFill = '#0d1117';
-    svgHtml += `<rect class="${n.type === 'action' ? 'flow-action' : 'flow-asset'}" x="${n.x}" y="${n.y}" width="${NODE_W}" height="${NODE_H}" fill="${bgFill}" stroke="${n.borderColor}"/>`;
+    const nh = n.h || NODE_H;
+    svgHtml += `<rect class="${n.type === 'action' ? 'flow-action' : 'flow-asset'}" x="${n.x}" y="${n.y}" width="${NODE_W}" height="${nh}" fill="${bgFill}" stroke="${n.borderColor}"/>`;
     // Header bar
     svgHtml += `<rect x="${n.x}" y="${n.y}" width="${NODE_W}" height="18" rx="${n.type === 'action' ? 8 : 14}" fill="${n.headerColor}"/>`;
     svgHtml += `<rect x="${n.x}" y="${n.y + 9}" width="${NODE_W}" height="9" fill="${n.headerColor}"/>`;
@@ -1031,32 +1049,21 @@ function renderFlowGraph() {
     svgHtml += `<text class="flow-action-header" x="${n.x + 8}" y="${n.y + 13}" fill="#fff">${esc(n.headerText)}${n.hostLabel ? '  ' + esc(n.hostLabel) : ''}</text>`;
     // Content via foreignObject
     const detailAttr = escAttr(n.detail);
-    svgHtml += `<foreignObject x="${n.x + 6}" y="${n.y + 20}" width="${NODE_W - 12}" height="${NODE_H - 24}" data-detail="${detailAttr}" onmouseenter="showTip(event)" onmouseleave="hideTip()">`;
+    svgHtml += `<foreignObject x="${n.x + 6}" y="${n.y + 20}" width="${NODE_W - 12}" height="${nh - 24}" data-detail="${detailAttr}" onmouseenter="showTip(event)" onmouseleave="hideTip()">`;
     svgHtml += `<div xmlns="http://www.w3.org/1999/xhtml" style="font-family:inherit;">`;
     svgHtml += `<div style="font-size:11px;font-weight:600;color:#c9d1d9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(n.label)}</div>`;
     svgHtml += `<div style="font-size:10px;color:#8b949e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(n.sublabel)}</div>`;
+    if (n.flags) {
+      for (const f of n.flags) {
+        const ft = f.title.replace(/^FLAG:\s*/i, '');
+        svgHtml += `<div style="font-size:10px;color:#3fb950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;">🚩 ${esc(ft)}</div>`;
+      }
+    }
     svgHtml += `</div></foreignObject>`;
     svgHtml += `</g>`;
   }
 
-  // Draw flag badges on parent access nodes
-  for (const n of nodes) {
-    const m = n.id.match(/^access:(\d+)$/);
-    if (!m) continue;
-    const flags = flagsByAccess[parseInt(m[1])];
-    if (!flags) continue;
-    for (let i = 0; i < flags.length; i++) {
-      const fx = n.x + NODE_W + 8;
-      const fy = n.y + 4 + i * 20;
-      const flagText = flags[i].title.replace(/^FLAG:\s*/i, '').substring(0, 30);
-      const flagDetail = escAttr(flags[i].title + (flags[i].details ? '\n' + flags[i].details : ''));
-      svgHtml += `<g class="flow-node" data-detail="${flagDetail}" onmouseenter="showTip(event)" onmouseleave="hideTip()">`;
-      svgHtml += `<rect x="${fx}" y="${fy}" width="120" height="16" rx="8" fill="#1a5c28" stroke="#3fb950" stroke-width="1"/>`;
-      svgHtml += `<text x="${fx + 18}" y="${fy + 12}" fill="#3fb950" style="font-size:10px;font-weight:600;">${esc(flagText)}</text>`;
-      svgHtml += `<text x="${fx + 4}" y="${fy + 12}" style="font-size:11px;">🚩</text>`;
-      svgHtml += `</g>`;
-    }
-  }
+  // No separate flag badge pass — flags are rendered inside access node cards
 
   // Legend
   const legend = document.getElementById('graph-legend');
