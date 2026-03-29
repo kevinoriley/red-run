@@ -16,11 +16,21 @@ red-run requires the following installed:
 
 red-run works out of the box with shell-server (raw TCP reverse shells + interactive processes). For C2 integration, install the framework separately:
 
-| C2 | Install |
-|----|---------|
-| [Sliver](https://github.com/BishopFox/sliver) | `curl -L https://github.com/BishopFox/sliver/releases/latest/download/sliver-server_linux-amd64 -o ~/.local/bin/sliver-server && chmod +x ~/.local/bin/sliver-server` |
+| C2 | Components | Install |
+|----|-----------|---------|
+| [Sliver](https://github.com/BishopFox/sliver) | Server + Client (both required) | See below |
 
-More C2 frameworks (Mythic, Havoc) planned. Custom C2 integration is supported via operator-provided MCP servers and reference docs — see [custom C2 docs](custom-c2.md).
+**Sliver install** (both binaries needed — server for the daemon, client for implant generation):
+```bash
+# Server (~260MB)
+curl -L https://github.com/BishopFox/sliver/releases/latest/download/sliver-server_linux-amd64 \
+  -o ~/.local/bin/sliver-server && chmod +x ~/.local/bin/sliver-server
+# Client (~38MB)
+curl -L https://github.com/BishopFox/sliver/releases/latest/download/sliver-client_linux-amd64 \
+  -o ~/.local/bin/sliver && chmod +x ~/.local/bin/sliver
+```
+
+More C2 frameworks (Mythic, Havoc) planned. Custom C2 integration is supported via operator-provided MCP servers and reference docs.
 
 ## Install
 
