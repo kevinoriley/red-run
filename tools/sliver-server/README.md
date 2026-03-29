@@ -39,7 +39,7 @@ SSE on `127.0.0.1:8023` (configurable via `SLIVER_SSE_PORT`).
 | Tool | Description |
 |------|-------------|
 | `list_sessions()` | List active sessions with metadata |
-| `execute(session_id, command, args, output)` | Run command on target |
+| `execute(session_id, exe, args, shell_cmd, output)` | Run command on target. Use `shell_cmd="id && uname -a"` for shell commands, or `exe`+`args` (JSON array) for direct exec |
 | `upload(session_id, local_path, remote_path)` | Upload file to target |
 | `download(session_id, remote_path, local_path)` | Download file from target |
 | `ifconfig(session_id)` | List target network interfaces |

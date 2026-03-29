@@ -322,19 +322,29 @@ def create_server() -> FastMCP:
     async def execute(
         session_id: str = "",
         exe: str = "",
-        args: str = "",
+        args: list[str] | None = None,
+        shell_cmd: str = "",
         output: bool = True,
     ) -> str:
         """Execute a command on a Sliver session.
 
         Args:
             session_id: Session ID from list_sessions. Required.
-            exe: Executable/command to run. Required.
-            args: Space-separated arguments.
+            exe: Executable to run (e.g., "/bin/sh", "cmd.exe").
+            args: Arguments as a JSON array. Example: ["-c", "id && uname -a"].
+                  Each element maps to one argv slot — no splitting.
+            shell_cmd: Shorthand for shell commands. Sets exe=/bin/sh,
+                       args=["-c", shell_cmd]. Use this for most commands.
+                       Example: shell_cmd="id && uname -a"
             output: Capture stdout/stderr (default true).
         """
-        if not session_id or not exe:
-            return "ERROR: session_id and exe are required."
+        if not session_id:
+            return "ERROR: session_id is required."
+        if shell_cmd:
+            exe = "/bin/sh"
+            args = ["-c", shell_cmd]
+        if not exe:
+            return "ERROR: exe or shell_cmd is required."
         if err := await _require_client():
             return err
 
@@ -345,7 +355,7 @@ def create_server() -> FastMCP:
                 return f"ERROR: Session {session_id} not found or dead."
             result = await session.execute(
                 exe,
-                args.split() if args else [],
+                args or [],
                 output,
             )
             return json.dumps({
