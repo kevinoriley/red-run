@@ -677,9 +677,17 @@ function renderFlowGraph() {
   // action-style (the vuln IS the technique). Both use the same `vuln:N` id,
   // so provenance edges (via_vuln_id) connect without special routing.
   const sevColors = { critical: '#bc8cff', high: '#f85149', medium: '#d29922', low: '#8b949e' };
+  // Collect flag vulns to render as badges on parent access, not chain nodes
+  const flagsByAccess = {};  // access_id → [{title, details}]
   for (const v of state.vulns) {
     if (v.in_graph === 0) continue;
     if (v.severity === 'info') continue;
+    if (v.vuln_type === 'flag') {
+      const key = v.via_access_id || 'orphan';
+      if (!flagsByAccess[key]) flagsByAccess[key] = [];
+      flagsByAccess[key].push({ title: v.title, details: v.details || '' });
+      continue;  // don't create a chain node for flags
+    }
     const techniqueLabel = v.technique_id ? `[${v.technique_id}] ` : '';
     let vulnNode;
     if (v.status === 'exercised') {
@@ -1031,6 +1039,25 @@ function renderFlowGraph() {
     svgHtml += `</g>`;
   }
 
+  // Draw flag badges on parent access nodes
+  for (const n of nodes) {
+    const m = n.id.match(/^access:(\d+)$/);
+    if (!m) continue;
+    const flags = flagsByAccess[parseInt(m[1])];
+    if (!flags) continue;
+    for (let i = 0; i < flags.length; i++) {
+      const fx = n.x + NODE_W + 8;
+      const fy = n.y + 4 + i * 20;
+      const flagText = flags[i].title.replace(/^FLAG:\s*/i, '').substring(0, 30);
+      const flagDetail = escAttr(flags[i].title + (flags[i].details ? '\n' + flags[i].details : ''));
+      svgHtml += `<g class="flow-node" data-detail="${flagDetail}" onmouseenter="showTip(event)" onmouseleave="hideTip()">`;
+      svgHtml += `<rect x="${fx}" y="${fy}" width="120" height="16" rx="8" fill="#1a5c28" stroke="#3fb950" stroke-width="1"/>`;
+      svgHtml += `<text x="${fx + 18}" y="${fy + 12}" fill="#3fb950" style="font-size:10px;font-weight:600;">${esc(flagText)}</text>`;
+      svgHtml += `<text x="${fx + 4}" y="${fy + 12}" style="font-size:11px;">🚩</text>`;
+      svgHtml += `</g>`;
+    }
+  }
+
   // Legend
   const legend = document.getElementById('graph-legend');
   legend.innerHTML = [
@@ -1038,6 +1065,7 @@ function renderFlowGraph() {
     '<span class="legend-item"><svg width="12" height="12"><rect width="12" height="12" rx="3" fill="none" stroke="#3fb950" stroke-width="2"/></svg>Access</span>',
     '<span class="legend-item"><svg width="12" height="12"><rect width="12" height="12" rx="3" fill="none" stroke="#1f6feb" stroke-width="2"/></svg>Action</span>',
     '<span class="legend-item"><svg width="12" height="12"><rect width="12" height="12" rx="6" fill="none" stroke="#8b949e" stroke-width="1.5"/></svg>Credential</span>',
+    '<span class="legend-item"><svg width="12" height="12"><rect width="12" height="12" rx="8" fill="#1a5c28" stroke="#3fb950" stroke-width="1"/></svg>Flag</span>',
   ].join('');
 
   svg.setAttribute('width', '100%');
