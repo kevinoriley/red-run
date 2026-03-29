@@ -630,14 +630,16 @@ Walk ALL items, collect every actionable finding, present to operator:
      After gate passes → route to {domain}-ops via search_skills()
    Routing: web vulns → web-ops, AD vulns → ad-ops, privesc → lin-ops/win-ops
 
-   VERSIONED SOFTWARE PoC LOOKUP (before routing to ops):
+   VERSIONED SOFTWARE PoC LOOKUP (parallel with ops spawn):
      When discovery identifies software + specific version (not just "nginx"
-     but "Tomcat 9.0.31", "GitLab 16.0.1", etc.), spawn research teammate
-     to search for public PoCs, CVEs, and known exploit patterns BEFORE
-     assigning the technique to ops. Pass the results as context — payload
-     format, encoding gotchas, working injection syntax. This prevents ops
-     from spending 20+ attempts rediscovering what a public PoC already knows.
-     Run in parallel with technique skill assignment if the vuln class is clear.
+     but "Tomcat 9.0.31", "GitLab 16.0.1", etc.):
+     a. Spawn the ops teammate for the technique immediately
+     b. Spawn research teammate in parallel — instruct research to deliver
+        its findings directly to the ops teammate (by name), NOT to the lead.
+        The lead does not need PoC details in its context window.
+     c. Research sends: payload format, encoding gotchas, working injection
+        syntax, public PoC references — directly to the ops teammate
+     d. Ops teammate incorporates research context alongside the loaded skill
 
 2. Shell access without root/SYSTEM → Execution Achieved hard stop (see below)
 
