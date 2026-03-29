@@ -70,6 +70,7 @@ Deep analysis requires interactive shell to examine artifacts.
 For exploitation producing new shells:
 ```
 1. Message shell-mgr: [setup-listener] ip=<target> platform=<linux|windows> label="<label>"
+   STOP here. Do nothing else until shell-mgr replies.
 2. shell-mgr replies [listener-ready] with payloads + check instructions
 3. Deliver payload, check listener directly, retry as needed
 4. Connection confirmed → message shell-mgr: [session-caught] listener_id=<id>

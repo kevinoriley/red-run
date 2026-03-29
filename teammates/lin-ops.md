@@ -80,6 +80,7 @@ If shell is unstable (drops, no TTY), report this immediately.
 For privesc techniques that spawn new shells (PwnKit, kernel, sudo abuse):
 ```
 1. Message shell-mgr: [setup-listener] ip=<target> platform=linux label="<label>"
+   STOP here. Do nothing else until shell-mgr replies.
 2. shell-mgr replies [listener-ready] with payloads + check instructions
 3. Execute privesc technique with callback payload, check listener directly
 4. Connection confirmed → message shell-mgr: [session-caught] listener_id=<id>

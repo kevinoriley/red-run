@@ -102,6 +102,7 @@ is the sole owner of listeners and session setup.
 When technique achieves RCE → **get a shell immediately**:
 ```
 1. Message shell-mgr: [setup-listener] ip=<target> platform=<linux|windows> label="<label>"
+   STOP here. Do nothing else until shell-mgr replies.
 2. shell-mgr replies [listener-ready] with: payloads, check MCP call, what to look for
 3. Deliver payload through your vuln (URL-encode/escape for your injection context)
 4. Check the listener directly using the MCP call shell-mgr gave you
