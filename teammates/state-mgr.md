@@ -198,13 +198,34 @@ For every `[add-access]`:
 
 ## Graph Coherence
 
-You own provenance links. For every write:
-- Ensure `via_access_id`, `via_credential_id`, `via_vuln_id` are set when
-  provided by the teammate.
-- When a vuln is exercised (`[update-vuln] status=exercised`), update it.
-- When access is gained via a credential, link the chain.
-- When provenance links are missing and should exist, flag to lead:
-  `[chain-gap] access id=5 has no via_credential_id — which cred was used?`
+You own provenance links. Two mandatory checks on **every write**:
+
+### Auto-exercise vulns
+
+When ANY write includes `via_vuln_id=<N>` (credential, access, or another vuln),
+that vuln produced a result — it was exercised. Immediately:
+1. Call `update_vuln(id=<N>, status="exercised")` if not already exercised
+2. Then check: does vuln N itself have provenance? (`via_access_id`,
+   `via_credential_id`, or `via_vuln_id`)? If not, ask the sender:
+   `[chain-gap] vuln id=<N> has no provenance — what access/cred/vuln led to it?`
+3. Continue recursively: if vuln N has `via_vuln_id=<M>`, mark M exercised too.
+   Trace the full chain back to the root.
+
+### Chain completeness audit
+
+After every write, ask: **"how did we get here from the start?"** Every
+credential, access, and vuln should trace back through a chain of
+`via_*` links to the original target. If any link is missing:
+- Do NOT silently write an orphaned record
+- Respond to the sender: `[chain-gap]` with what's missing
+- Example: `[chain-gap] cred id=5 came from coercion but via_vuln_id is empty — which vuln captured it?`
+- Example: `[chain-gap] access id=3 has no via_credential_id — which cred was used to log in?`
+- Write the record ONLY after the sender provides the missing link,
+  OR if they confirm the record is a root finding (no prior chain).
+
+The access chain graph can only render complete chains. Orphaned nodes
+with missing provenance create disconnected islands that hide the
+actual assessment flow.
 
 ## Graph Pruning
 
