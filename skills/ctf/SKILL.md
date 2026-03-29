@@ -557,10 +557,13 @@ When web teammate reports vhosts:
 Before any web task:
 ```
 if engagement/web-proxy.json exists: reuse
-elif config.web_proxy exists:
+elif config.web_proxy.enabled is true:
     write persistence files from config
     print: "Web proxy configured: <url>"
-elif config.web_proxy omitted:
+elif config.web_proxy.enabled is false:
+    print: "Web proxy: disabled by operator"
+    (do NOT re-ask — operator already chose no proxy)
+elif config.web_proxy omitted entirely:
     AskUserQuestion — Loopback (recommended) | Dedicated IP | No proxy
     + port: 8080 (recommended) | 8081 | Custom
     write persistence files

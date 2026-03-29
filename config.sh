@@ -164,6 +164,12 @@ web_proxy:
   enabled: true
   url: "${proxy_url}"
 YAML
+else
+    cat >> "$CONFIG" << YAML
+
+web_proxy:
+  enabled: false
+YAML
 fi
 
 cat >> "$CONFIG" << YAML
