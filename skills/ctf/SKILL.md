@@ -170,6 +170,7 @@ Teammates inherit all MCP servers from the lead session.
 ```
 1. Read teammates/<domain>.md via Read tool
 2. Agent(prompt=<template content + task context>,
+        description="<3-5 word summary>",
         name="<name>", model="<model>", team_name="red-run")
    Do NOT print/paste the template content to the operator — pass it
    directly as the Agent prompt. The template is the teammate's system
@@ -486,11 +487,13 @@ alive before any shell operations.
 1. TeamCreate(team_name="red-run", description="red-run")
 2. Spawn state-mgr:
    a. Read teammates/state-mgr.md via Read tool
-   b. Agent(prompt=<template content>, name="state-mgr", model="sonnet", team_name="red-run")
+   b. Agent(prompt=<template content>, description="State management",
+            name="state-mgr", model="sonnet", team_name="red-run")
 3. Spawn shell-mgr:
    a. Read config.yaml → shell.backend (default: "shell-server" if absent)
    b. Read teammates/shell-mgr.md (base) + teammates/shell-mgr-<backend>.md (appendix)
-   c. Agent(prompt=<base + appendix>, name="shell-mgr", model="sonnet", team_name="red-run")
+   c. Agent(prompt=<base + appendix>, description="Shell lifecycle management",
+            name="shell-mgr", model="sonnet", team_name="red-run")
 4. Both go idle after activation — this is normal. They wake on messages.
 ```
 
