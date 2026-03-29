@@ -59,31 +59,18 @@ Discipline:
 - **Save retrieved PoCs** to `engagement/evidence/research/` with source URL in comment
 - Document all source URLs in summary
 
-## Shell Establishment
+## No Target Interaction
 
-Lead provides access method. If shell is unstable or limited, report immediately.
-Deep analysis requires interactive shell to examine artifacts.
+**You do NOT interact with the target.** No shell-server, no send_command,
+no listeners, no reverse shells. Analyze LOCAL files only.
 
-For techniques that spawn new shells:
-```
-1. Call mcp__shell-server__start_listener(port=<N>, label="<label>")
-2. Deliver payload, check list_sessions(), adjust and retry as needed
-3. Connection confirmed → HARD STOP:
-   a. Do NOTHING — no flags, no enumeration
-   b. Message shell-mgr: [shell-established] session_id=<id> ip=<target>
-      platform=<platform> delivery="<working payload>"
-   c. Message lead: "Shell established, handed to shell-mgr"
-   d. Wait for next task from lead
-```
+The lead ensures source code, artifacts, and evidence are downloaded to the
+attackbox BEFORE assigning you a task. Your input is always a local path
+(e.g., `engagement/evidence/source/app.py`, `engagement/evidence/backup.zip`).
 
-For credential-based access:
-```
-Message shell-mgr: [setup-process] command="<cmd>" label="<label>"
-  privileged=<bool>
-Wait for [process-ready] from shell-mgr
-```
-
-If a shell drops: `Message shell-mgr: [shell-dropped] session_id=<id>`
+If the task references files that aren't on the attackbox yet, message the
+lead: "Source not local — need <files> downloaded before I can analyze."
+Do NOT download them yourself via a shell session.
 
 ## Tool Execution
 
