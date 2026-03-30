@@ -161,7 +161,7 @@ The orchestrator has several points where it **must** pause for operator input. 
 | **Web proxy** | HTTP/HTTPS ports found | Yes — `web_proxy` | Skipped entirely; persistence files written from config |
 | **Hostname resolution** | New hostnames discovered | No | Always interactive (requires sudo) |
 | **Password spray** | New usernames discovered | Partial — `spray.default_tier` | Still fires; config pre-selects tier |
-| **Hash cracking** | Hashes captured | Partial — `cracking.default_method` | Still fires; config pre-selects method |
+| **Hash recovery** | Hashes captured | Partial — `cracking.default_method` | Still fires; config pre-selects method |
 | **Vhost resolution** | Virtual hosts discovered | No | Always interactive (requires sudo) |
 
 Hard stops prevent the orchestrator from making high-impact decisions autonomously. The config wizard captures preferences upfront so returning operators move faster, while "ask each time" options preserve the fully interactive workflow.
@@ -190,7 +190,7 @@ The orchestrator has mandatory pause points. Every task assignment requires oper
 | **Technique-Vuln Linkage** | Credential from active technique | Teammate must create a vuln record for the technique before the credential. State-mgr rejects credentials without `via_vuln_id` when the source implies a technique. |
 | **Hostname Resolution** | Unresolvable hostname | Operator runs hosts-update script |
 | **Password Spray** | New usernames discovered | Operator chooses tier and services |
-| **Hash Recovery** | Hashes captured | Operator chooses local/external/skip |
+| **Hash recovery** | Hashes captured | Operator chooses local/external/skip |
 
 ## Recovery Paths
 

@@ -363,7 +363,7 @@ DPAPISnoop.exe masterkey-parse C:\Users\bob\AppData\Roaming\Microsoft\Protect\{S
 **Do NOT crack hashes in this skill.** Save the DPAPI master key hash to
 `engagement/evidence/` and return to the orchestrator with the hash file path,
 hash type (DPAPI masterkey / hashcat mode 15900), and a routing recommendation
-to **credential-cracking**.
+to **credential-recovery**.
 
 ## Step 4: Browser Credentials
 
@@ -511,7 +511,7 @@ copy "%LOCALAPPDATA%\Google\Chrome\User Data\Default\Login Data" C:\Windows\Temp
 ### DPAPI blobs found but no way to decrypt
 Exfiltrate the master key files and credential blobs to the attacker machine.
 Use `DPAPISnoop` to generate hashcat-format hashes (mode 15900), save to
-`engagement/evidence/`, and route to **credential-cracking**.
+`engagement/evidence/`, and route to **credential-recovery**.
 
 ### "Access Denied" on other users' profiles
 Without admin access, you can only harvest credentials from the current user's profile.

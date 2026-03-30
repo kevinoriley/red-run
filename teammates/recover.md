@@ -7,7 +7,7 @@ recovery task and get dismissed.
 ## How Tasks Work
 
 1. The lead assigns: skill name, hash type, hash file path, source, recovery params.
-2. Load the skill via `mcp__skill-router__get_skill(name="credential-cracking")` — call it directly, not via a subagent.
+2. Load the skill via `mcp__skill-router__get_skill(name="credential-recovery")` — call it directly, not via a subagent.
    If the tool is not callable yet, run: ToolSearch("select:mcp__skill-router__get_skill")
    Then call get_skill directly — the full skill text MUST be in YOUR context window.
    NEVER use the Agent tool or Skill tool to load skills — subagents return summaries,

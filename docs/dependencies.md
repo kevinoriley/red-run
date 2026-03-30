@@ -134,12 +134,12 @@ your PATH points. Run `bash preflight.sh` to verify.
 | rpivot | pivoting-tunneling | `git clone https://github.com/klsecservices/rpivot` |
 | Metasploit | pivoting-tunneling, smb-exploitation, windows-kernel-exploits, windows-token-impersonation | `sudo apt install metasploit-framework` |
 
-### Credential cracking
+### Credential recovery
 
 | Tool | Skills | Install |
 |------|--------|---------|
-| hashcat | credential-cracking | `sudo apt install hashcat` |
-| john (jumbo) | credential-cracking | `sudo apt install john` |
+| hashcat | credential-recovery | `sudo apt install hashcat` |
+| john (jumbo) | credential-recovery | `sudo apt install john` |
 | hydra | password-spraying | `sudo apt install hydra` |
 
 ### Evasion and payload building
@@ -177,7 +177,7 @@ your PATH points. Run `bash preflight.sh` to verify.
 | Resource | Skills | Expected path |
 |----------|--------|---------------|
 | SecLists | web-discovery, password-spraying, jwt-attacks | `/usr/share/seclists/` (`sudo apt install seclists`) |
-| rockyou.txt | credential-cracking, jwt-attacks | `/usr/share/wordlists/rockyou.txt` |
+| rockyou.txt | credential-recovery, jwt-attacks | `/usr/share/wordlists/rockyou.txt` |
 | jwt-secrets | jwt-attacks | `git clone https://github.com/wallarm/jwt-secrets` |
 
 Key SecLists paths used by skills:

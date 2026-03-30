@@ -97,7 +97,7 @@ confirm completion (ntpdate).
 **Non-privileged commands** Claude can execute directly:
 - All roasting tools: `GetUserSPNs.py`, `GetNPUsers.py`, `netexec`, `Rubeus`
 - Targeted kerberoasting: `targetedKerberoast.py`, `bloodyAD`
-- Cracking: delegate to **credential-cracking** skill
+- Cracking: delegate to **credential-recovery** skill
 
 ## Step 1: Assess
 
@@ -221,14 +221,14 @@ Get-DomainUser * -SPN | Get-DomainSPNTicket -Format Hashcat | Export-Csv kerbero
 
 **Do NOT crack hashes in this skill.** Save hashes to `engagement/evidence/`
 and return to the orchestrator with the hash file path, hash type/mode (see
-table above), and a routing recommendation to **credential-cracking**.
+table above), and a routing recommendation to **credential-recovery**.
 
 ```bash
 # Save extracted TGS hashes to evidence
 cp hashes.kerberoast engagement/evidence/kerberoast-tgs-hashes.txt
 ```
 
-### After Cracking (post credential-cracking)
+### After Cracking (post credential-recovery)
 
 With recovered service account credentials:
 1. Check what the account has access to (BloodHound, nxc)
@@ -287,7 +287,7 @@ GetNPUsers.py DOMAIN/targetuser -no-pass -dc-ip DC_IP
 **Do NOT crack hashes in this skill.** Save AS-REP hashes to
 `engagement/evidence/` and return to the orchestrator with the hash file path,
 hash type (AS-REP / hashcat mode 18200), and a routing recommendation to
-**credential-cracking**.
+**credential-recovery**.
 
 ```bash
 # Save extracted AS-REP hashes to evidence
@@ -371,7 +371,7 @@ sudo timeroast.py DC_IP | tee ntp-hashes.txt
 **Do NOT crack hashes in this skill.** Save NTP hashes to
 `engagement/evidence/timeroast-hashes.txt` and return to the orchestrator with
 the hash file path, hash type (NTP / hashcat mode 31300), and a routing
-recommendation to **credential-cracking**.
+recommendation to **credential-recovery**.
 
 **Practical value is limited**: Computer account passwords are typically 120+
 random characters. Most useful against **trust accounts** between domains,

@@ -376,7 +376,7 @@ pfx2john.py certificate.pfx > engagement/evidence/pfx-hash.txt
 **Do NOT crack hashes in this skill.** Save the PFX hash to
 `engagement/evidence/` and return to the orchestrator with the hash file path,
 hash type (PFX / hashcat mode 12400), and a routing recommendation to
-**credential-cracking**.
+**credential-recovery**.
 
 ### THEFT5: UnPAC the Hash (NTLM from PKINIT)
 

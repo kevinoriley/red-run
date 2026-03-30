@@ -83,7 +83,7 @@ The orchestrator spawns domain-specific subagents for each skill invocation:
 | `linux-privesc-agent` | Linux privesc | skill-router, shell-server, state | Linux discovery + privesc + container escapes |
 | `windows-privesc-agent` | Windows privesc | skill-router, shell-server, rdp-server, state | Windows discovery + privesc |
 | `evasion-agent` | AV/EDR bypass | skill-router, shell-server, rdp-server, state | av-edr-evasion |
-| `credential-cracking-agent` | Credential recovery | skill-router, state | credential-cracking (haiku, local-only) |
+| `credential-cracking-agent` | Credential recovery | skill-router, state | credential-recovery (haiku, local-only) |
 | `research-agent` | Deep analysis | skill-router, shell-server, state | unknown-vector-analysis (sonnet) |
 
 Each invocation: agent loads one skill via `get_skill()`, executes methodology, saves evidence, and returns findings. The orchestrator parses the return summary and makes the next routing decision. All agents and the orchestrator share the same state MCP server with full read/write access. Deduplication is handled at the database level.

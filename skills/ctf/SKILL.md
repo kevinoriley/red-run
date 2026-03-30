@@ -146,7 +146,7 @@ Read spawn templates from `teammates/` at runtime via the Read tool.
 | `teammates/pivot.md` | pivot | Tunneling | sonnet | pivoting-tunneling |
 | `teammates/bypass.md` | bypass | AV/EDR bypass | sonnet | av-edr-evasion |
 | `teammates/spray.md` | spray | Password spraying | haiku | password-spraying |
-| `teammates/recover.md` | recover | Offline recovery | haiku | credential-cracking |
+| `teammates/recover.md` | recover | Offline recovery | haiku | credential-recovery |
 | `teammates/research.md` | research | Deep analysis | **ask operator** | unknown-vector-analysis |
 
 **Research model choice:** When spawning a research teammate, ask the operator:

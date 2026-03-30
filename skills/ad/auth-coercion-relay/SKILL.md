@@ -444,7 +444,7 @@ docker exec "$CONTAINER" grep -i ntlmv2 /opt/Responder/logs/Responder-Session.lo
 ```
 
 Return with: hash file path, hashcat mode 5600, source username,
-routing recommendation to **credential-cracking**.
+routing recommendation to **credential-recovery**.
 
 #### Cleanup
 
@@ -623,8 +623,8 @@ When relay is not feasible, capture NetNTLM hashes for offline cracking.
 **Do NOT crack hashes in this skill.** Save captured hashes to
 `engagement/evidence/` and return to the orchestrator with the hash file
 path, hash type (NTLMv1 mode 5500 or NTLMv2 mode 5600), and a routing
-recommendation to **credential-cracking**. The orchestrator will spawn
-the credential-cracking-agent for offline cracking.
+recommendation to **credential-recovery**. The orchestrator will spawn
+the credential-recovery-agent for offline cracking.
 
 ### Responder (Capture Mode)
 
@@ -645,7 +645,7 @@ If `LmCompatibilityLevel <= 1` (send LM & NTLM response):
 sudo responder -I eth0 --lm --disable-ess
 
 # NTLMv1 hashes with magic challenge can be cracked via shuck.sh
-# Save hash file and route to credential-cracking (hashcat mode 5500)
+# Save hash file and route to credential-recovery (hashcat mode 5500)
 ```
 
 ### Coercion for Hash Capture (Without Relay)
@@ -664,7 +664,7 @@ to the orchestrator with:
 - Hash file path
 - Hash type and hashcat mode (NTLMv2 = 5600, NTLMv1 = 5500)
 - Source username and domain
-- Routing recommendation: **credential-cracking**
+- Routing recommendation: **credential-recovery**
 
 ## Step 7: Name Resolution Poisoning (LLMNR/NBNS/WPAD)
 

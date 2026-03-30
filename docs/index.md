@@ -14,7 +14,7 @@ An **orchestrator** (team lead) runs in your main conversation. You give it targ
 
 **Key capabilities:**
 
-- **Skill-driven methodology** — 67 skills covering web exploitation, Active Directory attacks, privilege escalation, network recon, evasion, and credential cracking. Each skill embeds payloads, tool commands, troubleshooting, and OPSEC guidance.
+- **Skill-driven methodology** — 67 skills covering web exploitation, Active Directory attacks, privilege escalation, network recon, evasion, and credential recovery. Each skill embeds payloads, tool commands, troubleshooting, and OPSEC guidance.
 - **Persistent shell sessions** — Reverse shells and interactive tools (evil-winrm, psexec.py, ssh, msfconsole) maintain state across teammate tasks via the shell MCP server.
 - **Headless browser automation** — Playwright-backed browser sessions handle CSRF tokens, JavaScript-rendered forms, and multi-step auth flows that curl can't.
 - **Semantic skill routing** — ChromaDB + sentence-transformer embeddings match attack scenarios to the right skill via natural language search.
