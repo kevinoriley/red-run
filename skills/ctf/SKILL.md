@@ -123,12 +123,15 @@ lead and teammates with no error surfaced. **Handle collisions:**
    <date>). Delete it, or use a new name alongside it?"
    Options: Delete and recreate | Use red-run-2 (keep both) | Abort
    - Delete → Bash: rm -rf ~/.claude/teams/red-run/ ~/.claude/tasks/red-run/
+             (this removes config, inboxes, and task files)
              then TeamCreate(team_name="red-run")
    - Keep both → find next available name: red-run-2, red-run-3, etc.
              TeamCreate(team_name="red-run-<N>")
    - Abort → STOP.
 3. If no collision: TeamCreate(team_name="red-run", description="red-run")
-4. Store the ACTUAL team name returned by TeamCreate. Use it for ALL
+4. Wipe stale inboxes: Bash: rm -rf ~/.claude/teams/<TEAM_NAME>/inboxes/*.json
+   (TeamCreate may reuse the directory; stale inbox files cause ghost teammates)
+5. Store the ACTUAL team name returned by TeamCreate. Use it for ALL
    subsequent Agent(team_name=...) calls — never hardcode "red-run".
 ```
 
@@ -480,11 +483,12 @@ notify the operator and block shell-dependent tasks until resolved.
 
 ### Engagement Configuration
 
-**If `engagement/config.yaml` already exists** (operator ran `config.sh`
-beforehand), **skip the wizard entirely**. Read the config, print configured
-values, and continue to Initialize Engagement.
-
-**If no config.yaml exists**, call `AskUserQuestion` with all 5 questions:
+```
+1. Bash: ls engagement/config.yaml 2>/dev/null && echo "EXISTS" || echo "NONE"
+2. If EXISTS → Read engagement/config.yaml, print values, skip to Initialize Engagement.
+   Do NOT ask config questions. Do NOT call AskUserQuestion.
+3. If NONE → call AskUserQuestion with all 5 questions below.
+```
 
 ```
 Q1 — Scan type: Quick (recommended) | Full | Ask each time
