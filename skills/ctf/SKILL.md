@@ -99,12 +99,42 @@ The lead creates the team once per engagement session using `TeamCreate`. This
 creates the shared task list and team config. Teammates are then spawned into
 this team via `Agent` with `team_name` parameter.
 
+**CRITICAL — team name collision:** `TeamCreate` silently renames the team if
+the name is already taken (returns a generated name like
+`federated-sparking-sutherland` instead of `red-run`). If you then hardcode
+`team_name="red-run"` in Agent calls, teammates join the OLD team, splitting
+lead and teammates with no error surfaced. **Handle collisions:**
+
 ```
-TeamCreate(team_name="red-run", description="red-run")
+1. Check for existing team — metadata only (config.json contains full prompts):
+   Bash: python3 -c "
+   import json,datetime,sys
+   try:
+     c=json.load(open(sys.argv[1]))
+     d=datetime.datetime.fromtimestamp(c['createdAt']/1000).strftime('%Y-%m-%d %H:%M')
+     print(f'{len(c.get(\"members\",[]))} members, created {d}')
+   except: print('NONE')
+   " ~/.claude/teams/red-run/config.json
+   NEVER read or cat config.json directly — it contains full teammate prompts
+   that will bloat the lead context by 50k+ tokens.
+2. If members found — another red-run team exists. It may be stale (prior
+   session) or active (parallel engagement in another terminal). Ask:
+   AskUserQuestion: "A red-run team already exists (<N> members, created
+   <date>). Delete it, or use a new name alongside it?"
+   Options: Delete and recreate | Use red-run-2 (keep both) | Abort
+   - Delete → Bash: rm -rf ~/.claude/teams/red-run/ ~/.claude/tasks/red-run/
+             then TeamCreate(team_name="red-run")
+   - Keep both → find next available name: red-run-2, red-run-3, etc.
+             TeamCreate(team_name="red-run-<N>")
+   - Abort → STOP.
+3. If no collision: TeamCreate(team_name="red-run", description="red-run")
+4. Store the ACTUAL team name returned by TeamCreate. Use it for ALL
+   subsequent Agent(team_name=...) calls — never hardcode "red-run".
 ```
 
 On resume (new session, `engagement/state.db` exists): create a fresh team —
-previous teammates are gone but the team config is new per session.
+previous teammates are gone but the team config is new per session. The stale
+team cleanup above handles this automatically.
 
 On engagement close: gracefully shut down all teammates via
 `SendMessage(message={type: "shutdown_request"})`, then call `TeamDelete`.
@@ -143,7 +173,6 @@ Read spawn templates from `teammates/` at runtime via the Read tool.
 
 | Template | Name | Domain | Model | Skills |
 |----------|------|--------|-------|--------|
-| `teammates/pivot.md` | pivot | Tunneling | sonnet | pivoting-tunneling |
 | `teammates/bypass.md` | bypass | AV/EDR bypass | sonnet | av-edr-evasion |
 | `teammates/spray.md` | spray | Password spraying | haiku | password-spraying |
 | `teammates/recover.md` | recover | Offline recovery | haiku | credential-recovery |
@@ -171,7 +200,8 @@ Teammates inherit all MCP servers from the lead session.
 1. Read teammates/<domain>.md via Read tool
 2. Agent(prompt=<template content + task context>,
         description="<3-5 word summary>",
-        name="<name>", model="<model>", team_name="red-run")
+        name="<name>", model="<model>", team_name=<TEAM_NAME>)
+   Use the ACTUAL team name from TeamCreate — never hardcode "red-run".
    Do NOT print/paste the template content to the operator — pass it
    directly as the Agent prompt. The template is the teammate's system
    context, not operator-facing output.
@@ -413,8 +443,9 @@ If `engagement/state.db` exists:
 Do NOT re-initialize scope or re-run init_engagement(). State.db is source of truth.
 Previous teammates are gone (new session) — create a fresh team and spawn as needed:
 ```
-TeamCreate(team_name="red-run", description="red-run")
-# Then spawn state-mgr + shell-mgr, followed by teammates for recommended actions
+# Handle team name collision (see Team Lifecycle — team name collision)
+# TeamCreate → store returned name as TEAM_NAME
+# Then spawn state-mgr + shell-mgr with team_name=<TEAM_NAME>
 ```
 
 ## Step 1: Scope & Engagement Setup
@@ -484,17 +515,18 @@ spawned. state-mgr must be alive before any writes, and shell-mgr must be
 alive before any shell operations.
 
 ```
-1. TeamCreate(team_name="red-run", description="red-run")
-2. Spawn state-mgr:
+1. Handle team name collision (see Team Lifecycle — team name collision).
+2. TeamCreate → store returned name as TEAM_NAME.
+3. Spawn state-mgr:
    a. Read teammates/state-mgr.md via Read tool
    b. Agent(prompt=<template content>, description="State management",
-            name="state-mgr", model="sonnet", team_name="red-run")
-3. Spawn shell-mgr:
+            name="state-mgr", model="sonnet", team_name=<TEAM_NAME>)
+4. Spawn shell-mgr:
    a. Read config.yaml → shell.backend (default: "shell-server" if absent)
    b. Read teammates/shell-mgr.md (base) + teammates/shell-mgr-<backend>.md (appendix)
    c. Agent(prompt=<base + appendix>, description="Shell lifecycle management",
-            name="shell-mgr", model="sonnet", team_name="red-run")
-4. Both go idle after activation — this is normal. They wake on messages.
+            name="shell-mgr", model="sonnet", team_name=<TEAM_NAME>)
+5. Both go idle after activation — this is normal. They wake on messages.
 ```
 
 All subsequent state writes from the lead and teammates go through state-mgr
@@ -614,7 +646,7 @@ Access → deeper:   DB→cmdexec→shell | JWT→admin→upload→shell | deser
 Shell → privesc:   stabilize → linux/windows teammate(discovery) → privesc technique
 Lateral:           creds from host A → test all others | service acct → kerberos | pivot→recon
 Privesc chain:     local admin → ad(credential-dumping) | domain user → ad(kerberoasting)
-Pivot → internal:  additional NIC/subnet in state + access to pivot host → pivoting → recon internal
+Pivot → internal:  additional NIC/subnet in state + access to pivot host → shell-mgr [setup-pivot] → recon internal
 ```
 
 **Pivot identified + access exists → act immediately:**
@@ -622,11 +654,9 @@ Pivot → internal:  additional NIC/subnet in state + access to pivot host → p
 When state shows a pivot (additional NIC, new subnet) AND you have access to the pivot host:
 1. Check get_tunnels() — does an active tunnel already cover this subnet?
 2. If no tunnel:
-   a. Spawn pivoting teammate: "Load skill 'pivoting-tunneling'.
-      Pivot host: <host>. Target subnet: <subnet>.
-      Access: <evil-winrm/ssh/shell + user + creds>.
-      Tool preference: SSH > sshuttle > ligolo > chisel."
-   b. After tunnel established → message state-mgr: [add-tunnel] if teammate didn't
+   a. Message shell-mgr: [setup-pivot] host=<ip> target_subnet=<cidr> via_access_id=<N>
+      shell-mgr decides the method based on its backend (Sliver SOCKS5, chisel, etc.)
+   b. Wait for shell-mgr's [pivot-ready] response with tunnel details
    c. Message state-mgr: [update-pivot] to mark as exploited
    d. Assign recon teammate: network-recon on the internal subnet
 3. Include tunnel context in ALL subsequent tasks targeting hosts behind tunnel:
@@ -707,8 +737,8 @@ Then walk ALL items, collect every actionable finding, present to operator:
    for each pivot with status "identified" or "Additional NIC":
      if access exists to pivot host (check Access section in state):
        if no active tunnel covers target subnet (check get_tunnels()):
-         → spawn pivoting teammate (see "Pivot identified + access exists" above)
-         → after tunnel: assign recon on internal subnet
+         → message shell-mgr: [setup-pivot] (see "Pivot identified + access exists")
+         → after [pivot-ready]: assign recon on internal subnet
      else:
        note: need access to pivot host first — pursue via other chains
 

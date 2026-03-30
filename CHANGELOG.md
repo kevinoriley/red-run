@@ -11,7 +11,7 @@ All notable changes to red-run will be documented in this file. Format follows [
   C2 upgrade, and recovery. Other teammates connect to shells directly.
 - **sliver-server MCP** (`tools/sliver-server/`) — wraps Sliver C2 gRPC API
   for listener management, implant generation, session ops, file transfer,
-  and pivot listeners
+  pivot listeners, and SOCKS5 proxy (`start_socks_proxy`/`stop_socks_proxy`)
 - **config.sh** — pre-engagement config wizard (scan type, proxy, spray,
   cracking, C2 backend). Orchestrator skips wizard if config.yaml exists.
 - **PowerShell shell detection** — shell-server detects PS sessions and uses
@@ -27,6 +27,12 @@ All notable changes to red-run will be documented in this file. Format follows [
 - **via_vuln_id on vulns** — vuln-to-vuln provenance (schema v21)
 - **Agent teams integration** — `TeamCreate` at engagement start, `team_name`
   on all teammate spawns, `TaskCreate`/`TaskUpdate` for coordination
+- **Team name collision handling** — orchestrator detects pre-existing `red-run`
+  team before `TeamCreate` and offers operator a choice: delete and recreate,
+  use `red-run-2` alongside the existing team, or abort. All subsequent Agent
+  spawns use the actual returned team name instead of hardcoding `"red-run"`.
+  Workaround for `TeamCreate` silent-rename bug that split lead and teammates
+  across different teams.
 
 ### Changed
 
@@ -46,6 +52,10 @@ All notable changes to red-run will be documented in this file. Format follows [
   files only, lead ensures sources are downloaded first
 - **Task assignments include active sessions** — lead lists all shell-server
   and C2 sessions with MCP instructions
+- **Pivoting consolidated into shell-mgr** — pivot teammate removed.
+  shell-mgr owns tunnel setup: Sliver backend uses native SOCKS5 proxy,
+  shell-server backend loads pivoting-tunneling skill on-demand. Orchestrator
+  messages `[setup-pivot]` instead of spawning a pivot teammate.
 - **Teammate shutdown requires operator approval** — no auto-shutdown after
   flag capture
 - Password reuse tracked as vuln with provenance to original credential
