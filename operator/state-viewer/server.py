@@ -1079,10 +1079,12 @@ function renderFlowGraph() {
 
   svg.setAttribute('width', '100%');
   // Height: fill container in fullscreen, otherwise fit content
+  // Add bottom padding so the legend bar doesn't overlap the last row of nodes
+  const LEGEND_PAD = 36;
   const isFullscreen = container.classList.contains('fullscreen');
-  const svgH = isFullscreen ? Math.max(totalH, container.clientHeight || 200) : totalH;
+  const svgH = isFullscreen ? Math.max(totalH + LEGEND_PAD, container.clientHeight || 200) : totalH + LEGEND_PAD;
   svg.setAttribute('height', svgH);
-  svg.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
+  svg.setAttribute('viewBox', `0 0 ${totalW} ${totalH + LEGEND_PAD}`);
   svg.innerHTML = svgHtml;
 
   _setupGraphZoomPan(svg, container, totalW, totalH);
