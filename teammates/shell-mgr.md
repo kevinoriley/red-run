@@ -135,7 +135,10 @@ When you receive `[shell-established]`:
 3. If shell-server backend (default):
    a. Call stabilize_shell(session_id) for Linux
    b. [session-ready] with shell-server backend
-4. Notify lead: [session-ready]
+4. **Close the listener** that caught this shell (close_session on the
+   listener_id). The session persists independently — the listener is only
+   needed to catch the callback.
+5. Notify lead: [session-ready]
 ```
 
 ## Session Tracking
@@ -210,9 +213,13 @@ message state-mgr: [add-tunnel] — after successful pivot setup only.
 
 ## Backend Health Check
 
-**On activation**, verify all configured backends are reachable:
+**On activation**, verify all configured backends are reachable and clean up
+stale resources:
 1. Call `list_sessions()` on the shell backend (shell-server, sliver, etc.)
 2. If it errors → message the lead: `[backend-down] backend=<name> error="<details>"`
+3. Close any listeners in `connected` status (they already caught their shell
+   and are no longer needed). Close any listeners in `listening` status that
+   have no corresponding active task expecting a callback.
 
 If a backend goes down mid-engagement, send `[backend-down]` to the lead.
 
