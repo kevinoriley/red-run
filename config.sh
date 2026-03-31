@@ -214,6 +214,35 @@ print('  sliver-server added to .mcp.json')
     else
         echo "  sliver-server already in .mcp.json"
     fi
+
+    # Ensure sliver-server tools are auto-allowed in settings.json
+    SETTINGS_JSON=".claude/settings.json"
+    if [[ -f "$SETTINGS_JSON" ]]; then
+        if ! grep -q '"mcp__sliver-server__\*"' "$SETTINGS_JSON"; then
+            echo "Adding sliver-server to allowedTools in settings.json..."
+            python3 -c "
+import json
+with open('$SETTINGS_JSON') as f:
+    cfg = json.load(f)
+allow = cfg.get('permissions', {}).get('allow', [])
+entry = 'mcp__sliver-server__*'
+if entry not in allow:
+    # Insert after shell-server entry if present, else append
+    try:
+        idx = next(i for i, v in enumerate(allow) if 'shell-server' in v) + 1
+    except StopIteration:
+        idx = len(allow)
+    allow.insert(idx, entry)
+    cfg.setdefault('permissions', {})['allow'] = allow
+    with open('$SETTINGS_JSON', 'w') as f:
+        json.dump(cfg, f, indent=2)
+        f.write('\n')
+    print('  sliver-server added to allowedTools')
+" 2>&1
+        else
+            echo "  sliver-server already in allowedTools"
+        fi
+    fi
 fi
 
 echo ""
