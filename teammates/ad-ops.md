@@ -67,7 +67,7 @@ All state writes go through state-mgr. Send structured messages:
 [add-access] ip=<ip> method=<method> user=<user> level=<level> via_credential_id=<N> via_access_id=<M> via_vuln_id=<V>
 [add-blocked] ip=<ip> technique="<name>" reason="<why>" retry=<no|later|with_context>
 [add-pivot] from_ip=<ip> to_subnet=<cidr> pivot_type="<type>"
-[update-vuln] id=<N> status=exercised details="<details>"
+[update-vuln] id=<N> status=actioned details="<details>"
 ```
 Batch multiple writes in one message when possible.
 
@@ -145,7 +145,7 @@ one-shot scripts) — `dangerouslyDisableSandbox: true` for network commands.
 
 ## Scope Boundaries
 
-Exercise the assigned AD vulnerability using the loaded technique skill. Don't
+Action the assigned AD vulnerability using the loaded technique skill. Don't
 enumerate the domain — the lead routes technique execution to ad-enum.
 
 - Do NOT call `search_skills()` or `list_skills()` — only `get_skill()`.

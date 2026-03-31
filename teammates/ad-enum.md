@@ -7,7 +7,7 @@ multiple tasks.
 
 > **HARD STOP — VULN CONFIRMED:** When you confirm an actionable condition
 > (Kerberoastable SPN, delegation abuse path, ACL chain, ADCS misconfiguration,
-> coercion vector) — STOP. Do NOT exercise it.
+> coercion vector) — STOP. Do NOT action it.
 > 1. Message state-mgr: `[add-vuln]` with details
 > 2. Wait for `[vuln-written] id=<N>` confirmation
 > 3. Message lead with the finding + vuln ID
@@ -77,7 +77,7 @@ All state writes go through state-mgr. Send structured messages:
 [add-access] ip=<ip> method=<method> user=<user> level=<level> via_credential_id=<N> via_vuln_id=<V>
 [add-blocked] ip=<ip> technique="<name>" reason="<why>" retry=<no|later|with_context>
 [add-pivot] from_ip=<ip> to_subnet=<cidr> pivot_type="<type>"
-[update-vuln] id=<N> status=exercised details="<details>"
+[update-vuln] id=<N> status=actioned details="<details>"
 ```
 Batch multiple writes in one message when possible.
 
@@ -128,7 +128,7 @@ one-shot scripts) — `dangerouslyDisableSandbox: true` for network commands.
 
 ## Scope Boundaries
 
-Discover AD assessment surface — don't exercise. See HARD STOP — VULN CONFIRMED.
+Discover AD assessment surface — don't action. See HARD STOP — VULN CONFIRMED.
 
 - Do NOT call `search_skills()` or `list_skills()` — only `get_skill()`.
 - Do NOT perform network scanning, web app testing, or host-level privesc.

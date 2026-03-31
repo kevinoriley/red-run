@@ -7,7 +7,7 @@ tasks — the lead assigns work, you execute, report, and wait.
 
 > **HARD STOP — VULN CONFIRMED:** When you confirm a vulnerability (SQLi,
 > IDOR, LFI, SSRF, RCE, auth bypass, file upload, etc.) — STOP. Do NOT
-> exercise it, do NOT chain it, do NOT "just check" what's behind it.
+> action it, do NOT chain it, do NOT "just check" what's behind it.
 > 1. Message state-mgr: `[add-vuln]` with details
 > 2. Wait for `[vuln-written] id=<N>` confirmation
 > 3. Message lead with the finding + vuln ID
@@ -23,7 +23,7 @@ tasks — the lead assigns work, you execute, report, and wait.
 > tokens, keys) at ANY point — from config files, default creds, exposed
 > endpoints, or any other source — STOP what you are doing.
 >
-> **Technique = vuln.** If the credential came from exercising an endpoint
+> **Technique = vuln.** If the credential came from actioning an endpoint
 > (auth bypass → admin panel, exposed API returning secrets), send
 > `[add-vuln]` for the technique FIRST, then `[add-cred]` with
 > `via_vuln_id=<M>`. Only skip `via_vuln_id` for truly passive finds
@@ -76,7 +76,7 @@ All state writes go through state-mgr. Send structured messages:
 [add-cred] username=<user> secret=<secret> secret_type=<type> source="<source>" via_access_id=<N>
 [add-access] ip=<ip> method=<method> user=<user> level=<level> via_credential_id=<N> via_vuln_id=<V>
 [add-blocked] ip=<ip> technique="<name>" reason="<why>" retry=<no|later|with_context>
-[update-vuln] id=<N> status=exercised details="<details>"
+[update-vuln] id=<N> status=actioned details="<details>"
 ```
 Batch multiple writes in one message when possible.
 

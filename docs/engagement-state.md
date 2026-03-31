@@ -53,8 +53,8 @@ The `secret_type` field in `credentials` supports: `password`, `ntlm_hash`, `net
 
 Vulns have three statuses:
 
-- **found** — Identified but not yet exercised
-- **exploited** — Successfully exercised, access obtained
+- **found** — Identified but not yet actioned
+- **exploited** — Successfully actioned, access obtained
 - **blocked** — Exploitation attempted but failed or not possible
 
 ### Pivot map
@@ -66,7 +66,7 @@ SQLi on 10.10.10.5:/search  →  DB creds for 10.10.10.1:mssql
 ADCS ESC1 on DC01            →  Domain Admin TGT
 ```
 
-The orchestrator reads the pivot map to identify unexercised chains and decide which skill to invoke next.
+The orchestrator reads the pivot map to identify un-actioned chains and decide which skill to invoke next.
 
 ## State server architecture
 
@@ -91,7 +91,7 @@ The orchestrator uses state queries to make routing decisions:
 ```
 get_state_summary()           → Full engagement snapshot (~200 lines)
 get_credentials(untested_only=True) → Creds not yet tested everywhere
-get_vulns(status="found")     → Vulns not yet exercised
+get_vulns(status="found")     → Vulns not yet actioned
 get_pivot_map()               → Chains to follow
 get_blocked()                 → Dead ends to avoid
 get_access(active_only=True)  → Current footholds

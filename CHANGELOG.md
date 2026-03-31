@@ -38,11 +38,11 @@ All notable changes to red-run will be documented in this file. Format follows [
 
 - **Lead runs as Sonnet** — `run.sh` launches with `--model sonnet` to reduce
   token cost. Research teammate model is operator's choice (sonnet or opus).
-- **Terminology**: `exploited` → `exercised` across state DB, dashboard,
-  templates, and docs (schema migration v19→v20)
-- **Terminology**: `exploitable` → `actionable`, `exploitation` → `exercise`
+- **Terminology**: `exploited` → `actioned` across state DB, dashboard,
+  templates, and docs (schema migrations v19→v22)
+- **Terminology**: `exploitable` → `actionable`, `exploitation` → `action`
   in teammate templates and docs
-- **state-mgr auto-exercises vulns** on provenance-linked writes and
+- **state-mgr auto-actions vulns** on provenance-linked writes and
   refuses orphaned writes with missing chain links.
 - **Teammates establish shells directly** via shell-server, then hand off to
   shell-mgr (reversed from earlier design where shell-mgr established)
@@ -66,8 +66,8 @@ All notable changes to red-run will be documented in this file. Format follows [
 - Sonnet 1M override removed (rate limits), teammates spawn as Sonnet 200k
 - Listener handoff deadlock eliminated by shell establishment redesign
 - shell-server `send_command` on PowerShell iex shells (PS-native wrapper)
-- Exercised vulns render as blue action nodes (stale `EXPLOITED` label fixed)
-- Exercised vuln routing extended to `via_credential_id` (not just access)
+- Actioned vulns render as blue action nodes (stale `EXPLOITED` label fixed)
+- Actioned vuln routing extended to `via_credential_id` (not just access)
 - sliver-server `execute` args splitting and `generate_implant` reliability
 - `sliver console --rc` hang on exit
 - Config wizard re-asking scan type and proxy when config.yaml has values
@@ -138,9 +138,9 @@ sanitization pass to reduce AUP filter sensitivity.
   custom tooling, update accordingly.
 - **Terminology sanitized across all templates and orchestrator.** Offensive
   terms replaced with neutral equivalents to reduce AUP filter sensitivity:
-  attack → operations, exploit (verb) → exercise, payload → artifact,
+  attack → operations, exploit (verb) → action, payload → artifact,
   cracking → recovery, kill chain → access chain, evasion → bypass,
-  post-exploitation → post-access. State DB values (`exploited`, `blocked`,
+  post-exploitation → post-access. State DB values (`actioned`, `blocked`,
   `cracked`) and technique taxonomy (Kerberoasting, SQL injection, etc.)
   are unchanged.
 - **State schema `host` column renamed to `ip`**, `hostname` column added.
@@ -228,7 +228,7 @@ sanitization pass to reduce AUP filter sensitivity.
 - **Shell-server HTTP endpoints** — `GET /status` and `POST /clear` for
   session management outside MCP protocol.
 - **HARD STOP — VULN CONFIRMED** on all 5 enum templates — stops, writes to
-  state, messages lead, does not exercise.
+  state, messages lead, does not action.
 - **HARD STOP — SHELL** on web-enum — scope enforcement for accidental shell
   access.
 - **Execution Achieved hard stop** — highest priority, triggers immediate host

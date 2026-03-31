@@ -56,13 +56,13 @@ as a safety net but is not the primary dedup mechanism.
 The server automatically manages `in_graph` flags to keep the dashboard flow
 graph clean:
 
-- **On exercise**: `update_vuln(status="exercised")` sets `in_graph=0` on
+- **On action**: `update_vuln(status="actioned")` sets `in_graph=0` on
   sibling `found` vulns sharing the same `via_access_id` and target. Response
   includes `"siblings_pruned": N`.
 
 - **On abandonment**: `update_vuln(status="blocked")` or
   `update_access(active=false)` restores pruned siblings (`in_graph=1`) if no
-  other exercised vuln exists from the same access. Response includes
+  other actioned vuln exists from the same access. Response includes
   `"siblings_restored": N`.
 
 - **Manual override**: `update_vuln(id=N, in_graph=0|1)` to force
@@ -116,7 +116,7 @@ writer, contention is minimal.
 | `add_access` | `ip` (required), `access_type`, `username`, `privilege`, `method`, `session_ref`, `via_credential_id`, `via_access_id`, `via_vuln_id`, `technique_id`, `chain_order`, `discovered_by` | Record a new foothold on a target (chain provenance via credential, access, or vuln) |
 | `update_access` | `id` (required), `active`, `username`, `access_type`, `privilege`, `notes`, `via_credential_id`, `via_access_id`, `via_vuln_id`, `technique_id`, `in_graph`, `chain_order` | Update access record (e.g., revoke, fix provenance, reposition in graph). Restores pruned sibling vulns on revocation |
 | `add_vuln` | `title` (required), `ip` (required), `vuln_type`, `severity`, `status`, `details`, `evidence_path`, `via_access_id`, `via_credential_id`, `via_vuln_id`, `technique_id`, `chain_order`, `discovered_by` | Record a vulnerability (deduplicates on target+title) |
-| `update_vuln` | `id` (required), `status`, `severity`, `details`, `in_graph`, `via_access_id`, `via_credential_id`, `via_vuln_id`, `technique_id`, `chain_order` | Update vulnerability status (found/exercised/blocked). Auto-prunes sibling found vulns on exercise, restores on block |
+| `update_vuln` | `id` (required), `status`, `severity`, `details`, `in_graph`, `via_access_id`, `via_credential_id`, `via_vuln_id`, `technique_id`, `chain_order` | Update vulnerability status (found/actioned/blocked). Auto-prunes sibling found vulns on action, restores on block |
 | `add_pivot` | `source`, `destination` (required), `method`, `status` | Record a pivot path |
 | `update_pivot` | `id` (required), `status`, `notes` | Update pivot path status |
 | `add_blocked` | `technique`, `reason` (required), `ip`, `retry`, `notes` | Record a blocked/failed technique |
@@ -135,7 +135,7 @@ The database has 10 tables:
 | `credentials` | Username/secret pairs with type (password, ntlm_hash, net_ntlm, kerberos_tgs, dcc2, webapp_hash, dpapi, etc.) |
 | `credential_access` | Where each credential has been tested and whether it worked |
 | `access` | Active footholds — shells, sessions, tokens |
-| `vulns` | Confirmed vulnerabilities with severity and status (found/exercised/blocked) |
+| `vulns` | Confirmed vulnerabilities with severity and status (found/actioned/blocked) |
 | `pivot_map` | Directed edges showing what leads where |
 | `blocked` | Failed techniques with reasons and retry assessment |
 | `tunnels` | Active tunnels — type, pivot host, target subnet, endpoints, proxychains requirement |

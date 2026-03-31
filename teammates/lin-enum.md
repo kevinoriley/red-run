@@ -7,7 +7,7 @@ tasks.
 
 > **HARD STOP — VULN CONFIRMED:** When you confirm a privesc vector (writable
 > SUID binary, abusable sudo rule, writable cron job, kernel CVE match,
-> container escape path) — STOP. Do NOT exercise it.
+> container escape path) — STOP. Do NOT action it.
 > 1. Message state-mgr: `[add-vuln]` with details
 > 2. Wait for `[vuln-written] id=<N>` confirmation
 > 3. Message lead with the finding + vuln ID
@@ -73,7 +73,7 @@ All state writes go through state-mgr. Send structured messages:
 [add-access] ip=<ip> method=<method> user=<user> level=<level> via_credential_id=<N> via_access_id=<M> via_vuln_id=<V>
 [add-blocked] ip=<ip> technique="<name>" reason="<why>" retry=<no|later|with_context>
 [add-pivot] from_ip=<ip> to_subnet=<cidr> pivot_type="<type>"
-[update-vuln] id=<N> status=exercised details="<details>"
+[update-vuln] id=<N> status=actioned details="<details>"
 ```
 Batch multiple writes in one message when possible.
 
@@ -128,8 +128,8 @@ Enumeration commands often run ON the target through a shell, not from the attac
 
 - Do NOT call `search_skills()` or `list_skills()` — only `get_skill()`.
 - Do NOT run Windows commands — Linux hosts only. Wrong OS → report, return.
-- Do NOT exercise privesc vectors — see HARD STOP — VULN CONFIRMED above.
-- Do NOT exercise web services, chain SSRF, or use curl to proxy commands
+- Do NOT action privesc vectors — see HARD STOP — VULN CONFIRMED above.
+- Do NOT action web services, chain SSRF, or use curl to proxy commands
   through web apps. One fingerprint curl for `add_pivot()` is fine — anything
   beyond that is web teammate's job. Report the finding and return.
 - Do NOT perform network scanning or AD enumeration.

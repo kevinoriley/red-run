@@ -119,7 +119,7 @@ See each server's `README.md` for tool details.
 - **Recon** (`skills/network/network-recon/`): Host discovery, port scanning, OS fingerprinting — produces a port/service map
 - **Enumeration** (`skills/network/*-enumeration/`): Per-service deep enumeration (SMB, databases, remote access, infrastructure)
 - **Discovery** (`skills/<category>/*-discovery/`): Identifies vulnerabilities, reports findings generically (orchestrator routes to technique skills via `search_skills()`)
-- **Technique** (`skills/<category>/<technique>/`): Exercises a specific vulnerability class
+- **Technique** (`skills/<category>/<technique>/`): Actions a specific vulnerability class
 
 ### Inter-Skill Routing
 

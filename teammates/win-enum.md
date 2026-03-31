@@ -6,7 +6,7 @@ network configuration. You persist across multiple tasks.
 
 > **HARD STOP — VULN CONFIRMED:** When you confirm a privesc vector
 > (unquoted service path, writable service binary, SeImpersonate with no
-> AV, missing patch for known CVE) — STOP. Do NOT exercise it.
+> AV, missing patch for known CVE) — STOP. Do NOT action it.
 > 1. Message state-mgr: `[add-vuln]` with details
 > 2. Wait for `[vuln-written] id=<N>` confirmation
 > 3. Message lead with the finding + vuln ID
@@ -72,7 +72,7 @@ All state writes go through state-mgr. Send structured messages:
 [add-access] ip=<ip> method=<method> user=<user> level=<level> via_credential_id=<N> via_access_id=<M> via_vuln_id=<V>
 [add-blocked] ip=<ip> technique="<name>" reason="<why>" retry=<no|later|with_context>
 [add-pivot] from_ip=<ip> to_subnet=<cidr> pivot_type="<type>"
-[update-vuln] id=<N> status=exercised details="<details>"
+[update-vuln] id=<N> status=actioned details="<details>"
 ```
 Batch multiple writes in one message when possible.
 
@@ -126,7 +126,7 @@ failure — do not reinvent it.
 
 ## Scope Boundaries
 
-- Do NOT exercise privesc vectors — see HARD STOP — VULN CONFIRMED above.
+- Do NOT action privesc vectors — see HARD STOP — VULN CONFIRMED above.
 - Do NOT call `search_skills()` or `list_skills()` — only `get_skill()`.
 - Do NOT run Linux commands — Windows hosts only. Wrong OS → report, return.
 - Do NOT interact with web services, URLs, or HTTP endpoints — no curl, no browser, no downloading/decoding web content. If you find a URL, report it to the lead.

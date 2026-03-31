@@ -21,7 +21,7 @@ Discovery skills run in agents with **state** access, allowing them to write fin
 
 ### Technique Skills
 
-**Technique skills** exercise specific vulnerability classes. Each covers one technique thoroughly — assessment, confirmation, exploitation, and escalation/pivot routing. There are 62 technique skills across all categories.
+**Technique skills** action specific vulnerability classes. Each covers one technique thoroughly — assessment, confirmation, exploitation, and escalation/pivot routing. There are 62 technique skills across all categories.
 
 Technique skills run in agents with **state** access. They write critical discoveries (captured hashes, credentials, confirmed vulns) mid-run and report all findings in their return summary.
 

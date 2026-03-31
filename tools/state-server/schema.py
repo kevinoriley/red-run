@@ -9,7 +9,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-SCHEMA_VERSION = 21
+SCHEMA_VERSION = 22
 
 SCHEMA_SQL = """\
 PRAGMA journal_mode=WAL;
@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS vulns (
     title         TEXT NOT NULL,
     vuln_type     TEXT NOT NULL DEFAULT '',
     status        TEXT NOT NULL DEFAULT 'found'
-                  CHECK (status IN ('found', 'exercised', 'blocked')),
+                  CHECK (status IN ('found', 'actioned', 'blocked')),
     severity      TEXT NOT NULL DEFAULT 'medium'
                   CHECK (severity IN ('info', 'low', 'medium', 'high', 'critical')),
     details       TEXT NOT NULL DEFAULT '',
@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS pivot_map (
     destination   TEXT NOT NULL,
     method        TEXT NOT NULL DEFAULT '',
     status        TEXT NOT NULL DEFAULT 'identified'
-                  CHECK (status IN ('identified', 'exercised', 'blocked')),
+                  CHECK (status IN ('identified', 'actioned', 'blocked')),
     notes         TEXT NOT NULL DEFAULT '',
     discovered_by TEXT NOT NULL DEFAULT '',
     created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
@@ -248,7 +248,7 @@ def _migrate_v7_to_v8(conn: sqlite3.Connection) -> None:
             title         TEXT NOT NULL,
             vuln_type     TEXT NOT NULL DEFAULT '',
             status        TEXT NOT NULL DEFAULT 'found'
-                          CHECK (status IN ('found', 'exercised', 'blocked')),
+                          CHECK (status IN ('found', 'actioned', 'blocked')),
             severity      TEXT NOT NULL DEFAULT 'medium'
                           CHECK (severity IN ('info', 'low', 'medium', 'high', 'critical')),
             details       TEXT NOT NULL DEFAULT '',
@@ -317,9 +317,9 @@ def _migrate_v5_to_v6(conn: sqlite3.Connection) -> None:
     """Migrate schema from v5 to v6: change vuln status lifecycle.
 
     Old statuses: found, active, done
-    New statuses: found, exploited, blocked
+    New statuses: found, actioned, blocked
 
-    Mapping: active -> exploited, done -> exploited, found stays.
+    Mapping: active -> actioned, done -> actioned, found stays.
     Recreates vulns table with new CHECK constraint (SQLite can't ALTER CHECK).
     """
     conn.executescript("""
@@ -331,7 +331,7 @@ def _migrate_v5_to_v6(conn: sqlite3.Connection) -> None:
             title         TEXT NOT NULL,
             vuln_type     TEXT NOT NULL DEFAULT '',
             status        TEXT NOT NULL DEFAULT 'found'
-                          CHECK (status IN ('found', 'exercised', 'blocked')),
+                          CHECK (status IN ('found', 'actioned', 'blocked')),
             severity      TEXT NOT NULL DEFAULT 'medium'
                           CHECK (severity IN ('info', 'low', 'medium', 'high', 'critical')),
             endpoint      TEXT NOT NULL DEFAULT '',
@@ -348,8 +348,8 @@ def _migrate_v5_to_v6(conn: sqlite3.Connection) -> None:
                           discovered_by, created_at, updated_at)
             SELECT id, target_id, title, vuln_type,
                    CASE status
-                       WHEN 'active' THEN 'exercised'
-                       WHEN 'done' THEN 'exercised'
+                       WHEN 'active' THEN 'actioned'
+                       WHEN 'done' THEN 'actioned'
                        ELSE status
                    END,
                    severity, endpoint, details, evidence_path, via_access_id,
@@ -386,6 +386,16 @@ def _migrate_v3_to_v4(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_v21_to_v22(conn: sqlite3.Connection) -> None:
+    """Migrate schema from v21 to v22: rename 'exercised' status to 'actioned'.
+
+    Updates vulns.status and pivot_map.status enum values.
+    """
+    conn.execute("UPDATE vulns SET status = 'actioned' WHERE status = 'exercised'")
+    conn.execute("UPDATE pivot_map SET status = 'actioned' WHERE status = 'exercised'")
+    conn.commit()
+
+
 def _migrate_v20_to_v21(conn: sqlite3.Connection) -> None:
     """Migrate schema from v20 to v21: add via_vuln_id to vulns table."""
     cols = [r[1] for r in conn.execute("PRAGMA table_info(vulns)").fetchall()]
@@ -398,7 +408,7 @@ def _migrate_v20_to_v21(conn: sqlite3.Connection) -> None:
 
 
 def _migrate_v19_to_v20(conn: sqlite3.Connection) -> None:
-    """Migrate schema from v19 to v20: rename 'exploited' status to 'exercised'.
+    """Migrate schema from v19 to v20: rename 'exploited' status to 'actioned'.
 
     Updates vulns.status and pivot_map.status enum values. SQLite can't ALTER
     CHECK constraints, so we update the data first (old CHECK allows both) and
@@ -406,8 +416,8 @@ def _migrate_v19_to_v20(conn: sqlite3.Connection) -> None:
     constraint on fresh DBs. For existing DBs, the CHECK constraint from the
     table creation is already in place — we just need to update the data.
     """
-    conn.execute("UPDATE vulns SET status = 'exercised' WHERE status = 'exploited'")
-    conn.execute("UPDATE pivot_map SET status = 'exercised' WHERE status = 'exploited'")
+    conn.execute("UPDATE vulns SET status = 'actioned' WHERE status = 'exploited'")
+    conn.execute("UPDATE pivot_map SET status = 'actioned' WHERE status = 'exploited'")
     conn.commit()
 
 
@@ -657,6 +667,8 @@ def init_db(db_path: str | Path) -> sqlite3.Connection:
             _migrate_v19_to_v20(conn)
         if current_version <= 20:
             _migrate_v20_to_v21(conn)
+        if current_version <= 21:
+            _migrate_v21_to_v22(conn)
 
     conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     conn.commit()

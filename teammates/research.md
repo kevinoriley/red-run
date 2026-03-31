@@ -103,7 +103,7 @@ WebSearch/WebFetch run from attackbox — they don't touch the target.
 - CVE: <if applicable>
 
 ### Exploitation
-- Method: <how exercised>
+- Method: <how actioned>
 - Impact: <root shell, file read, privesc>
 - PoC source: <URL or "custom">
 

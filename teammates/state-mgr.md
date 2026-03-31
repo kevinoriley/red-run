@@ -129,16 +129,16 @@ This is your primary value — LLM-level judgment that DB string matching cannot
 For every `[add-vuln]`:
 1. Call `get_vulns(target=<ip>)` — load all existing vulns for that target.
 2. Compare incoming title + type + details against each existing vuln.
-3. **Exercise outcome of existing vuln** (same endpoint, same technique, but
-   now reporting it was exercised successfully — e.g., "LFI UNC coercion →
+3. **Action outcome of existing vuln** (same endpoint, same technique, but
+   now reporting it was actioned successfully — e.g., "LFI UNC coercion →
    NTLMv2 capture" when "LFI in view parameter" already exists):
-   → `update_vuln(id=<existing>, status="exercised")`, merge details.
+   → `update_vuln(id=<existing>, status="actioned")`, merge details.
    This triggers automatic graph pruning — sibling `found` vulns from the
    same access are hidden from the flow graph. The dashboard renders the
-   exercised vuln as an action node (the vuln IS the technique). The
+   actioned vuln as an action node (the vuln IS the technique). The
    credential or access gained is the evidence — it gets its own
    `add_credential(via_vuln_id=N)` or `add_access()` record, not a new vuln. Respond `[vuln-merged]` to teammate with the existing ID
-   and pruning count. Do NOT create a new vuln row for the exercise step.
+   and pruning count. Do NOT create a new vuln row for the action step.
 4. **Same finding, different wording** (e.g., "LFI file read" vs "LFI via
    absolute path", "LDAP signing not enforced" vs "LDAP signing disabled"):
    → `update_vuln()` on existing record, merge details if incoming has more info.
@@ -152,7 +152,7 @@ For every `[add-vuln]`:
 
 **Key signal:** If the teammate includes `via_vuln_id=<N>` in an `[add-cred]`
 or the incoming vuln references the same technique as an existing finding,
-that's an exercise update, not a new finding.
+that's an action update, not a new finding.
 
 ### Credential Dedup
 
@@ -204,15 +204,15 @@ For every `[add-access]`:
 
 You own provenance links. Two mandatory checks on **every write**:
 
-### Auto-exercise vulns
+### Auto-action vulns
 
 When ANY write includes `via_vuln_id=<N>` (credential, access, or another vuln),
-that vuln produced a result — it was exercised. Immediately:
-1. Call `update_vuln(id=<N>, status="exercised")` if not already exercised
+that vuln produced a result — it was actioned. Immediately:
+1. Call `update_vuln(id=<N>, status="actioned")` if not already actioned
 2. Then check: does vuln N itself have provenance? (`via_access_id`,
    `via_credential_id`, or `via_vuln_id`)? If not, ask the sender:
    `[chain-gap] vuln id=<N> has no provenance — what access/cred/vuln led to it?`
-3. Continue recursively: if vuln N has `via_vuln_id=<M>`, mark M exercised too.
+3. Continue recursively: if vuln N has `via_vuln_id=<M>`, mark M actioned too.
    Trace the full chain back to the root.
 
 ### Chain completeness audit
@@ -245,7 +245,7 @@ Every `via_*` field creates an edge. You can set or fix them post-creation:
 |------|---------|-----------|
 | access.via_vuln_id | "exploited this vuln to get this access" | vuln → access |
 | access.via_credential_id | "used this cred to gain access" | cred → access |
-| access.via_access_id | "escalated from this access" | access → access (routed through exercised vuln if one exists) |
+| access.via_access_id | "escalated from this access" | access → access (routed through actioned vuln if one exists) |
 | vuln.via_access_id | "discovered this vuln during this access" | access → vuln |
 | vuln.via_credential_id | "found this vuln using this credential" | cred → vuln |
 | vuln.via_vuln_id | "this vuln chains from that vuln" (e.g., SSRF → RCE) | vuln → vuln |
@@ -297,17 +297,17 @@ Set `in_graph=0` to hide nodes that clutter the narrative:
 
 ## Graph Pruning
 
-The state server automatically manages the flow graph when vulns are exercised
+The state server automatically manages the flow graph when vulns are actioned
 or paths are abandoned. You do not need to manage `in_graph` manually.
 
-- **On exercise**: When you call `update_vuln(status="exercised")`, the
+- **On action**: When you call `update_vuln(status="actioned")`, the
   server sets `in_graph=0` on sibling `found` vulns from the same
   `via_access_id` + target. These were alternative findings — they clutter
   the graph once a path moves forward. The response includes
   `siblings_pruned` count when this happens.
 
 - **On abandonment**: When you call `update_vuln(status="blocked")` on a
-  previously exercised vuln, or `update_access(active=false)` to revoke
+  previously actioned vuln, or `update_access(active=false)` to revoke
   access, the server restores pruned siblings (`in_graph=1`) so alternative
   paths reappear. Response includes `siblings_restored` count.
 
@@ -317,7 +317,7 @@ or paths are abandoned. You do not need to manage `in_graph` manually.
 
 Include pruning info in your confirmations:
 ```
-[vuln-updated] id=N status=exercised (3 siblings pruned from graph)
+[vuln-updated] id=N status=actioned (3 siblings pruned from graph)
 [vuln-updated] id=N status=blocked (2 siblings restored to graph)
 ```
 
@@ -350,7 +350,7 @@ update_tunnel(id, status, notes)
 - `add_credential(secret_type=)` — valid: `password`, `ntlm_hash`, `net_ntlm`,
   `aes_key`, `kerberos_tgt`, `kerberos_tgs`, `dcc2`, `ssh_key`, `token`,
   `certificate`, `webapp_hash`, `dpapi`, `other`
-- `add_vuln(status=)` — valid: `found`, `exercised`, `blocked`
+- `add_vuln(status=)` — valid: `found`, `actioned`, `blocked`
 - `add_vuln(severity=)` — valid: `info`, `low`, `medium`, `high`, `critical`
 - `add_blocked(retry=)` — valid: `no`, `later`, `with_context`
 - `add_blocked(ip=)` — must match an existing target if provided

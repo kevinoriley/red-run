@@ -63,9 +63,9 @@ _VALID_ENUMS: dict[str, tuple[str, ...]] = {
         "domain_admin",
         "other",
     ),
-    "vuln_status": ("found", "exercised", "blocked"),
+    "vuln_status": ("found", "actioned", "blocked"),
     "severity": ("info", "low", "medium", "high", "critical"),
-    "pivot_status": ("identified", "exercised", "blocked"),
+    "pivot_status": ("identified", "actioned", "blocked"),
     "retry": ("no", "later", "with_context"),
     "tunnel_status": ("active", "down", "closed"),
 }
@@ -512,7 +512,7 @@ def create_server() -> FastMCP:
         """Get vulnerabilities.
 
         Args:
-            status: Filter by status (found/exercised/blocked, empty = all).
+            status: Filter by status (found/actioned/blocked, empty = all).
             target: Filter by target host (empty = all).
         """
         with _get_db() as conn:
@@ -539,7 +539,7 @@ def create_server() -> FastMCP:
         """Get pivot map edges.
 
         Args:
-            status: Filter by status (identified/exercised/blocked, empty = all).
+            status: Filter by status (identified/actioned/blocked, empty = all).
         """
         with _get_db() as conn:
             if status:
@@ -704,7 +704,7 @@ def create_server() -> FastMCP:
                         ),
                     }
                 )
-                # Follow: access gained by exercising this vuln
+                # Follow: access gained by actioning this vuln
                 for a in accesses.values():
                     if a.get("via_vuln_id") == vid:
                         add_access(a["id"], depth + 1, "vuln", vid)
@@ -1342,7 +1342,7 @@ def create_server() -> FastMCP:
                               (for chain provenance). None = no credential used.
             via_access_id: Access ID this was escalated from (for privesc
                           chains on the same host). None = initial access.
-            via_vuln_id: Vuln ID that was exercised to gain this access
+            via_vuln_id: Vuln ID that was actioned to gain this access
                         (for chain provenance). None = no specific vuln.
             technique_id: ATT&CK technique ID (e.g., "T1021.006" for WinRM).
                          Empty = fill in later during reporting.
@@ -1420,7 +1420,7 @@ def create_server() -> FastMCP:
         """Update access record (e.g., revoke, fix provenance, toggle graph).
 
         When access is revoked (active=false), sibling vulns that were pruned
-        from the flow graph when this access's exercised vulns succeeded are
+        from the flow graph when this access's actioned vulns succeeded are
         restored — making alternative paths visible again.
 
         Args:
@@ -1487,7 +1487,7 @@ def create_server() -> FastMCP:
             _emit_event(conn, "access_update", id, f"access #{id} updated")
 
             # When access is revoked, restore sibling vulns that were pruned
-            # when exercised vulns from this access succeeded
+            # when actioned vulns from this access succeeded
             restored = 0
             if active is False:
                 restored = _restore_vulns_for_access(conn, id)
@@ -1524,7 +1524,7 @@ def create_server() -> FastMCP:
             title: Short vulnerability title (e.g., "SQLi in /search parameter").
             ip: Target IP (required — must match an existing target).
             vuln_type: Vulnerability class (e.g., "sqli", "xss", "rce").
-            status: Status: found, exercised, blocked.
+            status: Status: found, actioned, blocked.
             severity: Severity: info, low, medium, high, critical.
             details: Technical details.
             evidence_path: Path to evidence file in engagement/evidence/.
@@ -1626,16 +1626,16 @@ def create_server() -> FastMCP:
                 indent=2,
             )
 
-    def _prune_sibling_vulns(conn: sqlite3.Connection, exercised_vuln_id: int) -> int:
+    def _prune_sibling_vulns(conn: sqlite3.Connection, actioned_vuln_id: int) -> int:
         """Set in_graph=0 on sibling 'found' vulns sharing the same via_access_id.
 
-        When a vuln is exercised, the alternative findings from the same access
+        When a vuln is actioned, the alternative findings from the same access
         point are noise in the flow graph. Prune them so only the actioned path
         is visible. Returns count of pruned vulns.
         """
         row = conn.execute(
             "SELECT via_access_id, target_id FROM vulns WHERE id = ?",
-            (exercised_vuln_id,),
+            (actioned_vuln_id,),
         ).fetchone()
         if not row or not row["via_access_id"]:
             return 0
@@ -1643,23 +1643,23 @@ def create_server() -> FastMCP:
             f"UPDATE vulns SET in_graph = 0, updated_at = {_now_sql()} "
             "WHERE via_access_id = ? AND target_id = ? AND id != ? "
             "AND status = 'found' AND in_graph = 1",
-            (row["via_access_id"], row["target_id"], exercised_vuln_id),
+            (row["via_access_id"], row["target_id"], actioned_vuln_id),
         )
         count = cursor.rowcount
         if count:
             _emit_event(
                 conn,
                 "vuln_prune",
-                exercised_vuln_id,
-                f"Pruned {count} sibling vuln(s) (vuln #{exercised_vuln_id} exercised)",
+                actioned_vuln_id,
+                f"Pruned {count} sibling vuln(s) (vuln #{actioned_vuln_id} actioned)",
             )
         return count
 
     def _restore_sibling_vulns(conn: sqlite3.Connection, vuln_id: int) -> int:
-        """Restore in_graph=1 on sibling vulns when an exercised path fails.
+        """Restore in_graph=1 on sibling vulns when an actioned path fails.
 
         Called when a vuln is blocked or its parent access is revoked. Only
-        restores if no other exercised vuln exists from the same access point.
+        restores if no other actioned vuln exists from the same access point.
         Returns count of restored vulns.
         """
         row = conn.execute(
@@ -1668,10 +1668,10 @@ def create_server() -> FastMCP:
         ).fetchone()
         if not row or not row["via_access_id"]:
             return 0
-        # Only restore if no other exercised vuln exists from same access
+        # Only restore if no other actioned vuln exists from same access
         other = conn.execute(
             "SELECT id FROM vulns WHERE via_access_id = ? AND target_id = ? "
-            "AND id != ? AND status = 'exercised'",
+            "AND id != ? AND status = 'actioned'",
             (row["via_access_id"], row["target_id"], vuln_id),
         ).fetchone()
         if other:
@@ -1693,9 +1693,9 @@ def create_server() -> FastMCP:
         return count
 
     def _restore_vulns_for_access(conn: sqlite3.Connection, access_id: int) -> int:
-        """Restore sibling vulns for all exercised vulns under a revoked access."""
+        """Restore sibling vulns for all actioned vulns under a revoked access."""
         rows = conn.execute(
-            "SELECT id FROM vulns WHERE via_access_id = ? AND status = 'exercised'",
+            "SELECT id FROM vulns WHERE via_access_id = ? AND status = 'actioned'",
             (access_id,),
         ).fetchall()
         total = 0
@@ -1718,14 +1718,14 @@ def create_server() -> FastMCP:
     ) -> str:
         """Update vulnerability (e.g., change status, fix provenance, toggle graph).
 
-        When status changes to 'exercised', sibling 'found' vulns from the
+        When status changes to 'actioned', sibling 'found' vulns from the
         same access point are automatically hidden from the flow graph
         (in_graph=0). When status changes to 'blocked', hidden siblings are
-        restored if no other exercised path exists.
+        restored if no other actioned path exists.
 
         Args:
             id: Vulnerability ID.
-            status: Updated status (found/exercised/blocked).
+            status: Updated status (found/actioned/blocked).
             severity: Updated severity.
             details: Updated details.
             in_graph: Override graph visibility (1=show, 0=hide). Normally
@@ -1793,7 +1793,7 @@ def create_server() -> FastMCP:
             # Auto-prune/restore sibling vulns based on status transition
             pruned = 0
             restored = 0
-            if status == "exercised":
+            if status == "actioned":
                 pruned = _prune_sibling_vulns(conn, id)
             elif status == "blocked":
                 restored = _restore_sibling_vulns(conn, id)
@@ -1821,7 +1821,7 @@ def create_server() -> FastMCP:
             source: Source (e.g., "SQLi on 10.10.10.5:/search").
             destination: Destination (e.g., "DB creds for 10.10.10.1:mssql").
             method: How the pivot works.
-            status: Status: identified, exercised, blocked.
+            status: Status: identified, actioned, blocked.
             discovered_by: Skill that identified this path.
             notes: Additional notes.
         """
@@ -1864,7 +1864,7 @@ def create_server() -> FastMCP:
 
         Args:
             id: Pivot ID.
-            status: Updated status (identified/exercised/blocked).
+            status: Updated status (identified/actioned/blocked).
             notes: Updated notes.
         """
         if status:

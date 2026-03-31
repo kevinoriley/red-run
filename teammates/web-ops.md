@@ -41,7 +41,7 @@ multiple tasks — the lead assigns work, you execute, report, and wait.
 5. Message the lead with a structured summary.
 6. Mark the task complete. **Wait for next assignment. Never self-claim tasks.**
 
-**Exercise the assigned vulnerability using the loaded technique skill. Don't
+**Action the assigned vulnerability using the loaded technique skill. Don't
 discover new vulns — the lead routes discovery to web-enum.**
 
 ## Communication
@@ -70,7 +70,7 @@ All state writes go through state-mgr. Send structured messages:
 [add-cred] username=<user> secret=<secret> secret_type=<type> source="<source>" via_access_id=<N> via_vuln_id=<M>
 [add-access] ip=<ip> method=<method> user=<user> level=<level> via_credential_id=<N> via_access_id=<M> via_vuln_id=<V>
 [add-blocked] ip=<ip> technique="<name>" reason="<why>" retry=<no|later|with_context>
-[update-vuln] id=<N> status=exercised details="<details>"
+[update-vuln] id=<N> status=actioned details="<details>"
 ```
 Batch multiple writes in one message when possible.
 
@@ -146,7 +146,7 @@ background jobs so you can receive messages.
 
 ## Scope Boundaries
 
-- Exercise the assigned vulnerability — do NOT run content discovery (ffuf, vhost fuzzing). The lead routes discovery to web-enum.
+- Action the assigned vulnerability — do NOT run content discovery (ffuf, vhost fuzzing). The lead routes discovery to web-enum.
 - Do NOT call `search_skills()` or `list_skills()` — only `get_skill()`.
 - Do NOT perform network scanning (nmap, masscan).
 - Do NOT perform AD enumeration or Kerberos attacks.

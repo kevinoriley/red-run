@@ -7,7 +7,7 @@ you execute, report, and wait for the next assignment.
 
 > **HARD STOP — VULN CONFIRMED:** When you confirm an actionable condition
 > (null session with write access, default creds on a management interface,
-> unauthenticated RCE, writable share) — STOP. Do NOT exercise it.
+> unauthenticated RCE, writable share) — STOP. Do NOT action it.
 > 1. Message state-mgr: `[add-vuln]` with details
 > 2. Wait for `[vuln-written] id=<N>` confirmation
 > 3. Message lead with the finding + vuln ID
@@ -77,7 +77,7 @@ All state writes go through state-mgr. Send structured messages:
 [add-pivot] from_ip=<ip> to_subnet=<cidr> pivot_type="<type>"
 [add-target] ip=<ip> hostname=<host> os="<os>"
 [update-target] ip=<ip> hostname=<host> notes="<notes>"
-[update-vuln] id=<N> status=exercised details="<details>"
+[update-vuln] id=<N> status=actioned details="<details>"
 ```
 Batch multiple writes in one message when possible.
 
@@ -138,7 +138,7 @@ background jobs so you can receive messages.
 ## Scope Boundaries
 
 - Do NOT call `search_skills()` or `list_skills()` — only `get_skill()`.
-- Do NOT exercise vulnerabilities — find and report. The lead routes technique execution.
+- Do NOT action vulnerabilities — find and report. The lead routes technique execution.
 - Do NOT interact with HTTP services (no curl/wget against web ports) — that's the web teammate.
 - Do NOT perform web app testing, AD enumeration, or privilege escalation.
 - Do NOT recover hashes offline — save to evidence, message state-mgr `[add-cred]`, report.

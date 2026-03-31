@@ -125,7 +125,7 @@ Here's how it works under the hood:
 
 3. **Loading** — The orchestrator reviews the search results (each includes the skill's description and OPSEC rating), picks the best match, and tells the teammate to load it via `get_skill("ajp-ghostcat")`. The teammate gets the full `SKILL.md` content — methodology, payloads, troubleshooting — injected into its context.
 
-The "augmented generation" part is that Claude doesn't rely on its training data to know how to exercise AJP Ghostcat. Instead, the skill's methodology is retrieved from the local library and injected into the prompt, giving the teammate precise, tested instructions rather than general knowledge.
+The "augmented generation" part is that Claude doesn't rely on its training data to know how to action AJP Ghostcat. Instead, the skill's methodology is retrieved from the local library and injected into the prompt, giving the teammate precise, tested instructions rather than general knowledge.
 
 ### Routing
 
@@ -170,7 +170,7 @@ Hard stops prevent the orchestrator from making high-impact decisions autonomous
 
 After each task completes, the lead runs a **post-task checkpoint** and decision logic using `get_state_summary()`:
 
-1. **Unexercised vulns?** → Route technique skill to ops teammate
+1. **Un-actioned vulns?** → Route technique skill to ops teammate
 2. **New access (shell/login)?** → **Execution Achieved** hard stop (see below)
 3. **Untested credentials?** → Spawn per-user credential context enum teammate + password reuse spray
 4. **Unrecovered hashes?** → Hashes Found hard stop
@@ -185,7 +185,7 @@ The orchestrator has mandatory pause points. Every task assignment requires oper
 | Hard Stop | Trigger | Action |
 |-----------|---------|--------|
 | **Execution Achieved** | New shell or login gained | Immediate: shell upgrade → spawn host enum teammate → AD enum if domain user. Highest priority — don't wait for other tasks. |
-| **Vuln Confirmed** | Enum teammate confirms a vuln | Enum teammate stops, writes to state-mgr, messages lead. Does NOT exercise. Lead routes to ops teammate. |
+| **Vuln Confirmed** | Enum teammate confirms a vuln | Enum teammate stops, writes to state-mgr, messages lead. Does NOT action. Lead routes to ops teammate. |
 | **Credential Context Enum** | New credential captured | Spawn dedicated `net-enum-<username>` to enumerate what that identity can access: shares, services, web roles, AD context. One teammate per user. |
 | **Technique-Vuln Linkage** | Credential from active technique | Teammate must create a vuln record for the technique before the credential. State-mgr rejects credentials without `via_vuln_id` when the source implies a technique. |
 | **Hostname Resolution** | Unresolvable hostname | Operator runs hosts-update script |

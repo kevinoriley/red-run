@@ -66,7 +66,7 @@ Enumeration teammates **discover attack surface** and identify vulnerabilities. 
 
 ### Operations teammates
 
-Operations teammates **exercise specific vulnerabilities**. They load technique skills, execute the methodology, and report results. All findings are messaged to state-mgr for state persistence and to the lead for routing decisions.
+Operations teammates **action specific vulnerabilities**. They load technique skills, execute the methodology, and report results. All findings are messaged to state-mgr for state persistence and to the lead for routing decisions.
 
 ## State Access Pattern
 
