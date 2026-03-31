@@ -2,7 +2,7 @@
 
 All notable changes to red-run will be documented in this file. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [2.1.0] — 2026-03-29
+## 2026-03-31
 
 ### Added
 
@@ -73,7 +73,7 @@ All notable changes to red-run will be documented in this file. Format follows [
 - Config wizard re-asking scan type and proxy when config.yaml has values
 - Debug logging in shell-server listener for connection diagnosis
 
-## [2.0.3] — 2026-03-27
+## 2026-03-27
 
 ### Changed
 
@@ -81,8 +81,11 @@ All notable changes to red-run will be documented in this file. Format follows [
   upload (two-tool confirmation before marking READ-only)
 - Added shell-special character handling for passwords in authenticated
   SMB re-enumeration
-
-## [2.0.2] — 2026-03-27
+- Orchestrator uses `TaskCreate`/`TaskUpdate` for task coordination alongside
+  `SendMessage`
+- Teammate shutdown uses `shutdown_request` protocol; engagement close calls
+  `TeamDelete`
+- Documented teammate idle state as normal behavior (not an error)
 
 ### Fixed
 
@@ -92,17 +95,9 @@ All notable changes to red-run will be documented in this file. Format follows [
 - Sonnet 1M context override removed from project settings due to rate limit
   issues — teammates now spawn as Sonnet 200k by default (opt-in to 1M via
   `ANTHROPIC_DEFAULT_SONNET_MODEL` in `.claude/settings.json` env block)
+- Added mandatory changelog rule to CLAUDE.md
 
-### Changed
-
-- Orchestrator uses `TaskCreate`/`TaskUpdate` for task coordination alongside
-  `SendMessage`
-- Teammate shutdown uses `shutdown_request` protocol; engagement close calls
-  `TeamDelete`
-- Documented teammate idle state as normal behavior (not an error)
-- Added versioning policy and mandatory changelog rule to CLAUDE.md
-
-## [2.0.1] — 2026-03-26
+## 2026-03-26
 
 ### Fixed
 
@@ -123,7 +118,7 @@ All notable changes to red-run will be documented in this file. Format follows [
 - Routing docs rewritten: hardcoded agent table → dynamic `search_skills()` flow
 - Clarified symlink vs copy mode in installation docs
 
-## [2.0.0] — 2026-03-23
+## 2026-03-23
 
 Architectural shift from ephemeral subagents to Claude Code agent teams. New
 execution model with persistent teammates, peer-to-peer messaging, and live
@@ -334,6 +329,6 @@ sanitization pass to reduce AUP filter sensitivity.
 - **Fullscreen exit re-render** — graph re-renders after CSS transition
   completes so it fits the restored container size.
 
-## [1.0.0] — 2026-02-22
+## 2026-02-22
 
 Initial release. Subagent-based orchestrator with 67 skills, 12 domain-specific agents, 6 MCP servers, and SQLite engagement state management.
