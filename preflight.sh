@@ -302,7 +302,7 @@ check_active_directory() {
     if p=$(find_cmd targetedKerberoast.py); then pass "targetedKerberoast" "$p"
     else warn "targetedKerberoast" "install and add targetedKerberoast.py to PATH"; fi
 
-    if p=$(find_cmd krbrelayx.py); then pass "krbrelayx" "$p"
+    if p=$(find_cmd krbrelayx.py || find_cmd krbrelayx); then pass "krbrelayx" "$p"
     else fail "krbrelayx" "install and add krbrelayx.py to PATH"; fi
 
     if p=$(find_cmd PetitPotam.py); then pass "PetitPotam" "$p"

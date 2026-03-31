@@ -304,7 +304,7 @@ tr:hover td { background: var(--bg2); }
 .sev-info { background: var(--gray); color: #000; }
 .status-active { color: var(--green); }
 .status-revoked, .status-down, .status-closed { color: var(--dim); text-decoration: line-through; }
-.status-exploited { color: var(--green); }
+.status-exercised { color: var(--green); }
 .status-identified { color: var(--yellow); }
 .status-blocked { color: var(--red); }
 .filter-bar { margin: 12px 0; }
@@ -435,7 +435,7 @@ function renderLight() {
 function renderCards() {
   const c = document.getElementById('summary-cards');
   const actionableVulns = state.vulns.filter(v => v.status === 'found');
-  const exploitedVulns = state.vulns.filter(v => v.status === 'exploited');
+  const exercisedVulns = state.vulns.filter(v => v.status === 'exercised');
   const sevCounts = {};
   actionableVulns.forEach(v => { sevCounts[v.severity] = (sevCounts[v.severity]||0) + 1; });
   const sevStr = ['critical','high','medium','low','info']
@@ -445,7 +445,7 @@ function renderCards() {
     card(state.credentials.length, 'Credentials'),
     card(state.access.filter(a=>a.active).length, 'Active Access'),
     card(actionableVulns.length, 'Actionable', sevStr),
-    card(exploitedVulns.length, 'Exploited'),
+    card(exercisedVulns.length, 'Exercised'),
     card(state.pivot_map.length, 'Pivots'),
     card(state.tunnels.filter(t=>t.status==='active').length, 'Tunnels'),
     card(state.blocked.length, 'Blocked'),
@@ -502,7 +502,7 @@ function renderTables() {
     if (ss) {
       const col = ss.col;
       const orderedCols = { severity: {critical:0,high:1,medium:2,low:3,info:4},
-        status: {exploited:0,found:1,blocked:2}, retry: {with_context:0,later:1,no:2} };
+        status: {exercised:0,found:1,blocked:2}, retry: {with_context:0,later:1,no:2} };
       rows = [...rows].sort((a,b) => {
         let va = getCellValue(a, col, def), vb = getCellValue(b, col, def);
         const ord = orderedCols[col];
@@ -655,11 +655,13 @@ function renderFlowGraph() {
     const label = primary.domain ? `${primary.domain}\\${primary.username}` : primary.username;
     const types = [...new Set(creds.map(c => c.secret_type + (c.cracked ? '✓' : '')))].join(', ');
     const sources = creds.map(c => `${c.secret_type}: ${c.source}`).join('\n');
+    // Show the primary source on the card — truncate for display
+    const primarySource = (primary.source || '').substring(0, 50);
     const canonicalId = `cred:${primary.id}`;
     const node = {
       id: canonicalId, type: 'asset',
       label: label,
-      sublabel: types,
+      sublabel: `${types}${primarySource ? ' — ' + primarySource : ''}`,
       hostLabel: '',
       detail: `${label}\n${sources}`,
       borderColor: '#8b949e',
@@ -677,22 +679,35 @@ function renderFlowGraph() {
   // action-style (the vuln IS the technique). Both use the same `vuln:N` id,
   // so provenance edges (via_vuln_id) connect without special routing.
   const sevColors = { critical: '#bc8cff', high: '#f85149', medium: '#d29922', low: '#8b949e' };
+  // Collect flag vulns to render as badges on the node that produced them.
+  // via_vuln_id → attach to the vuln that captured the flag (end of chain).
+  // via_access_id → attach to the access node (fallback).
+  const flagsByNode = {};  // node_id → [{title, details}]
   for (const v of state.vulns) {
     if (v.in_graph === 0) continue;
     if (v.severity === 'info') continue;
+    if (v.vuln_type === 'flag') {
+      const parentId = v.via_vuln_id ? `vuln:${v.via_vuln_id}`
+        : v.via_access_id ? `access:${v.via_access_id}` : null;
+      if (parentId) {
+        if (!flagsByNode[parentId]) flagsByNode[parentId] = [];
+        flagsByNode[parentId].push({ title: v.title, details: v.details || '' });
+      }
+      continue;  // don't create a chain node for flags
+    }
     const techniqueLabel = v.technique_id ? `[${v.technique_id}] ` : '';
     let vulnNode;
-    if (v.status === 'exploited') {
-      // Exploited vuln becomes an ACTION node — the vuln is the technique
+    if (v.status === 'exercised') {
+      // Exercised vuln becomes an ACTION node — the vuln is the technique
       vulnNode = {
         id: `vuln:${v.id}`, type: 'action',
         label: `${techniqueLabel}${trunc(v.title, 35)}`,
         sublabel: v.vuln_type || '',
         hostLabel: v.ip || '',
-        detail: `Exploited: ${v.title}\n${v.severity}${v.vuln_type ? '\ntype: ' + v.vuln_type : ''}${v.details ? '\n' + v.details : ''}`,
+        detail: `Exercised: ${v.title}\n${v.severity}${v.vuln_type ? '\ntype: ' + v.vuln_type : ''}${v.details ? '\n' + v.details : ''}`,
         borderColor: '#58a6ff',
         headerColor: '#1f6feb',
-        headerText: 'EXPLOITED',
+        headerText: 'EXERCISED',
         chain_order: v.chain_order || 0,
       };
     } else {
@@ -704,7 +719,7 @@ function renderFlowGraph() {
         hostLabel: v.ip || '',
         detail: `${v.title}\n${v.severity} | ${v.status}${v.vuln_type ? '\ntype: ' + v.vuln_type : ''}${v.details ? '\n' + v.details : ''}`,
         borderColor: sevColors[v.severity] || '#8b949e',
-        headerColor: '#d29922',
+        headerColor: sevColors[v.severity] || '#d29922',
         headerText: v.severity.toUpperCase(),
         chain_order: v.chain_order || 0,
       };
@@ -738,14 +753,16 @@ function renderFlowGraph() {
   }
 
   // --- Intermediate vuln detection ---
-  // When an exploited vuln shares via_access_id with a downstream node (access or
-  // credential), the exploited vuln (now an action node) is the technique that
-  // produced the result. Route through: access → vuln(action) → downstream.
-  const exploitedVulnByAccess = {};  // access_id → vuln node id (action-styled)
+  // When an exercised vuln shares via_access_id or via_credential_id with a
+  // downstream node, the exercised vuln (now an action node) is the technique
+  // that produced the result. Route through: source → vuln(action) → downstream.
+  const exercisedVulnByAccess = {};  // access_id → vuln node id (action-styled)
+  const exercisedVulnByCred = {};    // credential_id → vuln node id (action-styled)
   for (const v of state.vulns) {
     if (v.in_graph === 0 || v.severity === 'info') continue;
-    if (v.status === 'exploited' && v.via_access_id && nodeById[`vuln:${v.id}`]) {
-      exploitedVulnByAccess[v.via_access_id] = `vuln:${v.id}`;
+    if (v.status === 'exercised' && nodeById[`vuln:${v.id}`]) {
+      if (v.via_access_id) exercisedVulnByAccess[v.via_access_id] = `vuln:${v.id}`;
+      if (v.via_credential_id) exercisedVulnByCred[v.via_credential_id] = `vuln:${v.id}`;
     }
   }
 
@@ -756,9 +773,15 @@ function renderFlowGraph() {
     if (credNode && nodeById[credNode]) {
       edges.push({ from: credNode, to: `access:${a.id}`, color: '#3fb950' });
     }
-    if (a.via_access_id && nodeById[`access:${a.via_access_id}`]) {
-      // Route through intermediate exploited vuln if one exists on the parent access
-      const ivuln = exploitedVulnByAccess[a.via_access_id];
+    // vuln → access: if via_vuln_id is set, that vuln specifically produced this
+    // access. Use it directly — don't rely on the exercisedVulnByAccess heuristic
+    // which breaks when multiple exercised vulns share the same via_access_id.
+    if (a.via_vuln_id && nodeById[`vuln:${a.via_vuln_id}`]) {
+      edges.push({ from: `vuln:${a.via_vuln_id}`, to: `access:${a.id}`, color: '#3fb950' });
+    } else if (a.via_access_id && nodeById[`access:${a.via_access_id}`]) {
+      // No explicit via_vuln_id — try the exercisedVulnByAccess heuristic for
+      // routing through the intermediate technique, or fall back to direct access→access
+      const ivuln = exercisedVulnByAccess[a.via_access_id];
       if (ivuln && nodeById[ivuln]) {
         edges.push({ from: ivuln, to: `access:${a.id}`, color: '#3fb950' });
       } else {
@@ -783,14 +806,14 @@ function renderFlowGraph() {
       else if (/runas|config|enum/.test(src)) actionLabel = 'Credential Discovery';
       else if (/dump|extract|secret/.test(src)) actionLabel = 'Credential Extraction';
       else if (/lfi|unc|file/.test(src)) actionLabel = 'File Coercion';
-      // Route through intermediate exploited vuln if one exists on the parent access
-      const ivuln = exploitedVulnByAccess[c.via_access_id];
+      // Route through intermediate exercised vuln if one exists on the parent access
+      const ivuln = exercisedVulnByAccess[c.via_access_id];
       const sourceId = (ivuln && nodeById[ivuln]) ? ivuln : `access:${c.via_access_id}`;
       const edgeKey = `${sourceId}->${credDst}`;
       if (credEdgeSeen.has(edgeKey)) continue;
       credEdgeSeen.add(edgeKey);
       if (ivuln && nodeById[ivuln]) {
-        // Exploited vuln is already an action node — direct edge to credential
+        // Exercised vuln is already an action node — direct edge to credential
         edges.push({ from: sourceId, to: credDst, color: '#58a6ff' });
       } else {
         // No intermediate vuln — insert synthetic action between access and credential
@@ -800,15 +823,15 @@ function renderFlowGraph() {
           srcNode.chain_order, dstNode.chain_order);
       }
     }
-    // vuln → credential — exploited vulns are already action-styled, direct edge
+    // vuln → credential — exercised vulns are already action-styled, direct edge
     const vulnSrc = c.via_vuln_id && nodeById[`vuln:${c.via_vuln_id}`] ? `vuln:${c.via_vuln_id}` : null;
     if (vulnSrc) {
       const edgeKey = `${vulnSrc}->${credDst}`;
       if (credEdgeSeen.has(edgeKey)) continue;
       credEdgeSeen.add(edgeKey);
       const srcVuln = state.vulns.find(v => v.id === c.via_vuln_id);
-      if (srcVuln && srcVuln.status === 'exploited') {
-        // Exploited vuln is already an action node — direct edge to credential
+      if (srcVuln && srcVuln.status === 'exercised') {
+        // Exercised vuln is already an action node — direct edge to credential
         edges.push({ from: vulnSrc, to: credDst, color: '#58a6ff' });
       } else {
         // Found vuln (asset) still needs a synthetic action between vuln and credential
@@ -827,11 +850,14 @@ function renderFlowGraph() {
     }
   }
 
-  // access/credential → vuln (found/exploited vuln) — direct edge (vuln IS the finding)
+  // access/credential/vuln → vuln (found/exercised vuln) — direct edge (vuln IS the finding)
   for (const v of state.vulns) {
     if (v.in_graph === 0) continue;
     if (v.severity === 'info') continue;
-    if (v.via_access_id && nodeById[`access:${v.via_access_id}`] && nodeById[`vuln:${v.id}`]) {
+    // access → vuln: only draw when the vuln has no more specific provenance
+    // (via_vuln_id chain). When via_vuln_id is set, the vuln→vuln edge tells
+    // the story; the access edge is just "during this session" noise.
+    if (v.via_access_id && !v.via_vuln_id && nodeById[`access:${v.via_access_id}`] && nodeById[`vuln:${v.id}`]) {
       edges.push({ from: `access:${v.via_access_id}`, to: `vuln:${v.id}`, color: '#e3b341' });
     }
     // credential → vuln (credential-sourced finding, e.g., password reuse)
@@ -841,16 +867,17 @@ function renderFlowGraph() {
         edges.push({ from: credDst, to: `vuln:${v.id}`, color: '#e3b341' });
       }
     }
+    // vuln → vuln (vuln chain, e.g., SSRF → RCE escalation)
+    if (v.via_vuln_id && nodeById[`vuln:${v.via_vuln_id}`] && nodeById[`vuln:${v.id}`]) {
+      edges.push({ from: `vuln:${v.via_vuln_id}`, to: `vuln:${v.id}`, color: '#e3b341' });
+    }
   }
 
   // --- Assign columns (left-to-right flow) ---
-  // Use chain_order if set, else BFS depth from roots
-  const hasOrder = nodes.some(n => n.chain_order > 0);
-  if (hasOrder) {
-    for (const n of nodes) {
-      n.col = n.chain_order || 999;
-    }
-  } else {
+  // Always BFS first for natural layout, then override with chain_order where set.
+  // This allows state-mgr to gradually reposition specific nodes without needing
+  // to assign chain_order to every node in the graph.
+  {
     const incoming = new Set();
     for (const e of edges) incoming.add(e.to);
     const roots = nodes.filter(n => !incoming.has(n.id));
@@ -868,6 +895,17 @@ function renderFlowGraph() {
         }
       }
     }
+    // Override: chain_order > 0 takes precedence over BFS depth
+    for (const n of nodes) {
+      if (n.chain_order > 0) n.col = n.chain_order;
+    }
+  }
+
+  // Attach flag badges to parent nodes (adds height for flag rows)
+  const FLAG_ROW_H = 16;
+  for (const n of nodes) {
+    const flags = flagsByNode[n.id];
+    if (flags) n.flags = flags;
   }
 
   // --- Layout: left-to-right, parallel nodes stack vertically ---
@@ -885,7 +923,7 @@ function renderFlowGraph() {
   }
   const colKeys = Object.keys(colMap).map(Number).sort((a, b) => a - b);
 
-  // Sort within each column: exploited vulns first, then actions, then access, then creds
+  // Sort within each column: exercised vulns first, then actions, then access, then creds
   const typeSortOrder = { 'vuln': 0, 'action': 1, 'access': 2, 'asset': 3 };
   function nodeSort(a, b) {
     const aType = a.id.startsWith('vuln:') ? 'vuln' : a.id.startsWith('action:') ? 'action'
@@ -933,13 +971,18 @@ function renderFlowGraph() {
   let x = PAD;
   for (const ck of colKeys) {
     const colNodes = colMap[ck];
-    const colH = colNodes.length * NODE_H + (colNodes.length - 1) * V_GAP;
+    let colH = 0;
+    for (const n of colNodes) {
+      n.h = NODE_H + (n.flags ? n.flags.length * FLAG_ROW_H : 0);
+      colH += n.h;
+    }
+    colH += (colNodes.length - 1) * V_GAP;
     if (colH > totalH) totalH = colH;
     let y = PAD;
     for (const n of colNodes) {
       n.x = x;
       n.y = y;
-      y += NODE_H + V_GAP;
+      y += n.h + V_GAP;
     }
     x += NODE_W + H_GAP;
   }
@@ -949,8 +992,10 @@ function renderFlowGraph() {
   // Center each column vertically
   for (const ck of colKeys) {
     const colNodes = colMap[ck];
-    const colH = colNodes.length * NODE_H + (colNodes.length - 1) * V_GAP;
-    const offset = (totalH - colH) / 2 - PAD;
+    let ch = 0;
+    for (const n of colNodes) ch += (n.h || NODE_H);
+    ch += (colNodes.length - 1) * V_GAP;
+    const offset = (totalH - ch) / 2 - PAD;
     for (const n of colNodes) n.y += offset;
   }
 
@@ -964,8 +1009,9 @@ function renderFlowGraph() {
     if (!src || !dst) continue;
 
     // Node center points
-    const scx = src.x + NODE_W / 2, scy = src.y + NODE_H / 2;
-    const dcx = dst.x + NODE_W / 2, dcy = dst.y + NODE_H / 2;
+    const sh = src.h || NODE_H, dh = dst.h || NODE_H;
+    const scx = src.x + NODE_W / 2, scy = src.y + sh / 2;
+    const dcx = dst.x + NODE_W / 2, dcy = dst.y + dh / 2;
 
     // Pick attachment points based on relative position
     let sx, sy, dx, dy, arrowPts;
@@ -975,12 +1021,12 @@ function renderFlowGraph() {
     if (sameCol) {
       // Vertical: connect bottom→top or top→bottom
       if (scy < dcy) {
-        sx = scx; sy = src.y + NODE_H;  // bottom of src
+        sx = scx; sy = src.y + sh;  // bottom of src
         dx = dcx; dy = dst.y;            // top of dst
         arrowPts = `${dx},${dy} ${dx-as/2},${dy-as} ${dx+as/2},${dy-as}`;
       } else {
         sx = scx; sy = src.y;            // top of src
-        dx = dcx; dy = dst.y + NODE_H;  // bottom of dst
+        dx = dcx; dy = dst.y + dh;  // bottom of dst
         arrowPts = `${dx},${dy} ${dx-as/2},${dy+as} ${dx+as/2},${dy+as}`;
       }
       const my = sy + (dy - sy) * 0.5;
@@ -1013,7 +1059,8 @@ function renderFlowGraph() {
     svgHtml += `<g class="flow-node">`;
     // Background rect
     const bgFill = '#0d1117';
-    svgHtml += `<rect class="${n.type === 'action' ? 'flow-action' : 'flow-asset'}" x="${n.x}" y="${n.y}" width="${NODE_W}" height="${NODE_H}" fill="${bgFill}" stroke="${n.borderColor}"/>`;
+    const nh = n.h || NODE_H;
+    svgHtml += `<rect class="${n.type === 'action' ? 'flow-action' : 'flow-asset'}" x="${n.x}" y="${n.y}" width="${NODE_W}" height="${nh}" fill="${bgFill}" stroke="${n.borderColor}"/>`;
     // Header bar
     svgHtml += `<rect x="${n.x}" y="${n.y}" width="${NODE_W}" height="18" rx="${n.type === 'action' ? 8 : 14}" fill="${n.headerColor}"/>`;
     svgHtml += `<rect x="${n.x}" y="${n.y + 9}" width="${NODE_W}" height="9" fill="${n.headerColor}"/>`;
@@ -1021,13 +1068,21 @@ function renderFlowGraph() {
     svgHtml += `<text class="flow-action-header" x="${n.x + 8}" y="${n.y + 13}" fill="#fff">${esc(n.headerText)}${n.hostLabel ? '  ' + esc(n.hostLabel) : ''}</text>`;
     // Content via foreignObject
     const detailAttr = escAttr(n.detail);
-    svgHtml += `<foreignObject x="${n.x + 6}" y="${n.y + 20}" width="${NODE_W - 12}" height="${NODE_H - 24}" data-detail="${detailAttr}" onmouseenter="showTip(event)" onmouseleave="hideTip()">`;
+    svgHtml += `<foreignObject x="${n.x + 6}" y="${n.y + 20}" width="${NODE_W - 12}" height="${nh - 24}" data-detail="${detailAttr}" onmouseenter="showTip(event)" onmouseleave="hideTip()">`;
     svgHtml += `<div xmlns="http://www.w3.org/1999/xhtml" style="font-family:inherit;">`;
     svgHtml += `<div style="font-size:11px;font-weight:600;color:#c9d1d9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(n.label)}</div>`;
     svgHtml += `<div style="font-size:10px;color:#8b949e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(n.sublabel)}</div>`;
+    if (n.flags) {
+      for (const f of n.flags) {
+        const ft = f.title.replace(/^FLAG:\s*/i, '');
+        svgHtml += `<div style="font-size:10px;color:#3fb950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;">🚩 ${esc(ft)}</div>`;
+      }
+    }
     svgHtml += `</div></foreignObject>`;
     svgHtml += `</g>`;
   }
+
+  // No separate flag badge pass — flags are rendered inside access node cards
 
   // Legend
   const legend = document.getElementById('graph-legend');
@@ -1036,14 +1091,17 @@ function renderFlowGraph() {
     '<span class="legend-item"><svg width="12" height="12"><rect width="12" height="12" rx="3" fill="none" stroke="#3fb950" stroke-width="2"/></svg>Access</span>',
     '<span class="legend-item"><svg width="12" height="12"><rect width="12" height="12" rx="3" fill="none" stroke="#1f6feb" stroke-width="2"/></svg>Action</span>',
     '<span class="legend-item"><svg width="12" height="12"><rect width="12" height="12" rx="6" fill="none" stroke="#8b949e" stroke-width="1.5"/></svg>Credential</span>',
+    '<span class="legend-item"><svg width="12" height="12"><rect width="12" height="12" rx="8" fill="#1a5c28" stroke="#3fb950" stroke-width="1"/></svg>Flag</span>',
   ].join('');
 
   svg.setAttribute('width', '100%');
   // Height: fill container in fullscreen, otherwise fit content
+  // Add bottom padding so the legend bar doesn't overlap the last row of nodes
+  const LEGEND_PAD = 36;
   const isFullscreen = container.classList.contains('fullscreen');
-  const svgH = isFullscreen ? Math.max(totalH, container.clientHeight || 200) : totalH;
+  const svgH = isFullscreen ? Math.max(totalH + LEGEND_PAD, container.clientHeight || 200) : totalH + LEGEND_PAD;
   svg.setAttribute('height', svgH);
-  svg.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
+  svg.setAttribute('viewBox', `0 0 ${totalW} ${totalH + LEGEND_PAD}`);
   svg.innerHTML = svgHtml;
 
   _setupGraphZoomPan(svg, container, totalW, totalH);

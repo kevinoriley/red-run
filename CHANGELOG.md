@@ -2,7 +2,78 @@
 
 All notable changes to red-run will be documented in this file. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [2.0.3] — 2026-03-27
+## 2026-03-31
+
+### Added
+
+- **shell-mgr teammate** — centralized shell lifecycle owner. Teammates
+  establish shells via shell-server, hand off to shell-mgr for stabilization,
+  C2 upgrade, and recovery. Other teammates connect to shells directly.
+- **sliver-server MCP** (`tools/sliver-server/`) — wraps Sliver C2 gRPC API
+  for listener management, implant generation, session ops, file transfer,
+  pivot listeners, and SOCKS5 proxy (`start_socks_proxy`/`stop_socks_proxy`)
+- **config.sh** — pre-engagement config wizard (scan type, proxy, spray,
+  cracking, C2 backend). Orchestrator skips wizard if config.yaml exists.
+- **PowerShell shell detection** — shell-server detects PS sessions and uses
+  `Write-Output` + `;` instead of `echo` + `&` for command wrapping
+- **Flag badge rendering** — flags render as inline green rows inside parent
+  access cards instead of dead-end chain nodes
+- **Credential source on cards** — source field visible on credential card
+  sublabel in the access chain graph
+- **Versioned software PoC lookup** — orchestrator spawns research alongside
+  ops when discovery finds specific software versions
+- **Hard stop checklist** — mandatory pre-check on every teammate message
+  before routing decisions (source code, creds, hostnames, shells, versions)
+- **via_vuln_id on vulns** — vuln-to-vuln provenance (schema v21)
+- **Agent teams integration** — `TeamCreate` at engagement start, `team_name`
+  on all teammate spawns, `TaskCreate`/`TaskUpdate` for coordination
+- **Team name collision handling** — orchestrator detects pre-existing teams
+  and offers operator a choice: delete and recreate, use a new name alongside,
+  or abort. Prevents the silent-rename bug that split lead and teammates.
+- **`[TASK]` activation protocol** — teammates initialize and go idle on spawn,
+  then receive tasks via `SendMessage` with a `[TASK]` prefix. Prevents
+  premature execution before task is formally created.
+
+### Changed
+
+- **Lead runs as Sonnet** — `run.sh` launches with `--model sonnet` to reduce
+  token cost. Research teammate model is operator's choice (sonnet or opus).
+- **Terminology**: `exploited` → `exercised` across state DB, dashboard,
+  templates, and docs (schema migration v19→v20)
+- **Terminology**: `exploitable` → `actionable`, `exploitation` → `exercise`
+  in teammate templates and docs
+- **state-mgr auto-exercises vulns** on provenance-linked writes and
+  refuses orphaned writes with missing chain links.
+- **Teammates establish shells directly** via shell-server, then hand off to
+  shell-mgr (reversed from earlier design where shell-mgr established)
+- **Skill loading enforced** — teammates must call `get_skill()` directly,
+  never via subagent.
+- **Research teammate prohibited from target interaction** — analyzes local
+  files only, lead ensures sources are downloaded first
+- **Task assignments include active sessions** — lead lists all shell-server
+  and C2 sessions with MCP instructions
+- **Pivoting consolidated into shell-mgr** — pivot teammate removed.
+  shell-mgr owns tunnel setup: Sliver backend uses native SOCKS5 proxy,
+  shell-server backend loads pivoting-tunneling skill on-demand. Orchestrator
+  messages `[setup-pivot]` instead of spawning a pivot teammate.
+- **Teammate shutdown requires operator approval** — no auto-shutdown after
+  flag capture
+- Password reuse tracked as vuln with provenance to original credential
+
+### Fixed
+
+- Teammate spawns using `TeamCreate` + `team_name` (were ephemeral subagents)
+- Sonnet 1M override removed (rate limits), teammates spawn as Sonnet 200k
+- Listener handoff deadlock eliminated by shell establishment redesign
+- shell-server `send_command` on PowerShell iex shells (PS-native wrapper)
+- Exercised vulns render as blue action nodes (stale `EXPLOITED` label fixed)
+- Exercised vuln routing extended to `via_credential_id` (not just access)
+- sliver-server `execute` args splitting and `generate_implant` reliability
+- `sliver console --rc` hang on exit
+- Config wizard re-asking scan type and proxy when config.yaml has values
+- Debug logging in shell-server listener for connection diagnosis
+
+## 2026-03-27
 
 ### Changed
 
@@ -10,8 +81,11 @@ All notable changes to red-run will be documented in this file. Format follows [
   upload (two-tool confirmation before marking READ-only)
 - Added shell-special character handling for passwords in authenticated
   SMB re-enumeration
-
-## [2.0.2] — 2026-03-27
+- Orchestrator uses `TaskCreate`/`TaskUpdate` for task coordination alongside
+  `SendMessage`
+- Teammate shutdown uses `shutdown_request` protocol; engagement close calls
+  `TeamDelete`
+- Documented teammate idle state as normal behavior (not an error)
 
 ### Fixed
 
@@ -21,17 +95,9 @@ All notable changes to red-run will be documented in this file. Format follows [
 - Sonnet 1M context override removed from project settings due to rate limit
   issues — teammates now spawn as Sonnet 200k by default (opt-in to 1M via
   `ANTHROPIC_DEFAULT_SONNET_MODEL` in `.claude/settings.json` env block)
+- Added mandatory changelog rule to CLAUDE.md
 
-### Changed
-
-- Orchestrator uses `TaskCreate`/`TaskUpdate` for task coordination alongside
-  `SendMessage`
-- Teammate shutdown uses `shutdown_request` protocol; engagement close calls
-  `TeamDelete`
-- Documented teammate idle state as normal behavior (not an error)
-- Added versioning policy and mandatory changelog rule to CLAUDE.md
-
-## [2.0.1] — 2026-03-26
+## 2026-03-26
 
 ### Fixed
 
@@ -52,7 +118,7 @@ All notable changes to red-run will be documented in this file. Format follows [
 - Routing docs rewritten: hardcoded agent table → dynamic `search_skills()` flow
 - Clarified symlink vs copy mode in installation docs
 
-## [2.0.0] — 2026-03-23
+## 2026-03-23
 
 Architectural shift from ephemeral subagents to Claude Code agent teams. New
 execution model with persistent teammates, peer-to-peer messaging, and live
@@ -180,7 +246,8 @@ sanitization pass to reduce AUP filter sensitivity.
 - **Shell-server connectivity check** in all 7 teammate templates — message
   lead and stop if MCP unavailable.
 - **RunasCs.exe** added to preflight check and dependencies.
-- **All MCP servers** added to permission allow list in settings.json.
+- **All MCP servers** added to permission allow list in settings.json
+  (sliver-server added dynamically by `config.sh` only when selected).
 - **1M context for sonnet teammates** — `ANTHROPIC_DEFAULT_SONNET_MODEL` set
   to `claude-sonnet-4-6[1m]` in project settings so all sonnet teammates
   spawn with extended context by default.
@@ -262,6 +329,6 @@ sanitization pass to reduce AUP filter sensitivity.
 - **Fullscreen exit re-render** — graph re-renders after CSS transition
   completes so it fits the restored container size.
 
-## [1.0.0] — 2026-02-22
+## 2026-02-22
 
 Initial release. Subagent-based orchestrator with 67 skills, 12 domain-specific agents, 6 MCP servers, and SQLite engagement state management.

@@ -12,6 +12,26 @@ red-run requires the following installed:
 | [uv](https://docs.astral.sh/uv/) | Python package manager for MCP servers | See [uv install docs](https://docs.astral.sh/uv/getting-started/installation/) |
 | [Docker](https://docs.docker.com/engine/install/) | Containerized nmap and pentest toolbox | See [Docker install docs](https://docs.docker.com/engine/install/) |
 
+### Optional: C2 Framework
+
+red-run works out of the box with shell-server (raw TCP reverse shells + interactive processes). For C2 integration, install the framework separately:
+
+| C2 | Components | Install |
+|----|-----------|---------|
+| [Sliver](https://github.com/BishopFox/sliver) | Server + Client (both required) | See below |
+
+**Sliver install** (both binaries needed — server for the daemon, client for implant generation):
+```bash
+# Server (~260MB)
+curl -L https://github.com/BishopFox/sliver/releases/latest/download/sliver-server_linux-amd64 \
+  -o ~/.local/bin/sliver-server && chmod +x ~/.local/bin/sliver-server
+# Client (~38MB)
+curl -L https://github.com/BishopFox/sliver/releases/latest/download/sliver-client_linux-amd64 \
+  -o ~/.local/bin/sliver && chmod +x ~/.local/bin/sliver
+```
+
+More C2 frameworks (Mythic, Havoc) planned. Custom C2 integration is supported via operator-provided MCP servers and reference docs.
+
 ## Install
 
 ```bash
@@ -84,23 +104,33 @@ The `Bash(sudo *)` rule makes Claude Code refuse any Bash command starting with 
 
 ## Running
 
-Launch from the red-run repo directory:
+### Quick start (shell-server only)
 
 ```bash
 cd red-run
 ./run.sh
 ```
 
-`run.sh` starts shell-server (SSE on `127.0.0.1:8022`), launches Claude Code, and auto-triggers `/red-run-ctf`. Send any message (e.g., a target IP) to activate the orchestrator.
+`run.sh` starts shell-server, launches Claude Code, and auto-triggers `/red-run-ctf`. The orchestrator asks config questions (scan type, proxy, etc.) on first run. Give it a target IP to begin.
+
+### With C2 (Sliver or custom)
+
+```bash
+cd red-run
+bash config.sh             # config wizard — picks C2 backend, patches .mcp.json
+./run.sh                   # starts C2 daemon + MCP, launches Claude Code
+```
+
+`config.sh` is optional if you're using shell-server only. Required if you want a C2 backend — it generates operator configs, registers the C2 MCP server, and writes `engagement/config.yaml` so the orchestrator skips its built-in wizard.
+
+### Flags
 
 ```bash
 ./run.sh --lead=legacy  # use /red-run-legacy instead
 ./run.sh --yolo         # skip permission prompts
 ```
 
-If shell-server has active sessions from a previous run, `run.sh` prompts to keep, clear, or restart them. Give the orchestrator a target:
-
-> "Scan and attack 10.10.10.5"
+If shell-server has active sessions from a previous run, `run.sh` prompts to keep, clear, or restart them.
 
 ## Uninstall
 

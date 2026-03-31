@@ -99,12 +99,45 @@ The lead creates the team once per engagement session using `TeamCreate`. This
 creates the shared task list and team config. Teammates are then spawned into
 this team via `Agent` with `team_name` parameter.
 
+**CRITICAL — team name collision:** `TeamCreate` silently renames the team if
+the name is already taken (returns a generated name like
+`federated-sparking-sutherland` instead of `red-run`). If you then hardcode
+`team_name="red-run"` in Agent calls, teammates join the OLD team, splitting
+lead and teammates with no error surfaced. **Handle collisions:**
+
 ```
-TeamCreate(team_name="red-run", description="red-run")
+1. Check for existing team — metadata only (config.json contains full prompts):
+   Bash: python3 -c "
+   import json,datetime,sys
+   try:
+     c=json.load(open(sys.argv[1]))
+     d=datetime.datetime.fromtimestamp(c['createdAt']/1000).strftime('%Y-%m-%d %H:%M')
+     print(f'{len(c.get(\"members\",[]))} members, created {d}')
+   except: print('NONE')
+   " ~/.claude/teams/red-run/config.json
+   NEVER read or cat config.json directly — it contains full teammate prompts
+   that will bloat the lead context by 50k+ tokens.
+2. If members found — another red-run team exists. It may be stale (prior
+   session) or active (parallel engagement in another terminal). Ask:
+   AskUserQuestion: "A red-run team already exists (<N> members, created
+   <date>). Delete it, or use a new name alongside it?"
+   Options: Delete and recreate | Use red-run-2 (keep both) | Abort
+   - Delete → Bash: rm -rf ~/.claude/teams/red-run/ ~/.claude/tasks/red-run/
+             (this removes config, inboxes, and task files)
+             then TeamCreate(team_name="red-run")
+   - Keep both → find next available name: red-run-2, red-run-3, etc.
+             TeamCreate(team_name="red-run-<N>")
+   - Abort → STOP.
+3. If no collision: TeamCreate(team_name="red-run", description="red-run")
+4. Wipe stale inboxes: Bash: rm -rf ~/.claude/teams/<TEAM_NAME>/inboxes/*.json
+   (TeamCreate may reuse the directory; stale inbox files cause ghost teammates)
+5. Store the ACTUAL team name returned by TeamCreate. Use it for ALL
+   subsequent Agent(team_name=...) calls — never hardcode "red-run".
 ```
 
 On resume (new session, `engagement/state.db` exists): create a fresh team —
-previous teammates are gone but the team config is new per session.
+previous teammates are gone but the team config is new per session. The stale
+team cleanup above handles this automatically.
 
 On engagement close: gracefully shut down all teammates via
 `SendMessage(message={type: "shutdown_request"})`, then call `TeamDelete`.
@@ -118,6 +151,7 @@ Read spawn templates from `teammates/` at runtime via the Read tool.
 | Template | Name | Domain | Model | Role |
 |----------|------|--------|-------|------|
 | `teammates/state-mgr.md` | state-mgr | State management | sonnet | Sole writer to state.db. All teammates message state-mgr for writes. Handles dedup, graph coherence, provenance linking. |
+| `teammates/shell-mgr.md` | shell-mgr | Shell lifecycle | sonnet | Sole manager of shell sessions. Teammates message shell-mgr for listener setup, process spawn, shell upgrade. Hands off session details for direct MCP interaction. |
 
 **Enumeration teammates** (one per target surface — spawn multiple from same template):
 
@@ -142,11 +176,16 @@ Read spawn templates from `teammates/` at runtime via the Read tool.
 
 | Template | Name | Domain | Model | Skills |
 |----------|------|--------|-------|--------|
-| `teammates/pivot.md` | pivot | Tunneling | sonnet | pivoting-tunneling |
 | `teammates/bypass.md` | bypass | AV/EDR bypass | sonnet | av-edr-evasion |
 | `teammates/spray.md` | spray | Password spraying | haiku | password-spraying |
-| `teammates/recover.md` | recover | Offline recovery | haiku | credential-cracking |
-| `teammates/research.md` | research | Deep analysis | opus | unknown-vector-analysis |
+| `teammates/recover.md` | recover | Offline recovery | haiku | credential-recovery |
+| `teammates/research.md` | research | Deep analysis | **ask operator** | unknown-vector-analysis |
+
+**Research model choice:** When spawning a research teammate, ask the operator:
+`AskUserQuestion: "Research task: <description>. Model?"` with options
+`Sonnet (recommended)` / `Opus (complex analysis)`. Default to Sonnet for PoC
+lookups and known-pattern analysis. Offer Opus for source code review, unknown
+vectors, and multi-file architectural analysis.
 
 Sonnet teammates spawn as **Sonnet 200k** by default. For longer engagements
 where teammates accumulate significant context, add to `.claude/settings.json`:
@@ -162,25 +201,30 @@ Teammates inherit all MCP servers from the lead session.
 
 ```
 1. Read teammates/<domain>.md via Read tool
-2. Agent(prompt=<template content + task context>,
-        name="<name>", model="<model>", team_name="red-run")
-   Do NOT print/paste the template content to the operator — pass it
-   directly as the Agent prompt. The template is the teammate's system
-   context, not operator-facing output.
-3. Teammate activates, goes idle after first turn — this is normal.
-   Send task via SendMessage or TaskUpdate to wake them.
+2. TaskCreate(subject="<skill> — <target>") → taskId
+3. Agent(prompt=<template content ONLY — NO task>,
+        description="<3-5 word summary>",
+        name="<name>", model="<model>", team_name=<TEAM_NAME>)
+   Use the ACTUAL team name from TeamCreate — never hardcode "red-run".
+   Do NOT include the task in the prompt. The template tells the teammate
+   to load schemas, read state, and go idle.
+4. TaskUpdate(taskId=<N>, owner="<name>")
+5. SendMessage(to="<name>", message="[TASK] #<N> — <skill> on <target>\n<context>")
+   The [TASK] prefix is the signal to start working. Without it, the
+   teammate stays idle.
 ```
+
+**The `[TASK]` prefix is mandatory.** Templates tell teammates to only act on
+messages starting with `[TASK]`. The spawn prompt is system context — the
+teammate's Activation Protocol distinguishes it from a task assignment. All
+subsequent task assignments to idle teammates also use `[TASK]`.
 
 **Before spawning, print the task assignment** so the operator sees it:
 `[spawning <name>] <skill> on <target>`
 
-When spawning, include engagement context in the Agent prompt:
-- For persistent teammates: current state summary excerpt relevant to their domain
-- For on-demand: specific task context (hash file, AV detection details, etc.)
-
 **Teammate idle state is normal.** Teammates go idle after every turn. An idle
 notification does NOT mean they are done — it means they finished their current
-turn and are waiting. Send a message to wake an idle teammate.
+turn and are waiting. Send a `[TASK]` message to wake an idle teammate.
 
 ### Assigning Tasks
 
@@ -190,11 +234,12 @@ busy teammate — spawn a new one from the same template.
 
 ```
 if teammate exists for THIS target surface and is idle:
-    message teammate: "Load skill '<name>'. Target: <target>. Context: <details>"
+    TaskCreate → TaskUpdate(owner=teammate) →
+    SendMessage(to=teammate, "[TASK] #<N> — <skill> on <target>\n<context>")
 elif teammate exists but is working a DIFFERENT target surface:
     spawn new teammate from same template with target-specific name
 elif no teammate for this domain:
-    spawn teammate, then assign task
+    spawn teammate (see Spawning a Teammate above)
 ```
 
 **Naming: `{role}-{target}`** — use descriptive names tied to what the
@@ -230,10 +275,23 @@ RIGHT:  "Discovery found: basic PHP content blocked by content inspection.
   Teammate includes `via_access_id=N` in state-mgr messages for access, vulns,
   and credentials. This links findings to the session that produced them.
 
+**Active sessions — include in EVERY task assignment where shell access exists:**
+Before assigning, ask shell-mgr for active sessions on the target host (or
+check `list_sessions()` on all configured backends). Include ALL relevant
+sessions with their backend and MCP instructions so the teammate can use them
+immediately. If no sessions exist, instruct the teammate to work with shell-mgr
+to establish access.
+
+The teammate should NOT have to discover sessions on their own.
+
 Example task context:
 ```
-"Exercise LFI on portal.target.local ?view= parameter.
- access_id: 1 (svc_apache SMB session)"
+"Enumerate privesc vectors on 10.10.10.5 as dev_ryan.
+ access_id: 3
+ Sessions:
+   shell-server 7711087a (PTY) — send_command(session_id='7711087a', ...)
+   c2 b5d36dfa (mTLS, alive) — execute(session_id='b5d36dfa', ...) + upload/download
+ Use C2 for file transfers, shell-server for interactive commands."
 ```
 
 The flow graph orders by timestamp automatically. `chain_order` is an
@@ -242,10 +300,9 @@ operator override for report presentation — teammates don't need to set it.
 ### Dismissing Teammates
 
 ```
-if teammate domain is exhausted (no more tasks in that area):
-    SendMessage(to="<name>", message={type: "shutdown_request"})
-    teammate approves → process exits
-if engagement complete:
+NEVER shut down teammates without explicit operator approval.
+AskUserQuestion: "Engagement objectives met. Shut down all teammates?"
+Only after operator confirms:
     for each active teammate:
         SendMessage(to="<name>", message={type: "shutdown_request"})
     after all teammates shut down:
@@ -393,8 +450,9 @@ If `engagement/state.db` exists:
 Do NOT re-initialize scope or re-run init_engagement(). State.db is source of truth.
 Previous teammates are gone (new session) — create a fresh team and spawn as needed:
 ```
-TeamCreate(team_name="red-run", description="red-run")
-# Then spawn state-mgr, followed by teammates for recommended actions
+# Handle team name collision (see Team Lifecycle — team name collision)
+# TeamCreate → store returned name as TEAM_NAME
+# Then spawn state-mgr + shell-mgr with team_name=<TEAM_NAME>
 ```
 
 ## Step 1: Scope & Engagement Setup
@@ -416,30 +474,31 @@ Options: Confirm | Cancel
 
 If Cancel → stop immediately.
 
-### Shell-Server Health Check
+### Shell Backend Health
 
-**Immediately after CTF acknowledgement**, verify shell-server is reachable:
-```
-Call list_sessions() from shell-server MCP.
-If it returns a result → shell-server is running, continue.
-If it errors or tool is not available → HARD STOP:
-  "shell-server MCP is not connected. It must be running before Claude Code
-   starts. Kill this session, then relaunch with: ./run.sh"
-  Do NOT proceed — teammates cannot catch shells without it.
-```
+shell-mgr owns backend health checks — it verifies shell-server (and Sliver
+if configured) on activation and reports issues to the lead. The orchestrator
+does NOT check shell-server directly. If shell-mgr reports a backend problem,
+notify the operator and block shell-dependent tasks until resolved.
 
 ### Engagement Configuration
 
-**You MUST call `AskUserQuestion` here — all 4 questions in one call:**
+```
+1. Bash: ls engagement/config.yaml 2>/dev/null && echo "EXISTS" || echo "NONE"
+2. If EXISTS → Read engagement/config.yaml, print values, skip to Initialize Engagement.
+   Do NOT ask config questions. Do NOT call AskUserQuestion.
+3. If NONE → call AskUserQuestion with all 5 questions below.
+```
 
 ```
 Q1 — Scan type: Quick (recommended) | Full | Ask each time
 Q2 — Web proxy: Burp 127.0.0.1:8080 (recommended) | Custom IP:PORT | No proxy | Ask when needed
 Q3 — Spray intensity: Light ~30 (recommended) | Medium ~10k | Heavy ~100k | Skip | Ask each time
 Q4 — Recovery method: Local (recommended) | Export | Skip | Ask each time
+Q5 — Shell backend: shell-server (recommended) | Sliver (if RED_RUN_SLIVER_AVAILABLE=1) | Custom
 ```
 
-Write `engagement/config.yaml` from `operator/templates/config.yaml`.
+Write `engagement/config.yaml` from operator answers.
 Omit keys where operator chose "Ask each time/when needed".
 If web proxy enabled, generate persistence files immediately.
 
@@ -456,24 +515,37 @@ Write `engagement/scope.md`. Call `init_engagement(name="...")`.
 Copy dump-state script (use Bash `cp`, do NOT read the file):
 `cp operator/templates/dump-state.sh engagement/dump-state.sh && chmod +x engagement/dump-state.sh`
 
-### Create Team and Spawn state-mgr
+### Create Team and Spawn Infrastructure Teammates
 
-**Immediately after init_engagement**, create the team and spawn state-mgr.
-The team must exist before any teammate can be spawned, and state-mgr must be
-alive before any other teammate starts work.
+**Immediately after init_engagement**, create the team and spawn the two
+infrastructure teammates. The team must exist before any teammate can be
+spawned. state-mgr must be alive before any writes, and shell-mgr must be
+alive before any shell operations.
 
 ```
-1. TeamCreate(team_name="red-run", description="red-run")
-2. Read teammates/state-mgr.md via Read tool
-3. Agent(prompt=<template content>, name="state-mgr", model="sonnet", team_name="red-run")
-4. state-mgr activates, calls get_state_summary(), then goes idle — this is normal.
-   It wakes on incoming messages from teammates.
+1. Handle team name collision (see Team Lifecycle — team name collision).
+2. TeamCreate → store returned name as TEAM_NAME.
+3. Spawn state-mgr:
+   a. Read teammates/state-mgr.md via Read tool
+   b. Agent(prompt=<template content>, description="State management",
+            name="state-mgr", model="sonnet", team_name=<TEAM_NAME>)
+4. Spawn shell-mgr:
+   a. Read config.yaml → shell.backend (default: "shell-server" if absent)
+   b. Read teammates/shell-mgr.md (base) + teammates/shell-mgr-<backend>.md (appendix)
+   c. Agent(prompt=<base + appendix>, description="Shell lifecycle management",
+            name="shell-mgr", model="sonnet", team_name=<TEAM_NAME>)
+5. Both go idle after activation — this is normal. They wake on messages.
 ```
 
 All subsequent state writes from the lead and teammates go through state-mgr
-via structured messages. The lead still calls `init_engagement()` and
-`close_engagement()` directly (one-time setup, not a write pattern). The lead
-still calls all state read tools directly.
+via structured messages. All shell lifecycle operations (listeners, processes,
+upgrades) go through shell-mgr via structured messages. Teammates call
+`send_command`/`read_output` directly on the MCP after shell-mgr hands off
+session details.
+
+The lead still calls `init_engagement()` and `close_engagement()` directly
+(one-time setup, not a write pattern). The lead still calls all state read
+tools directly.
 
 After initialization, remind the operator to start the state dashboard:
 ```
@@ -489,8 +561,11 @@ credentials, and assessment progress update live as teammates work.
 ### Network Recon
 
 ```
-if config.scan_type exists: use it
-elif config.scan_type omitted: AskUserQuestion — Quick | Full | Import | Custom
+if config.scan_type exists:
+  present routing table with pre-selected scan type for approval
+  (do NOT re-ask scan type — config already has it)
+elif config.scan_type omitted:
+  AskUserQuestion — Quick | Full | Import | Custom
 
 spawn/message recon teammate:
   "Load skill 'network-recon'. Target: <IP/range>. Scan type: <type>."
@@ -544,10 +619,13 @@ When web teammate reports vhosts:
 Before any web task:
 ```
 if engagement/web-proxy.json exists: reuse
-elif config.web_proxy exists:
+elif config.web_proxy.enabled is true:
     write persistence files from config
     print: "Web proxy configured: <url>"
-elif config.web_proxy omitted:
+elif config.web_proxy.enabled is false:
+    print: "Web proxy: disabled by operator"
+    (do NOT re-ask — operator already chose no proxy)
+elif config.web_proxy omitted entirely:
     AskUserQuestion — Loopback (recommended) | Dedicated IP | No proxy
     + port: 8080 (recommended) | 8081 | Custom
     write persistence files
@@ -576,7 +654,7 @@ Access → deeper:   DB→cmdexec→shell | JWT→admin→upload→shell | deser
 Shell → privesc:   stabilize → linux/windows teammate(discovery) → privesc technique
 Lateral:           creds from host A → test all others | service acct → kerberos | pivot→recon
 Privesc chain:     local admin → ad(credential-dumping) | domain user → ad(kerberoasting)
-Pivot → internal:  additional NIC/subnet in state + access to pivot host → pivoting → recon internal
+Pivot → internal:  additional NIC/subnet in state + access to pivot host → shell-mgr [setup-pivot] → recon internal
 ```
 
 **Pivot identified + access exists → act immediately:**
@@ -584,11 +662,9 @@ Pivot → internal:  additional NIC/subnet in state + access to pivot host → p
 When state shows a pivot (additional NIC, new subnet) AND you have access to the pivot host:
 1. Check get_tunnels() — does an active tunnel already cover this subnet?
 2. If no tunnel:
-   a. Spawn pivoting teammate: "Load skill 'pivoting-tunneling'.
-      Pivot host: <host>. Target subnet: <subnet>.
-      Access: <evil-winrm/ssh/shell + user + creds>.
-      Tool preference: SSH > sshuttle > ligolo > chisel."
-   b. After tunnel established → message state-mgr: [add-tunnel] if teammate didn't
+   a. Message shell-mgr: [setup-pivot] host=<ip> target_subnet=<cidr> via_access_id=<N>
+      shell-mgr decides the method based on its backend (Sliver SOCKS5, chisel, etc.)
+   b. Wait for shell-mgr's [pivot-ready] response with tunnel details
    c. Message state-mgr: [update-pivot] to mark as exploited
    d. Assign recon teammate: network-recon on the internal subnet
 3. Include tunnel context in ALL subsequent tasks targeting hosts behind tunnel:
@@ -604,7 +680,22 @@ whoami /priv, net user). Assign to the appropriate teammate.
 
 ### Decision Logic
 
-Walk ALL items, collect every actionable finding, present to operator:
+**HARD STOP CHECKLIST — scan FIRST on every teammate message, before routing:**
+```
+□ Source code found? (backup archive, .git dump, LFI source reads, share with code)
+  → trigger Source Code Discovered hard stop immediately
+□ New credentials? (passwords, hashes, keys, tokens)
+  → trigger Usernames Found / Hashes Found hard stops
+□ New hostnames? (vhosts, domains from certs/configs/DNS)
+  → trigger Hosts File Update if unresolvable
+□ Shell access gained? (new-access, shell-established)
+  → trigger Execution Achieved hard stop
+□ Versioned software identified? (specific version, not just product name)
+  → spawn research for PoC lookup alongside ops
+```
+This is a mandatory pre-check. Do NOT skip to routing until all boxes are clear.
+
+Then walk ALL items, collect every actionable finding, present to operator:
 
 ```
 1. Unexercised vulns → assign technique skill to ops teammate
@@ -613,6 +704,17 @@ Walk ALL items, collect every actionable finding, present to operator:
      Step 2: if vulnerable/unknown → spawn research teammate for class verification
      After gate passes → route to {domain}-ops via search_skills()
    Routing: web vulns → web-ops, AD vulns → ad-ops, privesc → lin-ops/win-ops
+
+   VERSIONED SOFTWARE PoC LOOKUP (parallel with ops spawn):
+     When discovery identifies software + specific version (not just "nginx"
+     but "Tomcat 9.0.31", "GitLab 16.0.1", etc.):
+     a. Spawn the ops teammate for the technique immediately
+     b. Spawn research teammate in parallel — instruct research to deliver
+        its findings directly to the ops teammate (by name), NOT to the lead.
+        The lead does not need PoC details in its context window.
+     c. Research sends: payload format, encoding gotchas, working injection
+        syntax, public PoC references — directly to the ops teammate
+     d. Ops teammate incorporates research context alongside the loaded skill
 
 2. Shell access without root/SYSTEM → Execution Achieved hard stop (see below)
 
@@ -643,8 +745,8 @@ Walk ALL items, collect every actionable finding, present to operator:
    for each pivot with status "identified" or "Additional NIC":
      if access exists to pivot host (check Access section in state):
        if no active tunnel covers target subnet (check get_tunnels()):
-         → spawn pivoting teammate (see "Pivot identified + access exists" above)
-         → after tunnel: assign recon on internal subnet
+         → message shell-mgr: [setup-pivot] (see "Pivot identified + access exists")
+         → after [pivot-ready]: assign recon on internal subnet
      else:
        note: need access to pivot host first — pursue via other chains
 
@@ -668,11 +770,15 @@ This is the most important state change in an engagement. Do NOT wait for
 the reporting teammate's current task to complete. Do NOT wait for other
 decision logic items. Act on this THE MOMENT it arrives.
 
-1. SHELL UPGRADE (if not already interactive):
-   - start_listener → reverse shell callback → stabilize_shell
-   - OR: start_process(evil-winrm/psexec/ssh) for credential-based access
-   Do NOT enumerate through curl, web APIs, or command injection one-liners.
-   A proper shell is faster, richer, and cheaper on tokens.
+1. SHELL LIFECYCLE — the teammate that found the RCE established a
+   reverse shell via shell-server and handed it to shell-mgr via
+   [shell-established]. shell-mgr stabilizes (or upgrades to C2 if
+   configured) and sends [session-ready] with the session_id and MCP
+   instructions. Wait for [session-ready] from shell-mgr before
+   spawning enum teammates — include the session_id in their task.
+   For credential-based access where no teammate is in the loop yet,
+   message shell-mgr: [setup-process] command="evil-winrm ..." and
+   wait for [process-ready].
 
 2. SPAWN HOST ENUM (parallel with everything else):
    Windows → win-enum-<host> from teammates/win-enum.md
@@ -710,7 +816,7 @@ Act the moment it's reported, don't wait for other decision logic items.
    are expensive — don't waste them on git clone or file transfers.
 2. SPAWN research teammate with `source-code-review` skill
    Pass: LOCAL source path on attackbox, framework hints, context
-   Research teammate uses Explore subagents for parsing, opus for judgment
+   Research teammate uses Explore subagents for parsing, sonnet for judgment
 3. Run in PARALLEL with any technique execution already in progress
    Source review informs all other paths — don't serialize behind it
 4. When findings arrive: route confirmed vulns to technique teammates,
@@ -803,6 +909,12 @@ When significant access gained (shell, DA, database):
 3. Check objectives against scope.md
 4. Continue chaining or wrap up
 
+**DO NOT shut down teammates after flag capture or objective completion.**
+Provenance links, findings, and state may need updates after the final flag.
+Use `AskUserQuestion` to confirm with the operator before dismissing ANY
+teammate or calling `close_engagement`. The operator decides when the
+engagement is truly done.
+
 ## Step 6: Multi-Target Engagements
 
 ### Phase-Based Cycling
@@ -827,8 +939,36 @@ Do NOT serialize independent target surfaces behind one teammate — spawn paral
 3. Findings by severity with impact, evidence, repro steps
 4. Access chains diagram
 5. Recommendations
-6. Offer retrospective: get_skill("retrospective")
+6. Offer retrospective (see below)
 ```
+
+### Retrospective
+
+After presenting findings, offer the operator:
+```
+AskUserQuestion: "Run engagement retrospective? A research teammate will
+analyze the full state — what worked, what didn't, technique efficiency,
+missed paths, and lessons learned."
+Options: Yes (Recommended) | Skip
+```
+
+If accepted:
+```
+1. search_skills("retrospective") → find retrospective skill
+2. Spawn research teammate:
+   a. Read teammates/research.md via Read tool
+   b. TaskCreate(subject="Retrospective — <engagement name>")
+   c. Agent(prompt=<template>, description="Engagement retrospective",
+            name="retro", model="sonnet", team_name=<TEAM_NAME>)
+   d. TaskUpdate(taskId=<N>, owner="retro")
+   e. SendMessage(to="retro", message="[TASK] #<N> — retrospective\n
+      Load skill via get_skill. Engagement state is in state.db.
+      Write findings to engagement/evidence/retrospective.md")
+3. When retro completes, present the summary to the operator.
+```
+
+The retrospective runs in a separate context window — it reads the full
+state without bloating the lead's context with analysis details.
 
 ## Invocation Log
 

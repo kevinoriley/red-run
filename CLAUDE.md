@@ -83,8 +83,8 @@ The orchestrator spawns domain-specific subagents for each skill invocation:
 | `linux-privesc-agent` | Linux privesc | skill-router, shell-server, state | Linux discovery + privesc + container escapes |
 | `windows-privesc-agent` | Windows privesc | skill-router, shell-server, rdp-server, state | Windows discovery + privesc |
 | `evasion-agent` | AV/EDR bypass | skill-router, shell-server, rdp-server, state | av-edr-evasion |
-| `credential-cracking-agent` | Credential recovery | skill-router, state | credential-cracking (haiku, local-only) |
-| `research-agent` | Deep analysis | skill-router, shell-server, state | unknown-vector-analysis (opus) |
+| `credential-cracking-agent` | Credential recovery | skill-router, state | credential-recovery (haiku, local-only) |
+| `research-agent` | Deep analysis | skill-router, shell-server, state | unknown-vector-analysis (sonnet) |
 
 Each invocation: agent loads one skill via `get_skill()`, executes methodology, saves evidence, and returns findings. The orchestrator parses the return summary and makes the next routing decision. All agents and the orchestrator share the same state MCP server with full read/write access. Deduplication is handled at the database level.
 
@@ -102,14 +102,17 @@ Agent source files live in `agents/` (version controlled), installed to `~/.clau
 | state | `tools/state-server/` | Full read/write engagement state (all agents + orchestrator) |
 | browser-server | `tools/browser-server/` | Headless browser automation (web agents) |
 | rdp-server | `tools/rdp-server/` | Headless RDP automation via aardwolf (windows-privesc-agent) |
+| sliver-server | `tools/sliver-server/` | Sliver C2 gRPC wrapper — implants, sessions, SOCKS5 proxy, pivots (optional) |
 | state-viewer | `operator/state-viewer/` | Read-only web dashboard for state.db (operator use, not MCP) |
 
 The state server runs as a single instance. In the agent teams orchestrator
 (`/red-run-ctf`), all state writes are centralized through the **state-mgr
-teammate** — the sole writer to state.db. Other teammates and the lead send
-structured messages to state-mgr instead of calling write tools directly.
-State reads remain direct (any teammate can call `get_state_summary()`, etc.).
-See the server's `README.md` for tool details.
+teammate** — the sole writer to state.db. All shell lifecycle operations
+(listeners, processes, upgrades) are centralized through the **shell-mgr
+teammate** — teammates message shell-mgr for setup, then interact with the
+MCP directly after session handoff. shell-mgr's backend is configurable:
+`shell-server` (default), `sliver`, or `custom` (operator-provided C2).
+See each server's `README.md` for tool details.
 
 ### Skill Types
 - **Orchestrator** (`skills/orchestrator/`): Takes a target, runs recon, routes to discovery skills
@@ -179,25 +182,9 @@ when making changes.
 **When modifying a tool server:** If you change tools, parameters, behavior, or
 dependencies in a `tools/*/` server, update its `README.md` in the same commit.
 
-**Changelog is mandatory.** Every release branch must update `CHANGELOG.md`
-before merging. Add entries under the new version heading following
+**Changelog is mandatory.** Every branch merged to main must update
+`CHANGELOG.md`. Add entries under a date heading (`## YYYY-MM-DD`) following
 [Keep a Changelog](https://keepachangelog.com/) format.
-
-## Versioning
-
-red-run has no compiled releases — it's installed via `install.sh` which
-symlinks (or copies) skills, agents, and MCP servers into `~/.claude/`. Git
-tags mark release points.
-
-**Semver:** `MAJOR.MINOR.PATCH`
-- **MAJOR** — breaking changes (schema migrations, renamed slash commands,
-  removed features, changed teammate/agent APIs that require re-install)
-- **MINOR** — new features (new skills, new MCP tools, new teammate templates,
-  dashboard features) that are backwards-compatible
-- **PATCH** — bug fixes, doc updates, prompt improvements, config changes
-
-**Release branches:** `patch/X.Y.Z-<description>` for patch releases,
-`release/X.Y.0-<description>` for minor/major. Tag on merge to main.
 
 ## Directory Layout
 
@@ -222,6 +209,9 @@ red-run/
   teammates/              # Spawn prompt templates for /red-run-ctf (agent teams)
     README.md              # Template format and usage docs
     state-mgr.md           # Centralized state writer, dedup, graph coherence (sonnet)
+    shell-mgr.md           # Shell lifecycle manager base template (sonnet)
+    shell-mgr-shell-server.md  # Shell-server backend appendix for shell-mgr
+    shell-mgr-sliver.md        # Sliver C2 backend appendix for shell-mgr
     net-enum.md            # Network recon + service enumeration (sonnet)
     web-enum.md            # Web app discovery (sonnet)
     web-ops.md             # Web technique execution (sonnet)
@@ -231,11 +221,10 @@ red-run/
     lin-ops.md             # Linux privesc techniques (sonnet)
     win-enum.md            # Windows host discovery (sonnet)
     win-ops.md             # Windows privesc techniques (sonnet)
-    pivot.md               # Tunneling (sonnet, on-demand)
     bypass.md              # AV/EDR bypass (sonnet, on-demand)
     spray.md               # Password spraying (haiku, on-demand)
     recover.md             # Offline hash recovery (haiku, on-demand)
-    research.md            # Deep analysis (opus, on-demand)
+    research.md            # Deep analysis (sonnet, on-demand)
   skills/
     _template/SKILL.md    # Canonical template
     ctf/SKILL.md          # /red-run-ctf (agent teams, default)
@@ -263,6 +252,11 @@ red-run/
       server.py           # FastMCP server — start_listener, send_command, stabilize_shell, etc.
       Dockerfile           # Python + Responder + impacket + mitm6 image (built by install.sh)
       pyproject.toml       # Python dependencies (mcp)
+    sliver-server/        # MCP server (Sliver C2 gRPC wrapper, optional)
+      README.md            # Server documentation
+      server.py           # FastMCP server — implants, sessions, pivots
+      start.sh            # Idempotent SSE startup
+      pyproject.toml       # Python dependencies (mcp, sliver-py, grpcio)
     browser-server/       # MCP server (headless Chromium)
       README.md            # Server documentation
       server.py           # FastMCP server — browser_open, browser_fill, browser_click, etc.
@@ -275,6 +269,7 @@ red-run/
     hooks/                # Claude Code hooks
       save-agent-log.sh   # SubagentStop hook — copies JSONL transcripts to engagement/evidence/logs/
       event-watcher.sh    # Background event poller — spawned by orchestrator to watch state_events
+  config.sh               # Pre-engagement config wizard (scan, proxy, spray, cracking, C2)
   operator/               # Operator-facing tools (run manually, not MCP)
     state-viewer/      # Read-only web dashboard for state.db
       README.md            # Tool documentation

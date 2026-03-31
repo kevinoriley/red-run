@@ -72,6 +72,7 @@ MCP_SHELL_SERVER="${REPO_DIR}/tools/shell-server"
 MCP_STATE_SERVER="${REPO_DIR}/tools/state-server"
 MCP_BROWSER_SERVER="${REPO_DIR}/tools/browser-server"
 MCP_RDP_SERVER="${REPO_DIR}/tools/rdp-server"
+MCP_SLIVER_SERVER="${REPO_DIR}/tools/sliver-server"
 
 # Only the orchestrator is installed as a native Claude Code skill.
 # Everything else is served on-demand via the MCP skill-router.
@@ -255,6 +256,13 @@ uv run --directory "${MCP_BROWSER_SERVER}" playwright install chromium
 # rdp-server (headless RDP automation via aardwolf — pure Python, no system deps)
 run_uv_sync "rdp-server" "${MCP_RDP_SERVER}"
 
+# sliver-server (Sliver C2 gRPC wrapper — optional, only if sliver-py can install)
+if run_uv_sync "sliver-server" "${MCP_SLIVER_SERVER}" 2>/dev/null; then
+    echo "  sliver-server MCP dependencies installed"
+else
+    echo "  sliver-server MCP skipped (sliver-py requires grpcio — install Sliver for C2 support)"
+fi
+
 # --- Step 5: Verify project config ---
 config_warnings=0
 if [[ ! -f "${REPO_DIR}/.mcp.json" ]]; then
@@ -286,7 +294,11 @@ echo "browser MCP server ready (headless Chromium)"
 echo "rdp MCP server ready (headless RDP via aardwolf)"
 if [[ "$config_warnings" -eq 0 ]]; then
     echo ""
-    echo "Starting shell-server (SSE on 127.0.0.1:8022)..."
+    # Restart any running SSE MCP servers to pick up new code
+    echo "Restarting SSE MCP servers..."
+    if pkill -f "tools/shell-server/.*server.py" 2>/dev/null; then echo "  shell-server: stopped"; fi
+    if pkill -f "tools/sliver-server/.*server.py" 2>/dev/null; then echo "  sliver-server: stopped"; fi
+    sleep 1
     bash "${REPO_DIR}/tools/shell-server/start.sh"
     if ss -tln 2>/dev/null | grep -q ":8022 "; then
         echo "  shell-server: listening"
@@ -294,14 +306,20 @@ if [[ "$config_warnings" -eq 0 ]]; then
         echo "  WARNING: shell-server failed to start — run manually:"
         echo "    bash tools/shell-server/start.sh"
     fi
+    # Restart sliver-server if it was running
+    if ss -tln 2>/dev/null | grep -q ":${SLIVER_SSE_PORT:-8023} " || [[ -f "${REPO_DIR}/engagement/sliver.cfg" ]]; then
+        if bash "${REPO_DIR}/tools/sliver-server/start.sh" 2>/dev/null; then
+            echo "  sliver-server: listening"
+        fi
+    fi
     echo ""
-    echo "Done! Launch with:"
+    echo "Done! Next steps:"
     echo ""
+    echo "  ./config.sh             # optional — configure C2 backend (Sliver, custom)"
     echo "  ./run.sh                # starts shell-server + Claude Code, loads /red-run-ctf"
-    echo "  ./run.sh --lead=legacy  # loads /red-run-legacy instead"
-    echo "  ./run.sh --yolo         # skip permission prompts"
     echo ""
-    echo "  Send any message (e.g. a target IP) to activate the orchestrator."
+    echo "  config.sh is only needed if you want a C2 backend. Without it,"
+    echo "  red-run uses shell-server (raw TCP reverse shells + interactive tools)."
     echo ""
     echo "  Tip: tmux recommended — agent teams spawn multiple long-running"
     echo "  teammates that benefit from persistent terminal sessions."

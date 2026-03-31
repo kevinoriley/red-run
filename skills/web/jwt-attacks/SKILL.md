@@ -195,14 +195,14 @@ If the token uses HMAC (HS256/384/512), the signing secret may be weak.
 ### Save JWT for offline cracking
 
 ```bash
-# Save the full JWT to a file for the credential-cracking skill
+# Save the full JWT to a file for the credential-recovery skill
 echo -n 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.signature' > engagement/evidence/jwt-hash.txt
 ```
 
 **Do NOT crack hashes in this skill.** Save the JWT to `engagement/evidence/`
 and return to the orchestrator with the hash file path, hash type (JWT / hashcat
 mode 16500 for HS256, 16600 for HS384, 16700 for HS512), and a routing
-recommendation to **credential-cracking**.
+recommendation to **credential-recovery**.
 
 ### jwt_tool dictionary (quick check)
 
@@ -509,7 +509,7 @@ STOP and return to the orchestrator with:
 ### JWT Secret Not Cracking
 
 If jwt_tool dictionary check fails and you need GPU-accelerated cracking, route
-to **credential-cracking** with the JWT hash file and hashcat mode 16500
+to **credential-recovery** with the JWT hash file and hashcat mode 16500
 (HS256), 16600 (HS384), or 16700 (HS512).
 
 ### jwt_tool Errors

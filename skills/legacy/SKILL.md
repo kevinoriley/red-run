@@ -277,7 +277,7 @@ access and cannot invoke skills. Never use them for target-level work:
 - Local processing (parsing scan output, compiling exploits)
 - Anything that does not require skill routing or target interaction
 
-For hash cracking and encrypted file cracking, use the **credential-cracking**
+For hash cracking and encrypted file cracking, use the **credential-recovery**
 skill (inline) instead of ad-hoc cracking in a built-in sub-agent.
 
 ### Event Monitoring
@@ -911,7 +911,7 @@ not part of any skill or agent definition.
   produces a web shell, kerberos-delegation produces a DA ticket + shell)
 
 **Do NOT append for:** network-recon, web-discovery, ad-discovery, password-
-spraying, credential-cracking, evasion — these don't have shell access on a
+spraying, credential-recovery, evasion — these don't have shell access on a
 target host.
 
 **The directive** (append verbatim to the agent prompt, substituting variables):
@@ -1519,7 +1519,7 @@ because the operator needs to see hash details and file paths.
    If config default exists, note it: `"Crack locally [config default]"`
 
 3. After operator responds:
-   - **Crack locally**: Spawn **credential-cracking-agent** with hash details,
+   - **Crack locally**: Spawn **credential-recovery-agent** with hash details,
      hash type, file path, and account context. Run in background.
    - **Export for external rig**: Print the hash file path and hashcat command
      line. Wait for the operator to provide the cracked plaintext. When

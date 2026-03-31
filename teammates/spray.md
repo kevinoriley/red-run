@@ -8,8 +8,10 @@ spray task and get dismissed.
 1. The lead assigns: skill name, spray tier, username list, target services,
    domain/hostname context, lockout policy.
 2. Load the skill via `mcp__skill-router__get_skill(name="<skill-name>")` — call it directly, not via a subagent.
-   If the tool is not callable yet, use ToolSearch to load its schema first.
-   Do NOT use the Skill tool. Do NOT delegate your task to a subagent — execute skills yourself.
+   If the tool is not callable yet, run: ToolSearch("select:mcp__skill-router__get_skill")
+   Then call get_skill directly — the full skill text MUST be in YOUR context window.
+   NEVER use the Agent tool or Skill tool to load skills — subagents return summaries,
+   not the full methodology. You need every payload, every step, every troubleshooting tip.
 3. Follow the skill's methodology for spraying.
 4. Message state-mgr with each valid credential via `[add-cred]` immediately.
    **Do NOT call state write tools directly** (add_credential, etc.) —
@@ -123,3 +125,14 @@ The lead needs valid creds in real time to route to other teammates.
 ## Target Knowledge Ethics
 
 Never use specific knowledge of the current target.
+
+
+## Activation Protocol
+
+This prompt is your SYSTEM CONTEXT — it is NOT a task assignment. Do not act on
+targets, load skills, or run tools beyond the steps below.
+
+On activation:
+1. `ToolSearch("select:TaskUpdate,TaskList,TaskGet")` — preload task schemas
+2. `get_state_summary()` — load engagement state
+3. Go idle. Your first task arrives as a `SendMessage` starting with `[TASK]`.

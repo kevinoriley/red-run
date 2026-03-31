@@ -67,5 +67,24 @@ else
     bash tools/shell-server/start.sh
 fi
 
-exec claude "${claude_args[@]}" \
+# Detect and start C2 frameworks
+if command -v sliver-server &>/dev/null || command -v sliver &>/dev/null; then
+    export RED_RUN_SLIVER_AVAILABLE=1
+    echo "[c2] Sliver detected"
+    # Start Sliver daemon if not running
+    if command -v sliver-server &>/dev/null && ! pgrep -f "sliver-server daemon" &>/dev/null; then
+        sliver-server daemon &>/dev/null &
+        echo "[c2] Sliver daemon started"
+        sleep 1  # brief wait for gRPC to bind
+    fi
+    # Start sliver-server MCP
+    bash tools/sliver-server/start.sh 2>/dev/null && echo "[c2] Sliver MCP ready" \
+        || echo "[c2] Sliver MCP failed to start (sliver-server may need operator config)"
+fi
+# Add future C2 detection here (e.g., Mythic, Havoc)
+if [[ -z "${RED_RUN_SLIVER_AVAILABLE:-}" ]]; then
+    echo "[c2] No C2 framework detected — shell-server only"
+fi
+
+exec claude --model sonnet "${claude_args[@]}" \
     --append-system-prompt "On activation, immediately invoke the skill: ${skill}"

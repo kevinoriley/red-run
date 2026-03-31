@@ -125,7 +125,7 @@ Here's how it works under the hood:
 
 3. **Loading** — The orchestrator reviews the search results (each includes the skill's description and OPSEC rating), picks the best match, and tells the teammate to load it via `get_skill("ajp-ghostcat")`. The teammate gets the full `SKILL.md` content — methodology, payloads, troubleshooting — injected into its context.
 
-The "augmented generation" part is that Claude doesn't rely on its training data to know how to exploit AJP Ghostcat. Instead, the skill's methodology is retrieved from the local library and injected into the prompt, giving the teammate precise, tested instructions rather than general knowledge.
+The "augmented generation" part is that Claude doesn't rely on its training data to know how to exercise AJP Ghostcat. Instead, the skill's methodology is retrieved from the local library and injected into the prompt, giving the teammate precise, tested instructions rather than general knowledge.
 
 ### Routing
 
@@ -161,7 +161,7 @@ The orchestrator has several points where it **must** pause for operator input. 
 | **Web proxy** | HTTP/HTTPS ports found | Yes — `web_proxy` | Skipped entirely; persistence files written from config |
 | **Hostname resolution** | New hostnames discovered | No | Always interactive (requires sudo) |
 | **Password spray** | New usernames discovered | Partial — `spray.default_tier` | Still fires; config pre-selects tier |
-| **Hash cracking** | Hashes captured | Partial — `cracking.default_method` | Still fires; config pre-selects method |
+| **Hash recovery** | Hashes captured | Partial — `cracking.default_method` | Still fires; config pre-selects method |
 | **Vhost resolution** | Virtual hosts discovered | No | Always interactive (requires sudo) |
 
 Hard stops prevent the orchestrator from making high-impact decisions autonomously. The config wizard captures preferences upfront so returning operators move faster, while "ask each time" options preserve the fully interactive workflow.
@@ -174,7 +174,7 @@ After each task completes, the lead runs a **post-task checkpoint** and decision
 2. **New access (shell/login)?** → **Execution Achieved** hard stop (see below)
 3. **Untested credentials?** → Spawn per-user credential context enum teammate + password reuse spray
 4. **Unrecovered hashes?** → Hashes Found hard stop
-5. **Pivot paths?** → Spawn pivoting teammate, then recon the new subnet
+5. **Pivot paths?** → Message shell-mgr `[setup-pivot]`, then recon the new subnet
 6. **Blocked items?** → Retry with context, or move on
 7. **Objectives met?** → Post-access and wrap-up
 
@@ -190,7 +190,7 @@ The orchestrator has mandatory pause points. Every task assignment requires oper
 | **Technique-Vuln Linkage** | Credential from active technique | Teammate must create a vuln record for the technique before the credential. State-mgr rejects credentials without `via_vuln_id` when the source implies a technique. |
 | **Hostname Resolution** | Unresolvable hostname | Operator runs hosts-update script |
 | **Password Spray** | New usernames discovered | Operator chooses tier and services |
-| **Hash Recovery** | Hashes captured | Operator chooses local/external/skip |
+| **Hash recovery** | Hashes captured | Operator chooses local/external/skip |
 
 ## Recovery Paths
 

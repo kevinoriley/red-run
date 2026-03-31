@@ -52,7 +52,9 @@ rm ~/.config/red-run/viewer-token
 - **Kill-chain attack graph** — SVG directed graph showing hosts, vulns,
   credentials, access, pivots, and blocked techniques. Evolves in real-time
   as the engagement progresses. Nodes are color-coded by type, edges show
-  confirmed/pending/blocked relationships.
+  provenance chains (vuln→access, vuln→vuln, access→vuln, cred→access,
+  cred→vuln, access→cred). BFS-based layout with optional `chain_order`
+  overrides for manual positioning.
 - **State tables** — Targets, credentials, access, vulns, pivot map, tunnels,
   blocked, and event timeline. Collapsible sections, sortable columns, global
   text filter.

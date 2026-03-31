@@ -37,7 +37,7 @@ See also: [Skills Inventory](docs/skills-inventory.md) for the full skill invent
 
 ## Installation
 
-**Prerequisites:** Linux VM with pentesting tools, [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [uv](https://docs.astral.sh/uv/), [Docker](https://docs.docker.com/engine/install/)
+**Prerequisites:** Linux VM with pentesting tools, [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [uv](https://docs.astral.sh/uv/), [Docker](https://docs.docker.com/engine/install/). Optional: [Sliver](https://github.com/BishopFox/sliver) for C2 integration.
 
 ```bash
 ./install.sh          # Symlink-based (edits reflect immediately)
@@ -53,11 +53,22 @@ After installing, run the preflight check to verify attackbox dependencies (nmap
 bash preflight.sh
 ```
 
-Then launch with:
+Then launch:
 
 ```bash
-./run.sh              # ensures shell-server is up, then starts Claude Code
+./run.sh              # shell-server only (default)
 ```
+
+### C2 integration (optional)
+
+red-run works out of the box with shell-server (raw TCP reverse shells + interactive processes). For C2 support, run the config wizard before launching:
+
+```bash
+bash config.sh             # select C2 backend, generate operator configs
+./run.sh                   # starts C2 daemon + MCP automatically
+```
+
+`config.sh` writes `engagement/config.yaml` and patches `.mcp.json` with the C2 MCP server entry. The orchestrator skips its built-in config wizard when `config.yaml` exists. Currently supported: Sliver. Custom C2 integration via operator-provided MCP servers is also supported.
 
 The shell-server runs as a persistent SSE service (`127.0.0.1:8022`) shared across all teammates — sessions created by one teammate are visible to all others. `run.sh` starts it automatically and is idempotent (safe to re-run). A `SessionStart` hook also attempts auto-start as a fallback.
 
@@ -65,7 +76,7 @@ See [dependencies](docs/dependencies.md) for the full list of required tools.
 
 ## Agent Teams
 
-red-run uses [Claude Code agent teams](https://code.claude.com/docs/en/agent-teams) to coordinate multiple Claude Code sessions working together. The orchestrator runs as the team lead, spawning persistent domain teammates that each get their own tmux pane. Teammates are split into enumeration (net-enum, web-enum, ad-enum, lin-enum, win-enum) and operations (web-ops, ad-ops, lin-ops, win-ops) pairs for parallel discovery and technique execution, plus on-demand specialists (pivot, bypass, spray, recover, research). Benefits over the legacy subagent model:
+red-run uses [Claude Code agent teams](https://code.claude.com/docs/en/agent-teams) to coordinate multiple Claude Code sessions working together. The orchestrator runs as the team lead, spawning persistent domain teammates that each get their own tmux pane. Teammates are split into enumeration (net-enum, web-enum, ad-enum, lin-enum, win-enum) and operations (web-ops, ad-ops, lin-ops, win-ops) pairs for parallel discovery and technique execution, plus on-demand specialists (bypass, spray, recover, research). Benefits over the legacy subagent model:
 
 - **Persistent context** — teammates accumulate knowledge across tasks instead of starting fresh each time
 - **Teammate messaging** — teammates report findings to the lead who routes to the right specialist (e.g., web teammate finds domain creds → lead routes to AD teammate)

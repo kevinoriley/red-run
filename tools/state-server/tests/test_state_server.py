@@ -214,7 +214,7 @@ class TestAccessCrud:
     def test_access_via_vuln_id(self, srv):
         call(srv, "add_target", ip="10.10.10.10")
         vuln = call_json(srv, "add_vuln", title="RCE", ip="10.10.10.10",
-                         severity="critical", status="exploited")
+                         severity="critical", status="exercised")
         access = call_json(srv, "add_access", ip="10.10.10.10",
                            username="www-data", via_vuln_id=vuln["vuln_id"])
         all_access = json.loads(call(srv, "get_access"))
@@ -250,7 +250,7 @@ class TestAccessCrud:
         v2 = call_json(srv, "add_vuln", title="LFI", ip="10.10.10.12",
                         severity="medium", via_access_id=aid)
         # Exploit one — should prune sibling
-        call(srv, "update_vuln", id=v1["vuln_id"], status="exploited")
+        call(srv, "update_vuln", id=v1["vuln_id"], status="exercised")
         # Revoke access — should restore pruned sibling
         call(srv, "update_access", id=aid, active=False)
         vulns = json.loads(call(srv, "get_vulns", target="10.10.10.12"))
@@ -284,7 +284,7 @@ class TestVulnCrud:
                         severity="high", via_access_id=aid)
         v2 = call_json(srv, "add_vuln", title="LFI", ip="10.10.10.15",
                         severity="medium", via_access_id=aid)
-        result = call_json(srv, "update_vuln", id=v1["vuln_id"], status="exploited")
+        result = call_json(srv, "update_vuln", id=v1["vuln_id"], status="exercised")
         assert result.get("siblings_pruned", 0) >= 1
         vulns = json.loads(call(srv, "get_vulns", target="10.10.10.15"))
         lfi = [v for v in vulns if v["id"] == v2["vuln_id"]][0]
@@ -299,7 +299,7 @@ class TestVulnCrud:
         v2 = call_json(srv, "add_vuln", title="LFI", ip="10.10.10.16",
                         severity="medium", via_access_id=aid)
         # Exploit then block
-        call(srv, "update_vuln", id=v1["vuln_id"], status="exploited")
+        call(srv, "update_vuln", id=v1["vuln_id"], status="exercised")
         call(srv, "update_vuln", id=v1["vuln_id"], status="blocked")
         vulns = json.loads(call(srv, "get_vulns", target="10.10.10.16"))
         lfi = [v for v in vulns if v["id"] == v2["vuln_id"]][0]
@@ -335,7 +335,7 @@ class TestChainBfs:
         """access.via_vuln_id should create a vuln→access edge in BFS."""
         call(srv, "add_target", ip="10.10.10.21")
         vuln = call_json(srv, "add_vuln", title="RCE", ip="10.10.10.21",
-                         severity="critical", status="exploited")
+                         severity="critical", status="exercised")
         call(srv, "add_access", ip="10.10.10.21", username="www-data",
              via_vuln_id=vuln["vuln_id"])
         chain = json.loads(call(srv, "get_chain"))

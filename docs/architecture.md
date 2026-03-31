@@ -22,7 +22,7 @@ The **orchestrator** is the strategy layer. It reads engagement state, decides w
 
 A different orchestrator could use the same platform with different decision logic:
 
-- **Client engagement orchestrator** — mandatory operator approval before exploitation, stricter scope gates, OPSEC-first routing
+- **Client engagement orchestrator** — mandatory operator approval before technique execution, stricter scope gates, OPSEC-first routing
 - **Red team orchestrator** — stealth-focused, avoids detection signatures, operates within rules of engagement windows
 - **Training orchestrator** — explains each decision, pauses for student input, provides hints
 

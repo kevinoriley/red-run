@@ -24,7 +24,7 @@ SubagentStop hook that copies agent JSONL transcripts to
 
 **Scope:** Only triggers for red-run domain agents (network-recon,
 web-discovery, web-exploit, ad-discovery, ad-exploit, password-spray,
-linux-privesc, windows-privesc, evasion, credential-cracking). Built-in
+linux-privesc, windows-privesc, evasion, credential-recovery). Built-in
 subagents (Explore, Plan, general-purpose) produce transcripts too, but
 are filtered by agent type naming.
 

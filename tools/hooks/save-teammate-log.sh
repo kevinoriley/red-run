@@ -30,9 +30,13 @@ cp "$TRANSCRIPT_PATH" "${LOG_DIR}/${TIMESTAMP}-teammate-${SAFE_NAME}-${SAFE_ID}.
 # Scan the last 200 lines of the transcript for content filter patterns.
 # If detected, write a sentinel file so the orchestrator knows the teammate
 # is poisoned and should be dismissed/respawned.
-AUP_PATTERNS='content.policy|content.filter|content_policy|I cannot assist|I.m not able to help|unable to assist with this request|responsibleAI|Your request was flagged'
+# Match real model refusals only. Excludes "content filter" (appears in spawn
+# template) and "content.filter" (too broad). content_policy matches API error JSON.
+AUP_PATTERNS='content_policy|I cannot assist|I.m not able to help|unable to assist with this request|responsibleAI|Your request was flagged'
 
-if tail -200 "$TRANSCRIPT_PATH" | grep -qiE "$AUP_PATTERNS" 2>/dev/null; then
+# Skip line 1 (spawn message) — AUP blocks appear in assistant turns, never the
+# initial user message. Avoids false positives from template instruction text.
+if tail -n +2 "$TRANSCRIPT_PATH" | tail -200 | grep -qiE "$AUP_PATTERNS" 2>/dev/null; then
     FLAG_FILE="engagement/evidence/aup-${SAFE_NAME}.flag"
     {
         echo "teammate: ${TEAMMATE_NAME}"
@@ -41,7 +45,7 @@ if tail -200 "$TRANSCRIPT_PATH" | grep -qiE "$AUP_PATTERNS" 2>/dev/null; then
         echo "transcript: ${TRANSCRIPT_PATH}"
         # Extract the matching line for context
         echo "---"
-        tail -200 "$TRANSCRIPT_PATH" | grep -iE "$AUP_PATTERNS" | tail -3
+        tail -n +2 "$TRANSCRIPT_PATH" | tail -200 | grep -iE "$AUP_PATTERNS" | tail -3
     } > "$FLAG_FILE"
 fi
 

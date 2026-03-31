@@ -20,6 +20,7 @@ or agent definitions — they're prompt templates.
 | File | Name | Domain | Model |
 |------|------|--------|-------|
 | `state-mgr.md` | state-mgr | Centralized state writer, dedup, graph coherence | sonnet |
+| `shell-mgr.md` + `shell-mgr-<backend>.md` | shell-mgr | Shell session lifecycle (listeners, processes, upgrades, handoff) | sonnet |
 
 **Enumeration** — one per target surface, multiple instances from same template:
 
@@ -44,11 +45,10 @@ or agent definitions — they're prompt templates.
 
 | File | Name | Domain | Model |
 |------|------|--------|-------|
-| `pivot.md` | pivot | Network tunneling | sonnet |
 | `bypass.md` | bypass | AV/EDR bypass | sonnet |
 | `spray.md` | spray | Password spraying | haiku |
 | `recover.md` | recover | Offline hash recovery | haiku |
-| `research.md` | research | Deep analysis | opus |
+| `research.md` | research | Deep analysis | sonnet |
 
 ## Template conventions
 
@@ -60,8 +60,13 @@ or agent definitions — they're prompt templates.
 - Ops teammates exercise assigned vulns — they don't discover new ones
 - On-demand teammates handle one task and get dismissed
 - All state writes go through state-mgr via structured `[action]` messages
+- All shell lifecycle ops go through shell-mgr (listeners, processes, upgrades);
+  teammates call send_command directly on the MCP after session handoff
 - Teammates read state directly (get_state_summary, get_vulns, etc.)
 - All teammates message the lead on task completion — never self-claim new tasks
+- Non-infrastructure templates end with an Activation Protocol: load schemas,
+  read state, go idle. Teammates only start work on `[TASK]`-prefixed messages.
+  The spawn prompt is system context, NOT a task assignment.
 
 ## Relationship to v1 agent definitions
 

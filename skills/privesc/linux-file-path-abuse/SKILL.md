@@ -472,7 +472,7 @@ debugfs /dev/sda1 -R 'cat /etc/shadow' 2>/dev/null > engagement/evidence/shadow-
 **Do NOT crack hashes in this skill.** Save the shadow hashes to
 `engagement/evidence/` and return to the orchestrator with the hash file path,
 hash type (SHA-512 crypt / hashcat mode 1800, or MD5 crypt / mode 500), and a
-routing recommendation to **credential-cracking**.
+routing recommendation to **credential-recovery**.
 
 **Alternative — dd full filesystem:**
 

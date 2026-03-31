@@ -24,6 +24,17 @@ spray:
 cracking:
   default_method: local
 
+# Shell backend: shell-server | sliver | custom
+# shell-server: raw TCP listeners + PTY processes (default, always available)
+# sliver: Sliver C2 sessions via sliver-server MCP (requires Sliver installed)
+# custom: operator-provided C2 MCP + reference doc
+# Omit to default to shell-server.
+shell:
+  backend: shell-server
+  # sliver_config: "engagement/sliver.cfg"   # path to operator config (sliver only)
+  # custom_mcp: "my-c2-server"               # MCP server name (custom only)
+  # custom_ref: "path/to/reference.md"        # reference doc path (custom only)
+
 # Callback interface for reverse shells.
 # Omit to auto-detect tun0/wg0 at runtime.
 # callback_ip: "10.10.14.5"

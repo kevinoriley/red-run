@@ -1,0 +1,18 @@
+[project]
+name = "red-run-sliver-server"
+version = "0.1.0"
+description = "MCP server wrapping Sliver C2 gRPC API for red-run"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp[cli]>=1.4.1",
+    "sliver-py>=0.0.19",
+    "grpcio>=1.60.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
