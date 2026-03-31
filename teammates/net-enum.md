@@ -107,16 +107,17 @@ If a skill achieves RCE:
    d. Wait for next task from lead
 ```
 
-For credential-based access:
+For credential-based interactive access (SSH, WinRM, RDP): use shell-mgr
+`[setup-process]` — no reverse shell needed. Native channels are quieter and
+more reliable.
 ```
-Message shell-mgr: [setup-process] command="<cmd>" label="<label>"
-  privileged=<bool>
+Message shell-mgr: [setup-process] command="ssh <user>@<ip>" label="<label>"
 Wait for [process-ready] from shell-mgr
+(shell-mgr handles password entry via send_command at the SSH prompt)
 ```
+Reserve reverse shells for RCE-only vectors where no native channel exists.
 
 If a shell drops: `Message shell-mgr: [shell-dropped] session_id=<id>`
-
-Prefer reverse shells over inline command execution.
 
 ## Tool Execution
 
@@ -168,6 +169,7 @@ evidence:       save to engagement/evidence/ with descriptive filenames
 ### Routing Recommendations
 - Web services on ports X,Y → web teammate
 - Domain controller detected → AD teammate
+- Sparse results from quick scan (≤3 open ports) → recommend full TCP + top-100 UDP to lead
 - <etc.>
 
 ### Evidence

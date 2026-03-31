@@ -939,8 +939,36 @@ Do NOT serialize independent target surfaces behind one teammate — spawn paral
 3. Findings by severity with impact, evidence, repro steps
 4. Access chains diagram
 5. Recommendations
-6. Offer retrospective: get_skill("retrospective")
+6. Offer retrospective (see below)
 ```
+
+### Retrospective
+
+After presenting findings, offer the operator:
+```
+AskUserQuestion: "Run engagement retrospective? A research teammate will
+analyze the full state — what worked, what didn't, technique efficiency,
+missed paths, and lessons learned."
+Options: Yes (Recommended) | Skip
+```
+
+If accepted:
+```
+1. search_skills("retrospective") → find retrospective skill
+2. Spawn research teammate:
+   a. Read teammates/research.md via Read tool
+   b. TaskCreate(subject="Retrospective — <engagement name>")
+   c. Agent(prompt=<template>, description="Engagement retrospective",
+            name="retro", model="sonnet", team_name=<TEAM_NAME>)
+   d. TaskUpdate(taskId=<N>, owner="retro")
+   e. SendMessage(to="retro", message="[TASK] #<N> — retrospective\n
+      Load skill via get_skill. Engagement state is in state.db.
+      Write findings to engagement/evidence/retrospective.md")
+3. When retro completes, present the summary to the operator.
+```
+
+The retrospective runs in a separate context window — it reads the full
+state without bloating the lead's context with analysis details.
 
 ## Invocation Log
 
