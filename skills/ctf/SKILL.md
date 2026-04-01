@@ -483,12 +483,21 @@ notify the operator and block shell-dependent tasks until resolved.
 
 ### Engagement Configuration
 
+**Run this Bash command now:**
+
+```bash
+ls engagement/config.yaml 2>/dev/null && echo "EXISTS" || echo "NONE"
 ```
-1. Bash: ls engagement/config.yaml 2>/dev/null && echo "EXISTS" || echo "NONE"
-2. If EXISTS → Read engagement/config.yaml, print values, skip to Initialize Engagement.
-   Do NOT ask config questions. Do NOT call AskUserQuestion.
-3. If NONE → call AskUserQuestion with all 5 questions below.
-```
+
+**If EXISTS** → Read `engagement/config.yaml`, print the values to the operator,
+and skip directly to **Initialize Engagement**. Do NOT ask config questions.
+
+**If NONE** → Ask the operator all 5 config questions below using AskUserQuestion,
+then write `engagement/config.yaml` from their answers. Omit keys where operator
+chose "Ask each time/when needed". If web proxy enabled, generate persistence
+files immediately.
+
+Config questions (only when config.yaml does not exist):
 
 ```
 Q1 — Scan type: Quick (recommended) | Full | Ask each time
@@ -497,10 +506,6 @@ Q3 — Spray intensity: Light ~30 (recommended) | Medium ~10k | Heavy ~100k | Sk
 Q4 — Recovery method: Local (recommended) | Export | Skip | Ask each time
 Q5 — Shell backend: shell-server (recommended) | Sliver (if RED_RUN_SLIVER_AVAILABLE=1) | Custom
 ```
-
-Write `engagement/config.yaml` from operator answers.
-Omit keys where operator chose "Ask each time/when needed".
-If web proxy enabled, generate persistence files immediately.
 
 `callback_ip`/`callback_interface` in config.yaml are manual overrides — if set,
 resolve once and include `Callback IP: <ip>` in every shell-related task.
