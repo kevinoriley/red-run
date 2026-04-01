@@ -1,0 +1,188 @@
+direction: down
+
+classes: {
+  lead: {
+    style: {
+      fill: "#553c9a"
+      stroke: "#e9d8fd"
+      font-color: "#e9d8fd"
+      border-radius: 8
+      bold: true
+    }
+  }
+  enum: {
+    style: {
+      fill: "#2b6cb0"
+      stroke: "#bee3f8"
+      font-color: "#bee3f8"
+      border-radius: 5
+    }
+  }
+  ops: {
+    style: {
+      fill: "#9b2c2c"
+      stroke: "#fed7d7"
+      font-color: "#fed7d7"
+      border-radius: 5
+    }
+  }
+  ondemand: {
+    style: {
+      fill: "#4a5568"
+      stroke: "#e2e8f0"
+      font-color: "#e2e8f0"
+      border-radius: 5
+      stroke-dash: 3
+    }
+  }
+  infra: {
+    style: {
+      fill: "#744210"
+      stroke: "#fefcbf"
+      font-color: "#fefcbf"
+      border-radius: 5
+    }
+  }
+  mcp: {
+    style: {
+      fill: "#2f855a"
+      stroke: "#c6f6d5"
+      font-color: "#c6f6d5"
+      border-radius: 5
+    }
+  }
+  container: {
+    style: {
+      fill: "#1a202c"
+      stroke: "#4a5568"
+      font-color: "#a0aec0"
+      border-radius: 8
+    }
+  }
+  skills-box: {
+    style: {
+      fill: "#1a202c"
+      stroke: "#3182ce"
+      font-color: "#bee3f8"
+      border-radius: 8
+      stroke-dash: 3
+    }
+  }
+  skill: {
+    style: {
+      fill: "#2a4365"
+      stroke: "#bee3f8"
+      font-color: "#bee3f8"
+      border-radius: 5
+    }
+  }
+}
+
+# ===== ROW 1: OPERATOR + LEAD + STATE =====
+
+operator: Operator {
+  style: {
+    fill: "#553c9a"
+    stroke: "#e9d8fd"
+    font-color: "#e9d8fd"
+    border-radius: 10
+    bold: true
+  }
+}
+
+lead: "Lead (/red-run-ctf)" {class: lead}
+
+state-mgr: state-mgr {class: infra}
+state-db: state.db {class: infra; shape: cylinder}
+state-viewer: state-viewer {class: infra}
+
+operator -> lead: "targets · approval" {style.stroke: "#e9d8fd"}
+lead -> state-mgr: "messages" {style.stroke: "#fefcbf"; style.stroke-dash: 3}
+state-mgr -> state-db: "writes" {style.stroke: "#fefcbf"}
+state-db -> state-viewer: "SSE" {style.stroke: "#fefcbf"; style.stroke-dash: 3}
+
+# ===== ROW 2: TEAMMATES =====
+
+teammates: Teammates {
+  class: container
+
+  enum: Enumeration {
+    style.fill: transparent
+    style.stroke: transparent
+    style.font-color: "#bee3f8"
+    grid-columns: 5
+    grid-gap: 6
+
+    net-enum {class: enum}
+    web-enum {class: enum}
+    ad-enum {class: enum}
+    lin-enum {class: enum}
+    win-enum {class: enum}
+  }
+
+  ops: Operations {
+    style.fill: transparent
+    style.stroke: transparent
+    style.font-color: "#fed7d7"
+    grid-columns: 4
+    grid-gap: 6
+
+    web-ops {class: ops}
+    ad-ops {class: ops}
+    lin-ops {class: ops}
+    win-ops {class: ops}
+  }
+
+  ondemand: On-demand {
+    style.fill: transparent
+    style.stroke: transparent
+    style.font-color: "#e2e8f0"
+    grid-columns: 5
+    grid-gap: 6
+
+    pivot {class: ondemand}
+    bypass {class: ondemand}
+    spray {class: ondemand}
+    recover {class: ondemand}
+    research {class: ondemand}
+  }
+}
+
+lead -> teammates: "spawn · assign" {style.stroke: "#e9d8fd"; style.stroke-dash: 3}
+operator -> teammates: "direct control" {style.stroke: "#e9d8fd"; style.stroke-dash: 3}
+
+# ===== ROW 3: MCP SERVERS =====
+
+mcp: MCP Servers {
+  class: container
+  grid-columns: 5
+  grid-gap: 6
+
+  shell-server {class: mcp}
+  nmap-server {class: mcp}
+  browser-server {class: mcp}
+  rdp-server {class: mcp}
+  skill-router {class: mcp}
+}
+
+teammates -> lead: "findings" {style.stroke: "#e9d8fd"; style.stroke-dash: 3}
+teammates -> state-mgr: "[action] writes" {style.stroke: "#fefcbf"; style.stroke-dash: 3}
+teammates -> mcp: "tool calls" {style.stroke: "#c6f6d5"; style.stroke-dash: 3}
+
+# ===== ROW 4: SKILLS =====
+
+skills: Skills {
+  class: skills-box
+  grid-columns: 3
+  grid-gap: 6
+
+  web {class: skill}
+  ad {class: skill}
+  privesc {class: skill}
+  network {class: skill}
+  credential {class: skill}
+  evasion {class: skill}
+  research {class: skill}
+}
+
+mcp -> skills: "skill-router loads" {style.stroke: "#c6f6d5"; style.stroke-dash: 3}

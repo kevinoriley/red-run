@@ -1,0 +1,188 @@
+direction: down
+
+classes: {
+  lead: {
+    style: {
+      fill: "#e9d8fd"
+      stroke: "#553c9a"
+      font-color: "#553c9a"
+      border-radius: 8
+      bold: true
+    }
+  }
+  enum: {
+    style: {
+      fill: "#bee3f8"
+      stroke: "#2b6cb0"
+      font-color: "#1a365d"
+      border-radius: 5
+    }
+  }
+  ops: {
+    style: {
+      fill: "#fed7d7"
+      stroke: "#9b2c2c"
+      font-color: "#742a2a"
+      border-radius: 5
+    }
+  }
+  ondemand: {
+    style: {
+      fill: "#e2e8f0"
+      stroke: "#4a5568"
+      font-color: "#2d3748"
+      border-radius: 5
+      stroke-dash: 3
+    }
+  }
+  infra: {
+    style: {
+      fill: "#fefcbf"
+      stroke: "#744210"
+      font-color: "#744210"
+      border-radius: 5
+    }
+  }
+  mcp: {
+    style: {
+      fill: "#c6f6d5"
+      stroke: "#2f855a"
+      font-color: "#22543d"
+      border-radius: 5
+    }
+  }
+  container: {
+    style: {
+      fill: "#f7fafc"
+      stroke: "#a0aec0"
+      font-color: "#2d3748"
+      border-radius: 8
+    }
+  }
+  skills-box: {
+    style: {
+      fill: "#ebf4ff"
+      stroke: "#3182ce"
+      font-color: "#2a4365"
+      border-radius: 8
+      stroke-dash: 3
+    }
+  }
+  skill: {
+    style: {
+      fill: "#bee3f8"
+      stroke: "#3182ce"
+      font-color: "#2a4365"
+      border-radius: 5
+    }
+  }
+}
+
+# ===== ROW 1: OPERATOR + LEAD + STATE =====
+
+operator: Operator {
+  style: {
+    fill: "#e9d8fd"
+    stroke: "#553c9a"
+    font-color: "#553c9a"
+    border-radius: 10
+    bold: true
+  }
+}
+
+lead: "Lead (/red-run-ctf)" {class: lead}
+
+state-mgr: state-mgr {class: infra}
+state-db: state.db {class: infra; shape: cylinder}
+state-viewer: state-viewer {class: infra}
+
+operator -> lead: "targets · approval" {style.stroke: "#553c9a"; style.font-color: "#553c9a"}
+lead -> state-mgr: "messages" {style.stroke: "#744210"; style.stroke-dash: 3; style.font-color: "#744210"}
+state-mgr -> state-db: "writes" {style.stroke: "#744210"; style.font-color: "#744210"}
+state-db -> state-viewer: "SSE" {style.stroke: "#744210"; style.stroke-dash: 3; style.font-color: "#744210"}
+
+# ===== ROW 2: TEAMMATES =====
+
+teammates: Teammates {
+  class: container
+
+  enum: Enumeration {
+    style.fill: transparent
+    style.stroke: transparent
+    style.font-color: "#1a365d"
+    grid-columns: 5
+    grid-gap: 6
+
+    net-enum {class: enum}
+    web-enum {class: enum}
+    ad-enum {class: enum}
+    lin-enum {class: enum}
+    win-enum {class: enum}
+  }
+
+  ops: Operations {
+    style.fill: transparent
+    style.stroke: transparent
+    style.font-color: "#742a2a"
+    grid-columns: 4
+    grid-gap: 6
+
+    web-ops {class: ops}
+    ad-ops {class: ops}
+    lin-ops {class: ops}
+    win-ops {class: ops}
+  }
+
+  ondemand: On-demand {
+    style.fill: transparent
+    style.stroke: transparent
+    style.font-color: "#2d3748"
+    grid-columns: 5
+    grid-gap: 6
+
+    pivot {class: ondemand}
+    bypass {class: ondemand}
+    spray {class: ondemand}
+    recover {class: ondemand}
+    research {class: ondemand}
+  }
+}
+
+lead -> teammates: "spawn · assign" {style.stroke: "#553c9a"; style.stroke-dash: 3; style.font-color: "#553c9a"}
+operator -> teammates: "direct control" {style.stroke: "#553c9a"; style.stroke-dash: 3; style.font-color: "#553c9a"}
+teammates -> lead: "findings" {style.stroke: "#553c9a"; style.stroke-dash: 3; style.font-color: "#553c9a"}
+teammates -> state-mgr: "[action] writes" {style.stroke: "#744210"; style.stroke-dash: 3; style.font-color: "#744210"}
+
+# ===== ROW 3: MCP SERVERS =====
+
+mcp: MCP Servers {
+  class: container
+  grid-columns: 5
+  grid-gap: 6
+
+  shell-server {class: mcp}
+  nmap-server {class: mcp}
+  browser-server {class: mcp}
+  rdp-server {class: mcp}
+  skill-router {class: mcp}
+}
+
+teammates -> mcp: "tool calls" {style.stroke: "#2f855a"; style.stroke-dash: 3; style.font-color: "#22543d"}
+
+# ===== ROW 4: SKILLS =====
+
+skills: Skills {
+  class: skills-box
+  grid-columns: 3
+  grid-gap: 6
+
+  web {class: skill}
+  ad {class: skill}
+  privesc {class: skill}
+  network {class: skill}
+  credential {class: skill}
+  evasion {class: skill}
+  research {class: skill}
+}
+
+mcp -> skills: "skill-router loads" {style.stroke: "#2f855a"; style.stroke-dash: 3; style.font-color: "#22543d"}

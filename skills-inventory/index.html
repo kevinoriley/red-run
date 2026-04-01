@@ -1,0 +1,1090 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Offensive security toolkit for Claude Code">
+      
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Skills Inventory - red-run</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="red" data-md-color-accent="red">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#skills-inventory" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="red-run" class="md-header__button md-logo" aria-label="red-run" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            red-run
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Skills Inventory
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/blacklanternsecurity/red-run" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="red-run" class="md-nav__button md-logo" aria-label="red-run" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    red-run
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/blacklanternsecurity/red-run" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../running-an-engagement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running an Engagement
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../engagement-state/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engagement State
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp-servers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Servers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../skills-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboard-and-monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard & Monitoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../writing-skills/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing Skills
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#web-application-33-skills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web Application (33 skills)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#active-directory-16-skills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Active Directory (16 skills)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#privilege-escalation-11-skills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Privilege Escalation (11 skills)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#infrastructure-4-skills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Infrastructure (4 skills)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#utility-2-skills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Utility (2 skills)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evasion-1-skill" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evasion (1 skill)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#planned" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Planned
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="skills-inventory">Skills Inventory</h1>
+<p>67 skills across 7 categories. All skills are <code>SKILL.md</code> files under <code>skills/</code>.</p>
+<h2 id="web-application-33-skills">Web Application (33 skills)</h2>
+<table>
+<thead>
+<tr>
+<th>Skill</th>
+<th>Technique</th>
+<th>Lines</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>web-discovery</code></td>
+<td>Content discovery, parameter fuzzing, vulnerability routing</td>
+<td>781</td>
+</tr>
+<tr>
+<td><code>sql-injection-union</code></td>
+<td>UNION-based extraction (MySQL, MSSQL, Postgres, Oracle, SQLite)</td>
+<td>349</td>
+</tr>
+<tr>
+<td><code>sql-injection-error</code></td>
+<td>Error-based extraction (EXTRACTVALUE, CONVERT, CAST)</td>
+<td>303</td>
+</tr>
+<tr>
+<td><code>sql-injection-blind</code></td>
+<td>Boolean, time-based, OOB blind extraction</td>
+<td>364</td>
+</tr>
+<tr>
+<td><code>sql-injection-stacked</code></td>
+<td>Stacked queries, second-order injection, command execution</td>
+<td>430</td>
+</tr>
+<tr>
+<td><code>xss-reflected</code></td>
+<td>Reflected XSS, filter/WAF/CSP bypass, impact demonstration</td>
+<td>404</td>
+</tr>
+<tr>
+<td><code>xss-stored</code></td>
+<td>Stored + blind XSS, callback setup, self-XSS escalation</td>
+<td>344</td>
+</tr>
+<tr>
+<td><code>xss-dom</code></td>
+<td>DOM-based XSS, sources/sinks, postMessage, DOM clobbering</td>
+<td>416</td>
+</tr>
+<tr>
+<td><code>ssti-jinja2</code></td>
+<td>Jinja2/Python SSTI (+ Mako, Tornado, Django)</td>
+<td>461</td>
+</tr>
+<tr>
+<td><code>ssti-twig</code></td>
+<td>Twig/PHP SSTI (+ Smarty, Blade, Latte)</td>
+<td>438</td>
+</tr>
+<tr>
+<td><code>ssti-freemarker</code></td>
+<td>Freemarker/Java SSTI (+ Velocity, SpEL, Thymeleaf, Pebble, Groovy)</td>
+<td>502</td>
+</tr>
+<tr>
+<td><code>ssrf</code></td>
+<td>Basic/blind SSRF, cloud metadata, filter bypass, gopher/dict protocol</td>
+<td>564</td>
+</tr>
+<tr>
+<td><code>lfi</code></td>
+<td>LFI, PHP wrappers, 8 LFI-to-RCE methods, filter bypass, RFI</td>
+<td>628</td>
+</tr>
+<tr>
+<td><code>command-injection</code></td>
+<td>OS command injection, filter bypass, blind techniques, argument injection, credential handoff</td>
+<td>610</td>
+</tr>
+<tr>
+<td><code>python-code-injection</code></td>
+<td>Python eval()/exec()/compile() injection, sandbox escape, subclass chain bypass</td>
+<td>744</td>
+</tr>
+<tr>
+<td><code>xxe</code></td>
+<td>Classic/blind/OOB XXE, error-based (remote + local DTD), XInclude, file format injection</td>
+<td>573</td>
+</tr>
+<tr>
+<td><code>file-upload-bypass</code></td>
+<td>Extension/content-type/magic byte bypass, config exploitation, polyglots, archive traversal</td>
+<td>604</td>
+</tr>
+<tr>
+<td><code>deserialization-java</code></td>
+<td>ysoserial gadget chains, JNDI/Log4Shell, JSF ViewState, WebLogic/JBoss/Jenkins</td>
+<td>504</td>
+</tr>
+<tr>
+<td><code>deserialization-php</code></td>
+<td>Magic methods, POP chains, PHPGGC, phar:// polyglots, Laravel APP_KEY, type juggling</td>
+<td>463</td>
+</tr>
+<tr>
+<td><code>deserialization-dotnet</code></td>
+<td>ysoserial.net, ViewState/machine keys, JSON.NET TypeNameHandling, .NET Remoting</td>
+<td>511</td>
+</tr>
+<tr>
+<td><code>jwt-attacks</code></td>
+<td>alg:none, key confusion, kid injection, jwk/jku spoofing, secret brute force, claim tampering</td>
+<td>581</td>
+</tr>
+<tr>
+<td><code>request-smuggling</code></td>
+<td>CL.TE, TE.CL, TE.TE obfuscation, H2 downgrade, h2c smuggling, response desync, cache poisoning</td>
+<td>590</td>
+</tr>
+<tr>
+<td><code>nosql-injection</code></td>
+<td>MongoDB operator injection, auth bypass, blind regex extraction, $where JS execution, Mongoose RCE</td>
+<td>544</td>
+</tr>
+<tr>
+<td><code>ldap-injection</code></td>
+<td>LDAP filter injection, wildcard auth bypass, blind attribute extraction, filter breakout, AD/OpenLDAP</td>
+<td>615</td>
+</tr>
+<tr>
+<td><code>idor</code></td>
+<td>Horizontal/vertical access control bypass, UUID/ObjectId prediction, API IDOR, encoding bypass</td>
+<td>596</td>
+</tr>
+<tr>
+<td><code>cors-misconfiguration</code></td>
+<td>Origin reflection, null origin, regex bypass, subdomain trust, wildcard abuse, CORS+IDOR chain</td>
+<td>591</td>
+</tr>
+<tr>
+<td><code>csrf</code></td>
+<td>Token bypass, SameSite bypass, JSON CSRF, file upload CSRF, WebSocket CSRF, clickjacking chain</td>
+<td>636</td>
+</tr>
+<tr>
+<td><code>oauth-attacks</code></td>
+<td>Redirect URI bypass, state bypass, code theft, token leakage, OIDC attacks, PKCE bypass, ATO chains</td>
+<td>636</td>
+</tr>
+<tr>
+<td><code>password-reset-poisoning</code></td>
+<td>Host header poisoning, Referer token leakage, email injection, token weakness, brute-force</td>
+<td>559</td>
+</tr>
+<tr>
+<td><code>2fa-bypass</code></td>
+<td>Response manipulation, direct navigation, OTP brute-force, backup codes, OAuth bypass, session attacks</td>
+<td>610</td>
+</tr>
+<tr>
+<td><code>race-condition</code></td>
+<td>Limit-overrun, HTTP/2 single-packet, last-byte sync, Turbo Intruder, TOCTOU, rate limit bypass</td>
+<td>742</td>
+</tr>
+<tr>
+<td><code>ajp-ghostcat</code></td>
+<td>AJP Ghostcat (CVE-2020-1938) file read, credential extraction, JSP inclusion RCE, AJP proxy bypass</td>
+<td>682</td>
+</tr>
+<tr>
+<td><code>tomcat-manager-deploy</code></td>
+<td>WAR deployment RCE via Tomcat manager-script/manager-gui API, msfvenom WAR generation, shell catching</td>
+<td>617</td>
+</tr>
+</tbody>
+</table>
+<h2 id="active-directory-16-skills">Active Directory (16 skills)</h2>
+<table>
+<thead>
+<tr>
+<th>Skill</th>
+<th>Technique</th>
+<th>Lines</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ad-discovery</code></td>
+<td>Domain enumeration (BloodHound, LDAP, NetExec), attack surface mapping, routing to 15 technique skills</td>
+<td>587</td>
+</tr>
+<tr>
+<td><code>kerberos-roasting</code></td>
+<td>Kerberoasting + AS-REP Roasting + Timeroasting, targeted kerberoasting via ACL abuse</td>
+<td>480</td>
+</tr>
+<tr>
+<td><code>password-spraying</code></td>
+<td>Lockout-safe domain spray (Kerberos/NTLM/OWA), policy enumeration, smart password generation</td>
+<td>537</td>
+</tr>
+<tr>
+<td><code>pass-the-hash</code></td>
+<td>PTH, Over-Pass-the-Hash, Pass-the-Key (AES), Pass-the-Ticket, lateral movement tools</td>
+<td>500</td>
+</tr>
+<tr>
+<td><code>kerberos-delegation</code></td>
+<td>Unconstrained (TGT harvesting + coercion), Constrained (S4U + SPN swapping), RBCD</td>
+<td>533</td>
+</tr>
+<tr>
+<td><code>kerberos-ticket-forging</code></td>
+<td>Golden, Silver, Diamond, Sapphire tickets + Pass-the-Ticket injection</td>
+<td>484</td>
+</tr>
+<tr>
+<td><code>acl-abuse</code></td>
+<td>GenericAll/Write, WriteDACL, WriteOwner, shadow credentials, AdminSDHolder persistence</td>
+<td>578</td>
+</tr>
+<tr>
+<td><code>adcs-template-abuse</code></td>
+<td>ESC1/2/3/6 — SAN manipulation, any-purpose EKU, enrollment agent, EDITF flag abuse</td>
+<td>486</td>
+</tr>
+<tr>
+<td><code>adcs-access-and-relay</code></td>
+<td>ESC4/5/7/8/11 — template/CA ACL abuse, NTLM relay to HTTP/RPC enrollment</td>
+<td>520</td>
+</tr>
+<tr>
+<td><code>adcs-persistence</code></td>
+<td>ESC9-15, Golden Certificate, certificate theft (DPAPI/CAPI/CNG), cert mapping persistence</td>
+<td>629</td>
+</tr>
+<tr>
+<td><code>auth-coercion-relay</code></td>
+<td>PetitPotam/PrinterBug/DFSCoerce coercion, NTLM relay (LDAP/SMB/ADCS/MSSQL), Kerberos relay, LLMNR/NBNS poisoning</td>
+<td>632</td>
+</tr>
+<tr>
+<td><code>credential-dumping</code></td>
+<td>DCSync, NTDS extraction, SAM dump, LAPS (legacy + Windows), gMSA/GoldenGMSA, dMSA BadSuccessor, DSRM</td>
+<td>626</td>
+</tr>
+<tr>
+<td><code>gpo-abuse</code></td>
+<td>GPO exploitation (SharpGPOAbuse/pyGPOAbuse/GroupPolicyBackdoor), SYSVOL script poisoning, GPP passwords</td>
+<td>621</td>
+</tr>
+<tr>
+<td><code>trust-attacks</code></td>
+<td>Trust enumeration, SID history injection (child to forest root), inter-realm TGT forging, PAM trust/shadow principals, cross-forest abuse</td>
+<td>488</td>
+</tr>
+<tr>
+<td><code>sccm-exploitation</code></td>
+<td>SCCM enumeration (sccmhunter/SharpSCCM), NAA credential extraction, MP relay to MSSQL, client push relay, PXE boot harvesting, app deployment</td>
+<td>550</td>
+</tr>
+<tr>
+<td><code>ad-persistence</code></td>
+<td>DCShadow, Skeleton Key, custom SSP (mimilib/memssp), security descriptor backdoors, ADFS Golden SAML, SID history persistence, golden certificate</td>
+<td>617</td>
+</tr>
+</tbody>
+</table>
+<p>All AD skills follow a <strong>Kerberos-first authentication</strong> convention — commands default to ccache-based Kerberos auth to avoid NTLM detection signatures (Event 4776, CrowdStrike Identity Module). Exception: relay/coercion attacks are inherently NTLM/network-level.</p>
+<h2 id="privilege-escalation-11-skills">Privilege Escalation (11 skills)</h2>
+<table>
+<thead>
+<tr>
+<th>Skill</th>
+<th>Technique</th>
+<th>Lines</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>windows-discovery</code></td>
+<td>WinPEAS/PowerUp/Seatbelt/Watson enumeration, OPSEC-safe privilege checks, routing to 5 technique skills</td>
+<td>590</td>
+</tr>
+<tr>
+<td><code>windows-token-impersonation</code></td>
+<td>Potato family (7+ variants by OS version), SeDebug/SeBackup/SeRestore/SeLoadDriver/SeManageVolume exploitation, FullPowers</td>
+<td>587</td>
+</tr>
+<tr>
+<td><code>windows-service-dll-abuse</code></td>
+<td>Unquoted paths, weak service perms, DLL search order hijacking, DLL proxying, COM hijacking, service triggers, auto-updater abuse</td>
+<td>619</td>
+</tr>
+<tr>
+<td><code>windows-uac-bypass</code></td>
+<td>Fodhelper/eventvwr/sdclt/SilentCleanup/CMSTP/WSReset, COM hijacking, AlwaysInstallElevated MSI, autorun exploitation</td>
+<td>652</td>
+</tr>
+<tr>
+<td><code>windows-credential-harvesting</code></td>
+<td>HiveNightmare, DPAPI (SharpDPAPI/mimikatz/dpapi.py), browser creds, PS history, unattend files, vaults, cloud creds</td>
+<td>563</td>
+</tr>
+<tr>
+<td><code>windows-kernel-exploits</code></td>
+<td>PrintNightmare/EternalBlue/MS16-032/MS15-051, BYOVD/loldrivers.io, privileged file write/delete, named pipes, leaked handles</td>
+<td>709</td>
+</tr>
+<tr>
+<td><code>linux-discovery</code></td>
+<td>LinPEAS/LinEnum/pspy/lse enumeration, system info, sudo/SUID/capabilities/cron assessment, routing to 4 technique skills</td>
+<td>664</td>
+</tr>
+<tr>
+<td><code>linux-sudo-suid-capabilities</code></td>
+<td>Sudo NOPASSWD/LD_PRELOAD/CVE-2021-3156/CVE-2019-14287, SUID GTFOBins, shared object injection, 20+ Linux capabilities</td>
+<td>836</td>
+</tr>
+<tr>
+<td><code>linux-cron-service-abuse</code></td>
+<td>Cron script hijack, tar/chown/rsync wildcard injection, systemd timer/service abuse, D-Bus command injection, PwnKit/CVE-2021-3560, Unix sockets</td>
+<td>744</td>
+</tr>
+<tr>
+<td><code>linux-file-path-abuse</code></td>
+<td>Writable /etc/passwd+shadow+sudoers, NFS no_root_squash, Docker/LXD/disk group escape, library hijacking, PATH hijack, profile injection</td>
+<td>928</td>
+</tr>
+<tr>
+<td><code>linux-kernel-exploits</code></td>
+<td>DirtyPipe/DirtyCow/GameOver(lay)/10+ CVEs, exploit suggesters, attackbox-first transfer, restricted shell escape, chroot escape, container kernel escape</td>
+<td>1091</td>
+</tr>
+</tbody>
+</table>
+<h2 id="infrastructure-4-skills">Infrastructure (4 skills)</h2>
+<table>
+<thead>
+<tr>
+<th>Skill</th>
+<th>Technique</th>
+<th>Lines</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>network-recon</code></td>
+<td>Passive recon, host discovery, nmap full scan, 20+ protocol service enumeration with quick wins, OS fingerprinting, vuln scanning, routing</td>
+<td>974</td>
+</tr>
+<tr>
+<td><code>pivoting-tunneling</code></td>
+<td>SSH tunneling (L/R/D/J/sshuttle/VPN), Ligolo-ng, Chisel, socat, Windows pivoting, DNS/ICMP/HTTP tunneling, multi-hop, tool compatibility</td>
+<td>1165</td>
+</tr>
+<tr>
+<td><code>container-escapes</code></td>
+<td>Docker socket/privileged/cgroup escape, sensitive mounts, capability abuse, K8s SA token/RBAC/etcd/kubelet exploitation, container CVEs, cloud metadata</td>
+<td>1115</td>
+</tr>
+<tr>
+<td><code>smb-exploitation</code></td>
+<td>MS08-067, MS17-010/EternalBlue, MS09-050, SMBGhost, OS compatibility matrix, Metasploit target selection, standalone Python fallback</td>
+<td>479</td>
+</tr>
+</tbody>
+</table>
+<h2 id="utility-2-skills">Utility (2 skills)</h2>
+<table>
+<thead>
+<tr>
+<th>Skill</th>
+<th>Purpose</th>
+<th>Lines</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>orchestrator</code></td>
+<td>Takes a target, runs recon, routes to discovery skills, chains vulnerabilities via state management</td>
+<td>788</td>
+</tr>
+<tr>
+<td><code>retrospective</code></td>
+<td>Post-engagement lessons-learned analysis, skill routing gaps, actionable improvements</td>
+<td>304</td>
+</tr>
+</tbody>
+</table>
+<h2 id="evasion-1-skill">Evasion (1 skill)</h2>
+<table>
+<thead>
+<tr>
+<th>Skill</th>
+<th>Technique</th>
+<th>Lines</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>av-edr-evasion</code></td>
+<td>Custom payload compilation (mingw/Go), AMSI bypass, ETW patching, LOLBin execution, AV-safe payload delivery</td>
+<td>705</td>
+</tr>
+</tbody>
+</table>
+<h2 id="planned">Planned</h2>
+<ul>
+<li><strong>Active Directory</strong> (6 extended) — ADIDNS poisoning, DCOM lateral movement, RODC exploitation, named CVEs (NoPAC/PrintNightmare/ZeroLogon), MSSQL AD abuse, deployment targets (MDT/WSUS/SCOM)</li>
+<li><strong>Infrastructure</strong> (extended) — cloud (AWS/Azure), CI/CD</li>
+<li><strong>Red Team</strong> — C2, initial access, evasion, persistence, credential dumping</li>
+<li><strong>Supplemental</strong> — hash cracking, shell cheatsheet, database attacks, binary exploitation</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "content.code.copy", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,1751 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Offensive security toolkit for Claude Code">
+      
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Attackbox Dependencies - red-run</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="red" data-md-color-accent="red">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#attackbox-dependencies" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="red-run" class="md-header__button md-logo" aria-label="red-run" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            red-run
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Attackbox Dependencies
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/blacklanternsecurity/red-run" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="red-run" class="md-nav__button md-logo" aria-label="red-run" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    red-run
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/blacklanternsecurity/red-run" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../running-an-engagement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running an Engagement
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../engagement-state/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engagement State
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp-servers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Servers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../skills-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboard-and-monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard & Monitoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../writing-skills/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing Skills
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#bundled-installed-by-installsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bundled (installed by install.sh)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#attackbox-tools-operator-must-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attackbox tools (operator must install)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Attackbox tools (operator must install)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#network-scanning-and-enumeration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Network scanning and enumeration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#web-application-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web application testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deserialization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deserialization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#active-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Active Directory
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sccm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SCCM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gpo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GPO
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pivoting-and-tunneling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pivoting and tunneling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#credential-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Credential recovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#evasion-and-payload-building" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evasion and payload building
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#linux-privilege-escalation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Linux privilege escalation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#general-utilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        General utilities
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wordlists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wordlists
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#target-side-tools-not-installed-on-attackbox" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Target-side tools (not installed on attackbox)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Target-side tools (not installed on attackbox)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#linux-target-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Linux target tools
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#windows-target-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Windows target tools
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-setup-kali" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick setup (Kali)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="attackbox-dependencies">Attackbox Dependencies</h1>
+<p>Tools referenced by red-run skills that must be available before an engagement.
+Agents cannot download files or installers from the internet during execution —
+everything must be pre-installed or staged on the attackbox.</p>
+<h2 id="bundled-installed-by-installsh">Bundled (installed by <code>install.sh</code>)</h2>
+<p>These are installed automatically. No operator action needed.</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Location</th>
+<th>Provided by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Impacket (all scripts)</td>
+<td>Docker: <code>red-run-shell</code> + attackbox</td>
+<td><code>pip install impacket</code> in image; also needed locally via <code>pipx install impacket</code></td>
+</tr>
+<tr>
+<td>evil-winrm</td>
+<td>Docker: <code>red-run-shell</code></td>
+<td><code>gem install evil-winrm</code> in image</td>
+</tr>
+<tr>
+<td>Responder</td>
+<td>Docker: <code>red-run-shell</code> <code>/opt/Responder/</code></td>
+<td>git clone in image</td>
+</tr>
+<tr>
+<td>mitm6</td>
+<td>Docker: <code>red-run-shell</code></td>
+<td><code>pip install mitm6</code> in image</td>
+</tr>
+<tr>
+<td>chisel (proxy)</td>
+<td>Docker: <code>red-run-shell</code> <code>/usr/local/bin/chisel</code></td>
+<td>Binary download in image</td>
+</tr>
+<tr>
+<td>ligolo-ng (proxy)</td>
+<td>Docker: <code>red-run-shell</code> <code>/usr/local/bin/ligolo-proxy</code></td>
+<td>Binary download in image</td>
+</tr>
+<tr>
+<td>socat</td>
+<td>Docker: <code>red-run-shell</code></td>
+<td>apt in image</td>
+</tr>
+<tr>
+<td>tcpdump</td>
+<td>Docker: <code>red-run-shell</code></td>
+<td>apt in image</td>
+</tr>
+<tr>
+<td>nmap</td>
+<td>Docker: <code>red-run-nmap</code></td>
+<td>Alpine package in image</td>
+</tr>
+<tr>
+<td>Chromium</td>
+<td>Playwright managed</td>
+<td><code>playwright install chromium</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="attackbox-tools-operator-must-install">Attackbox tools (operator must install)</h2>
+<p>Tools that run on the attackbox (Linux). Organized by category with installation
+commands for Kali/Debian-based systems. Many are pre-installed on Kali.</p>
+<p><strong>All tools must be in <code>$PATH</code>.</strong> Agents find tools via <code>command -v</code> / <code>which</code>.
+For git-cloned repos, symlink the main script into <code>~/.local/bin/</code> or wherever
+your PATH points. Run <code>bash preflight.sh</code> to verify.</p>
+<h3 id="network-scanning-and-enumeration">Network scanning and enumeration</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Skills</th>
+<th>Install</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>nmap</td>
+<td>network-recon</td>
+<td><code>sudo apt install nmap</code> (also in Docker, but useful locally)</td>
+</tr>
+<tr>
+<td>nuclei</td>
+<td>network-recon, web-discovery</td>
+<td><code>go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest</code></td>
+</tr>
+<tr>
+<td>httpx</td>
+<td>network-recon, web-discovery</td>
+<td><code>go install github.com/projectdiscovery/httpx/cmd/httpx@latest</code></td>
+</tr>
+<tr>
+<td>NetExec (nxc)</td>
+<td>network-recon, ad-discovery, credential-dumping, kerberos-roasting, pass-the-hash, password-spraying, smb-exploitation, many AD skills</td>
+<td><code>pipx install netexec</code></td>
+</tr>
+<tr>
+<td>enum4linux-ng</td>
+<td>network-recon, password-spraying</td>
+<td><code>pipx install enum4linux-ng</code></td>
+</tr>
+<tr>
+<td>manspider</td>
+<td>ad-discovery, gpo-abuse</td>
+<td><code>pipx install manspider</code></td>
+</tr>
+<tr>
+<td>snmpwalk</td>
+<td>network-recon</td>
+<td><code>sudo apt install snmp</code></td>
+</tr>
+<tr>
+<td>onesixtyone</td>
+<td>network-recon</td>
+<td><code>sudo apt install onesixtyone</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="web-application-testing">Web application testing</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Skills</th>
+<th>Install</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ffuf</td>
+<td>web-discovery</td>
+<td><code>go install github.com/ffuf/ffuf/v2@latest</code></td>
+</tr>
+<tr>
+<td>Burp Suite</td>
+<td>web-discovery, most web exploitation skills</td>
+<td>Optional but recommended for proxy capture; install from PortSwigger packages or tarball</td>
+</tr>
+<tr>
+<td>sqlmap</td>
+<td>sql-injection-union, sql-injection-error, sql-injection-blind, sql-injection-stacked</td>
+<td><code>sudo apt install sqlmap</code></td>
+</tr>
+<tr>
+<td>wpscan</td>
+<td>web-discovery</td>
+<td><code>sudo gem install wpscan</code></td>
+</tr>
+<tr>
+<td>git-dumper</td>
+<td>web-discovery, command-injection</td>
+<td><code>pipx install git-dumper</code></td>
+</tr>
+<tr>
+<td>arjun</td>
+<td>web-discovery</td>
+<td><code>pipx install arjun</code></td>
+</tr>
+<tr>
+<td>paramspider</td>
+<td>web-discovery</td>
+<td><code>pipx install paramspider</code></td>
+</tr>
+<tr>
+<td>commix</td>
+<td>command-injection</td>
+<td><code>sudo apt install commix</code> or git clone</td>
+</tr>
+<tr>
+<td>dalfox</td>
+<td>xss-reflected</td>
+<td><code>go install github.com/hahwul/dalfox/v2@latest</code></td>
+</tr>
+<tr>
+<td>XSStrike</td>
+<td>xss-reflected</td>
+<td><code>git clone https://github.com/s0md3v/XSStrike.git</code></td>
+</tr>
+<tr>
+<td>sstimap</td>
+<td>ssti-jinja2, ssti-freemarker, ssti-twig</td>
+<td><code>pipx install sstimap</code></td>
+</tr>
+<tr>
+<td>tplmap</td>
+<td>ssti-jinja2, ssti-freemarker, ssti-twig</td>
+<td><code>git clone https://github.com/epinna/tplmap.git</code></td>
+</tr>
+<tr>
+<td>TInjA</td>
+<td>ssti-jinja2, ssti-freemarker, ssti-twig</td>
+<td><code>go install github.com/Hackmanit/TInjA@latest</code></td>
+</tr>
+<tr>
+<td>Fenjing</td>
+<td>ssti-jinja2</td>
+<td><code>pipx install fenjing</code></td>
+</tr>
+<tr>
+<td>ssrfmap</td>
+<td>ssrf</td>
+<td><code>git clone https://github.com/swisskyrepo/SSRFmap.git</code></td>
+</tr>
+<tr>
+<td>gopherus</td>
+<td>ssrf</td>
+<td><code>git clone https://github.com/tarunkant/Gopherus.git</code></td>
+</tr>
+<tr>
+<td>interactsh</td>
+<td>xxe, ssrf, command-injection</td>
+<td><code>go install github.com/projectdiscovery/interactsh/cmd/interactsh-client@latest</code></td>
+</tr>
+<tr>
+<td>xxeserv</td>
+<td>xxe</td>
+<td><code>go install github.com/staaldraad/xxeserv@latest</code></td>
+</tr>
+<tr>
+<td>XXEinjector</td>
+<td>xxe</td>
+<td><code>git clone https://github.com/enjoiz/XXEinjector.git</code></td>
+</tr>
+<tr>
+<td>jwt-tool</td>
+<td>jwt-attacks</td>
+<td><code>pipx install jwt-tool</code></td>
+</tr>
+<tr>
+<td>domdig</td>
+<td>xss-dom</td>
+<td><code>npm install -g domdig</code></td>
+</tr>
+<tr>
+<td>php_filter_chain_generator</td>
+<td>lfi</td>
+<td><code>git clone https://github.com/synacktiv/php_filter_chain_generator.git</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="deserialization">Deserialization</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Skills</th>
+<th>Install</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ysoserial (Java)</td>
+<td>deserialization-java</td>
+<td>Download JAR from <a href="https://github.com/frohoff/ysoserial">GitHub releases</a></td>
+</tr>
+<tr>
+<td>ysoserial.net</td>
+<td>deserialization-dotnet</td>
+<td>Download from <a href="https://github.com/pwntester/ysoserial.net">GitHub releases</a> (Windows)</td>
+</tr>
+<tr>
+<td>marshalsec</td>
+<td>deserialization-java</td>
+<td><code>git clone https://github.com/mbechler/marshalsec.git</code> + <code>mvn package</code></td>
+</tr>
+<tr>
+<td>phpggc</td>
+<td>deserialization-php</td>
+<td><code>git clone https://github.com/ambionics/phpggc.git</code></td>
+</tr>
+<tr>
+<td>jexboss</td>
+<td>deserialization-java</td>
+<td><code>git clone https://github.com/joaomatosf/jexboss.git</code></td>
+</tr>
+<tr>
+<td>Blacklist3r</td>
+<td>deserialization-dotnet</td>
+<td>Download from GitHub (Windows)</td>
+</tr>
+<tr>
+<td>badsecrets</td>
+<td>deserialization-dotnet</td>
+<td><code>pipx install badsecrets</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="active-directory">Active Directory</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Skills</th>
+<th>Install</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BloodHound CE</td>
+<td>ad-discovery, acl-abuse, kerberos-delegation, gpo-abuse</td>
+<td><code>pipx install bloodhound</code> (collector: <code>bloodhound-python</code>)</td>
+</tr>
+<tr>
+<td>rusthound-ce</td>
+<td>ad-discovery</td>
+<td>Download from <a href="https://github.com/NH-RED-TEAM/RustHound-CE">GitHub releases</a></td>
+</tr>
+<tr>
+<td>Certipy</td>
+<td>adcs-template-abuse, adcs-access-and-relay, adcs-persistence, acl-abuse, ad-discovery</td>
+<td><code>pipx install certipy-ad</code></td>
+</tr>
+<tr>
+<td>bloodyAD</td>
+<td>ad-discovery, acl-abuse, credential-dumping, kerberos-delegation, gpo-abuse, trust-attacks</td>
+<td><code>pipx install bloodyad</code></td>
+</tr>
+<tr>
+<td>kerbrute</td>
+<td>password-spraying</td>
+<td>Download from <a href="https://github.com/ropnop/kerbrute">GitHub releases</a></td>
+</tr>
+<tr>
+<td>pywhisker</td>
+<td>acl-abuse</td>
+<td><code>pipx install pywhisker</code></td>
+</tr>
+<tr>
+<td>dacledit.py</td>
+<td>acl-abuse</td>
+<td>Part of impacket (bundled in Docker) or <code>git clone https://github.com/ShutdownRepo/dacledit</code></td>
+</tr>
+<tr>
+<td>targetedKerberoast</td>
+<td>kerberos-roasting</td>
+<td><code>git clone https://github.com/ShutdownRepo/targetedKerberoast</code></td>
+</tr>
+<tr>
+<td>krbrelayx</td>
+<td>kerberos-delegation, auth-coercion-relay</td>
+<td><code>git clone https://github.com/dirkjanm/krbrelayx</code></td>
+</tr>
+<tr>
+<td>PetitPotam</td>
+<td>adcs-access-and-relay, auth-coercion-relay, kerberos-delegation</td>
+<td><code>git clone https://github.com/topotam/PetitPotam</code></td>
+</tr>
+<tr>
+<td>printerbug.py</td>
+<td>auth-coercion-relay, kerberos-delegation</td>
+<td>Part of krbrelayx repo</td>
+</tr>
+<tr>
+<td>DFSCoerce</td>
+<td>adcs-access-and-relay, auth-coercion-relay</td>
+<td><code>git clone https://github.com/Wh04m1001/DFSCoerce</code></td>
+</tr>
+<tr>
+<td>ShadowCoerce</td>
+<td>auth-coercion-relay</td>
+<td><code>git clone https://github.com/ShutdownRepo/ShadowCoerce</code></td>
+</tr>
+<tr>
+<td>dnstool.py</td>
+<td>auth-coercion-relay</td>
+<td>Part of krbrelayx repo</td>
+</tr>
+<tr>
+<td>modifyCertTemplate.py</td>
+<td>adcs-access-and-relay</td>
+<td><code>git clone https://github.com/fortalice/modifyCertTemplate</code></td>
+</tr>
+<tr>
+<td>gMSADumper</td>
+<td>credential-dumping</td>
+<td><code>git clone https://github.com/micahvandeusen/gMSADumper</code></td>
+</tr>
+<tr>
+<td>ADFSpoof</td>
+<td>ad-persistence</td>
+<td><code>git clone https://github.com/mandiant/ADFSpoof</code></td>
+</tr>
+<tr>
+<td>PKINITtools (gettgtpkinit.py)</td>
+<td>adcs-template-abuse, adcs-access-and-relay, auth-coercion-relay</td>
+<td><code>git clone https://github.com/dirkjanm/PKINITtools</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="sccm">SCCM</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Skills</th>
+<th>Install</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sccmhunter</td>
+<td>sccm-exploitation</td>
+<td><code>pipx install sccmhunter</code></td>
+</tr>
+<tr>
+<td>pxethiefy</td>
+<td>sccm-exploitation</td>
+<td><code>git clone https://github.com/MWR-CyberSec/PXEThief</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="gpo">GPO</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Skills</th>
+<th>Install</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pyGPOAbuse</td>
+<td>gpo-abuse</td>
+<td><code>git clone https://github.com/Hackndo/pyGPOAbuse</code></td>
+</tr>
+<tr>
+<td>GroupPolicyBackdoor</td>
+<td>gpo-abuse</td>
+<td><code>git clone https://github.com/rootSySdk/GroupPolicyBackdoor</code></td>
+</tr>
+<tr>
+<td>GPOHound</td>
+<td>gpo-abuse</td>
+<td><code>pipx install gpohound</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="pivoting-and-tunneling">Pivoting and tunneling</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Skills</th>
+<th>Install</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sshuttle</td>
+<td>pivoting-tunneling</td>
+<td><code>sudo apt install sshuttle</code></td>
+</tr>
+<tr>
+<td>proxychains</td>
+<td>pivoting-tunneling</td>
+<td><code>sudo apt install proxychains4</code></td>
+</tr>
+<tr>
+<td>autossh</td>
+<td>pivoting-tunneling</td>
+<td><code>sudo apt install autossh</code></td>
+</tr>
+<tr>
+<td>dnscat2</td>
+<td>pivoting-tunneling</td>
+<td><code>git clone https://github.com/iagox86/dnscat2.git</code> + <code>gem install bundler</code></td>
+</tr>
+<tr>
+<td>iodine</td>
+<td>pivoting-tunneling</td>
+<td><code>sudo apt install iodine</code></td>
+</tr>
+<tr>
+<td>FRP</td>
+<td>pivoting-tunneling</td>
+<td>Download from <a href="https://github.com/fatedier/frp">GitHub releases</a></td>
+</tr>
+<tr>
+<td>neo-reGeorg</td>
+<td>pivoting-tunneling</td>
+<td><code>git clone https://github.com/L-codes/Neo-reGeorg</code></td>
+</tr>
+<tr>
+<td>rpivot</td>
+<td>pivoting-tunneling</td>
+<td><code>git clone https://github.com/klsecservices/rpivot</code></td>
+</tr>
+<tr>
+<td>Metasploit</td>
+<td>pivoting-tunneling, smb-exploitation, windows-kernel-exploits, windows-token-impersonation</td>
+<td><code>sudo apt install metasploit-framework</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="credential-recovery">Credential recovery</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Skills</th>
+<th>Install</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>hashcat</td>
+<td>credential-recovery</td>
+<td><code>sudo apt install hashcat</code></td>
+</tr>
+<tr>
+<td>john (jumbo)</td>
+<td>credential-recovery</td>
+<td><code>sudo apt install john</code></td>
+</tr>
+<tr>
+<td>hydra</td>
+<td>password-spraying</td>
+<td><code>sudo apt install hydra</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="evasion-and-payload-building">Evasion and payload building</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Skills</th>
+<th>Install</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>mingw-w64</td>
+<td>av-edr-evasion, windows-service-dll-abuse, linux-file-path-abuse</td>
+<td><code>sudo apt install mingw-w64</code></td>
+</tr>
+<tr>
+<td>Go compiler</td>
+<td>av-edr-evasion</td>
+<td><code>sudo apt install golang-go</code></td>
+</tr>
+<tr>
+<td>msfvenom</td>
+<td>smb-exploitation, windows-kernel-exploits, windows-service-dll-abuse, windows-uac-bypass</td>
+<td>Part of <code>metasploit-framework</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="linux-privilege-escalation">Linux privilege escalation</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Skills</th>
+<th>Install</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>searchsploit</td>
+<td>linux-kernel-exploits</td>
+<td><code>sudo apt install exploitdb</code></td>
+</tr>
+<tr>
+<td>gcc</td>
+<td>linux-kernel-exploits, linux-file-path-abuse</td>
+<td><code>sudo apt install build-essential</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="general-utilities">General utilities</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Skills</th>
+<th>Install</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>curl</td>
+<td>many</td>
+<td><code>sudo apt install curl</code></td>
+</tr>
+<tr>
+<td>openssl</td>
+<td>jwt-attacks, adcs-persistence, credential-dumping, xmpp-enumeration</td>
+<td><code>sudo apt install openssl</code></td>
+</tr>
+<tr>
+<td>ldapsearch</td>
+<td>ad-discovery, password-spraying</td>
+<td><code>sudo apt install ldap-utils</code></td>
+</tr>
+<tr>
+<td>rpcclient</td>
+<td>password-spraying</td>
+<td><code>sudo apt install smbclient</code></td>
+</tr>
+<tr>
+<td>jq</td>
+<td>multiple</td>
+<td><code>sudo apt install jq</code></td>
+</tr>
+<tr>
+<td>exiftool</td>
+<td>deserialization-php</td>
+<td><code>sudo apt install libimage-exiftool-perl</code></td>
+</tr>
+<tr>
+<td>ruby</td>
+<td>dnscat2, XXEinjector</td>
+<td><code>sudo apt install ruby</code></td>
+</tr>
+<tr>
+<td>Java runtime</td>
+<td>ysoserial, marshalsec</td>
+<td><code>sudo apt install default-jdk</code></td>
+</tr>
+<tr>
+<td>Python 3</td>
+<td>many</td>
+<td>Pre-installed on most distros</td>
+</tr>
+<tr>
+<td>tmux</td>
+<td>pivoting-tunneling</td>
+<td><code>sudo apt install tmux</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="wordlists">Wordlists</h2>
+<table>
+<thead>
+<tr>
+<th>Resource</th>
+<th>Skills</th>
+<th>Expected path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SecLists</td>
+<td>web-discovery, password-spraying, jwt-attacks</td>
+<td><code>/usr/share/seclists/</code> (<code>sudo apt install seclists</code>)</td>
+</tr>
+<tr>
+<td>rockyou.txt</td>
+<td>credential-recovery, jwt-attacks</td>
+<td><code>/usr/share/wordlists/rockyou.txt</code></td>
+</tr>
+<tr>
+<td>jwt-secrets</td>
+<td>jwt-attacks</td>
+<td><code>git clone https://github.com/wallarm/jwt-secrets</code></td>
+</tr>
+</tbody>
+</table>
+<p>Key SecLists paths used by skills:</p>
+<ul>
+<li><code>Discovery/Web-Content/raft-small-words.txt</code></li>
+<li><code>Discovery/Web-Content/quickhits.txt</code></li>
+<li><code>Discovery/Web-Content/api/api-endpoints.txt</code></li>
+<li><code>Discovery/Web-Content/burp-parameter-names.txt</code></li>
+<li><code>Discovery/DNS/subdomains-top1million-5000.txt</code></li>
+<li><code>Passwords/Common-Credentials/500-worst-passwords.txt</code></li>
+<li><code>Passwords/Common-Credentials/10k-most-common.txt</code></li>
+<li><code>Passwords/Common-Credentials/100k-most-used-passwords-NCSC.txt</code></li>
+</ul>
+<h2 id="target-side-tools-not-installed-on-attackbox">Target-side tools (not installed on attackbox)</h2>
+<p>These are transferred to targets during engagements. Download them to the
+attackbox ahead of time and ensure they're in <code>$PATH</code> so agents can find them.
+Agents will not download these — they expect them pre-staged.</p>
+<h3 id="linux-target-tools">Linux target tools</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Skills</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LinPEAS (linpeas.sh)</td>
+<td>linux-discovery</td>
+<td><a href="https://github.com/peass-ng/PEASS-ng">GitHub releases</a></td>
+</tr>
+<tr>
+<td>linux-smart-enumeration (lse.sh)</td>
+<td>linux-discovery</td>
+<td><a href="https://github.com/diego-treitos/linux-smart-enumeration">GitHub</a></td>
+</tr>
+<tr>
+<td>LinEnum</td>
+<td>linux-discovery</td>
+<td><a href="https://github.com/rebootuser/LinEnum">GitHub</a></td>
+</tr>
+<tr>
+<td>pspy</td>
+<td>linux-cron-service-abuse, linux-discovery</td>
+<td><a href="https://github.com/DominicBreuker/pspy">GitHub releases</a></td>
+</tr>
+<tr>
+<td>linux-exploit-suggester</td>
+<td>linux-kernel-exploits, linux-discovery</td>
+<td><a href="https://github.com/The-Z-Labs/linux-exploit-suggester">GitHub</a></td>
+</tr>
+<tr>
+<td>deepce</td>
+<td>container-escapes</td>
+<td><a href="https://github.com/stealthcopter/deepce">GitHub</a></td>
+</tr>
+<tr>
+<td>CDK</td>
+<td>container-escapes</td>
+<td><a href="https://github.com/cdk-team/CDK">GitHub releases</a></td>
+</tr>
+<tr>
+<td>amicontained</td>
+<td>container-escapes</td>
+<td><a href="https://github.com/genuinetools/amicontained">GitHub releases</a></td>
+</tr>
+<tr>
+<td>chisel (agent)</td>
+<td>pivoting-tunneling</td>
+<td><a href="https://github.com/jpillora/chisel">GitHub releases</a> (Linux + Windows builds)</td>
+</tr>
+<tr>
+<td>ligolo-ng (agent)</td>
+<td>pivoting-tunneling</td>
+<td><a href="https://github.com/nicocha30/ligolo-ng">GitHub releases</a> (Linux + Windows builds)</td>
+</tr>
+<tr>
+<td>socat (static)</td>
+<td>pivoting-tunneling</td>
+<td>Static build for target transfer</td>
+</tr>
+</tbody>
+</table>
+<h3 id="windows-target-tools">Windows target tools</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Skills</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WinPEAS (winpeas.exe)</td>
+<td>windows-discovery</td>
+<td><a href="https://github.com/peass-ng/PEASS-ng">GitHub releases</a></td>
+</tr>
+<tr>
+<td>Seatbelt</td>
+<td>windows-discovery</td>
+<td><a href="https://github.com/GhostPack/Seatbelt">GitHub</a> (compile with VS)</td>
+</tr>
+<tr>
+<td>PrivescCheck</td>
+<td>windows-discovery</td>
+<td><a href="https://github.com/itm4n/PrivescCheck">GitHub</a></td>
+</tr>
+<tr>
+<td>PowerUp</td>
+<td>windows-discovery, windows-service-dll-abuse, windows-uac-bypass</td>
+<td>Part of <a href="https://github.com/PowerShellMafia/PowerSploit">PowerSploit</a></td>
+</tr>
+<tr>
+<td>RunasCs.exe</td>
+<td>credential context enumeration (run commands as another user)</td>
+<td><a href="https://github.com/antonioCoco/RunasCs">GitHub releases</a></td>
+</tr>
+<tr>
+<td>Rubeus</td>
+<td>kerberos-ticket-forging, kerberos-delegation, pass-the-hash, trust-attacks, ad-persistence</td>
+<td><a href="https://github.com/GhostPack/Rubeus">GitHub</a> (compile with VS)</td>
+</tr>
+<tr>
+<td>mimikatz</td>
+<td>ad-persistence, credential-dumping, pass-the-hash, kerberos-ticket-forging, windows-credential-harvesting, windows-token-impersonation</td>
+<td><a href="https://github.com/gentilkiwi/mimikatz">GitHub releases</a></td>
+</tr>
+<tr>
+<td>SharpDPAPI</td>
+<td>windows-credential-harvesting, adcs-persistence</td>
+<td><a href="https://github.com/GhostPack/SharpDPAPI">GitHub</a> (compile with VS)</td>
+</tr>
+<tr>
+<td>SharpChrome</td>
+<td>windows-credential-harvesting</td>
+<td>Part of SharpDPAPI repo</td>
+</tr>
+<tr>
+<td>SharpGPOAbuse</td>
+<td>gpo-abuse</td>
+<td><a href="https://github.com/FSecureLABS/SharpGPOAbuse">GitHub</a> (compile with VS)</td>
+</tr>
+<tr>
+<td>SharpSCCM</td>
+<td>sccm-exploitation</td>
+<td><a href="https://github.com/Mayyhem/SharpSCCM">GitHub</a> (compile with VS)</td>
+</tr>
+<tr>
+<td>Certify</td>
+<td>adcs-template-abuse, adcs-access-and-relay</td>
+<td><a href="https://github.com/GhostPack/Certify">GitHub</a> (compile with VS)</td>
+</tr>
+<tr>
+<td>ForgeCert</td>
+<td>ad-persistence, adcs-persistence</td>
+<td><a href="https://github.com/GhostPack/ForgeCert">GitHub</a> (compile with VS)</td>
+</tr>
+<tr>
+<td>JuicyPotato</td>
+<td>windows-token-impersonation</td>
+<td><a href="https://github.com/ohpe/juicy-potato">GitHub releases</a> (x64 only)</td>
+</tr>
+<tr>
+<td>JuicyPotatoNG</td>
+<td>windows-token-impersonation</td>
+<td><a href="https://github.com/antonioCoco/JuicyPotatoNG">GitHub releases</a></td>
+</tr>
+<tr>
+<td>PrintSpoofer</td>
+<td>windows-token-impersonation</td>
+<td><a href="https://github.com/itm4n/PrintSpoofer">GitHub releases</a> (x64 + x86)</td>
+</tr>
+<tr>
+<td>GodPotato</td>
+<td>windows-token-impersonation</td>
+<td><a href="https://github.com/BeichenDream/GodPotato">GitHub releases</a> (NET4 + NET35)</td>
+</tr>
+<tr>
+<td>EfsPotato</td>
+<td>windows-token-impersonation</td>
+<td><a href="https://github.com/zcgonvh/EfsPotato">GitHub</a> (compile from source)</td>
+</tr>
+<tr>
+<td>SigmaPotato</td>
+<td>windows-token-impersonation</td>
+<td><a href="https://github.com/tylerdotrar/SigmaPotato">GitHub releases</a></td>
+</tr>
+<tr>
+<td>PrintNotifyPotato</td>
+<td>windows-token-impersonation</td>
+<td><a href="https://github.com/BeichenDream/PrintNotifyPotato">GitHub releases</a> (when Spooler disabled)</td>
+</tr>
+<tr>
+<td>RoguePotato</td>
+<td>windows-token-impersonation</td>
+<td><a href="https://github.com/antonioCoco/RoguePotato">GitHub</a></td>
+</tr>
+<tr>
+<td>FullPowers</td>
+<td>windows-token-impersonation</td>
+<td><a href="https://github.com/itm4n/FullPowers">GitHub</a></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Potato binaries staging:</strong> Pre-download to <code>/usr/share/windows-binaries/potatoes/</code> so agents
+can find and transfer them during engagements. Run <code>bash preflight.sh --target-tools</code> to check.</p>
+<p><div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>/usr/share/windows-binaries/potatoes<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>/usr/share/windows-binaries/potatoes
+sudo<span class="w"> </span>curl<span class="w"> </span>-sLO<span class="w"> </span>https://github.com/BeichenDream/GodPotato/releases/download/V1.20/GodPotato-NET4.exe
+sudo<span class="w"> </span>curl<span class="w"> </span>-sLO<span class="w"> </span>https://github.com/BeichenDream/GodPotato/releases/download/V1.20/GodPotato-NET35.exe
+sudo<span class="w"> </span>curl<span class="w"> </span>-sLO<span class="w"> </span>https://github.com/itm4n/PrintSpoofer/releases/download/v1.0/PrintSpoofer64.exe
+sudo<span class="w"> </span>curl<span class="w"> </span>-sLO<span class="w"> </span>https://github.com/itm4n/PrintSpoofer/releases/download/v1.0/PrintSpoofer32.exe
+sudo<span class="w"> </span>curl<span class="w"> </span>-sLO<span class="w"> </span>https://github.com/antonioCoco/JuicyPotatoNG/releases/download/v1.1/JuicyPotatoNG.zip<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>sudo<span class="w"> </span>unzip<span class="w"> </span>-o<span class="w"> </span>JuicyPotatoNG.zip<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>sudo<span class="w"> </span>rm<span class="w"> </span>JuicyPotatoNG.zip
+sudo<span class="w"> </span>curl<span class="w"> </span>-sLO<span class="w"> </span>https://github.com/tylerdotrar/SigmaPotato/releases/download/v1.2.6/SigmaPotato.exe
+sudo<span class="w"> </span>curl<span class="w"> </span>-sLO<span class="w"> </span>https://github.com/BeichenDream/PrintNotifyPotato/releases/download/v1.00/PrintNotifyPotato-NET46.exe
+</code></pre></div>
+| Watson | windows-kernel-exploits, windows-discovery | <a href="https://github.com/rasta-mouse/Watson">GitHub</a> (compile with VS) |
+| WES-NG | windows-kernel-exploits, windows-discovery | <code>pipx install wesng</code> (runs on attackbox, analyzes systeminfo output) |
+| SpoolSample | kerberos-delegation, auth-coercion-relay | <a href="https://github.com/leechristensen/SpoolSample">GitHub</a> (compile with VS) |
+| StandIn | acl-abuse, gpo-abuse | <a href="https://github.com/FuzzySecurity/StandIn">GitHub</a> (compile with VS) |
+| SessionGopher | windows-credential-harvesting | <a href="https://github.com/Arvanaghi/SessionGopher">GitHub</a> |
+| ADFSDump | ad-persistence | <a href="https://github.com/mandiant/ADFSDump">GitHub</a> |
+| MalSCCM | sccm-exploitation | <a href="https://github.com/nettitude/MalSCCM">GitHub</a> |
+| PowerView | ad-discovery, acl-abuse, kerberos-roasting, gpo-abuse, trust-attacks | Part of <a href="https://github.com/PowerShellMafia/PowerSploit">PowerSploit</a> |
+| Invoke-PowerShellTcp.ps1 | orchestrator (reverse shells) | Part of <a href="https://github.com/samratashok/nishang">nishang</a> |
+| accesschk | windows-service-dll-abuse, windows-discovery | <a href="https://learn.microsoft.com/en-us/sysinternals/downloads/accesschk">Sysinternals</a> |
+| procdump | windows-token-impersonation | <a href="https://learn.microsoft.com/en-us/sysinternals/downloads/procdump">Sysinternals</a> |</p>
+<h2 id="quick-setup-kali">Quick setup (Kali)</h2>
+<p>Most tools are pre-installed on Kali Linux. This covers the common gaps:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Go tools</span>
+go<span class="w"> </span>install<span class="w"> </span>github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
+go<span class="w"> </span>install<span class="w"> </span>github.com/projectdiscovery/httpx/cmd/httpx@latest
+go<span class="w"> </span>install<span class="w"> </span>github.com/projectdiscovery/interactsh/cmd/interactsh-client@latest
+go<span class="w"> </span>install<span class="w"> </span>github.com/ffuf/ffuf/v2@latest
+go<span class="w"> </span>install<span class="w"> </span>github.com/hahwul/dalfox/v2@latest
+
+<span class="c1"># Python tools (pipx)</span>
+pipx<span class="w"> </span>install<span class="w"> </span>impacket
+pipx<span class="w"> </span>install<span class="w"> </span>netexec
+pipx<span class="w"> </span>install<span class="w"> </span>certipy-ad
+pipx<span class="w"> </span>install<span class="w"> </span>bloodyad
+pipx<span class="w"> </span>install<span class="w"> </span>manspider
+pipx<span class="w"> </span>install<span class="w"> </span>git-dumper
+pipx<span class="w"> </span>install<span class="w"> </span>sccmhunter
+pipx<span class="w"> </span>install<span class="w"> </span>badsecrets
+pipx<span class="w"> </span>install<span class="w"> </span>sstimap
+pipx<span class="w"> </span>install<span class="w"> </span>gpohound
+pipx<span class="w"> </span>install<span class="w"> </span>wesng
+
+<span class="c1"># Apt packages (if not already on Kali)</span>
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>seclists<span class="w"> </span>mingw-w64<span class="w"> </span>golang-go<span class="w"> </span>hashcat<span class="w"> </span>john<span class="w"> </span>hydra<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>sshuttle<span class="w"> </span>proxychains4<span class="w"> </span>autossh<span class="w"> </span>iodine<span class="w"> </span>tmux<span class="w"> </span>jq<span class="w"> </span>ldap-utils<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>libimage-exiftool-perl<span class="w"> </span>default-jdk<span class="w"> </span>exploitdb
+
+<span class="c1"># Git repos — clone wherever you like, then add scripts to $PATH</span>
+<span class="c1"># (e.g., symlink main scripts into ~/.local/bin/)</span>
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/dirkjanm/krbrelayx
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/dirkjanm/PKINITtools
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/topotam/PetitPotam
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/Wh04m1001/DFSCoerce
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/ShutdownRepo/ShadowCoerce
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/ShutdownRepo/targetedKerberoast
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/Hackndo/pyGPOAbuse
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/micahvandeusen/gMSADumper
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/fortalice/modifyCertTemplate
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/synacktiv/php_filter_chain_generator
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/ambionics/phpggc
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/frohoff/ysoserial<span class="w">       </span><span class="c1"># needs mvn build</span>
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/mbechler/marshalsec<span class="w">      </span><span class="c1"># needs mvn build</span>
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/swisskyrepo/SSRFmap
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/s0md3v/XSStrike
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/epinna/tplmap
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/wallarm/jwt-secrets
+
+<span class="c1"># Download binary releases and add to $PATH</span>
+<span class="c1"># kerbrute, pspy, linpeas, winpeas, chisel (agent builds),</span>
+<span class="c1"># ligolo-ng (agent builds), GodPotato, PrintSpoofer, JuicyPotato,</span>
+<span class="c1"># CDK, deepce — download from their GitHub releases pages</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "content.code.copy", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
