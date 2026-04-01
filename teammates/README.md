@@ -56,17 +56,12 @@ or agent definitions — they're prompt templates.
 - Model is specified by the orchestrator in the spawn instruction, not in the template
 - Sonnet teammates spawn as Sonnet 200k by default; for 1M context, set
   `ANTHROPIC_DEFAULT_SONNET_MODEL=claude-sonnet-4-6[1m]` in `.claude/settings.json` env
+- **Shared behavior lives in CLAUDE.md § Teammate Protocol** — task workflow,
+  state writes, tool execution, operational rules, stall detection, and
+  activation protocol. Templates contain only domain-specific content.
 - Enum teammates discover and report — they don't action findings
 - Ops teammates action assigned vulns — they don't discover new ones
 - On-demand teammates handle one task and get dismissed
-- All state writes go through state-mgr via structured `[action]` messages
-- All shell lifecycle ops go through shell-mgr (listeners, processes, upgrades);
-  teammates call send_command directly on the MCP after session handoff
-- Teammates read state directly (get_state_summary, get_vulns, etc.)
-- All teammates message the lead on task completion — never self-claim new tasks
-- Non-infrastructure templates end with an Activation Protocol: load schemas,
-  read state, go idle. Teammates only start work on `[TASK]`-prefixed messages.
-  The spawn prompt is system context, NOT a task assignment.
 
 ## Relationship to v1 agent definitions
 
